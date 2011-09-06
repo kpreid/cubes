@@ -187,6 +187,7 @@
         var n = mat4.create();
         mat4.identity(m);
         if (true) {
+          console.log("Begin cubegen");
           for (var i = -15; i < 15; i++) {
           for (var j = -15; j < 15; j++) {
             var k = Math.floor(mod(i/8+j/4, 2));
@@ -194,6 +195,7 @@
             mat4.translate(n, [i, -k, j]);
             cube(n, mod(i/10 + 0.5, 1), mod(j/10 + 0.5, 1), 0.0);
           }}
+          console.log("End cubegen");
         } else {
           cube(m, 0.5, 0.5, 0.5);
         }
@@ -211,16 +213,20 @@
         cubesVertexColorBuffer.numItems = 4;
     }
 
-    var rot = 0;
+    
+    var playerPos = vec3.create([0,3,0]);
+    var playerVel = vec3.create([0,0,0]);
+    var playerRot = quat4.create([0,0,0,0]);
 
     function drawScene() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         mat4.identity(mvMatrix);
-        mat4.rotate(mvMatrix, 0.2, [1, 0, 0]);
-        mat4.translate(mvMatrix, [0, -2.0, -7.0]);
-        mat4.rotate(mvMatrix, rot += 0.03, [0, 1, 0]);
-
+        mat4.rotate(mvMatrix, 0.2, [1, 0, 0]); // view look
+        
+        var positionTrans = vec3.negate(playerPos, vec3.create());
+        mat4.translate(mvMatrix, positionTrans); // position
+        
         gl.bindBuffer(gl.ARRAY_BUFFER, cubesVertexPositionBuffer);
         gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, cubesVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
@@ -229,6 +235,14 @@
 
         setMatrixUniforms();
         gl.drawArrays(gl.TRIANGLES, 0, cubesVertexPositionBuffer.numItems);
+    }
+    
+    var timestep = 1/60;
+    
+    function doStep() {
+      var playerVelStep = vec3.scale(playerVel, timestep*3, vec3.create());
+      vec3.add(playerPos, playerVelStep);
+      drawScene();
     }
 
     function webGLStart(canvas) {
@@ -245,14 +259,34 @@
       gl.enable(gl.DEPTH_TEST);
 
       // TODO: use webgl utils to avoid wasting time if invisible
-      setInterval(drawScene, 1000/10);
+      setInterval(doStep, 1000*timestep);
       
       document.onkeydown = function (event) {
         switch (event.keyCode) {
-          case 37: movePlayerKey(-1,  0); break; // left
-          case 38: movePlayerKey( 0, -1); break; // up
-          case 39: movePlayerKey( 1,  0); break; // right
-          case 40: movePlayerKey( 0,  1); break; // down
+          case 'A'.charCodeAt(0):
+          case 37: playerVel[0] = -1; break; // left
+          case 'W'.charCodeAt(0):
+          case 38: playerVel[2] = -1; break; // up
+          case 'D'.charCodeAt(0):
+          case 39: playerVel[0] = 1; break; // right
+          case 'S'.charCodeAt(0):
+          case 40: playerVel[2] = 1; break; // down
+          default:
+            console.log("Ignoring keyCode " + event.keyCode);
+            return true;
+        }
+        return false;
+      };
+      document.onkeyup = function (event) {
+        switch (event.keyCode) {
+          case 'A'.charCodeAt(0):
+          case 37: playerVel[0] = 0; break; // left
+          case 'W'.charCodeAt(0):
+          case 38: playerVel[2] = 0; break; // up
+          case 'D'.charCodeAt(0):
+          case 39: playerVel[0] = 0; break; // right
+          case 'S'.charCodeAt(0):
+          case 40: playerVel[2] = 0; break; // down
           default:
             console.log("Ignoring keyCode " + event.keyCode);
             return true;
