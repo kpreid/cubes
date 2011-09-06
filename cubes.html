@@ -186,13 +186,12 @@
         var m = mat4.create();
         var n = mat4.create();
         mat4.identity(m);
-        mat4.rotate(m, Math.PI/2, [1, 0, 0]);
         if (true) {
           for (var i = -15; i < 15; i++) {
           for (var j = -15; j < 15; j++) {
             var k = Math.floor(mod(i/8+j/4, 2));
             mat4.set(m, n);
-            mat4.translate(n, [i * 1, j * 1, k]);
+            mat4.translate(n, [i, -k, j]);
             cube(n, mod(i/10 + 0.5, 1), mod(j/10 + 0.5, 1), 0.0);
           }}
         } else {
