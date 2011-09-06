@@ -128,6 +128,16 @@
         gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
     }
 
+    function updateViewport() {
+      theCanvas.width = parseInt(window.getComputedStyle(theCanvas,null).width);
+      theCanvas.height = parseInt(window.getComputedStyle(theCanvas,null).height);
+      gl.viewportWidth = theCanvas.width;
+      gl.viewportHeight = theCanvas.height;
+      
+      gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+      mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+    }
+    
 
 
     var cubesVertexPositionBuffer;
@@ -144,27 +154,50 @@
           vertices.push(pvBuffer[0], pvBuffer[1], pvBuffer[2]);
         }
 
-        function square(m) {
+        function square(m, r, g, b) {
           pushVertex(m,  1,  1,  0);
-          pushVertex(m, -1,  1,  0);
-          pushVertex(m,  1, -1,  0);
-          pushVertex(m, -1,  1,  0);
-          pushVertex(m,  1, -1,  0);
-          pushVertex(m, -1, -1,  0);
+          pushVertex(m,  0,  1,  0);
+          pushVertex(m,  1,  0,  0);
+          pushVertex(m,  0,  1,  0);
+          pushVertex(m,  1,  0,  0);
+          pushVertex(m,  0,  0,  0);
           for (var i=0; i < 6; i++) {
-              colors = colors.concat([0.5, 0.5, 1.0, 1.0]);
+              colors = colors.concat([r, g, b, 1.0]);
           }
+        }
+        function cube(m, r, g, b) {
+          var n = mat4.create(m);
+          square(n, r, g, b);
+            mat4.translate(n, [0, 0, -1]);
+            square(n, r, g, b);
+
+          mat4.set(m, n);
+          mat4.rotate(n, Math.PI/2, [-1, 0, 0]);
+          square(n, r, g, b);
+            mat4.translate(n, [0, 0, 1]);
+            square(n, r, g, b);
+          
+          mat4.set(m, n);
+          mat4.rotate(n, Math.PI/2, [0, 1, 0]);
+          square(n, r, g, b);
+            mat4.translate(n, [0, 0, 1]);
+            square(n, r, g, b);
         }
         var m = mat4.create();
         var n = mat4.create();
         mat4.identity(m);
         mat4.rotate(m, Math.PI/2, [1, 0, 0]);
-        for (var i = -30; i < 30; i++) {
-        for (var j = -30; j < 30; j++) {
-          mat4.set(m, n);
-          mat4.translate(n, [i * 2.1, j * 2.1, 0]);
-          square(n);
-        }}
+        if (true) {
+          for (var i = -15; i < 15; i++) {
+          for (var j = -15; j < 15; j++) {
+            var k = Math.floor(mod(i/8+j/4, 2));
+            mat4.set(m, n);
+            mat4.translate(n, [i * 1, j * 1, k]);
+            cube(n, mod(i/10 + 0.5, 1), mod(j/10 + 0.5, 1), 0.0);
+          }}
+        } else {
+          cube(m, 0.5, 0.5, 0.5);
+        }
 
         cubesVertexPositionBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, cubesVertexPositionBuffer);
@@ -182,12 +215,10 @@
     var rot = 0;
 
     function drawScene() {
-        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
-
         mat4.identity(mvMatrix);
+        mat4.rotate(mvMatrix, 0.2, [1, 0, 0]);
         mat4.translate(mvMatrix, [0, -2.0, -7.0]);
         mat4.rotate(mvMatrix, rot += 0.03, [0, 1, 0]);
 
@@ -201,23 +232,12 @@
         gl.drawArrays(gl.TRIANGLES, 0, cubesVertexPositionBuffer.numItems);
     }
 
-    function u() {
-      return (Math.random() + Math.random() + Math.random() - 1.5)/2;
-    }
-
-    function updateCanvasResolution(canvas) {
-      canvas.width = parseInt(window.getComputedStyle(canvas,null).width);
-      canvas.height = parseInt(window.getComputedStyle(canvas,null).height);
-      gl.viewportWidth = canvas.width;
-      gl.viewportHeight = canvas.height;
-    }
-    
     function webGLStart(canvas) {
       theCanvas = canvas;
       initGL(canvas);
 
       // should do live, but makes Chrome glitchy
-      updateCanvasResolution(theCanvas);
+      updateViewport();
     
       initShaders();
       initBuffers();
@@ -242,7 +262,9 @@
       };
     }
 
-    
+    function mod(value, modulus) {
+      return (value % modulus + modulus) % modulus;
+    }
 </script>
 
 
