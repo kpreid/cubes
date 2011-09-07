@@ -147,14 +147,41 @@
     console.log("Begin worldgen");
     var world = new World();
     console.log("End worldgen");
+    
+    function RenderBundle(primitive, calcFunc) {
+      var vbuf = gl.createBuffer();
+      var cbuf = gl.createBuffer();
+      var numVertices;
+      
+      var vertices = [];
+      var colors = [];
+      calcFunc(vertices, colors);
+      numVertices = Math.floor(vertices.length / 3);
+      
+      gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-    var cubesVertexPositionBuffer;
-    var cubesVertexColorBuffer;
+      gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+      
+      return {
+        draw: function () {
+          gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
+          gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
+
+          gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
+          gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 4, gl.FLOAT, false, 0, 0);
+
+          setMatrixUniforms();
+          gl.drawArrays(primitive, 0, numVertices);
+        }
+      };
+    }
+
+    var cubesR;
 
     function initBuffers() {
-        var vertices = [];
-        var colors = [];
-
+      cubesR = new RenderBundle(gl.TRIANGLES, function (vertices, colors) {
         var pvBuffer = vec3.create();
         function pushVertex(m, vec) {
           mat4.multiplyVec3(m, vec, pvBuffer);
@@ -217,19 +244,8 @@
         } else {
           cube(m, 0.5, 0.5, 0.5);
         }
-
-        cubesVertexPositionBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, cubesVertexPositionBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-        cubesVertexPositionBuffer.itemSize = 3;
-        cubesVertexPositionBuffer.numItems = vertices.length/cubesVertexPositionBuffer.itemSize;
-
-        cubesVertexColorBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, cubesVertexColorBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-        cubesVertexColorBuffer.itemSize = 4;
-        cubesVertexColorBuffer.numItems = colors.length/cubesVertexColorBuffer.itemSize;
         console.log("End vertex buffering");
+      });
     }
 
     
@@ -252,14 +268,7 @@
         var positionTrans = vec3.negate(playerPos, vec3.create());
         mat4.translate(mvMatrix, positionTrans);
         
-        gl.bindBuffer(gl.ARRAY_BUFFER, cubesVertexPositionBuffer);
-        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, cubesVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, cubesVertexColorBuffer);
-        gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, cubesVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-        setMatrixUniforms();
-        gl.drawArrays(gl.TRIANGLES, 0, cubesVertexPositionBuffer.numItems);
+        cubesR.draw();
     }
     
     var timestep = 1/30;
