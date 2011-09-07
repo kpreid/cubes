@@ -148,21 +148,28 @@
         var colors = [];
 
         var pvBuffer = vec3.create();
-        function pushVertex(m, x, y, z) {
-          vec3.set([x, y, z], pvBuffer);
-          mat4.multiplyVec3(m, pvBuffer, pvBuffer);
+        function pushVertex(m, vec) {
+          mat4.multiplyVec3(m, vec, pvBuffer);
           vertices.push(pvBuffer[0], pvBuffer[1], pvBuffer[2]);
         }
 
+        var squareVecs = [
+          [1,  1,  0],
+          [0,  1,  0],
+          [1,  0,  0],
+          [0,  1,  0],
+          [1,  0,  0],
+          [0,  0,  0]
+        ];
         function square(m, r, g, b) {
-          pushVertex(m,  1,  1,  0);
-          pushVertex(m,  0,  1,  0);
-          pushVertex(m,  1,  0,  0);
-          pushVertex(m,  0,  1,  0);
-          pushVertex(m,  1,  0,  0);
-          pushVertex(m,  0,  0,  0);
+          pushVertex(m, squareVecs[0]);
+          pushVertex(m, squareVecs[1]);
+          pushVertex(m, squareVecs[2]);
+          pushVertex(m, squareVecs[3]);
+          pushVertex(m, squareVecs[4]);
+          pushVertex(m, squareVecs[5]);
           for (var i=0; i < 6; i++) {
-              colors = colors.concat([r, g, b, 1.0]);
+              colors.push(r, g, b, 1.0);
           }
         }
         function cube(m, r, g, b) {
@@ -188,8 +195,8 @@
         mat4.identity(m);
         if (true) {
           console.log("Begin cubegen");
-          for (var i = -15; i < 15; i++) {
-          for (var j = -15; j < 15; j++) {
+          for (var i = -60; i < 60; i++) {
+          for (var j = -60; j < 60; j++) {
             var k = Math.floor(mod(i/8+j/4, 2));
             mat4.set(m, n);
             mat4.translate(n, [i, -k, j]);
@@ -240,7 +247,7 @@
     var timestep = 1/60;
     
     function doStep() {
-      var playerVelStep = vec3.scale(playerVel, timestep*3, vec3.create());
+      var playerVelStep = vec3.scale(playerVel, timestep*6, vec3.create());
       vec3.add(playerPos, playerVelStep);
       drawScene();
     }
