@@ -1,6 +1,6 @@
 // TODO: explicitly connect global vars
 
-function initInput(document) {
+function Input(document) {
   var keymap = [];
   
   function evalVel(pos, neg) {
@@ -50,11 +50,28 @@ function initInput(document) {
       return true;
     }
   };
-  document.onclick = function (event) {
-    var swing = event.clientX / (gl.viewportWidth*0.5) - 1;
-    var angle = Math.atan(swing);
-    console.log("onclick", event.clientX, swing, angle);
-    quat4.multiply(playerRot, quat4.calculateW([0, Math.sin(angle/2), 0, 0]));
+  
+  var dx = 0;
+  
+  document.onmousemove = function (event) {
+    var swingY = event.clientY / (gl.viewportHeight*0.5) - 1;
+    var swingX = event.clientX / (gl.viewportWidth*0.5) - 1;
+    playerPitch = -Math.PI/2 * swingY;
+    
+    dx = -0.2 * deadzone(swingX, 0.2);
+    
     needsDraw = true;
   }
+  document.onmouseout = function (event) {
+    dx = 0;
+  }
+  
+  function step() {
+    if (dx != 0) {
+      playerYaw += dx;
+      needsDraw = true;
+    }
+  }
+  
+  this.step = step;
 }

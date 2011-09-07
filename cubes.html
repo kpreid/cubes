@@ -232,17 +232,22 @@
     
     var playerPos = vec3.create([0,3,0]);
     var playerVel = vec3.create([0,0,0]);
-    var playerRot = quat4.calculateW(quat4.create([0,0.5,0,0]));
+    
+    var playerYaw = 0;
+    var playerPitch = 0;
 
     function drawScene() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         mat4.identity(mvMatrix);
-        mat4.multiply(mvMatrix, quat4.toMat4(playerRot));
-        //mat4.rotate(mvMatrix, 0.2, [1, 0, 0]); // view look
+
+         // view look
+        mat4.rotate(mvMatrix, -playerPitch, [1, 0, 0]);
+        mat4.rotate(mvMatrix, -playerYaw, [0, 1, 0]);
         
+        // position
         var positionTrans = vec3.negate(playerPos, vec3.create());
-        mat4.translate(mvMatrix, positionTrans); // position
+        mat4.translate(mvMatrix, positionTrans);
         
         gl.bindBuffer(gl.ARRAY_BUFFER, cubesVertexPositionBuffer);
         gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, cubesVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
@@ -255,12 +260,17 @@
     }
     
     var timestep = 1/30;
-    
     var needsDraw = true;
+    var input;
+    
     function doStep() {
-      var playerVelOrient = quat4.multiplyVec3(playerRot, playerVel, vec3.create());
+      var rotmat = mat4.identity(mat4.create());
+      mat4.rotateY(rotmat, playerYaw);
+      var playerVelOrient = mat4.multiplyVec3(rotmat, playerVel, vec3.create());
       var playerVelStep = vec3.scale(playerVelOrient, timestep*6, vec3.create());
       vec3.add(playerPos, playerVelStep);
+
+      input.step();
 
       // TODO: As well as skipping rendering, skip the callback entirely
       // if there's nothing to do.
@@ -286,7 +296,7 @@
       // TODO: use webgl utils to avoid wasting time if invisible
       setInterval(doStep, 1000*timestep);
 
-      initInput(document);
+      input = new Input(document);
     }
 
 </script>
