@@ -217,7 +217,8 @@
         gl.bindBuffer(gl.ARRAY_BUFFER, cubesVertexColorBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
         cubesVertexColorBuffer.itemSize = 4;
-        cubesVertexColorBuffer.numItems = 4;
+        cubesVertexColorBuffer.numItems = colors.length/cubesVertexColorBuffer.itemSize;
+        console.log("End vertex buffering");
     }
 
     
@@ -328,7 +329,7 @@
 
 
 <body onload="webGLStart(document.getElementById('view-canvas'));">
-    <canvas id="view-canvas" class="viewport" width="500" height="500"></canvas>
+    <canvas id="view-canvas" class="viewport" width="640" height="480"></canvas>
 </body>
 
 </html>
