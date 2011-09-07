@@ -162,11 +162,20 @@
       mat4.inverse(unproject);
 
       var pt1 = lastUnproject1 = mat4.multiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 0]));
-      var pt2 = lastUnproject2 = mat4.multiplyVec3(unproject, vec3.create([glxy[0], glxy[1], -100]));
+      var pt2 = lastUnproject2 = mat4.multiplyVec3(unproject, vec3.create([glxy[0], glxy[1], -1]));
       console.log(mat4.str(unproject));
       console.log(vec3.str(pt1), vec3.str(pt2));
       debugR.recompute();
       needsDraw = true;
+      
+      world.raytrace(pt1, pt2, 20, function (x,y,z) {
+        var wx = world.wx;
+        var wy = world.wy;
+        var wz = world.wz;
+        world[x*wy*wz + y*wz + z] = 0;
+        return false;
+      });
+      cubesR.recompute();
     }
 
     function RenderBundle(primitive, calcFunc) {

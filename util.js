@@ -11,3 +11,7 @@ function deadzone(value, radius) {
     return value - radius;
   }
 }
+
+function signum(x) {
+  return x > 0 ? 1 : x < 0 ? -1 : 0;
+}
