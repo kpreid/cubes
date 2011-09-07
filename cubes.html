@@ -9,6 +9,8 @@
 </style>
 
 <script type="text/javascript" src="glMatrix.js"></script>
+<script type="text/javascript" src="util.js"></script>
+<script type="text/javascript" src="world.js"></script>
 
 <script id="shader-fs" type="x-shader/x-fragment">
     #ifdef GL_ES
@@ -138,7 +140,9 @@
       mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
     }
     
-
+    console.log("Begin worldgen");
+    var world = new World();
+    console.log("End worldgen");
 
     var cubesVertexPositionBuffer;
     var cubesVertexColorBuffer;
@@ -195,13 +199,16 @@
         mat4.identity(m);
         if (true) {
           console.log("Begin cubegen");
-          for (var i = -60; i < 60; i++) {
-          for (var j = -60; j < 60; j++) {
-            var k = Math.floor(mod(i/8+j/4, 2));
+          var wx = world.wx;
+          var wy = world.wy;
+          var wz = world.wz;
+          for (var x = 0; x < world.wx; x++)
+          for (var y = 0; y < world.wy; y++)
+          for (var z = 0; z < world.wz; z++) {
             mat4.set(m, n);
-            mat4.translate(n, [i, -k, j]);
-            cube(n, mod(i/10 + 0.5, 1), mod(j/10 + 0.5, 1), 0.0);
-          }}
+            mat4.translate(n, [x, y, z]);
+            cube(n, world[x*wy*wz + y*wz + z]/256, x/wx, y/wy);
+          }
           console.log("End cubegen");
         } else {
           cube(m, 0.5, 0.5, 0.5);
@@ -319,9 +326,6 @@
       }
     }
 
-    function mod(value, modulus) {
-      return (value % modulus + modulus) % modulus;
-    }
 </script>
 
 
