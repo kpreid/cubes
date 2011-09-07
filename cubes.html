@@ -225,14 +225,6 @@
           vertices.push(vec[0], vec[1], vec[2]);
         }
 
-        var squareVecs = [
-          [1,  1,  0],
-          [0,  1,  0],
-          [1,  0,  0],
-          [0,  1,  0],
-          [1,  0,  0],
-          [0,  0,  0]
-        ];
         function square(origin, v1, v2, color) {
           pushVertex(origin);
           pushVertex(vec3.add(origin, v1, vec3.create()));
