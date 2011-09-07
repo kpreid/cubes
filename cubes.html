@@ -212,9 +212,8 @@
       
       cubesR = new RenderBundle(gl.TRIANGLES, function (vertices, colors) {
         var pvBuffer = vec3.create();
-        function pushVertex(m, vec) {
-          mat4.multiplyVec3(m, vec, pvBuffer);
-          vertices.push(pvBuffer[0], pvBuffer[1], pvBuffer[2]);
+        function pushVertex(vec) {
+          vertices.push(vec[0], vec[1], vec[2]);
         }
 
         var squareVecs = [
@@ -225,38 +224,28 @@
           [1,  0,  0],
           [0,  0,  0]
         ];
-        function square(m, r, g, b) {
-          pushVertex(m, squareVecs[0]);
-          pushVertex(m, squareVecs[1]);
-          pushVertex(m, squareVecs[2]);
-          pushVertex(m, squareVecs[3]);
-          pushVertex(m, squareVecs[4]);
-          pushVertex(m, squareVecs[5]);
+        function square(origin, v1, v2, color) {
+          pushVertex(origin);
+          pushVertex(vec3.add(origin, v1, vec3.create()));
+          pushVertex(vec3.add(origin, v2, vec3.create()));
+                     
+          pushVertex(vec3.add(vec3.add(origin, v1, vec3.create()), v2));
+          pushVertex(vec3.add(origin, v1, vec3.create()));
+          pushVertex(vec3.add(origin, v2, vec3.create()));
           for (var i=0; i < 6; i++) {
-              colors.push(r, g, b, 1.0);
+              colors.push(color[0],color[1],color[2],color[3]);
           }
         }
-        function cube(m, r, g, b) {
-          var n = mat4.create(m);
-          square(n, r, g, b);
-            mat4.translate(n, [0, 0, -1]);
-            square(n, r, g, b);
-
-          mat4.set(m, n);
-          mat4.rotate(n, Math.PI/2, [-1, 0, 0]);
-          square(n, r, g, b);
-            mat4.translate(n, [0, 0, 1]);
-            square(n, r, g, b);
-          
-          mat4.set(m, n);
-          mat4.rotate(n, Math.PI/2, [0, 1, 0]);
-          square(n, r, g, b);
-            mat4.translate(n, [0, 0, 1]);
-            square(n, r, g, b);
+        function cube(n, r, g, b) {
+          var color = [r,g, b, 1.0];
+          var n2 = vec3.create();
+          square(n,                        [0,1,0], [1,0,0], color);
+          square(vec3.add(n, [0,0,1], n2), [0,1,0], [1,0,0], color);
+          square(n,                        [1,0,0], [0,0,1], color);
+          square(vec3.add(n, [0,1,0], n2), [1,0,0], [0,0,1], color);
+          square(n,                        [0,1,0], [0,0,1], color);
+          square(vec3.add(n, [1,0,0], n2), [0,1,0], [0,0,1], color);
         }
-        var m = mat4.create();
-        var n = mat4.create();
-        mat4.identity(m);
         if (true) {
           console.log("Begin cubegen");
           var wx = world.wx;
@@ -265,13 +254,11 @@
           for (var x = 0; x < world.wx; x++)
           for (var y = 0; y < world.wy; y++)
           for (var z = 0; z < world.wz; z++) {
-            mat4.set(m, n);
-            mat4.translate(n, [x, y, z]);
-            cube(n, world[x*wy*wz + y*wz + z]/256, x/wx, y/wy);
+            cube([x,y,z], world[x*wy*wz + y*wz + z]/256, x/wx, y/wy);
           }
           console.log("End cubegen");
         } else {
-          cube(m, 0.5, 0.5, 0.5);
+          cube([0,0,0], 0.5, 0.5, 0.5);
         }
         console.log("End vertex buffering");
       });
