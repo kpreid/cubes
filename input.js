@@ -1,6 +1,7 @@
 // TODO: explicitly connect global vars
 
-function Input(document) {
+// worldClick is a function of ([x, y], buttonNum) where buttonNum is 0 for left and 1 for right.
+function Input(document, worldClick) {
   var keymap = [];
   
   function evalVel(pos, neg) {
@@ -54,20 +55,32 @@ function Input(document) {
   var dx = 0;
   
   document.onmousemove = function (event) {
+    // TODO: global variables
     var swingY = event.clientY / (gl.viewportHeight*0.5) - 1;
     var swingX = event.clientX / (gl.viewportWidth*0.5) - 1;
     playerPitch = -Math.PI/2 * swingY;
     
     dx = -0.2 * deadzone(swingX, 0.2);
     
+    // TODO: global variables
     needsDraw = true;
   }
   document.onmouseout = function (event) {
     dx = 0;
   }
+
+  document.onclick = function (event) {
+    worldClick([event.clientX, event.clientY], 0);
+    return false;
+  }
+  document.oncontextmenu = function (event) {
+    worldClick([event.clientX, event.clientY], 1);
+    return false;
+  }
   
   function step() {
     if (dx != 0) {
+      // TODO: global variables
       playerYaw += dx;
       needsDraw = true;
     }
