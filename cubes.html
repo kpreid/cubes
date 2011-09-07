@@ -11,6 +11,7 @@
 <script type="text/javascript" src="glMatrix.js"></script>
 <script type="text/javascript" src="util.js"></script>
 <script type="text/javascript" src="world.js"></script>
+<script type="text/javascript" src="input.js"></script>
 
 <script id="shader-fs" type="x-shader/x-fragment">
     #ifdef GL_ES
@@ -284,46 +285,8 @@
 
       // TODO: use webgl utils to avoid wasting time if invisible
       setInterval(doStep, 1000*timestep);
-      
-      document.onkeydown = function (event) {
-        switch (event.keyCode) {
-          case 'A'.charCodeAt(0):
-          case 37: playerVel[0] = -1; break; // left
-          case 'W'.charCodeAt(0):
-          case 38: playerVel[2] = -1; break; // up
-          case 'D'.charCodeAt(0):
-          case 39: playerVel[0] = 1; break; // right
-          case 'S'.charCodeAt(0):
-          case 40: playerVel[2] = 1; break; // down
-          default:
-            console.log("Ignoring keyCode " + event.keyCode);
-            return true;
-        }
-        return false;
-      };
-      document.onkeyup = function (event) {
-        switch (event.keyCode) {
-          case 'A'.charCodeAt(0):
-          case 37: playerVel[0] = 0; break; // left
-          case 'W'.charCodeAt(0):
-          case 38: playerVel[2] = 0; break; // up
-          case 'D'.charCodeAt(0):
-          case 39: playerVel[0] = 0; break; // right
-          case 'S'.charCodeAt(0):
-          case 40: playerVel[2] = 0; break; // down
-          default:
-            console.log("Ignoring keyCode " + event.keyCode);
-            return true;
-        }
-        return false;
-      };
-      document.onclick = function (event) {
-        var swing = event.clientX / (gl.viewportWidth*0.5) - 1;
-        var angle = Math.atan(swing);
-        console.log("onclick", event.clientX, swing, angle);
-        quat4.multiply(playerRot, quat4.calculateW([0, Math.sin(angle/2), 0, 0]));
-        needsDraw = true;
-      }
+
+      initInput(document);
     }
 
 </script>
