@@ -244,12 +244,19 @@
         gl.drawArrays(gl.TRIANGLES, 0, cubesVertexPositionBuffer.numItems);
     }
     
-    var timestep = 1/60;
+    var timestep = 1/30;
     
+    var first = true;
     function doStep() {
       var playerVelStep = vec3.scale(playerVel, timestep*6, vec3.create());
       vec3.add(playerPos, playerVelStep);
-      drawScene();
+
+      // TODO: As well as skipping rendering, skip the callback entirely
+      // if there's nothing to do.
+      if (vec3.length(playerVel) > 0 || first) {
+        drawScene();
+        first = false;
+      }
     }
 
     function webGLStart(canvas) {
