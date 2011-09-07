@@ -10,7 +10,7 @@ function World() {
     blocks[x*wy*wz + y*wz + z] = (wy-y)*70 - ((x-wx/2)*(x-wx/2) + (z-wz/2)*(z-wz/2)) > 0 ? 255 : 0;
   }
   
-  // --- Methods ---
+  // --- Internal functions ---
   
   function intbound(s, ds) {
     // Find the smallest positive t such that s+t*ds is an integer.
@@ -21,6 +21,18 @@ function World() {
       // problem is now s+t*ds = 1
       return (1-s)/ds;
     }
+  }
+  
+  // --- Methods ---
+  
+  function g(x,y,z) {
+    if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
+      return 0;
+    else
+      return blocks[x*wy*wz + y*wz + z];
+  }
+  function solid(x,y,z) {
+    return g(x,y,z) != 0;
   }
   
   /**
@@ -77,17 +89,18 @@ function World() {
 
       //console.log("voxel hit:", x, y, z, "[", Math.min(tMaxX, Math.min(tMaxY, tMaxZ)), "]");
 
-      if (callback(x, y, z, world[x*wy*wz + y*wz + z]))
+      if (callback(x, y, z, blocks[x*wy*wz + y*wz + z]))
         break;
     }
   };
   
   // --- Final init ---
   
-  blocks.raytrace = raytrace;
-  blocks.wx = wx;
-  blocks.wy = wy;
-  blocks.wz = wz;
-  
-  return blocks;
+  this.g = g;
+  this.solid = solid;
+  this.raw = blocks;
+  this.raytrace = raytrace;
+  this.wx = wx;
+  this.wy = wy;
+  this.wz = wz;
 }
