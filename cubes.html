@@ -231,8 +231,8 @@
           pushVertex(vec3.add(origin, v2, vec3.create()));
                      
           pushVertex(vec3.add(vec3.add(origin, v1, vec3.create()), v2));
-          pushVertex(vec3.add(origin, v1, vec3.create()));
           pushVertex(vec3.add(origin, v2, vec3.create()));
+          pushVertex(vec3.add(origin, v1, vec3.create()));
           for (var i=0; i < 6; i++) {
               colors.push(color[0],color[1],color[2],color[3]);
           }
@@ -269,11 +269,11 @@
               var color = [value/256, x/wx, y/wy];
               var c1 = [x,y,z];
               var c2 = [x+1,y+1,z+1];
-              if (!solid(x-1,y,z)) square(c1, [0,1,0], [0,0,1], color);
+              if (!solid(x-1,y,z)) square(c1, [0,0,1], [0,1,0], color);
               if (!solid(x,y-1,z)) square(c1, [1,0,0], [0,0,1], color);
-              if (!solid(x,y,z-1)) square(c1, [1,0,0], [0,1,0], color);
+              if (!solid(x,y,z-1)) square(c1, [0,1,0], [1,0,0], color);
               if (!solid(x+1,y,z)) square(c2, [0,-1,0], [0,0,-1], color);
-              if (!solid(x,y+1,z)) square(c2, [-1,0,0], [0,0,-1], color);
+              if (!solid(x,y+1,z)) square(c2, [0,0,-1], [-1,0,0], color);
               if (!solid(x,y,z+1)) square(c2, [-1,0,0], [0,-1,0], color);
             }
           }
@@ -342,6 +342,7 @@
 
       gl.clearColor(0.0, 0.0, 0.0, 1.0);
       gl.enable(gl.DEPTH_TEST);
+      gl.enable(gl.CULL_FACE);
 
       // TODO: use webgl utils to avoid wasting time if invisible
       setInterval(doStep, 1000*timestep);
