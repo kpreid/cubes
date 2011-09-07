@@ -223,13 +223,14 @@
     
     var playerPos = vec3.create([0,3,0]);
     var playerVel = vec3.create([0,0,0]);
-    var playerRot = quat4.create([0,0,0,0]);
+    var playerRot = quat4.calculateW(quat4.create([0,0.5,0,0]));
 
     function drawScene() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         mat4.identity(mvMatrix);
-        mat4.rotate(mvMatrix, 0.2, [1, 0, 0]); // view look
+        mat4.multiply(mvMatrix, quat4.toMat4(playerRot));
+        //mat4.rotate(mvMatrix, 0.2, [1, 0, 0]); // view look
         
         var positionTrans = vec3.negate(playerPos, vec3.create());
         mat4.translate(mvMatrix, positionTrans); // position
@@ -246,16 +247,17 @@
     
     var timestep = 1/30;
     
-    var first = true;
+    var needsDraw = true;
     function doStep() {
-      var playerVelStep = vec3.scale(playerVel, timestep*6, vec3.create());
+      var playerVelOrient = quat4.multiplyVec3(playerRot, playerVel, vec3.create());
+      var playerVelStep = vec3.scale(playerVelOrient, timestep*6, vec3.create());
       vec3.add(playerPos, playerVelStep);
 
       // TODO: As well as skipping rendering, skip the callback entirely
       // if there's nothing to do.
-      if (vec3.length(playerVel) > 0 || first) {
+      if (vec3.length(playerVel) > 0 || needsDraw) {
         drawScene();
-        first = false;
+        needsDraw = false;
       }
     }
 
@@ -307,6 +309,13 @@
         }
         return false;
       };
+      document.onclick = function (event) {
+        var swing = event.clientX / (gl.viewportWidth*0.5) - 1;
+        var angle = Math.atan(swing);
+        console.log("onclick", event.clientX, swing, angle);
+        quat4.multiply(playerRot, quat4.calculateW([0, Math.sin(angle/2), 0, 0]));
+        needsDraw = true;
+      }
     }
 
     function mod(value, modulus) {
