@@ -2,6 +2,8 @@
 
 // worldClick is a function of ([x, y], buttonNum) where buttonNum is 0 for left and 1 for right.
 function Input(document, worldClick) {
+  "use strict";
+
   var keymap = [];
   
   function evalVel(pos, neg) {

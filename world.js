@@ -1,4 +1,6 @@
 function World() {
+  "use strict";
+
   var wx = 32;
   var wy = 16;
   var wz = 32;
