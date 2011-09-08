@@ -180,8 +180,7 @@
           var x = cubeSelection[0], y = cubeSelection[1], z = cubeSelection[2];
           if (world.solid(x,y,z)) {
             world.s(x,y,z,0);
-            // TODO: Don't do this raw; if we update at a chunk edge we need to rerender the neighboring chunk too.
-            findChunk(x,z).recompute();
+            dirtyBlock(x,z);
             changed = true;
           }
         }
@@ -191,7 +190,7 @@
           var x = emptySelection[0], y = emptySelection[1], z = emptySelection[2];
           if (!world.solid(x,y,z)) {
             world.s(x,y,z, 64);
-            findChunk(x,z).recompute();
+            dirtyBlock(x,z);
             changed = true;
           }
         }
@@ -263,7 +262,8 @@
     }
 
     var CHUNKSIZE = 16;
-    var chunks = [];
+    var chunks = {};
+    var dirtyChunks = [];
     
     var debugR;
     var selectionR;
@@ -271,53 +271,25 @@
     var dummyChunk = {
       recompute: function () {}
     };
-    function findChunk(x,z) {
+    function dirtyBlock(x,z) {
+      // TODO: Update neighboring chunks too.
       x -= mod(x, 16);
       z -= mod(z, 16);
-      return chunks[[x,z]] || dummyChunk;
+      dirtyChunks.push([x,z]);
     }
-
-    function initBuffers() {
-      debugR = new RenderBundle(gl.LINES, function (vertices, colors) {
-        vertices.push(lastUnproject1[0], lastUnproject1[1], lastUnproject1[2]); colors.push(1, 1, 1, 1);
-        vertices.push(lastUnproject2[0], lastUnproject2[1], lastUnproject2[2]); colors.push(1, 0, 0, 1);
-      });
-      
-      selectionR = new RenderBundle(gl.LINES, function (vertices, colors) {
-        if (cubeSelection !== null) {
-          var p = cubeSelection;
-          vertices.push(p[0], p[1], p[2]); colors.push(1, 1, 1, 1);
-          vertices.push(p[0], p[1]+1, p[2]); colors.push(1, 1, 1, 1);
-          vertices.push(p[0]+1, p[1]+1, p[2]); colors.push(1, 1, 1, 1);
-          vertices.push(p[0]+1, p[1], p[2]); colors.push(1, 1, 1, 1);
-          vertices.push(p[0]+1, p[1], p[2]+1); colors.push(1, 1, 1, 1);
-          vertices.push(p[0]+1, p[1]+1, p[2]+1); colors.push(1, 1, 1, 1);
-          vertices.push(p[0], p[1]+1, p[2]+1); colors.push(1, 1, 1, 1);
-          vertices.push(p[0], p[1], p[2]+1); colors.push(1, 1, 1, 1);
-        }
-
-        if (emptySelection !== null) {
-          // TODO: replace this with a face-highlight
-          var q = emptySelection;
-          vertices.push(q[0]+0.5, q[1]+0.5, q[2]); colors.push(1, 1, 1, 1);
-          vertices.push(q[0]+0.5, q[1]+0.5, q[2]+1); colors.push(1, 1, 1, 1);
-          vertices.push(q[0]+0.5, q[1], q[2]+0.5); colors.push(1, 1, 1, 1);
-          vertices.push(q[0]+0.5, q[1]+1, q[2]+0.5); colors.push(1, 1, 1, 1);
-          vertices.push(q[0], q[1]+0.5, q[2]+0.5); colors.push(1, 1, 1, 1);
-          vertices.push(q[0]+1, q[1]+0.5, q[2]+0.5); colors.push(1, 1, 1, 1);
-        }
-      });
-      
-      var wx = world.wx;
-      var wy = world.wy;
-      var wz = world.wz;
-      for (var x = 0; x < world.wx; x += CHUNKSIZE)
-      for (var z = 0; z < world.wz; z += CHUNKSIZE) (function () {
-        var chunkOriginX = x;
-        var chunkOriginZ = z;
-        var chunkLimitX = x + CHUNKSIZE;
-        var chunkLimitZ = z + CHUNKSIZE;
-        chunks[[x,z]] = new RenderBundle(gl.TRIANGLES, function (vertices, colors) {
+    
+    function calcChunk(xzkey) {
+      if (chunks[xzkey]) {
+        chunks[xzkey].recompute();
+      } else {
+        var wx = world.wx;
+        var wy = world.wy;
+        var wz = world.wz;
+        var chunkOriginX = xzkey[0];
+        var chunkOriginZ = xzkey[1];
+        var chunkLimitX = xzkey[0] + CHUNKSIZE;
+        var chunkLimitZ = xzkey[1] + CHUNKSIZE;
+        chunks[xzkey] = new RenderBundle(gl.TRIANGLES, function (vertices, colors) {
           var pvBuffer = vec3.create();
           function pushVertex(vec) {
             vertices.push(vec[0], vec[1], vec[2]);
@@ -354,8 +326,46 @@
             }
           }
           var t1 = Date.now();
-          console.log("Geometry regen:", t1-t0, "ms");
+          //console.log("Geometry regen:", t1-t0, "ms");
         });
+      }
+      needsDraw = true;
+    }
+
+    function initBuffers() {
+      debugR = new RenderBundle(gl.LINES, function (vertices, colors) {
+        vertices.push(lastUnproject1[0], lastUnproject1[1], lastUnproject1[2]); colors.push(1, 1, 1, 1);
+        vertices.push(lastUnproject2[0], lastUnproject2[1], lastUnproject2[2]); colors.push(1, 0, 0, 1);
+      });
+      
+      selectionR = new RenderBundle(gl.LINES, function (vertices, colors) {
+        if (cubeSelection !== null) {
+          var p = cubeSelection;
+          vertices.push(p[0], p[1], p[2]); colors.push(1, 1, 1, 1);
+          vertices.push(p[0], p[1]+1, p[2]); colors.push(1, 1, 1, 1);
+          vertices.push(p[0]+1, p[1]+1, p[2]); colors.push(1, 1, 1, 1);
+          vertices.push(p[0]+1, p[1], p[2]); colors.push(1, 1, 1, 1);
+          vertices.push(p[0]+1, p[1], p[2]+1); colors.push(1, 1, 1, 1);
+          vertices.push(p[0]+1, p[1]+1, p[2]+1); colors.push(1, 1, 1, 1);
+          vertices.push(p[0], p[1]+1, p[2]+1); colors.push(1, 1, 1, 1);
+          vertices.push(p[0], p[1], p[2]+1); colors.push(1, 1, 1, 1);
+        }
+
+        if (emptySelection !== null) {
+          // TODO: replace this with a face-highlight
+          var q = emptySelection;
+          vertices.push(q[0]+0.5, q[1]+0.5, q[2]); colors.push(1, 1, 1, 1);
+          vertices.push(q[0]+0.5, q[1]+0.5, q[2]+1); colors.push(1, 1, 1, 1);
+          vertices.push(q[0]+0.5, q[1], q[2]+0.5); colors.push(1, 1, 1, 1);
+          vertices.push(q[0]+0.5, q[1]+1, q[2]+0.5); colors.push(1, 1, 1, 1);
+          vertices.push(q[0], q[1]+0.5, q[2]+0.5); colors.push(1, 1, 1, 1);
+          vertices.push(q[0]+1, q[1]+0.5, q[2]+0.5); colors.push(1, 1, 1, 1);
+        }
+      });
+      
+      for (var x = 0; x < world.wx; x += CHUNKSIZE)
+      for (var z = 0; z < world.wz; z += CHUNKSIZE) (function () {
+        dirtyBlock(x, z);
       })();
     }
     
@@ -380,7 +390,6 @@
         
         for (var index in chunks) {
           if (!chunks.hasOwnProperty(index)) continue;
-          
           chunks[index].draw();
         }
 
@@ -405,6 +414,12 @@
 
         aimChanged();
         needsDraw = true;
+      }
+
+      for (var i = 0; i < 3; i++) {
+        if (dirtyChunks.length > 0) {
+          calcChunk(dirtyChunks.pop());
+        }
       }
 
       input.step();
