@@ -180,6 +180,8 @@
           var x = cubeSelection[0], y = cubeSelection[1], z = cubeSelection[2];
           if (world.solid(x,y,z)) {
             world.s(x,y,z,0);
+            // TODO: Don't do this raw; if we update at a chunk edge we need to rerender the neighboring chunk too.
+            findChunk(x,z).recompute();
             changed = true;
           }
         }
@@ -189,12 +191,12 @@
           var x = emptySelection[0], y = emptySelection[1], z = emptySelection[2];
           if (!world.solid(x,y,z)) {
             world.s(x,y,z, 64);
+            findChunk(x,z).recompute();
             changed = true;
           }
         }
       }
       if (changed) {
-        cubesR.recompute();
         aimChanged(); // block aimed at moved...
         needsDraw = true;
       }
@@ -260,9 +262,20 @@
       this.recompute();
     }
 
-    var cubesR;
+    var CHUNKSIZE = 16;
+    var chunks = [];
+    
     var debugR;
     var selectionR;
+    
+    var dummyChunk = {
+      recompute: function () {}
+    };
+    function findChunk(x,z) {
+      x -= mod(x, 16);
+      z -= mod(z, 16);
+      return chunks[[x,z]] || dummyChunk;
+    }
 
     function initBuffers() {
       debugR = new RenderBundle(gl.LINES, function (vertices, colors) {
@@ -295,48 +308,55 @@
         }
       });
       
-      cubesR = new RenderBundle(gl.TRIANGLES, function (vertices, colors) {
-        var pvBuffer = vec3.create();
-        function pushVertex(vec) {
-          vertices.push(vec[0], vec[1], vec[2]);
-        }
-
-        function square(origin, v1, v2, color) {
-          pushVertex(origin);
-          pushVertex(vec3.add(origin, v1, vec3.create()));
-          pushVertex(vec3.add(origin, v2, vec3.create()));
-                     
-          pushVertex(vec3.add(vec3.add(origin, v1, vec3.create()), v2));
-          pushVertex(vec3.add(origin, v2, vec3.create()));
-          pushVertex(vec3.add(origin, v1, vec3.create()));
-          for (var i=0; i < 6; i++) {
-              colors.push(color[0],color[1],color[2],color[3]);
+      var wx = world.wx;
+      var wy = world.wy;
+      var wz = world.wz;
+      for (var x = 0; x < world.wx; x += CHUNKSIZE)
+      for (var z = 0; z < world.wz; z += CHUNKSIZE) (function () {
+        var chunkOriginX = x;
+        var chunkOriginZ = z;
+        var chunkLimitX = x + CHUNKSIZE;
+        var chunkLimitZ = z + CHUNKSIZE;
+        chunks[[x,z]] = new RenderBundle(gl.TRIANGLES, function (vertices, colors) {
+          var pvBuffer = vec3.create();
+          function pushVertex(vec) {
+            vertices.push(vec[0], vec[1], vec[2]);
           }
-        }
 
-        var t0 = Date.now();
-        var wx = world.wx;
-        var wy = world.wy;
-        var wz = world.wz;
-        for (var x = 0; x < world.wx; x++)
-        for (var y = 0; y < world.wy; y++)
-        for (var z = 0; z < world.wz; z++) {
-          var value = world.g(x,y,z);
-          if (world.solid(x,y,z)) {
-            var color = [value/256, x/wx, y/wy];
-            var c1 = [x,y,z];
-            var c2 = [x+1,y+1,z+1];
-            if (!world.solid(x-1,y,z)) square(c1, [0,0,1], [0,1,0], color);
-            if (!world.solid(x,y-1,z)) square(c1, [1,0,0], [0,0,1], color);
-            if (!world.solid(x,y,z-1)) square(c1, [0,1,0], [1,0,0], color);
-            if (!world.solid(x+1,y,z)) square(c2, [0,-1,0], [0,0,-1], color);
-            if (!world.solid(x,y+1,z)) square(c2, [0,0,-1], [-1,0,0], color);
-            if (!world.solid(x,y,z+1)) square(c2, [-1,0,0], [0,-1,0], color);
+          function square(origin, v1, v2, color) {
+            pushVertex(origin);
+            pushVertex(vec3.add(origin, v1, vec3.create()));
+            pushVertex(vec3.add(origin, v2, vec3.create()));
+
+            pushVertex(vec3.add(vec3.add(origin, v1, vec3.create()), v2));
+            pushVertex(vec3.add(origin, v2, vec3.create()));
+            pushVertex(vec3.add(origin, v1, vec3.create()));
+            for (var i=0; i < 6; i++) {
+                colors.push(color[0],color[1],color[2],color[3]);
+            }
           }
-        }
-        var t1 = Date.now();
-        console.log("Geometry regen:", t1-t0, "ms");
-      });
+
+          var t0 = Date.now();
+          for (var x = chunkOriginX; x < chunkLimitX; x++)
+          for (var y = 0;            y < wy         ; y++)
+          for (var z = chunkOriginZ; z < chunkLimitZ; z++) {
+            var value = world.g(x,y,z);
+            if (world.solid(x,y,z)) {
+              var color = [value/256, x/wx, y/wy];
+              var c1 = [x,y,z];
+              var c2 = [x+1,y+1,z+1];
+              if (!world.solid(x-1,y,z)) square(c1, [0,0,1], [0,1,0], color);
+              if (!world.solid(x,y-1,z)) square(c1, [1,0,0], [0,0,1], color);
+              if (!world.solid(x,y,z-1)) square(c1, [0,1,0], [1,0,0], color);
+              if (!world.solid(x+1,y,z)) square(c2, [0,-1,0], [0,0,-1], color);
+              if (!world.solid(x,y+1,z)) square(c2, [0,0,-1], [-1,0,0], color);
+              if (!world.solid(x,y,z+1)) square(c2, [-1,0,0], [0,-1,0], color);
+            }
+          }
+          var t1 = Date.now();
+          console.log("Geometry regen:", t1-t0, "ms");
+        });
+      })();
     }
     
     var playerPos = vec3.create([8,18,8]);
@@ -358,7 +378,12 @@
         var positionTrans = vec3.negate(playerPos, vec3.create());
         mat4.translate(mvMatrix, positionTrans);
         
-        cubesR.draw();
+        for (var index in chunks) {
+          if (!chunks.hasOwnProperty(index)) continue;
+          
+          chunks[index].draw();
+        }
+
         debugR.draw();
 
         gl.disable(gl.DEPTH_TEST);
