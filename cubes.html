@@ -150,7 +150,9 @@
     console.log("End worldgen");
 
     var lastUnproject1 = [], lastUnproject2 = [];
-    var selection = null;
+    
+    var cubeSelection = null;
+    var emptySelection = null;
     
     function raytraceFromScreen(pos, radius, callback) {
       // TODO: figure out why the commented out bits don't work.
@@ -171,33 +173,24 @@
     }
     
     function worldClick(pos, button) {
-      // TODO: Replace these explicit raytraces with consulting the selection computation, and add the 'previous' logic to that.
       var changed = false;
       if (button == 0) {
         // delete block
-        raytraceFromScreen(pos, 20, function (x,y,z) {
+        if (cubeSelection != null) {
+          var x = cubeSelection[0], y = cubeSelection[1], z = cubeSelection[2];
           if (world.solid(x,y,z)) {
             world.s(x,y,z,0);
             changed = true;
-            return true;
-          } else {
-            return false;
           }
-        });
+        }
       } else if (button == 1) {
         // create block
-        var previous = null;
-        raytraceFromScreen(pos, 20, function (x,y,z) {
-          if (world.solid(x,y,z)) {
-            return true;
-          } else {
-            previous = [x,y,z];
-            return false;
+        if (emptySelection != null) {
+          var x = emptySelection[0], y = emptySelection[1], z = emptySelection[2];
+          if (!world.solid(x,y,z)) {
+            world.s(x,y,z, 64);
+            changed = true;
           }
-        });
-        if (previous != null) {
-          world.s(previous[0], previous[1], previous[2], 64);
-          changed = true;
         }
       }
       if (changed) {
@@ -208,18 +201,28 @@
     }
     
     function aimChanged() {
-      var oldSel = ""+selection;
-      selection = null;
+      var oldSel = ""+cubeSelection+""+emptySelection;
+      cubeSelection = emptySelection = null;
+      
       raytraceFromScreen([0,0], 20, function (x,y,z) {
         var wx = world.wx;
         var wy = world.wy;
         var wz = world.wz;
         if (world.solid(x,y,z)) {
-          selection = [x,y,z];
+          cubeSelection = [x,y,z];
           return true;
+        } else {
+          emptySelection = [x,y,z];
+          return false;
         }
       });
-      if (""+selection !== oldSel) {
+      
+      // prevent selecting the edges of the world
+      if (cubeSelection === null)
+        emptySelection = null;
+      
+      // redraw
+      if (""+cubeSelection+""+emptySelection !== oldSel) {
         selectionR.recompute();
         needsDraw = true;
       }
@@ -267,18 +270,29 @@
         vertices.push(lastUnproject2[0], lastUnproject2[1], lastUnproject2[2]); colors.push(1, 0, 0, 1);
       });
       
-      selectionR = new RenderBundle(gl.LINE_LOOP, function (vertices, colors) {
-        if (selection === null) return;
-        var p = selection;
-        vertices.push(p[0], p[1], p[2]); colors.push(1, 1, 1, 1);
-        vertices.push(p[0], p[1]+1, p[2]); colors.push(1, 1, 1, 1);
-        vertices.push(p[0]+1, p[1]+1, p[2]); colors.push(1, 1, 1, 1);
-        vertices.push(p[0]+1, p[1], p[2]); colors.push(1, 1, 1, 1);
-        vertices.push(p[0]+1, p[1], p[2]+1); colors.push(1, 1, 1, 1);
-        vertices.push(p[0]+1, p[1]+1, p[2]+1); colors.push(1, 1, 1, 1);
-        vertices.push(p[0], p[1]+1, p[2]+1); colors.push(1, 1, 1, 1);
-        vertices.push(p[0], p[1], p[2]+1); colors.push(1, 1, 1, 1);
-        vertices.push(p[0], p[1], p[2]); colors.push(1, 1, 1, 1);
+      selectionR = new RenderBundle(gl.LINES, function (vertices, colors) {
+        if (cubeSelection !== null) {
+          var p = cubeSelection;
+          vertices.push(p[0], p[1], p[2]); colors.push(1, 1, 1, 1);
+          vertices.push(p[0], p[1]+1, p[2]); colors.push(1, 1, 1, 1);
+          vertices.push(p[0]+1, p[1]+1, p[2]); colors.push(1, 1, 1, 1);
+          vertices.push(p[0]+1, p[1], p[2]); colors.push(1, 1, 1, 1);
+          vertices.push(p[0]+1, p[1], p[2]+1); colors.push(1, 1, 1, 1);
+          vertices.push(p[0]+1, p[1]+1, p[2]+1); colors.push(1, 1, 1, 1);
+          vertices.push(p[0], p[1]+1, p[2]+1); colors.push(1, 1, 1, 1);
+          vertices.push(p[0], p[1], p[2]+1); colors.push(1, 1, 1, 1);
+        }
+
+        if (emptySelection !== null) {
+          // TODO: replace this with a face-highlight
+          var q = emptySelection;
+          vertices.push(q[0]+0.5, q[1]+0.5, q[2]); colors.push(1, 1, 1, 1);
+          vertices.push(q[0]+0.5, q[1]+0.5, q[2]+1); colors.push(1, 1, 1, 1);
+          vertices.push(q[0]+0.5, q[1], q[2]+0.5); colors.push(1, 1, 1, 1);
+          vertices.push(q[0]+0.5, q[1]+1, q[2]+0.5); colors.push(1, 1, 1, 1);
+          vertices.push(q[0], q[1]+0.5, q[2]+0.5); colors.push(1, 1, 1, 1);
+          vertices.push(q[0]+1, q[1]+0.5, q[2]+0.5); colors.push(1, 1, 1, 1);
+        }
       });
       
       cubesR = new RenderBundle(gl.TRIANGLES, function (vertices, colors) {
