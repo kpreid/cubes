@@ -171,14 +171,35 @@
     }
     
     function worldClick(pos, button) {
+      // TODO: Replace these explicit raytraces with consulting the selection computation, and add the 'previous' logic to that.
       var changed = false;
-      raytraceFromScreen(pos, 20, function (x,y,z) {
-        if (world.solid(x,y,z)) {
-          world.s(x,y,z,0);
+      if (button == 0) {
+        // delete block
+        raytraceFromScreen(pos, 20, function (x,y,z) {
+          if (world.solid(x,y,z)) {
+            world.s(x,y,z,0);
+            changed = true;
+            return true;
+          } else {
+            return false;
+          }
+        });
+      } else if (button == 1) {
+        // create block
+        var previous = null;
+        raytraceFromScreen(pos, 20, function (x,y,z) {
+          if (world.solid(x,y,z)) {
+            return true;
+          } else {
+            previous = [x,y,z];
+            return false;
+          }
+        });
+        if (previous != null) {
+          world.s(previous[0], previous[1], previous[2], 64);
           changed = true;
         }
-        return false;
-      });
+      }
       if (changed) {
         cubesR.recompute();
         aimChanged(); // block aimed at moved...
