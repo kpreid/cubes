@@ -151,7 +151,7 @@
 
     var lastUnproject1 = [], lastUnproject2 = [];
     
-    function worldClick(pos, button) {
+    function raytraceFromScreen(pos, radius, callback) {
       // TODO: figure out why the commented out bits don't work.
       
       //var glxy = [pos[0] / gl.viewportWidth * 2 - 1, -(pos[1] / gl.viewportHeight * 2 - 1)];
@@ -164,19 +164,25 @@
 
       var pt1 = lastUnproject1 = mat4.multiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 0]));
       var pt2 = lastUnproject2 = mat4.multiplyVec3(unproject, vec3.create([glxy[0], glxy[1], -1]));
-      console.log(mat4.str(unproject));
-      console.log(vec3.str(pt1), vec3.str(pt2));
-      debugR.recompute();
-      needsDraw = true;
+      debugR.recompute(); needsDraw = true;
       
-      world.raytrace(pt1, pt2, 20, function (x,y,z) {
+      world.raytrace(pt1, pt2, radius, callback);
+    }
+    
+    function worldClick(pos, button) {
+      var changed = false;
+      raytraceFromScreen(pos, 20, function (x,y,z) {
         var wx = world.wx;
         var wy = world.wy;
         var wz = world.wz;
         world.raw[x*wy*wz + y*wz + z] = 0;
+        changed = true;
         return false;
       });
-      cubesR.recompute();
+      if (changed) {
+        cubesR.recompute();
+        needsDraw = true;
+      }
     }
 
     function RenderBundle(primitive, calcFunc) {
@@ -276,7 +282,7 @@
         console.log("End vertex buffering");
       });
     }
-
+    
     var playerPos = vec3.create([8,18,8]);
     var playerVel = vec3.create([0,0,0]);
     
