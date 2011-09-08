@@ -41,14 +41,16 @@
     
     varying vec4 vColor;
     varying vec4 vP;
+    
+    const vec4 cFog = vec4(0.2,0.2,0.5,1.0); // TODO: make this a parameter
 
     void main(void) {
         vP = uMVMatrix * vec4(aVertexPosition, 1.0);
         gl_Position = uPMatrix * vP;
         
         float distanceForFog = length(vec3(vP))/160.0; // should range 0..1. TODO: use clip distance used in projection matrix
-        float fog = pow(distanceForFog, 9.0);
-        vColor = aVertexColor * (1.0-fog);
+        float fog = pow(distanceForFog, 4.0);
+        vColor = aVertexColor * max(0.0,1.0-fog) + cFog * min(1.0,fog);
     }
 </script>
 
@@ -442,7 +444,7 @@
       initShaders();
       initBuffers();
 
-      gl.clearColor(0.0, 0.0, 0.0, 1.0);
+      gl.clearColor(0.2,0.2,0.5,1.0); // TODO: send to shader for fog
       gl.enable(gl.DEPTH_TEST);
       gl.enable(gl.CULL_FACE);
 
