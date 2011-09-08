@@ -152,8 +152,6 @@
     var world = new World();
     console.log("End worldgen");
 
-    var lastUnproject1 = [], lastUnproject2 = [];
-    
     var cubeSelection = null;
     var emptySelection = null;
     
@@ -168,9 +166,8 @@
       mat4.set(mvMatrix, unproject);
       mat4.inverse(unproject);
 
-      var pt1 = lastUnproject1 = mat4.multiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 0]));
-      var pt2 = lastUnproject2 = mat4.multiplyVec3(unproject, vec3.create([glxy[0], glxy[1], -1]));
-      debugR.recompute(); needsDraw = true;
+      var pt1 = mat4.multiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 0]));
+      var pt2 = mat4.multiplyVec3(unproject, vec3.create([glxy[0], glxy[1], -1]));
       
       world.raytrace(pt1, pt2, radius, callback);
     }
@@ -337,8 +334,6 @@
 
     function initBuffers() {
       debugR = new RenderBundle(gl.LINES, function (vertices, colors) {
-        vertices.push(lastUnproject1[0], lastUnproject1[1], lastUnproject1[2]); colors.push(1, 1, 1, 1);
-        vertices.push(lastUnproject2[0], lastUnproject2[1], lastUnproject2[2]); colors.push(1, 0, 0, 1);
       });
       
       selectionR = new RenderBundle(gl.LINES, function (vertices, colors) {
