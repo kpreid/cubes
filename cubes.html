@@ -46,7 +46,7 @@
         vP = uMVMatrix * vec4(aVertexPosition, 1.0);
         gl_Position = uPMatrix * vP;
         
-        float distanceForFog = length(vec3(vP))/100.0; // should range 0..1. TODO: make viewport relative
+        float distanceForFog = length(vec3(vP))/160.0; // should range 0..1. TODO: use clip distance used in projection matrix
         float fog = pow(distanceForFog, 9.0);
         vColor = aVertexColor * (1.0-fog);
     }
@@ -145,7 +145,7 @@
       gl.viewportHeight = theCanvas.height;
       
       gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-      mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+      mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 160.0, pMatrix);
     }
     
     console.log("Begin worldgen");
@@ -202,6 +202,8 @@
     }
     
     function aimChanged() {
+      needsDraw = true; // because this routine is also 'view direction changed'
+      
       var oldSel = ""+cubeSelection+""+emptySelection;
       cubeSelection = emptySelection = null;
       
