@@ -150,6 +150,7 @@
     console.log("End worldgen");
 
     var lastUnproject1 = [], lastUnproject2 = [];
+    var selection = null;
     
     function raytraceFromScreen(pos, radius, callback) {
       // TODO: figure out why the commented out bits don't work.
@@ -172,17 +173,30 @@
     function worldClick(pos, button) {
       var changed = false;
       raytraceFromScreen(pos, 20, function (x,y,z) {
-        var wx = world.wx;
-        var wy = world.wy;
-        var wz = world.wz;
-        world.raw[x*wy*wz + y*wz + z] = 0;
-        changed = true;
+        if (world.solid(x,y,z)) {
+          world.s(x,y,z,0);
+          changed = true;
+        }
         return false;
       });
       if (changed) {
         cubesR.recompute();
         needsDraw = true;
       }
+    }
+    
+    function aimChanged() {
+      raytraceFromScreen([0,0], 20, function (x,y,z) {
+        var wx = world.wx;
+        var wy = world.wy;
+        var wz = world.wz;
+        if (world.solid(x,y,z)) {
+          selection = [x,y,z];
+          selectionR.recompute();
+          needsDraw = true;
+          return true;
+        }
+      });
     }
 
     function RenderBundle(primitive, calcFunc) {
@@ -219,11 +233,26 @@
 
     var cubesR;
     var debugR;
+    var selectionR;
 
     function initBuffers() {
       debugR = new RenderBundle(gl.LINES, function (vertices, colors) {
         vertices.push(lastUnproject1[0], lastUnproject1[1], lastUnproject1[2]); colors.push(1, 1, 1, 1);
         vertices.push(lastUnproject2[0], lastUnproject2[1], lastUnproject2[2]); colors.push(1, 0, 0, 1);
+      });
+      
+      selectionR = new RenderBundle(gl.LINE_LOOP, function (vertices, colors) {
+        if (selection === null) return;
+        var p = selection;
+        vertices.push(p[0], p[1], p[2]); colors.push(1, 1, 1, 1);
+        vertices.push(p[0], p[1]+1, p[2]); colors.push(1, 1, 1, 1);
+        vertices.push(p[0]+1, p[1]+1, p[2]); colors.push(1, 1, 1, 1);
+        vertices.push(p[0]+1, p[1], p[2]); colors.push(1, 1, 1, 1);
+        vertices.push(p[0]+1, p[1], p[2]+1); colors.push(1, 1, 1, 1);
+        vertices.push(p[0]+1, p[1]+1, p[2]+1); colors.push(1, 1, 1, 1);
+        vertices.push(p[0], p[1]+1, p[2]+1); colors.push(1, 1, 1, 1);
+        vertices.push(p[0], p[1], p[2]+1); colors.push(1, 1, 1, 1);
+        vertices.push(p[0], p[1], p[2]); colors.push(1, 1, 1, 1);
       });
       
       cubesR = new RenderBundle(gl.TRIANGLES, function (vertices, colors) {
@@ -291,6 +320,10 @@
         
         cubesR.draw();
         debugR.draw();
+
+        gl.disable(gl.DEPTH_TEST);
+        selectionR.draw();
+        gl.enable(gl.DEPTH_TEST);
     }
     
     var timestep = 1/30;
@@ -298,17 +331,22 @@
     var input;
     
     function doStep() {
-      var rotmat = mat4.identity(mat4.create());
-      mat4.rotateY(rotmat, playerYaw);
-      var playerVelOrient = mat4.multiplyVec3(rotmat, playerVel, vec3.create());
-      var playerVelStep = vec3.scale(playerVelOrient, timestep*6, vec3.create());
-      vec3.add(playerPos, playerVelStep);
+      if (vec3.length(playerVel) > 0) {
+        var rotmat = mat4.identity(mat4.create());
+        mat4.rotateY(rotmat, playerYaw);
+        var playerVelOrient = mat4.multiplyVec3(rotmat, playerVel, vec3.create());
+        var playerVelStep = vec3.scale(playerVelOrient, timestep*6, vec3.create());
+        vec3.add(playerPos, playerVelStep);
+
+        aimChanged();
+        needsDraw = true;
+      }
 
       input.step();
 
       // TODO: As well as skipping rendering, skip the callback entirely
       // if there's nothing to do.
-      if (vec3.length(playerVel) > 0 || needsDraw) {
+      if (needsDraw) {
         drawScene();
         needsDraw = false;
       }
@@ -331,7 +369,7 @@
       // TODO: use webgl utils to avoid wasting time if invisible
       setInterval(doStep, 1000*timestep);
 
-      input = new Input(document, worldClick);
+      input = new Input(document, worldClick, aimChanged);
     }
 
 </script>

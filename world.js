@@ -33,6 +33,12 @@ function World() {
     else
       return blocks[x*wy*wz + y*wz + z];
   }
+  function s(x,y,z,val) {
+    if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
+      return;
+    else
+      blocks[x*wy*wz + y*wz + z] = val;
+  }
   function solid(x,y,z) {
     return g(x,y,z) != 0;
   }
@@ -91,6 +97,9 @@ function World() {
 
       //console.log("voxel hit:", x, y, z, "[", Math.min(tMaxX, Math.min(tMaxY, tMaxZ)), "]");
 
+      if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
+        continue;
+        
       if (callback(x, y, z, blocks[x*wy*wz + y*wz + z]))
         break;
     }
@@ -99,6 +108,7 @@ function World() {
   // --- Final init ---
   
   this.g = g;
+  this.s = s;
   this.solid = solid;
   this.raw = blocks;
   this.raytrace = raytrace;

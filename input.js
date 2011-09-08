@@ -1,7 +1,7 @@
 // TODO: explicitly connect global vars
 
 // worldClick is a function of ([x, y], buttonNum) where buttonNum is 0 for left and 1 for right.
-function Input(document, worldClick) {
+function Input(document, worldClick, aimChanged) {
   "use strict";
 
   var keymap = [];
@@ -66,6 +66,8 @@ function Input(document, worldClick) {
     
     // TODO: global variables
     needsDraw = true;
+    
+    aimChanged();
   }
   document.onmouseout = function (event) {
     dx = 0;
@@ -84,7 +86,7 @@ function Input(document, worldClick) {
     if (dx != 0) {
       // TODO: global variables
       playerYaw += dx;
-      needsDraw = true;
+      aimChanged();
     }
   }
   
