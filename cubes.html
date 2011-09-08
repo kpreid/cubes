@@ -11,6 +11,7 @@
   }
 </style>
 
+<script src="webgl-debug.js"></script>
 <script type="text/javascript" src="glMatrix.js"></script>
 <script type="text/javascript" src="util.js"></script>
 <script type="text/javascript" src="world.js"></script>
@@ -57,6 +58,8 @@
 
 <script type="text/javascript">
     "use strict";
+    
+    var DEBUG = false;
 
     var gl;
     var theCanvas;
@@ -64,6 +67,9 @@
         gl = canvas.getContext("experimental-webgl", {
           antialias: false // MORE FILLRATE!!!
         });
+        if (DEBUG) {
+          gl = WebGLDebugUtils.makeDebugContext(gl);
+        }
         if (!gl) {
             console.log("failed to get context: ", gl);
         }
