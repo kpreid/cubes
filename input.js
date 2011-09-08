@@ -57,17 +57,15 @@ function Input(document, worldClick, aimChanged) {
   var dx = 0;
   
   document.onmousemove = function (event) {
-    // TODO: global variables
     var swingY = event.clientY / (gl.viewportHeight*0.5) - 1;
     var swingX = event.clientX / (gl.viewportWidth*0.5) - 1;
-    playerPitch = -Math.PI/2 * swingY;
     
-    dx = -0.2 * deadzone(swingX, 0.2);
-    
-    // TODO: global variables
-    needsDraw = true;
-    
+    // y effect
+    playerPitch = -Math.PI/2 * swingY; // TODO: global variables
     aimChanged();
+    
+    // x effect
+    dx = -0.2 * deadzone(swingX, 0.2);
   }
   document.onmouseout = function (event) {
     dx = 0;

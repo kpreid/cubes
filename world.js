@@ -73,6 +73,10 @@ function World() {
     var tDeltaZ = stepZ/dz;
     //console.log(stepX, stepY, stepZ, dx, dy, dz, tDeltaX, tDeltaY, tDeltaZ);
     while (true) {
+      if (!(x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz))
+        if (callback(x, y, z, blocks[x*wy*wz + y*wz + z]))
+          break;
+
       if (tMaxX < tMaxY) {
         if (tMaxX < tMaxZ) {
           if (tMaxX > radius) break;
@@ -94,14 +98,6 @@ function World() {
           tMaxZ += tDeltaZ;
         }
       }
-
-      //console.log("voxel hit:", x, y, z, "[", Math.min(tMaxX, Math.min(tMaxY, tMaxZ)), "]");
-
-      if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
-        continue;
-        
-      if (callback(x, y, z, blocks[x*wy*wz + y*wz + z]))
-        break;
     }
   };
   

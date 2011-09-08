@@ -181,22 +181,27 @@
       });
       if (changed) {
         cubesR.recompute();
+        aimChanged(); // block aimed at moved...
         needsDraw = true;
       }
     }
     
     function aimChanged() {
+      var oldSel = ""+selection;
+      selection = null;
       raytraceFromScreen([0,0], 20, function (x,y,z) {
         var wx = world.wx;
         var wy = world.wy;
         var wz = world.wz;
         if (world.solid(x,y,z)) {
           selection = [x,y,z];
-          selectionR.recompute();
-          needsDraw = true;
           return true;
         }
       });
+      if (""+selection !== oldSel) {
+        selectionR.recompute();
+        needsDraw = true;
+      }
     }
 
     function RenderBundle(primitive, calcFunc) {
