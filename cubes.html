@@ -61,7 +61,9 @@
     var gl;
     var theCanvas;
     function initGL(canvas) {
-        gl = canvas.getContext("experimental-webgl");
+        gl = canvas.getContext("experimental-webgl", {
+          antialias: false // MORE FILLRATE!!!
+        });
         if (!gl) {
             console.log("failed to get context: ", gl);
         }
