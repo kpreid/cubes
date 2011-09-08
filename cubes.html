@@ -44,8 +44,11 @@
 
     void main(void) {
         vP = uMVMatrix * vec4(aVertexPosition, 1.0);
-        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
-        vColor = aVertexColor;
+        gl_Position = uPMatrix * vP;
+        
+        float distanceForFog = length(vec3(vP))/100.0; // should range 0..1. TODO: make viewport relative
+        float fog = pow(distanceForFog, 9.0);
+        vColor = aVertexColor * (1.0-fog);
     }
 </script>
 
@@ -372,7 +375,7 @@
     var playerPos = vec3.create([8,18,8]);
     var playerVel = vec3.create([0,0,0]);
     
-    var playerYaw = 0;
+    var playerYaw = Math.PI/4 * 5;
     var playerPitch = 0;
 
     function drawScene() {
