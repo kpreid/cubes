@@ -24,30 +24,42 @@
     
     varying vec4 vColor;
     varying vec4 vP;
+    varying vec2 vTextureCoord;
 
+    uniform bool uTextureEnabled;
+    uniform sampler2D uSampler;
+    
     void main(void) {
         vec3 np = vec3(vP)/vP.w;
         float k;
         k = 1.0 ;// - length(vec2(np))/3.0;
-        gl_FragColor = vec4(vColor.r*k, vColor.g*k, vColor.b*k, 1.0);
+        if (uTextureEnabled) {
+          gl_FragColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+        } else {
+          gl_FragColor = vec4(vColor.r*k, vColor.g*k, vColor.b*k, 1.0);
+        }
     }
 </script>
 
 <script id="shader-vs" type="x-shader/x-vertex">
     attribute vec3 aVertexPosition;
     attribute vec4 aVertexColor;
+    attribute vec2 aTextureCoord;
 
     uniform mat4 uMVMatrix;
     uniform mat4 uPMatrix;
     
     varying vec4 vColor;
     varying vec4 vP;
+    varying vec2 vTextureCoord;
     
     const vec4 cFog = vec4(0.2,0.2,0.5,1.0); // TODO: make this a parameter
 
     void main(void) {
         vP = uMVMatrix * vec4(aVertexPosition, 1.0);
         gl_Position = uPMatrix * vP;
+        
+        vTextureCoord = aTextureCoord;
         
         float distanceForFog = length(vec3(vP))/160.0; // should range 0..1. TODO: use clip distance used in projection matrix
         float fog = pow(distanceForFog, 4.0);
@@ -136,8 +148,13 @@
         shaderProgram.vertexColorAttribute = gl.getAttribLocation(shaderProgram, "aVertexColor");
         gl.enableVertexAttribArray(shaderProgram.vertexColorAttribute);
 
+        shaderProgram.textureCoordAttribute = gl.getAttribLocation(shaderProgram, "aTextureCoord");
+        gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute);
+
         shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
         shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
+        shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler");
+        shaderProgram.textureUniform = gl.getUniformLocation(shaderProgram, "uTextureEnabled");
     }
 
 
@@ -274,6 +291,16 @@
         gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
         gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 4, gl.FLOAT, false, 0, 0);
 
+        gl.uniform1i(shaderProgram.textureUniform, textured ? 1 : 0);
+
+        if (textured) {
+          gl.bindBuffer(gl.ARRAY_BUFFER, tbuf);
+          gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
+  
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, neheTexture);
+          gl.uniform1i(shaderProgram.samplerUniform, 0);
+        }
         setMatrixUniforms();
         gl.drawArrays(primitive, 0, numVertices);
       };
@@ -323,12 +350,16 @@
             pushVertex(vec3.add(vec3.add(origin, v1, vec3.create()), v2));
             pushVertex(vec3.add(origin, v2, vec3.create()));
             pushVertex(vec3.add(origin, v1, vec3.create()));
+
+            texcoords.push(0, 0);
+            texcoords.push(1, 0);
+            texcoords.push(0, 1);
+            texcoords.push(1, 1);
+            texcoords.push(0, 1);
+            texcoords.push(1, 0);
+
             for (var i=0; i < 6; i++) {
               colors.push(color[0],color[1],color[2],color[3]);
-            }
-            for (var i=0; i < 6; i++) {
-              // TODO: texturing stub
-              texcoords.push(0, 0);
             }
           }
 
@@ -391,6 +422,27 @@
       })();
     }
     
+    var neheTexture;
+    function initTexture() {
+      function handleLoadedTexture(texture) {
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+        console.log("texture loaded");
+      }
+      
+      neheTexture = gl.createTexture();
+      neheTexture.image = new Image();
+      neheTexture.image.onload = function() {
+        handleLoadedTexture(neheTexture)
+      }
+
+      neheTexture.image.src = "nehe.gif";
+    }
+
     var playerPos = vec3.create([8,18,8]);
     var playerVel = vec3.create([0,0,0]);
     
@@ -471,6 +523,7 @@
     
       initShaders();
       initBuffers();
+      initTexture();
 
       gl.clearColor(0.2,0.2,0.5,1.0); // TODO: send to shader for fog
       gl.enable(gl.DEPTH_TEST);
