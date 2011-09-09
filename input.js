@@ -82,7 +82,6 @@ function Input(document, playerInput) {
   
   function step() {
     if (dx != 0) {
-      // TODO: global variables
       playerInput.yaw += dx;
     }
   }
