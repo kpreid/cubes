@@ -420,6 +420,14 @@
         gl.disable(gl.DEPTH_TEST);
         selectionR.draw();
         gl.enable(gl.DEPTH_TEST);
+        
+        var e, errs = [];
+        while (e = gl.getError()) {
+          errs.push(e);
+        }
+        if (errs.length) {
+          console.error("GL errors: ", errs);
+        }
     }
     
     var timestep = 1/30;
