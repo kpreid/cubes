@@ -48,7 +48,7 @@ var Player = (function () {
 
         aimChanged();
       }
-    }
+    };
     this.render = {
       applyViewTransform: function (matrix) {
         // look direction
@@ -60,6 +60,10 @@ var Player = (function () {
         mat4.translate(matrix, positionTrans);
       }
     };
+    this.getPosition = function() {
+      return vec3.create(pos);
+    };
+    
     this.input = Object.freeze({
       click: function (pos, button) {
         var changed = false;
@@ -98,12 +102,10 @@ var Player = (function () {
         // TODO: global variables
         switch (direction) {
           case 1:
-          console.log("worldH");
             world = worldH;
             rebuildWorld();
             break;
           case -1:
-          console.log("worldL");
             world = worldL;
             rebuildWorld();
             break;

@@ -9,7 +9,7 @@ function Input(document, playerInput) {
     return pos ? neg ? 0 : 1 : neg ? -1 : 0;
   }
   function interestingInMap(code) {
-    switch (event.keyCode) {
+    switch (code) {
       case 'A'.charCodeAt(0): case 37:
       case 'W'.charCodeAt(0): case 38:
       case 'D'.charCodeAt(0): case 39:
@@ -37,6 +37,9 @@ function Input(document, playerInput) {
   }
   
   document.onkeydown = function (event) {
+    // avoid disturbing browser shortcuts
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    
     var code = event.keyCode || event.which;
 
     // handlers for 'action' keys (immediate effects)
@@ -57,9 +60,10 @@ function Input(document, playerInput) {
   document.onkeyup = function (event) {
     var code = event.keyCode || event.which;
     if (interestingInMap(code)) {
+      var wasSetInMap = keymap[code];
       keymap[code] = false;
       evalKeys();
-      return false;
+      return !wasSetInMap;
     } else {
       return true;
     }

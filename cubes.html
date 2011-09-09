@@ -275,7 +275,16 @@
       // TODO: Update neighboring chunks too.
       x -= mod(x, 16);
       z -= mod(z, 16);
-      dirtyChunks.push([x,z]);
+      dirtyChunks.push([x,z]); // TODO: de-duplicate
+    }
+    function depthSortDirty() {
+      var pp = player.getPosition();
+      dirtyChunks.sort(function (a,b) {
+        return (
+          Math.pow(b[0]-pp[0],2)+Math.pow(b[1]-pp[2],2)
+          - (Math.pow(a[0]-pp[0],2)+Math.pow(a[1]-pp[2],2))
+        );
+      });
     }
     
     function calcChunk(xzkey) {
@@ -385,6 +394,7 @@
       for (var z = 0; z < world.wz; z += CHUNKSIZE) (function () {
         dirtyBlock(x, z);
       })();
+      depthSortDirty();
     }
     
     var neheTexture;
