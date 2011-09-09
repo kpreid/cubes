@@ -125,6 +125,7 @@
 
         if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
             console.error("Could not initialise shaders");
+            console.error(gl.getProgramInfoLog(shaderProgram));
         }
 
         gl.useProgram(shaderProgram);
