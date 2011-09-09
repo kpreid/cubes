@@ -183,7 +183,9 @@
     }
     
     console.log("Begin worldgen");
-    var world = new World();
+    var worldH = new World(256);
+    var worldL = new World(16);
+    var world = worldH;
     console.log("End worldgen");
 
     var cubeSelection = null;
@@ -252,19 +254,23 @@
         gl.drawArrays(primitive, 0, numVertices);
       };
       
+      this.delete = function () {
+        gl.deleteBuffer(vbuf);
+        gl.deleteBuffer(cbuf);
+        if (tbuf) gl.deleteBuffer(tbuf);
+        vbuf = cbuf = tbuf = numVertices = null;
+      }
+      
       this.recompute();
     }
 
     var CHUNKSIZE = 16;
-    var chunks = {};
-    var dirtyChunks = [];
+    var chunks;
+    var dirtyChunks;
     
     var debugR;
     var selectionR;
     
-    var dummyChunk = {
-      recompute: function () {}
-    };
     function dirtyBlock(x,z) {
       // TODO: Update neighboring chunks too.
       x -= mod(x, 16);
@@ -362,6 +368,18 @@
           vertices.push(q[0]+1, q[1]+0.5, q[2]+0.5); colors.push(1, 1, 1, 1);
         }
       });
+      
+      rebuildWorld(); // initializes chunk RenderBundles
+    }
+    
+    function rebuildWorld() {
+      for (var index in chunks) {
+        if (!chunks.hasOwnProperty(index)) continue;
+        chunks[index].delete();
+      }
+      
+      chunks = {};
+      dirtyChunks = [];
       
       for (var x = 0; x < world.wx; x += CHUNKSIZE)
       for (var z = 0; z < world.wz; z += CHUNKSIZE) (function () {

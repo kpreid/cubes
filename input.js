@@ -8,7 +8,7 @@ function Input(document, playerInput) {
   function evalVel(pos, neg) {
     return pos ? neg ? 0 : 1 : neg ? -1 : 0;
   }
-  function interesting(code) {
+  function interestingInMap(code) {
     switch (event.keyCode) {
       case 'A'.charCodeAt(0): case 37:
       case 'W'.charCodeAt(0): case 38:
@@ -37,8 +37,17 @@ function Input(document, playerInput) {
   }
   
   document.onkeydown = function (event) {
-    if (interesting(event.keyCode)) {
-      keymap[event.keyCode] = true;
+    var code = event.keyCode || event.which;
+
+    // handlers for 'action' keys (immediate effects)
+    switch (String.fromCharCode(code)) {
+      case "R": playerInput.changeWorld(1); return false;
+      case "F": playerInput.changeWorld(-1); return false;
+    }
+
+    // 'mode' keys such as movement directions go into the keymap
+    if (interestingInMap(code)) {
+      keymap[code] = true;
       evalKeys();
       return false;
     } else {
@@ -46,14 +55,16 @@ function Input(document, playerInput) {
     }
   };
   document.onkeyup = function (event) {
-    if (interesting(event.keyCode)) {
-      keymap[event.keyCode] = false;
+    var code = event.keyCode || event.which;
+    if (interestingInMap(code)) {
+      keymap[code] = false;
       evalKeys();
       return false;
     } else {
       return true;
     }
   };
+  
   
   var dx = 0;
   

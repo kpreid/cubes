@@ -93,7 +93,22 @@ var Player = (function () {
       get pitch () { return pitch; },
       set pitch (angle) { pitch = angle; aimChanged(); },
       get yaw () { return yaw; },
-      set yaw (angle) { yaw = angle; aimChanged(); }
+      set yaw (angle) { yaw = angle; aimChanged(); },
+      changeWorld: function (direction) {
+        // TODO: global variables
+        switch (direction) {
+          case 1:
+          console.log("worldH");
+            world = worldH;
+            rebuildWorld();
+            break;
+          case -1:
+          console.log("worldL");
+            world = worldL;
+            rebuildWorld();
+            break;
+        }
+      }
     });
   }
   
