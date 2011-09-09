@@ -242,15 +242,17 @@
       }
     }
 
-    function RenderBundle(primitive, calcFunc) {
+    function RenderBundle(primitive, textured, calcFunc) {
       var vbuf = gl.createBuffer();
       var cbuf = gl.createBuffer();
+      if (textured) var tbuf = gl.createBuffer();
       var numVertices;
       
       this.recompute = function () {
         var vertices = [];
         var colors = [];
-        calcFunc(vertices, colors);
+        var texcoords = textured ? [] : null;
+        calcFunc(vertices, colors, texcoords);
         numVertices = Math.floor(vertices.length / 3);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
@@ -258,6 +260,11 @@
 
         gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+        
+        if (textured) {
+          gl.bindBuffer(gl.ARRAY_BUFFER, tbuf);
+          gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texcoords), gl.STATIC_DRAW);
+        }
       };
       
       this.draw = function () {
@@ -302,7 +309,7 @@
         var chunkOriginZ = xzkey[1];
         var chunkLimitX = xzkey[0] + CHUNKSIZE;
         var chunkLimitZ = xzkey[1] + CHUNKSIZE;
-        chunks[xzkey] = new RenderBundle(gl.TRIANGLES, function (vertices, colors) {
+        chunks[xzkey] = new RenderBundle(gl.TRIANGLES, true, function (vertices, colors, texcoords) {
           var pvBuffer = vec3.create();
           function pushVertex(vec) {
             vertices.push(vec[0], vec[1], vec[2]);
@@ -317,7 +324,11 @@
             pushVertex(vec3.add(origin, v2, vec3.create()));
             pushVertex(vec3.add(origin, v1, vec3.create()));
             for (var i=0; i < 6; i++) {
-                colors.push(color[0],color[1],color[2],color[3]);
+              colors.push(color[0],color[1],color[2],color[3]);
+            }
+            for (var i=0; i < 6; i++) {
+              // TODO: texturing stub
+              texcoords.push(0, 0);
             }
           }
 
@@ -346,10 +357,10 @@
     }
 
     function initBuffers() {
-      debugR = new RenderBundle(gl.LINES, function (vertices, colors) {
+      debugR = new RenderBundle(gl.LINES, false, function (vertices, colors) {
       });
       
-      selectionR = new RenderBundle(gl.LINES, function (vertices, colors) {
+      selectionR = new RenderBundle(gl.LINES, false, function (vertices, colors) {
         if (cubeSelection !== null) {
           var p = cubeSelection;
           vertices.push(p[0], p[1], p[2]); colors.push(1, 1, 1, 1);
