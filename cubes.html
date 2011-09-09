@@ -15,6 +15,7 @@
 <script type="text/javascript" src="glMatrix.js"></script>
 <script type="text/javascript" src="util.js"></script>
 <script type="text/javascript" src="world.js"></script>
+<script type="text/javascript" src="player.js"></script>
 <script type="text/javascript" src="input.js"></script>
 
 <script id="shader-fs" type="x-shader/x-fragment">
@@ -200,65 +201,6 @@
       world.raytrace(pt1, pt2, radius, callback);
     }
     
-    function worldClick(pos, button) {
-      var changed = false;
-      if (button == 0) {
-        // delete block
-        if (cubeSelection != null) {
-          var x = cubeSelection[0], y = cubeSelection[1], z = cubeSelection[2];
-          if (world.solid(x,y,z)) {
-            world.s(x,y,z,0);
-            dirtyBlock(x,z);
-            changed = true;
-          }
-        }
-      } else if (button == 1) {
-        // create block
-        if (emptySelection != null) {
-          var x = emptySelection[0], y = emptySelection[1], z = emptySelection[2];
-          if (!world.solid(x,y,z)) {
-            world.s(x,y,z, 64);
-            dirtyBlock(x,z);
-            changed = true;
-          }
-        }
-      }
-      if (changed) {
-        aimChanged(); // block aimed at moved...
-        needsDraw = true;
-      }
-    }
-    
-    function aimChanged() {
-      needsDraw = true; // because this routine is also 'view direction changed'
-      
-      var oldSel = ""+cubeSelection+""+emptySelection;
-      cubeSelection = emptySelection = null;
-      
-      raytraceFromScreen([0,0], 20, function (x,y,z) {
-        var wx = world.wx;
-        var wy = world.wy;
-        var wz = world.wz;
-        if (world.solid(x,y,z)) {
-          cubeSelection = [x,y,z];
-          return true;
-        } else {
-          emptySelection = [x,y,z];
-          return false;
-        }
-      });
-      
-      // prevent selecting the edges of the world
-      if (cubeSelection === null)
-        emptySelection = null;
-      
-      // redraw
-      if (""+cubeSelection+""+emptySelection !== oldSel) {
-        selectionR.recompute();
-        needsDraw = true;
-      }
-    }
-
     function RenderBundle(primitive, textured, calcFunc) {
       var vbuf = gl.createBuffer();
       var cbuf = gl.createBuffer();
@@ -442,25 +384,14 @@
 
       neheTexture.image.src = "nehe.gif";
     }
-
-    var playerPos = vec3.create([8,18,8]);
-    var playerVel = vec3.create([0,0,0]);
     
-    var playerYaw = Math.PI/4 * 5;
-    var playerPitch = 0;
+    var player = new Player();
 
     function drawScene() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         mat4.identity(mvMatrix);
-
-         // view look
-        mat4.rotate(mvMatrix, -playerPitch, [1, 0, 0]);
-        mat4.rotate(mvMatrix, -playerYaw, [0, 1, 0]);
-        
-        // position
-        var positionTrans = vec3.negate(playerPos, vec3.create());
-        mat4.translate(mvMatrix, positionTrans);
+        player.render.applyViewTransform(mvMatrix);
         
         for (var index in chunks) {
           if (!chunks.hasOwnProperty(index)) continue;
@@ -487,17 +418,7 @@
     var input;
     
     function doStep() {
-      if (vec3.length(playerVel) > 0) {
-        var rotmat = mat4.identity(mat4.create());
-        mat4.rotateY(rotmat, playerYaw);
-        var playerVelOrient = mat4.multiplyVec3(rotmat, playerVel, vec3.create());
-        var playerVelStep = vec3.scale(playerVelOrient, timestep*6, vec3.create());
-        vec3.add(playerPos, playerVelStep);
-
-        aimChanged();
-        needsDraw = true;
-      }
-
+      player.step();
       for (var i = 0; i < 3; i++) {
         if (dirtyChunks.length > 0) {
           calcChunk(dirtyChunks.pop());
@@ -532,7 +453,7 @@
       // TODO: use webgl utils to avoid wasting time if invisible
       setInterval(doStep, 1000*timestep);
 
-      input = new Input(document, worldClick, aimChanged);
+      input = new Input(document, player.input);
     }
 
 </script>

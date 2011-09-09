@@ -1,7 +1,6 @@
 // TODO: explicitly connect global vars
 
-// worldClick is a function of ([x, y], buttonNum) where buttonNum is 0 for left and 1 for right.
-function Input(document, worldClick, aimChanged) {
+function Input(document, playerInput) {
   "use strict";
 
   var keymap = [];
@@ -30,9 +29,11 @@ function Input(document, worldClick, aimChanged) {
     var u = keymap['E'.charCodeAt(0)];
     var d = keymap['C'.charCodeAt(0)];
     
-    playerVel[0] = evalVel(r, l);
-    playerVel[1] = evalVel(u, d);
-    playerVel[2] = evalVel(b, f);
+    playerInput.movement = [
+      evalVel(r, l),
+      evalVel(u, d),
+      evalVel(b, f)
+    ];
   }
   
   document.onkeydown = function (event) {
@@ -61,8 +62,7 @@ function Input(document, worldClick, aimChanged) {
     var swingX = event.clientX / (gl.viewportWidth*0.5) - 1;
     
     // y effect
-    playerPitch = -Math.PI/2 * swingY; // TODO: global variables
-    aimChanged();
+    playerInput.pitch = -Math.PI/2 * swingY;
     
     // x effect
     dx = -0.2 * deadzone(swingX, 0.2);
@@ -72,19 +72,18 @@ function Input(document, worldClick, aimChanged) {
   }
 
   document.onclick = function (event) {
-    worldClick([event.clientX, event.clientY], 0);
+    playerInput.click([event.clientX, event.clientY], 0);
     return false;
   }
   document.oncontextmenu = function (event) {
-    worldClick([event.clientX, event.clientY], 1);
+    playerInput.click([event.clientX, event.clientY], 1);
     return false;
   }
   
   function step() {
     if (dx != 0) {
       // TODO: global variables
-      playerYaw += dx;
-      aimChanged();
+      playerInput.yaw += dx;
     }
   }
   
