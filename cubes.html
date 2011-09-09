@@ -185,7 +185,24 @@
     console.log("Begin worldgen");
     var worldH = new World(256);
     var worldL = new World(16);
-    var world = worldH;
+    var world = worldL;
+    
+    // gen block test
+    (function () {
+      function brgb(r,g,b) {
+        return ((b * 3) << 4) + ((g * 3) << 2) + (r * 3) << 0
+      }
+      
+      var wx = world.wx;
+      var wy = world.wy;
+      var wz = world.wz;
+      for (var x = 0; x < wx; x++)
+      for (var y = 0; y < wy; y++)
+      for (var z = 0; z < wz; z++) {
+        world.s(x,y,z, brgb(x/16*1.34,y/16*1.34,z/16*1.34) || 0xC0);
+      }
+    })();
+    
     console.log("End worldgen");
 
     var cubeSelection = null;
@@ -331,7 +348,7 @@
           for (var z = chunkOriginZ; z < chunkLimitZ; z++) {
             var value = world.g(x,y,z);
             if (world.solid(x,y,z)) {
-              var color = [value/256, x/wx, y/wy, 1.0];
+              var color = [(value & 3) / 3, ((value >> 2) & 3) / 3, ((value >> 4) & 3) / 3, 1.0];
               var c1 = [x,y,z];
               var c2 = [x+1,y+1,z+1];
               if (!world.solid(x-1,y,z)) square(c1, [0,0,1], [0,1,0], color);
