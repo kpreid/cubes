@@ -317,12 +317,6 @@
 
     var CHUNKSIZE = 16;
     
-    // Object holding all world rendering chunks which have RenderBundles created, indexed by "<x>,<z>" where x and z are the low coordinates (i.e. divisible by CHUNKSIZE).
-    var chunks;
-    
-    // Queue of chunks to render. Array (first-to-do at the end); each element is [x,z] where x and z are the low coordinates of the chunk.
-    var dirtyChunks;
-    
     var debugR;
     var selectionR;
     
@@ -409,9 +403,16 @@
     ];
     var DUMMY_TILING = Object.freeze({lx:null,ly:null,lz:null,hx:null,hy:null,hz:null});
     function WorldRenderer(world, place) {
+      // Texture holding tiles
       var blockTexture = gl.createTexture();
+
+      // ImageData object used to buffer calculated texture data
       var blockTextureData = document.createElement("canvas").getContext("2d").createImageData(TILE_SIZE * TILE_COUNT_U, TILE_SIZE * TILE_COUNT_V);
+
+      // Object holding all world rendering chunks which have RenderBundles created, indexed by "<x>,<z>" where x and z are the low coordinates (i.e. divisible by CHUNKSIZE).
       var chunks = {};
+
+      // Queue of chunks to render. Array (first-to-do at the end); each element is [x,z] where x and z are the low coordinates of the chunk.
       var dirtyChunks = [];
             
       // --- methods, internals ---
