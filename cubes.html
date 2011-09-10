@@ -81,7 +81,6 @@
 
     var gl;
     var theCanvas;
-    var context2d; // used as an ImageData generator
     
     function initGL(canvas) {
         gl = canvas.getContext("experimental-webgl", {
@@ -480,14 +479,16 @@
     ];
     
     var blockTexture;
+    var blockTextureData;
     function initTexture() {
       blockTexture = gl.createTexture();
+      blockTextureData = document.createElement("canvas").getContext("2d").createImageData(TILE_SIZE * TILE_COUNT_U, TILE_SIZE * TILE_COUNT_V);
       rebuildBlockTexture();
     }
     function rebuildBlockTexture() {
       if (!blockTexture) return;
       
-      var data = context2d.createImageData(TILE_SIZE * TILE_COUNT_U, TILE_SIZE * TILE_COUNT_V);
+      var data = blockTextureData;
       
       function sliceWorld(tileu, tilev, transform) {
         var pixu = tileu*TILE_SIZE;
@@ -567,9 +568,8 @@
       }
     }
 
-    function webGLStart(canvas, canvas2d) {
+    function webGLStart(canvas) {
       theCanvas = canvas;
-      context2d = canvas2d.getContext("2d");
       initGL(canvas);
 
       // should do live, but makes Chrome glitchy
@@ -596,9 +596,8 @@
 </head>
 
 
-<body onload="webGLStart(document.getElementById('view-canvas'),document.getElementById('stub-2d'));">
+<body onload="webGLStart(document.getElementById('view-canvas'));">
     <canvas id="view-canvas" tabindex="0" class="viewport" width="640" height="480"></canvas>
-    <canvas style="display:none" id="stub-2d">
 </body>
 
 </html>
