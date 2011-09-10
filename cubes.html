@@ -14,6 +14,7 @@
 <script src="webgl-debug.js"></script>
 <script type="text/javascript" src="glMatrix.js"></script>
 <script type="text/javascript" src="util.js"></script>
+<script type="text/javascript" src="blockset.js"></script>
 <script type="text/javascript" src="world.js"></script>
 <script type="text/javascript" src="player.js"></script>
 <script type="text/javascript" src="input.js"></script>
@@ -184,9 +185,10 @@
     }
     
     console.log("Begin worldgen");
-    var worldH = new World(256);
-    var worldL = new World(16);
+    var worldH = new World(256, BlockSet.textured);
+    var worldL = new World(16, BlockSet.colors);
     var world = worldL;
+    var currentBlockset = BlockSet.textured;
     
     // gen block test
     (function () {
@@ -261,12 +263,16 @@
         gl.uniform1i(shaderProgram.textureUniform, textured ? 1 : 0);
 
         if (textured) {
+          gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute);
+          
           gl.bindBuffer(gl.ARRAY_BUFFER, tbuf);
           gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
   
           gl.activeTexture(gl.TEXTURE0);
           gl.bindTexture(gl.TEXTURE_2D, blockTexture);
           gl.uniform1i(shaderProgram.samplerUniform, 0);
+        } else {
+          gl.disableVertexAttribArray(shaderProgram.textureCoordAttribute);
         }
         setMatrixUniforms();
         gl.drawArrays(primitive, 0, numVertices);
@@ -319,7 +325,9 @@
         var chunkOriginZ = xzkey[1];
         var chunkLimitX = xzkey[0] + CHUNKSIZE;
         var chunkLimitZ = xzkey[1] + CHUNKSIZE;
-        chunks[xzkey] = new RenderBundle(gl.TRIANGLES, true, function (vertices, colors, texcoords) {
+        var blockSet = world.blockSet;
+        var textured = blockSet.textured;
+        chunks[xzkey] = new RenderBundle(gl.TRIANGLES, textured, function (vertices, colors, texcoords) {
           var pvBuffer = vec3.create();
           function pushVertex(vec) {
             vertices.push(vec[0], vec[1], vec[2]);
@@ -342,12 +350,14 @@
             pushVertex(vec3.add(origin, v2, vec3.create()));
             pushVertex(vec3.add(origin, v1, vec3.create()));
 
-            pushTileCoord(tileKey, texO, texO);
-            pushTileCoord(tileKey, 1, 0);
-            pushTileCoord(tileKey, 0, 1);
-            pushTileCoord(tileKey, texD, texD);
-            pushTileCoord(tileKey, 0, 1);
-            pushTileCoord(tileKey, 1, 0);
+            if (textured) {
+              pushTileCoord(tileKey, texO, texO);
+              pushTileCoord(tileKey, 1, 0);
+              pushTileCoord(tileKey, 0, 1);
+              pushTileCoord(tileKey, texD, texD);
+              pushTileCoord(tileKey, 0, 1);
+              pushTileCoord(tileKey, 1, 0);
+            }
 
             for (var i=0; i < 6; i++) {
               colors.push(color[0],color[1],color[2],color[3]);
@@ -355,12 +365,14 @@
           }
 
           var t0 = Date.now();
+          var blockSet = world.blockSet;
           for (var x = chunkOriginX; x < chunkLimitX; x++)
           for (var y = 0;            y < wy         ; y++)
           for (var z = chunkOriginZ; z < chunkLimitZ; z++) {
             var value = world.g(x,y,z);
             if (world.solid(x,y,z)) {
-              var color = [(value & 3) / 3, ((value >> 2) & 3) / 3, ((value >> 4) & 3) / 3, 1.0];
+              var color = [];
+              blockSet.writeColor(value, 1.0, color, 0);
               var tk = [0,0];
               var c1 = [x,y,z];
               var c2 = [x+1,y+1,z+1];
@@ -500,10 +512,7 @@
           var vec = vec3.create([u,v,0]);
           mat4.multiplyVec3(transform, vec, vec);
           var value = worldL.g(vec[0],vec[1],vec[2]);
-          data.data[c] = (value & 3) / 3 * 255;
-          data.data[c+1] = ((value >> 2) & 3) / 3 * 255;
-          data.data[c+2] = ((value >> 4) & 3) / 3 * 255;
-          data.data[c+3] = 255;
+          world.blockSet.writeColor(value, 255, data.data, c);
         }
       }
       TILE_MAPPINGS.forEach(function (m) {

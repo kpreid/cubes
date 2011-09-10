@@ -1,4 +1,4 @@
-function World(size) {
+function World(size, blockSet) {
   "use strict";
 
   var wx = size;
@@ -108,4 +108,6 @@ function World(size) {
   this.wx = wx;
   this.wy = wy;
   this.wz = wz;
+  this.blockSet = blockSet;
+  Object.freeze(this);
 }
