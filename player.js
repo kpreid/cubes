@@ -102,11 +102,15 @@ var Player = (function () {
         // TODO: global variables
         switch (direction) {
           case 1:
-            world = worldH;
+            if (worldIndex >= worlds.length - 1) break;
+            worldIndex++;
+            world = worlds[worldIndex];
             rebuildWorld();
             break;
           case -1:
-            world = worldL;
+            if (worldIndex <= 0) break;
+            worldIndex--;
+            world = worlds[worldIndex];
             rebuildWorld();
             break;
         }

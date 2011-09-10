@@ -186,9 +186,12 @@
     
     console.log("Begin worldgen");
     var worldH = new World(256, BlockSet.textured);
-    var worldL = new World(16, BlockSet.colors);
-    var world = worldL;
-    var currentBlockset = BlockSet.textured;
+    var worldB1 = new World(16, BlockSet.colors);
+    var worldB2 = new World(16, BlockSet.colors);
+    
+    var worlds = [worldB1, worldB2, worldH];
+    var worldIndex = 0;
+    var world = worlds[worldIndex];
     
     // gen block test
     (function () {
@@ -202,7 +205,8 @@
       for (var x = 0; x < wx; x++)
       for (var y = 0; y < wy; y++)
       for (var z = 0; z < wz; z++) {
-        world.s(x,y,z, brgb(x/16*1.34,y/16*1.34,z/16*1.34) || 0xC0);
+        var edginess = (x==0||x==15?1:0) + (y==0||y==15?1:0) + (z==0||z==15?1:0);
+        world.s(x,y,z, edginess ? brgb(x/16*1.34,y/16*1.34,z/16*1.34) || 0xC0 : 0);
       }
     })();
     
@@ -301,7 +305,7 @@
       z -= mod(z, 16);
       dirtyChunks.push([x,z]); // TODO: de-duplicate
       
-      if (world == worldL) // TODO: kludgy
+      if (world !== worldH) // TODO: kludgy
         rebuildBlockTexture();
     }
     function depthSortDirty() {
@@ -528,8 +532,8 @@
           var c = ((pixu+u) * data.width + pixv+v) * 4;
           var vec = vec3.create([u,v,0]);
           mat4.multiplyVec3(transform, vec, vec);
-          var value = worldL.g(vec[0],vec[1],vec[2]); // TODO global variables
-          worldL.blockSet.writeColor(value, 255, data.data, c);
+          var value = worldB1.g(vec[0],vec[1],vec[2]); // TODO global variables
+          worldB1.blockSet.writeColor(value, 255, data.data, c);
         }
 
         BlockSet.textured.tiling[name] = [tileu, tilev];
