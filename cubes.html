@@ -310,17 +310,32 @@
     }
 
     var CHUNKSIZE = 16;
+    
+    // Object holding all world rendering chunks which have RenderBundles created, indexed by "<x>,<z>" where x and z are the low coordinates (i.e. divisible by CHUNKSIZE).
     var chunks;
+    
+    // Queue of chunks to render. Array (first-to-do at the end); each element is [x,z] where x and z are the low coordinates of the chunk.
     var dirtyChunks;
     
     var debugR;
     var selectionR;
     
     function dirtyBlock(x,z) {
-      // TODO: Update neighboring chunks too.
-      x -= mod(x, 16);
-      z -= mod(z, 16);
-      dirtyChunks.push([x,z]); // TODO: de-duplicate
+      function _dirty(x,z) {
+        if (x < 0 || x >= world.wx || z < 0 || z >= world.wz) return;
+        dirtyChunks.push([x,z]); // TODO: de-duplicate
+      }
+      
+      var xm = mod(x, 16);
+      var zm = mod(z, 16);
+      x -= xm;
+      z -= zm;
+      
+      _dirty(x,z);
+      if (xm == 0)           _dirty(x-CHUNKSIZE,z);
+      if (zm == 0)           _dirty(x,z-CHUNKSIZE);
+      if (xm == CHUNKSIZE-1) _dirty(x+CHUNKSIZE,z);
+      if (zm == CHUNKSIZE-1) _dirty(x,z+CHUNKSIZE);
     }
     function depthSortDirty() {
       var pp = player.getPosition();
@@ -457,7 +472,7 @@
       
       for (var x = 0; x < world.wx; x += CHUNKSIZE)
       for (var z = 0; z < world.wz; z += CHUNKSIZE) (function () {
-        dirtyBlock(x, z);
+        dirtyBlock(x+1, z+1);
       })();
       depthSortDirty();
     }
