@@ -34,7 +34,7 @@ var BlockSet = (function () {
         target[offset+3] = scale;
       },
       tilings: tilings,
-      generateBlockTextures: function (data) {
+      generateBlockTextures: function (data, layout) {
         // (tileu,tilev) is the position in the texture of each block-face tile as they are generated.
         var tileu = -1;
         var tilev = 0;
@@ -45,21 +45,21 @@ var BlockSet = (function () {
           function sliceWorld(name, transform) {
             // allocate next position
             tileu++;
-            if (tileu >= TILE_COUNT_U) {
+            if (tileu >= layout.TILE_COUNT_U) {
               tileu = 0;
               tilev++;
             }
-            if (tilev >= TILE_COUNT_V) {
+            if (tilev >= layout.TILE_COUNT_V) {
               console.error("blockTexture too small to contain all tiles!");
               tileu = 0;
               tilev = 0;
             }
 
-            var pixu = tileu*TILE_SIZE;
-            var pixv = tilev*TILE_SIZE;
+            var pixu = tileu*World.TILE_SIZE;
+            var pixv = tilev*World.TILE_SIZE;
             // extract surface plane of block from world
-            for (var u = 0; u < TILE_SIZE; u++)
-            for (var v = 0; v < TILE_SIZE; v++) {
+            for (var u = 0; u < World.TILE_SIZE; u++)
+            for (var v = 0; v < World.TILE_SIZE; v++) {
               var c = ((pixu+u) * data.width + pixv+v) * 4;
               var vec = vec3.create([u,v,0]);
               mat4.multiplyVec3(transform, vec, vec);
@@ -68,9 +68,9 @@ var BlockSet = (function () {
             }
 
             // u,v coordinates of this tile for use by the vertex generator
-            tilings[wi][name] = [tileu / TILE_COUNT_U, tilev / TILE_COUNT_V];
+            tilings[wi][name] = [tileu / layout.TILE_COUNT_U, tilev / layout.TILE_COUNT_V];
           }
-          TILE_MAPPINGS.forEach(function (m) { // TODO: global variable TILE_MAPPINGS
+          layout.TILE_MAPPINGS.forEach(function (m) {
             sliceWorld.apply(undefined, m);
           });
         }

@@ -133,7 +133,7 @@ var Player = (function () {
             if (world == null) return; // TODO: UI message about this
             
             currentPlace = new Place(world);
-            vec3.set([TILE_SIZE/2, TILE_SIZE + 2, TILE_SIZE/2], currentPlace.pos);
+            vec3.set([World.TILE_SIZE/2, World.TILE_SIZE + 2, World.TILE_SIZE/2], currentPlace.pos);
             placeStack.push(oldPlace);
             needsDraw = true;
             

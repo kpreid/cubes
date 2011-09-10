@@ -123,3 +123,8 @@ function World(sizes, blockSet, initFunc) {
   this.blockSet = blockSet;
   Object.freeze(this);
 }
+
+// The size of a texture tile, and therefore the size of a block-defining-block
+World.TILE_SIZE = 16;
+
+Object.freeze(World);
