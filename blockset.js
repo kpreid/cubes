@@ -15,7 +15,8 @@ var BlockSet = (function () {
 
   BlockSet.textured = Object.freeze({
     textured: true,
-    writeColor: BlockSet.colors.writeColor
+    writeColor: BlockSet.colors.writeColor,
+    tiling: {}, // written by the texture renderer
   });
 
   return Object.freeze(BlockSet);
