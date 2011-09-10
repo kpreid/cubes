@@ -67,6 +67,10 @@ var BlockSet = (function () {
           });
         }
       },
+      worldFor: function (blockID) {
+        // TODO: make the fallback block block 0
+        return worlds[Math.min(blockID - 1, worlds.length - 1)];
+      }
     });
   };
 

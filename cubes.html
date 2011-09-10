@@ -208,11 +208,7 @@
     var worldB1 = new World(blockWorldSize, BlockSet.colors);
     var worldB2 = new World(blockWorldSize, BlockSet.colors);
     var worldH = new World([256,64,256], BlockSet.newTextured([worldB1, worldB2]));
-    
-    var worlds = [worldB1, worldB2, worldH];
-    var worldIndex = 2;
-    var world = worlds[worldIndex];
-    
+        
     // generate initial world contents
     (function () {
       function brgb(r,g,b) {
@@ -256,7 +252,7 @@
       var pt1 = fixedmultiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 0]));
       var pt2 = fixedmultiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 1]));
       
-      return world.raycast(pt1, pt2, radius, callback);
+      return player.getWorld().raycast(pt1, pt2, radius, callback);
     }
     
     function RenderBundle(primitive, textured, calcFunc) {
@@ -331,6 +327,7 @@
     var selectionR;
     
     function dirtyBlock(x,z) {
+      var world = player.getWorld();
       function _dirty(x,z) {
         if (x < 0 || x >= world.wx || z < 0 || z >= world.wz) return;
         dirtyChunks.push([x,z]); // TODO: de-duplicate
@@ -362,6 +359,7 @@
       if (chunks[xzkey]) {
         chunks[xzkey].recompute();
       } else {
+        var world = player.getWorld();
         var wx = world.wx;
         var wy = world.wy;
         var wz = world.wz;
@@ -478,6 +476,7 @@
       chunks = {};
       dirtyChunks = [];
       
+      var world = player.getWorld();
       for (var x = 0; x < world.wx; x += CHUNKSIZE)
       for (var z = 0; z < world.wz; z += CHUNKSIZE) (function () {
         dirtyBlock(x+1, z+1);
@@ -549,7 +548,7 @@
       
       var data = blockTextureData;
       
-      world.blockSet.generateBlockTextures(blockTextureData);
+      player.getWorld().blockSet.generateBlockTextures(blockTextureData);
       gl.bindTexture(gl.TEXTURE_2D, blockTexture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, data);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -557,7 +556,7 @@
       gl.bindTexture(gl.TEXTURE_2D, null);
     }
     
-    var player = new Player();
+    var player;
 
     var lastGLErrors = [];
     function drawScene() {
@@ -638,6 +637,8 @@
       while (info.firstChild) info.removeChild(info.firstChild);
       theInfo = document.createTextNode("");
       info.appendChild(theInfo);
+
+      player = new Player(worldH);
 
       // should do live, but makes Chrome glitchy
       updateViewport();
