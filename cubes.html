@@ -553,6 +553,11 @@
         }
         
         var text = "";
+        {
+          var pp = player.getPosition();
+          var d = 2;
+          text += "XYZ: " + pp[0].toFixed(d) + " " + pp[1].toFixed(d) + " " + pp[2].toFixed(d) + "\n";
+        }
         if (dirtyChunks.length) {
           text += ("Chunk Q: " + dirtyChunks.length + "\n");
         }
