@@ -413,7 +413,9 @@
           for (var y = 0;            y < wy         ; y++)
           for (var z = chunkOriginZ; z < chunkLimitZ; z++) {
             var value = world.g(x,y,z);
-            var tiling = textured ? blockSet.tilings[Math.min(value - 1, blockSet.tilings.length - 1)] : DUMMY_TILING;
+            var tiling = textured ?
+              blockSet.tilings[value - 1] || blockSet.tilings[0 /* = ID_BOGUS - 1 */]
+              : DUMMY_TILING;
             if (world.solid(x,y,z)) {
               blockSet.writeColor(value, 1.0, colorbuf, 0);
               var c1 = [x,y,z];

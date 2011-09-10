@@ -1,7 +1,11 @@
 var BlockSet = (function () {
-  function BlockSet() {
-    'use strict';
-  }
+  var BlockSet = {};
+  
+  // This block ID is always empty air.
+  BlockSet.ID_EMPTY = 0;
+  
+  // This block ID is used when an invalid block ID is met
+  BlockSet.ID_BOGUS = 1;
 
   BlockSet.colors = Object.freeze({
     textured: false,
@@ -15,6 +19,9 @@ var BlockSet = (function () {
   });
 
   BlockSet.newTextured = function (worlds) {
+    if (worlds.length < 1) {
+      throw new Error("Textured block set must have at least one world");
+    }
     var tilings = [];
     for (var i = 0; i < worlds.length; i++) tilings.push({});
     return Object.freeze({
@@ -68,8 +75,7 @@ var BlockSet = (function () {
         }
       },
       worldFor: function (blockID) {
-        // TODO: make the fallback block block 0
-        return worlds[Math.min(blockID - 1, worlds.length - 1)];
+        return worlds[blockID - 1] || worlds[BlockSet.ID_BOGUS];
       }
     });
   };
