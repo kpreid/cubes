@@ -581,7 +581,7 @@
           });
           text += "\n";
         }
-        theInfo.innerText = text;
+        theInfo.data = text;
     }
     
     var timestep = 1/30;
@@ -608,8 +608,11 @@
 
     function webGLStart(canvas, info) {
       theCanvas = canvas;
-      theInfo = info;
       initGL(canvas);
+
+      while (info.firstChild) info.removeChild(info.firstChild);
+      theInfo = document.createTextNode("");
+      info.appendChild(theInfo);
 
       // should do live, but makes Chrome glitchy
       updateViewport();
