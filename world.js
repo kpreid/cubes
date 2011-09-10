@@ -70,6 +70,10 @@ function World(size, blockSet) {
     var tDeltaX = stepX/dx;
     var tDeltaY = stepY/dy;
     var tDeltaZ = stepZ/dz;
+    
+    // 't' is in units of (pt2-pt1), so adjust radius in blocks by that
+    radius /= Math.sqrt(dx*dx+dy*dy+dz*dz);
+    
     //console.log(stepX, stepY, stepZ, dx, dy, dz, tDeltaX, tDeltaY, tDeltaZ);
     while (true) {
       if (!(x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz))
