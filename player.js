@@ -125,11 +125,18 @@ var Player = (function () {
         switch (direction) {
           case 1:
             if (cubeSelection == null) break;
-            placeStack.push(currentPlace);
             var x = cubeSelection[0], y = cubeSelection[1], z = cubeSelection[2];
-            currentPlace = new Place(currentPlace.world.blockSet.worldFor(currentPlace.world.g(x,y,z)));
+            
+            var oldPlace = currentPlace;
+            
+            var world = currentPlace.world.blockSet.worldFor(currentPlace.world.g(x,y,z));
+            if (world == null) return; // TODO: UI message about this
+            
+            currentPlace = new Place(world);
             vec3.set([TILE_SIZE/2, TILE_SIZE + 2, TILE_SIZE/2], currentPlace.pos);
+            placeStack.push(oldPlace);
             needsDraw = true;
+            
             break;
           case -1:
             if (placeStack.length <= 0) break;

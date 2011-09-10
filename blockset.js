@@ -15,7 +15,8 @@ var BlockSet = (function () {
       target[offset+2] = ((blockID >> 4) & 3) / 3 * scale;
       target[offset+3] = scale;
     },
-    generateBlockTextures: function () {}
+    generateBlockTextures: function () {},
+    worldFor: function (blockID) { return null; }
   });
 
   BlockSet.newTextured = function (worlds) {
@@ -75,7 +76,7 @@ var BlockSet = (function () {
         }
       },
       worldFor: function (blockID) {
-        return worlds[blockID - 1] || worlds[BlockSet.ID_BOGUS];
+        return worlds[blockID - 1] || null;
       }
     });
   };
