@@ -49,25 +49,22 @@ function World(size) {
    *
    * If the callback returns a true value, the traversal will be stopped.
    */
-  function raytrace(pt1, pt2, radius, callback) {
+  function raycast(pt1, pt2, radius, callback) {
     // voxel traversal algorithm
     // http://citeseer.ist.psu.edu/viewdoc/summary?doi=10.1.1.42.3443
     var x = Math.floor(pt1[0]);
     var y = Math.floor(pt1[1]);
     var z = Math.floor(pt1[2]);
-    var t = 0;
     var dx = pt2[0] - pt1[0];
     var dy = pt2[1] - pt1[1];
     var dz = pt2[2] - pt1[2];
+    var t = 0;
     var stepX = signum(dx);
     var stepY = signum(dy);
     var stepZ = signum(dz);
-    var boundX = intbound(pt1[0], dx);
-    var boundY = intbound(pt1[1], dy);
-    var boundZ = intbound(pt1[2], dz);
-    var tMaxX = Math.min(boundY, boundZ);
-    var tMaxY = Math.min(boundX, boundZ);
-    var tMaxZ = Math.min(boundX, boundY);
+    var tMaxX = intbound(pt1[0], dx);
+    var tMaxY = intbound(pt1[1], dy);
+    var tMaxZ = intbound(pt1[2], dz);
     var tDeltaX = stepX/dx;
     var tDeltaY = stepY/dy;
     var tDeltaZ = stepZ/dz;
@@ -107,7 +104,7 @@ function World(size) {
   this.s = s;
   this.solid = solid;
   this.raw = blocks;
-  this.raytrace = raytrace;
+  this.raycast = raycast;
   this.wx = wx;
   this.wy = wy;
   this.wz = wz;

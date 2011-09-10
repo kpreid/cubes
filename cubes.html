@@ -209,7 +209,7 @@
     var cubeSelection = null;
     var emptySelection = null;
     
-    function raytraceFromScreen(pos, radius, callback) {
+    function raycastFromScreen(pos, radius, callback) {
       // TODO: figure out why the commented out bits don't work.
       
       //var glxy = [pos[0] / gl.viewportWidth * 2 - 1, -(pos[1] / gl.viewportHeight * 2 - 1)];
@@ -223,7 +223,7 @@
       var pt1 = mat4.multiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 0]));
       var pt2 = mat4.multiplyVec3(unproject, vec3.create([glxy[0], glxy[1], -1]));
       
-      world.raytrace(pt1, pt2, radius, callback);
+      world.raycast(pt1, pt2, radius, callback);
     }
     
     function RenderBundle(primitive, textured, calcFunc) {
