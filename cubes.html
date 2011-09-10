@@ -190,7 +190,7 @@
     var worldB2 = new World(16, BlockSet.colors);
     
     var worlds = [worldB1, worldB2, worldH];
-    var worldIndex = 0;
+    var worldIndex = 2;
     var world = worlds[worldIndex];
     
     // gen block test
@@ -199,14 +199,14 @@
         return ((b * 3) << 4) + ((g * 3) << 2) + (r * 3) << 0
       }
       
-      var wx = world.wx;
-      var wy = world.wy;
-      var wz = world.wz;
+      var wx = worldB1.wx;
+      var wy = worldB1.wy;
+      var wz = worldB1.wz;
       for (var x = 0; x < wx; x++)
       for (var y = 0; y < wy; y++)
       for (var z = 0; z < wz; z++) {
         var edginess = (x==0||x==15?1:0) + (y==0||y==15?1:0) + (z==0||z==15?1:0);
-        world.s(x,y,z, edginess ? brgb(x/16*1.34,y/16*1.34,z/16*1.34) || 0xC0 : 0);
+        worldB1.s(x,y,z, edginess ? brgb(x/16*1.34,y/16*1.34,z/16*1.34) || 0xC0 : 0);
       }
     })();
     

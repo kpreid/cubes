@@ -6,10 +6,12 @@ function World(size, blockSet) {
   var wz = size;
   var blocks = new Uint8Array(wx*wy*wz);
   
+  var gray = 42;
   for (var x = 0; x < wx; x++)
   for (var y = 0; y < wy; y++)
   for (var z = 0; z < wz; z++) {
-    blocks[x*wy*wz + y*wz + z] = (Math.sin(x/10) + Math.sin(z/10))*3 > (y-wy/2) ? Math.sin(x/4) + 1 * 126 : 0;
+    var altitude = (y-wy/2) - Math.round((Math.sin(x/10) + Math.sin(z/10))*3);
+    blocks[x*wy*wz + y*wz + z] = altitude == 0 ? (Math.sin(x/200) + 1) * 126 : altitude > 0 ? 0 : gray;
   }
   
   // --- Internal functions ---
