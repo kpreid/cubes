@@ -639,6 +639,7 @@
       info.appendChild(theInfo);
 
       player = new Player(worldH);
+      player.setPosition([worldH.wx/2, worldH.wy/2 + 10, worldH.wz/2]);
 
       // should do live, but makes Chrome glitchy
       updateViewport();

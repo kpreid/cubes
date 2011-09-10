@@ -4,7 +4,7 @@ var Player = (function () {
   // a Place stores a world and location in it; used for push/pop
   function Place(world) {
     this.world = world;
-    this.pos = vec3.create([8,18,8]);
+    this.pos = vec3.create([0,0,0]);
     this.vel = vec3.create([0,0,0]);
     this.yaw = Math.PI/4 * 5;
     this.pitch = 0;
@@ -69,6 +69,9 @@ var Player = (function () {
     this.getPosition = function() {
       return vec3.create(currentPlace.pos);
     };
+    this.setPosition = function(p) {
+      vec3.set(p, currentPlace.pos);
+    };
     this.getWorld = function() {
       return currentPlace.world;
     };
@@ -116,6 +119,7 @@ var Player = (function () {
             placeStack.push(currentPlace);
             var x = cubeSelection[0], y = cubeSelection[1], z = cubeSelection[2];
             currentPlace = new Place(currentPlace.world.blockSet.worldFor(currentPlace.world.g(x,y,z)));
+            vec3.set([TILE_SIZE/2, TILE_SIZE + 2, TILE_SIZE/2], currentPlace.pos);
             rebuildWorld();
             break;
           case -1:
