@@ -81,6 +81,8 @@
 
     var gl;
     var theCanvas;
+    var context2d; // used as an ImageData generator
+    
     function initGL(canvas) {
         gl = canvas.getContext("experimental-webgl", {
           antialias: false // MORE FILLRATE!!!
@@ -264,7 +266,7 @@
           gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
   
           gl.activeTexture(gl.TEXTURE0);
-          gl.bindTexture(gl.TEXTURE_2D, neheTexture);
+          gl.bindTexture(gl.TEXTURE_2D, blockTexture);
           gl.uniform1i(shaderProgram.samplerUniform, 0);
         }
         setMatrixUniforms();
@@ -293,6 +295,9 @@
       x -= mod(x, 16);
       z -= mod(z, 16);
       dirtyChunks.push([x,z]); // TODO: de-duplicate
+      
+      if (world == worldL) // TODO: kludgy
+        rebuildBlockTexture();
     }
     function depthSortDirty() {
       var pp = player.getPosition();
@@ -414,25 +419,32 @@
       depthSortDirty();
     }
     
-    var neheTexture;
+    var blockTexture;
     function initTexture() {
-      function handleLoadedTexture(texture) {
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.bindTexture(gl.TEXTURE_2D, null);
-        console.log("texture loaded");
+      blockTexture = gl.createTexture();
+      rebuildBlockTexture();
+    }
+    function rebuildBlockTexture() {
+      if (!blockTexture) return;
+      
+      var data = context2d.createImageData(16, 16);
+      
+      // extract surface plane of block from world
+      for (var x = 0; x < 16; x++)
+      for (var y = 0; y < 16; y++) {
+        var c = (y * 16 + x) * 4;
+        var value = worldL.g(x,y,0);
+        data.data[c] = (value & 3) / 3 * 255;
+        data.data[c+1] = ((value >> 2) & 3) / 3 * 255;
+        data.data[c+2] = ((value >> 4) & 3) / 3 * 255;
+        data.data[c+3] = 255;
       }
       
-      neheTexture = gl.createTexture();
-      neheTexture.image = new Image();
-      neheTexture.image.onload = function() {
-        handleLoadedTexture(neheTexture)
-      }
-
-      neheTexture.image.src = "nehe.gif";
+      gl.bindTexture(gl.TEXTURE_2D, blockTexture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, data);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.bindTexture(gl.TEXTURE_2D, null);
     }
     
     var player = new Player();
@@ -485,8 +497,9 @@
       }
     }
 
-    function webGLStart(canvas) {
+    function webGLStart(canvas, canvas2d) {
       theCanvas = canvas;
+      context2d = canvas2d.getContext("2d");
       initGL(canvas);
 
       // should do live, but makes Chrome glitchy
@@ -512,8 +525,9 @@
 </head>
 
 
-<body onload="webGLStart(document.getElementById('view-canvas'));">
+<body onload="webGLStart(document.getElementById('view-canvas'),document.getElementById('stub-2d'));">
     <canvas id="view-canvas" class="viewport" width="640" height="480"></canvas>
+    <canvas style="display:none" id="stub-2d">
 </body>
 
 </html>
