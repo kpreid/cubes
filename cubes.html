@@ -185,9 +185,9 @@
     }
     
     console.log("Begin worldgen");
-    var worldH = new World(256, BlockSet.textured);
     var worldB1 = new World(16, BlockSet.colors);
     var worldB2 = new World(16, BlockSet.colors);
+    var worldH = new World(256, BlockSet.newTextured([worldB1, worldB2]));
     
     var worlds = [worldB1, worldB2, worldH];
     var worldIndex = 2;
@@ -304,9 +304,6 @@
       x -= mod(x, 16);
       z -= mod(z, 16);
       dirtyChunks.push([x,z]); // TODO: de-duplicate
-      
-      if (world !== worldH) // TODO: kludgy
-        rebuildBlockTexture();
     }
     function depthSortDirty() {
       var pp = player.getPosition();
@@ -371,11 +368,12 @@
 
           var t0 = Date.now();
           var blockSet = world.blockSet;
-          var tiling = textured ? blockSet.tiling : DUMMY_TILING;
+          var tilings = blockSet.tilings;
           for (var x = chunkOriginX; x < chunkLimitX; x++)
           for (var y = 0;            y < wy         ; y++)
           for (var z = chunkOriginZ; z < chunkLimitZ; z++) {
             var value = world.g(x,y,z);
+            var tiling = textured ? blockSet.tilings[Math.min(value - 1, blockSet.tilings.length - 1)] : DUMMY_TILING;
             if (world.solid(x,y,z)) {
               var color = [];
               blockSet.writeColor(value, 1.0, color, 0);
@@ -430,6 +428,8 @@
     }
     
     function rebuildWorld() {
+      rebuildBlockTexture();
+      
       for (var index in chunks) {
         if (!chunks.hasOwnProperty(index)) continue;
         chunks[index].delete();
@@ -508,41 +508,7 @@
       
       var data = blockTextureData;
       
-      // (tileu,tilev) is the position in the texture of this particular block-face tile.
-      var tileu = -1;
-      var tilev = 0;
-      function sliceWorld(name, transform) {
-        // allocate next position
-        tileu++;
-        if (tileu >= TILE_COUNT_U) {
-          tileu = 0;
-          tilev++;
-        }
-        if (tilev >= TILE_COUNT_V) {
-          console.error("blockTexture too small to contain all tiles!");
-          tileu = 0;
-          tilev = 0;
-        }
-
-        var pixu = tileu*TILE_SIZE;
-        var pixv = tilev*TILE_SIZE;
-        // extract surface plane of block from world
-        for (var u = 0; u < TILE_SIZE; u++)
-        for (var v = 0; v < TILE_SIZE; v++) {
-          var c = ((pixu+u) * data.width + pixv+v) * 4;
-          var vec = vec3.create([u,v,0]);
-          mat4.multiplyVec3(transform, vec, vec);
-          var value = worldB1.g(vec[0],vec[1],vec[2]); // TODO global variables
-          worldB1.blockSet.writeColor(value, 255, data.data, c);
-        }
-
-        BlockSet.textured.tiling[name] = [tileu, tilev];
-      }
-      TILE_MAPPINGS.forEach(function (m) {
-        sliceWorld.apply(undefined, m);
-      });
-      
-      
+      world.blockSet.generateBlockTextures(blockTextureData);
       gl.bindTexture(gl.TEXTURE_2D, blockTexture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, data);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
