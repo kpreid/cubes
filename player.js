@@ -9,6 +9,9 @@ var Player = (function () {
     this.vel = vec3.create([0,0,0]);
     this.yaw = Math.PI/4 * 5;
     this.pitch = 0;
+
+    // must happen late
+    this.wrend = new WorldRenderer(world, this); // ideally, would be readonly(this)
   }
   
   function Player(initialWorld) {
@@ -78,6 +81,9 @@ var Player = (function () {
     this.getWorld = function() {
       return currentPlace.world;
     };
+    this.getWorldRenderer = function() {
+      return currentPlace.wrend;
+    };
     
     this.input = Object.freeze({
       click: function (button) {
@@ -89,7 +95,7 @@ var Player = (function () {
             var x = cubeSelection[0], y = cubeSelection[1], z = cubeSelection[2];
             if (currentPlace.world.solid(x,y,z)) {
               currentPlace.world.s(x,y,z,0);
-              dirtyBlock(x,z);
+              currentPlace.wrend.dirtyBlock(x,z);
               changed = true;
             }
           }
@@ -99,7 +105,7 @@ var Player = (function () {
             var x = emptySelection[0], y = emptySelection[1], z = emptySelection[2];
             if (!currentPlace.world.solid(x,y,z)) {
               currentPlace.world.s(x,y,z, 64);
-              dirtyBlock(x,z);
+              currentPlace.wrend.dirtyBlock(x,z);
               changed = true;
             }
           }
@@ -115,7 +121,7 @@ var Player = (function () {
       get yaw () { return currentPlace.yaw; },
       set yaw (angle) { currentPlace.yaw = angle; aimChanged(); },
       changeWorld: function (direction) {
-        // TODO: global variables
+        // TODO: global variables cubeSelection, needsDraw
         switch (direction) {
           case 1:
             if (cubeSelection == null) break;
@@ -123,12 +129,12 @@ var Player = (function () {
             var x = cubeSelection[0], y = cubeSelection[1], z = cubeSelection[2];
             currentPlace = new Place(currentPlace.world.blockSet.worldFor(currentPlace.world.g(x,y,z)));
             vec3.set([TILE_SIZE/2, TILE_SIZE + 2, TILE_SIZE/2], currentPlace.pos);
-            rebuildWorld();
+            needsDraw = true;
             break;
           case -1:
             if (placeStack.length <= 0) break;
             currentPlace = placeStack.pop();
-            rebuildWorld();
+            needsDraw = true;
             break;
         }
       }
