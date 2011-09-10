@@ -9,6 +9,16 @@
   .viewport {
     cursor: crosshair;
   }
+  
+  #info {
+    position: absolute;
+    left: 1px;
+    top: 1px;
+    
+    font-family: monospace;
+    color: white;
+    text-shadow: 0 0 .1em #0ff;
+  }
 </style>
 
 <script src="webgl-debug.js"></script>
@@ -82,6 +92,7 @@
 
     var gl;
     var theCanvas;
+    var theInfo;
     
     function initGL(canvas) {
         gl = canvas.getContext("experimental-webgl", {
@@ -539,6 +550,12 @@
         if (errs.length) {
           console.error("GL errors: ", errs);
         }
+        
+        var text = "";
+        if (dirtyChunks.length) {
+          text += ("Chunk Q: " + dirtyChunks.length);
+        }
+        theInfo.innerText = text;
     }
     
     var timestep = 1/30;
@@ -563,8 +580,9 @@
       }
     }
 
-    function webGLStart(canvas) {
+    function webGLStart(canvas, info) {
       theCanvas = canvas;
+      theInfo = info;
       initGL(canvas);
 
       // should do live, but makes Chrome glitchy
@@ -591,8 +609,9 @@
 </head>
 
 
-<body onload="webGLStart(document.getElementById('view-canvas'));">
+<body onload="webGLStart(document.getElementById('view-canvas'), document.getElementById('info'));">
     <canvas id="view-canvas" tabindex="0" class="viewport" width="640" height="480"></canvas>
+    <div id="info">Loading...</div>
 </body>
 
 </html>
