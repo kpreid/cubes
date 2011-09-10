@@ -224,7 +224,7 @@
       var wy = worldB2.wy;
       worldB2.edit(function (x,y,z,value) {
         var altitude = (y-wy/2) - Math.round((Math.sin(x/10) + Math.sin(z/10))*3);
-        return y == 15 ? 2 : y == 14 ? 3 : 1;
+        return y == 15 ? 2 : y == 14 ? 3 : (Math.floor(x/3) + y + Math.floor(z/2)) % 1.5 ? 1 : 0xC0;
       });
       
       var wx = worldB1.wx;
