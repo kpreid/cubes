@@ -56,7 +56,7 @@ function Input(eventReceiver, playerInput) {
     } else {
       return true;
     }
-  });
+  }, false);
   eventReceiver.addEventListener("keyup", function (event) {
     var code = event.keyCode || event.which;
     if (interestingInMap(code)) {
@@ -67,7 +67,7 @@ function Input(eventReceiver, playerInput) {
     } else {
       return true;
     }
-  });
+  }, false);
   
   
   var dx = 0;
@@ -81,19 +81,20 @@ function Input(eventReceiver, playerInput) {
     
     // x effect
     dx = -0.2 * deadzone(swingX, 0.2);
-  });
+  }, false);
   eventReceiver.addEventListener("mouseout", function (event) {
     dx = 0;
-  });
+  }, false);
 
   eventReceiver.addEventListener("click", function (event) {
     playerInput.click([event.clientX, event.clientY], 0);
     return false;
-  });
-  eventReceiver.addEventListener("contextmenu", function (event) {
+  }, false);
+  eventReceiver.oncontextmenu = function (event) {
+    // On Firefox 5.0.1 (most recent tested 2011-09-10), addEventListener does not suppress the builtin context menu, so this is an attribute rather than a listener.
     playerInput.click([event.clientX, event.clientY], 1);
     return false;
-  });
+  };
   
   function step() {
     if (dx != 0) {
