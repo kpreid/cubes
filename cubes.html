@@ -362,13 +362,16 @@
         var blockSet = world.blockSet;
         var textured = blockSet.textured;
         chunks[xzkey] = new RenderBundle(gl.TRIANGLES, textured, function (vertices, colors, texcoords) {
-          var pvBuffer = vec3.create();
+          var t0 = Date.now();
+          var blockSet = world.blockSet;
+          var tilings = blockSet.tilings;
+          var colorbuf = [];
+          var vecbuf = vec3.create();
+
           function pushVertex(vec) {
             vertices.push(vec[0], vec[1], vec[2]);
           }
-          // Given tile coords and u,v within the tile, generate tex coords
           function pushTileCoord(tileKey, u, v) {
-            // TODO: optimize this out to constant
             texcoords.push(tileKey[1] + u, 
                            tileKey[0] + v);
           }
@@ -376,14 +379,13 @@
           function square(origin, v1, v2, tileKey, texO, texD, color) {
             // texO and texD are the originward and v'ward texture coordinates, used to flip the texture coords vs. origin for the 'positive side' squares
             
-            var buffer = vec3.create();
             pushVertex(origin);
-            pushVertex(vec3.add(origin, v1, buffer));
-            pushVertex(vec3.add(origin, v2, buffer));
+            pushVertex(vec3.add(origin, v1, vecbuf));
+            pushVertex(vec3.add(origin, v2, vecbuf));
 
-            pushVertex(vec3.add(vec3.add(origin, v1, buffer), v2, buffer));
-            pushVertex(vec3.add(origin, v2, buffer));
-            pushVertex(vec3.add(origin, v1, buffer));
+            pushVertex(vec3.add(vec3.add(origin, v1, vecbuf), v2, vecbuf));
+            pushVertex(vec3.add(origin, v2, vecbuf));
+            pushVertex(vec3.add(origin, v1, vecbuf));
 
             if (textured) {
               pushTileCoord(tileKey, texO, texO);
@@ -398,27 +400,22 @@
               colors.push(color[0],color[1],color[2],color[3]);
             }
           }
-
-          var t0 = Date.now();
-          var blockSet = world.blockSet;
-          var tilings = blockSet.tilings;
+          
           for (var x = chunkOriginX; x < chunkLimitX; x++)
           for (var y = 0;            y < wy         ; y++)
           for (var z = chunkOriginZ; z < chunkLimitZ; z++) {
             var value = world.g(x,y,z);
             var tiling = textured ? blockSet.tilings[Math.min(value - 1, blockSet.tilings.length - 1)] : DUMMY_TILING;
             if (world.solid(x,y,z)) {
-              var color = [];
-              blockSet.writeColor(value, 1.0, color, 0);
-              var tk = [0,0];
+              blockSet.writeColor(value, 1.0, colorbuf, 0);
               var c1 = [x,y,z];
               var c2 = [x+1,y+1,z+1];
-              if (!world.solid(x-1,y,z)) square(c1, [0,0,1],  [0,1,0],  tiling.lx, 0, TILE_SIZE_V, color);
-              if (!world.solid(x,y-1,z)) square(c1, [1,0,0],  [0,0,1],  tiling.ly, 0, TILE_SIZE_V, color);
-              if (!world.solid(x,y,z-1)) square(c1, [0,1,0],  [1,0,0],  tiling.lz, 0, TILE_SIZE_V, color);
-              if (!world.solid(x+1,y,z)) square(c2, [0,-1,0], [0,0,-1], tiling.hx, TILE_SIZE_U, 0, color);
-              if (!world.solid(x,y+1,z)) square(c2, [0,0,-1], [-1,0,0], tiling.hy, TILE_SIZE_U, 0, color);
-              if (!world.solid(x,y,z+1)) square(c2, [-1,0,0], [0,-1,0], tiling.hz, TILE_SIZE_U, 0, color);
+              if (!world.solid(x-1,y,z)) square(c1, UNIT_PZ, UNIT_PY, tiling.lx, 0, TILE_SIZE_V, colorbuf);
+              if (!world.solid(x,y-1,z)) square(c1, UNIT_PX, UNIT_PZ, tiling.ly, 0, TILE_SIZE_V, colorbuf);
+              if (!world.solid(x,y,z-1)) square(c1, UNIT_PY, UNIT_PX, tiling.lz, 0, TILE_SIZE_V, colorbuf);
+              if (!world.solid(x+1,y,z)) square(c2, UNIT_NY, UNIT_NZ, tiling.hx, TILE_SIZE_U, 0, colorbuf);
+              if (!world.solid(x,y+1,z)) square(c2, UNIT_NZ, UNIT_NX, tiling.hy, TILE_SIZE_U, 0, colorbuf);
+              if (!world.solid(x,y,z+1)) square(c2, UNIT_NX, UNIT_NY, tiling.hz, TILE_SIZE_U, 0, colorbuf);
             }
           }
           var t1 = Date.now();
