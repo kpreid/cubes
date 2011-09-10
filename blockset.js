@@ -59,7 +59,8 @@ var BlockSet = (function () {
               world.blockSet.writeColor(value, 255, data.data, c);
             }
 
-            tilings[wi][name] = [tileu, tilev];
+            // u,v coordinates of this tile for use by the vertex generator
+            tilings[wi][name] = [tileu / TILE_COUNT_U, tilev / TILE_COUNT_V];
           }
           TILE_MAPPINGS.forEach(function (m) { // TODO: global variable TILE_MAPPINGS
             sliceWorld.apply(undefined, m);

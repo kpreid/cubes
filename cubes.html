@@ -207,7 +207,7 @@
     var blockWorldSize = [TILE_SIZE,TILE_SIZE,TILE_SIZE];
     var worldB1 = new World(blockWorldSize, BlockSet.colors);
     var worldB2 = new World(blockWorldSize, BlockSet.colors);
-    var worldH = new World([256,16,256], BlockSet.newTextured([worldB1, worldB2]));
+    var worldH = new World([256,64,256], BlockSet.newTextured([worldB1, worldB2]));
     
     var worlds = [worldB1, worldB2, worldH];
     var worldIndex = 2;
@@ -369,28 +369,29 @@
           // Given tile coords and u,v within the tile, generate tex coords
           function pushTileCoord(tileKey, u, v) {
             // TODO: optimize this out to constant
-            texcoords.push((tileKey[1] + u) / TILE_COUNT_U, 
-                           (tileKey[0] + v) / TILE_COUNT_V);
+            texcoords.push(tileKey[1] + u, 
+                           tileKey[0] + v);
           }
 
           function square(origin, v1, v2, tileKey, texO, texD, color) {
             // texO and texD are the originward and v'ward texture coordinates, used to flip the texture coords vs. origin for the 'positive side' squares
             
+            var buffer = vec3.create();
             pushVertex(origin);
-            pushVertex(vec3.add(origin, v1, vec3.create()));
-            pushVertex(vec3.add(origin, v2, vec3.create()));
+            pushVertex(vec3.add(origin, v1, buffer));
+            pushVertex(vec3.add(origin, v2, buffer));
 
-            pushVertex(vec3.add(vec3.add(origin, v1, vec3.create()), v2));
-            pushVertex(vec3.add(origin, v2, vec3.create()));
-            pushVertex(vec3.add(origin, v1, vec3.create()));
+            pushVertex(vec3.add(vec3.add(origin, v1, buffer), v2, buffer));
+            pushVertex(vec3.add(origin, v2, buffer));
+            pushVertex(vec3.add(origin, v1, buffer));
 
             if (textured) {
               pushTileCoord(tileKey, texO, texO);
-              pushTileCoord(tileKey, 1, 0);
-              pushTileCoord(tileKey, 0, 1);
+              pushTileCoord(tileKey, TILE_SIZE_U, 0);
+              pushTileCoord(tileKey, 0, TILE_SIZE_V);
               pushTileCoord(tileKey, texD, texD);
-              pushTileCoord(tileKey, 0, 1);
-              pushTileCoord(tileKey, 1, 0);
+              pushTileCoord(tileKey, 0, TILE_SIZE_V);
+              pushTileCoord(tileKey, TILE_SIZE_U, 0);
             }
 
             for (var i=0; i < 6; i++) {
@@ -412,12 +413,12 @@
               var tk = [0,0];
               var c1 = [x,y,z];
               var c2 = [x+1,y+1,z+1];
-              if (!world.solid(x-1,y,z)) square(c1, [0,0,1],  [0,1,0],  tiling.lx, 0, 1, color);
-              if (!world.solid(x,y-1,z)) square(c1, [1,0,0],  [0,0,1],  tiling.ly, 0, 1, color);
-              if (!world.solid(x,y,z-1)) square(c1, [0,1,0],  [1,0,0],  tiling.lz, 0, 1, color);
-              if (!world.solid(x+1,y,z)) square(c2, [0,-1,0], [0,0,-1], tiling.hx, 1, 0, color);
-              if (!world.solid(x,y+1,z)) square(c2, [0,0,-1], [-1,0,0], tiling.hy, 1, 0, color);
-              if (!world.solid(x,y,z+1)) square(c2, [-1,0,0], [0,-1,0], tiling.hz, 1, 0, color);
+              if (!world.solid(x-1,y,z)) square(c1, [0,0,1],  [0,1,0],  tiling.lx, 0, TILE_SIZE_V, color);
+              if (!world.solid(x,y-1,z)) square(c1, [1,0,0],  [0,0,1],  tiling.ly, 0, TILE_SIZE_V, color);
+              if (!world.solid(x,y,z-1)) square(c1, [0,1,0],  [1,0,0],  tiling.lz, 0, TILE_SIZE_V, color);
+              if (!world.solid(x+1,y,z)) square(c2, [0,-1,0], [0,0,-1], tiling.hx, TILE_SIZE_U, 0, color);
+              if (!world.solid(x,y+1,z)) square(c2, [0,0,-1], [-1,0,0], tiling.hy, TILE_SIZE_U, 0, color);
+              if (!world.solid(x,y,z+1)) square(c2, [-1,0,0], [0,-1,0], tiling.hz, TILE_SIZE_U, 0, color);
             }
           }
           var t1 = Date.now();
@@ -479,6 +480,8 @@
     
     var TILE_COUNT_U = 4;
     var TILE_COUNT_V = 4;
+    var TILE_SIZE_U = 1/TILE_COUNT_U;
+    var TILE_SIZE_V = 1/TILE_COUNT_V;
     var TILE_MAPPINGS = [
       // in this matrix layout, the input (column) vector is the tile coords
       // and the output (row) vector is the world space coords
