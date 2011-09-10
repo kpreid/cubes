@@ -18,6 +18,7 @@
     font-family: monospace;
     color: white;
     text-shadow: 0 0 .1em #0ff;
+    margin: 0 0;
   }
 </style>
 
@@ -100,6 +101,8 @@
         });
         if (DEBUG) {
           gl = WebGLDebugUtils.makeDebugContext(gl);
+        } else {
+          WebGLDebugUtils.init(gl);
         }
         if (!gl) {
             console.log("failed to get context: ", gl);
@@ -526,6 +529,7 @@
     
     var player = new Player();
 
+    var lastGLErrors = [];
     function drawScene() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -547,13 +551,24 @@
         while (e = gl.getError()) {
           errs.push(e);
         }
-        if (errs.length) {
-          console.error("GL errors: ", errs);
-        }
         
         var text = "";
         if (dirtyChunks.length) {
-          text += ("Chunk Q: " + dirtyChunks.length);
+          text += ("Chunk Q: " + dirtyChunks.length + "\n");
+        }
+        if (errs.length) {
+          lastGLErrors = errs;
+          text += "GL errors:";
+          errs.forEach(function (e) {
+            text += " " + WebGLDebugUtils.glEnumToString(e);
+          });
+          text += "\n";
+        } else if (lastGLErrors.length) {
+          text += "Previous GL errors:";
+          lastGLErrors.forEach(function (e) {
+            text += " " + WebGLDebugUtils.glEnumToString(e);
+          });
+          text += "\n";
         }
         theInfo.innerText = text;
     }
@@ -611,7 +626,7 @@
 
 <body onload="webGLStart(document.getElementById('view-canvas'), document.getElementById('info'));">
     <canvas id="view-canvas" tabindex="0" class="viewport" width="640" height="480"></canvas>
-    <div id="info">Loading...</div>
+    <pre id="info">Loading...</pre>
 </body>
 
 </html>
