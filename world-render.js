@@ -1,6 +1,10 @@
 // TODO: global variable 'gl'
 
 var WorldRenderer = (function () {
+  // The side length of the chunks the world is broken into for rendering.
+  // Smaller chunks are faster to update when the world changes, but have a higher per-frame cost.
+  var CHUNKSIZE = 12;
+  
   var TILE_COUNT_U = 4;
   var TILE_COUNT_V = 4;
   var TILE_SIZE_U = 1/TILE_COUNT_U;
@@ -104,8 +108,8 @@ var WorldRenderer = (function () {
         dirtyChunks.push([x,z]); // TODO: de-duplicate
       }
 
-      var xm = mod(x, 16);
-      var zm = mod(z, 16);
+      var xm = mod(x, CHUNKSIZE);
+      var zm = mod(z, CHUNKSIZE);
       x -= xm;
       z -= zm;
 
