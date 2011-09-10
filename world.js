@@ -1,18 +1,10 @@
-function World(sizes, blockSet) {
+function World(sizes, blockSet, initFunc) {
   "use strict";
 
   var wx = sizes[0];
   var wy = sizes[1];
   var wz = sizes[2];
   var blocks = new Uint8Array(wx*wy*wz);
-  
-  var gray = 1;
-  for (var x = 0; x < wx; x++)
-  for (var y = 0; y < wy; y++)
-  for (var z = 0; z < wz; z++) {
-    var altitude = (y-wy/2) - Math.round((Math.sin(x/10) + Math.sin(z/10))*3);
-    blocks[x*wy*wz + y*wz + z] = altitude == 0 ? 2 : altitude > 0 ? 0 : gray;
-  }
   
   // --- Internal functions ---
   
@@ -104,6 +96,19 @@ function World(sizes, blockSet) {
     }
   };
   
+  function edit(func) {
+    for (var x = 0; x < wx; x++) {
+      var xbase = x*wy*wz;
+      for (var y = 0; y < wy; y++) {
+        var ybase = xbase + y*wz;
+        for (var z = 0; z < wz; z++) {
+          var index = ybase + z;
+          blocks[index] = func(x,y,z,blocks[index]);
+        }
+      }
+    }
+  }
+  
   // --- Final init ---
   
   this.g = g;
@@ -111,6 +116,7 @@ function World(sizes, blockSet) {
   this.solid = solid;
   this.raw = blocks;
   this.raycast = raycast;
+  this.edit = edit;
   this.wx = wx;
   this.wy = wy;
   this.wz = wz;

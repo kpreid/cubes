@@ -213,21 +213,31 @@
     var worldIndex = 2;
     var world = worlds[worldIndex];
     
-    // gen block test
+    // generate initial world contents
     (function () {
       function brgb(r,g,b) {
         return ((b * 3) << 4) + ((g * 3) << 2) + (r * 3) << 0
       }
       
+      var wy = worldH.wy;
+      worldH.edit(function (x,y,z,value) {
+        var altitude = (y-wy/2) - Math.round((Math.sin(x/10) + Math.sin(z/10))*3);
+        return altitude == 0 ? 2 : altitude > 0 ? 0 : 1;
+      });
+      
+      var wy = worldB2.wy;
+      worldB2.edit(function (x,y,z,value) {
+        var altitude = (y-wy/2) - Math.round((Math.sin(x/10) + Math.sin(z/10))*3);
+        return y == 15 ? 2 : y == 14 ? 3 : 1;
+      });
+      
       var wx = worldB1.wx;
       var wy = worldB1.wy;
       var wz = worldB1.wz;
-      for (var x = 0; x < wx; x++)
-      for (var y = 0; y < wy; y++)
-      for (var z = 0; z < wz; z++) {
+      worldB1.edit(function (x,y,z,value) {
         var edginess = (x==0||x==15?1:0) + (y==0||y==15?1:0) + (z==0||z==15?1:0);
-        worldB1.s(x,y,z, edginess ? brgb(x/16*1.34,y/16*1.34,z/16*1.34) || 0xC0 : 0);
-      }
+        return edginess ? brgb(x/16*1.34,y/16*1.34,z/16*1.34) || 0xC0 : 0;
+      });
     })();
     
     console.log("End worldgen");
