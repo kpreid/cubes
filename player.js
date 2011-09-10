@@ -15,7 +15,7 @@ var Player = (function () {
       var oldSel = ""+cubeSelection+""+emptySelection;
       cubeSelection = emptySelection = null;
 
-      raycastFromScreen([0,0], 20, function (x,y,z) {
+      raycastFromScreen(20, function (x,y,z) {
         var wx = world.wx;
         var wy = world.wy;
         var wz = world.wz;
@@ -65,7 +65,7 @@ var Player = (function () {
     };
     
     this.input = Object.freeze({
-      click: function (pos, button) {
+      click: function (button) {
         var changed = false;
         if (button == 0) {
           // delete block

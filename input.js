@@ -4,6 +4,7 @@ function Input(eventReceiver, playerInput) {
   "use strict";
 
   var keymap = [];
+  var mousePos = [0,0];
   
   function evalVel(pos, neg) {
     return pos ? neg ? 0 : 1 : neg ? -1 : 0;
@@ -73,6 +74,8 @@ function Input(eventReceiver, playerInput) {
   var dx = 0;
   
   eventReceiver.addEventListener("mousemove", function (event) {
+    mousePos = [event.clientX, event.clientY];
+
     var swingY = event.clientY / (gl.viewportHeight*0.5) - 1;
     var swingX = event.clientX / (gl.viewportWidth*0.5) - 1;
     
@@ -83,16 +86,19 @@ function Input(eventReceiver, playerInput) {
     dx = -0.2 * deadzone(swingX, 0.2);
   }, false);
   eventReceiver.addEventListener("mouseout", function (event) {
+    mousePos = [event.clientX, event.clientY];
     dx = 0;
   }, false);
 
   eventReceiver.addEventListener("click", function (event) {
-    playerInput.click([event.clientX, event.clientY], 0);
+    mousePos = [event.clientX, event.clientY];
+    playerInput.click(0);
     return false;
   }, false);
   eventReceiver.oncontextmenu = function (event) {
+    mousePos = [event.clientX, event.clientY];
     // On Firefox 5.0.1 (most recent tested 2011-09-10), addEventListener does not suppress the builtin context menu, so this is an attribute rather than a listener.
-    playerInput.click([event.clientX, event.clientY], 1);
+    playerInput.click(1);
     return false;
   };
   
@@ -103,4 +109,5 @@ function Input(eventReceiver, playerInput) {
   }
   
   this.step = step;
+  this.getMousePos = function () { return mousePos; };
 }

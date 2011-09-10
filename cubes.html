@@ -215,21 +215,18 @@
     var cubeSelection = null;
     var emptySelection = null;
     
-    function raycastFromScreen(pos, radius, callback) {
-      // TODO: figure out why the commented out bits don't work.
-      
-      //var glxy = [pos[0] / gl.viewportWidth * 2 - 1, -(pos[1] / gl.viewportHeight * 2 - 1)];
-      var glxy = [0,0];
+    function raycastFromScreen(radius, callback) {
+      var pos = input.getMousePos();
+      var glxy = [pos[0] / gl.viewportWidth * 2 - 1, -(pos[1] / gl.viewportHeight * 2 - 1)];
       
       var unproject = mat4.create();
-      //mat4.multiply(pMatrix, mvMatrix, unproject);
-      mat4.set(mvMatrix, unproject);
+      mat4.multiply(pMatrix, mvMatrix, unproject);
       mat4.inverse(unproject);
 
-      var pt1 = mat4.multiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 0]));
-      var pt2 = mat4.multiplyVec3(unproject, vec3.create([glxy[0], glxy[1], -1]));
+      var pt1 = fixedmultiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 0]));
+      var pt2 = fixedmultiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 1]));
       
-      world.raycast(pt1, pt2, radius, callback);
+      return world.raycast(pt1, pt2, radius, callback);
     }
     
     function RenderBundle(primitive, textured, calcFunc) {
