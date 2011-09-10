@@ -1,5 +1,6 @@
 var Player = (function () {
   var PLAYER_SPEED = 6;
+  var movement = vec3.create([0,0,0]);
   
   // a Place stores a world and location in it; used for push/pop
   function Place(world) {
@@ -46,6 +47,8 @@ var Player = (function () {
     }
 
     this.step = function () {
+      vec3.set(movement, currentPlace.vel);
+      
       if (vec3.length(currentPlace.vel) > 0) {
         var rotmat = mat4.rotateY(mat4.identity(mat4.create()), currentPlace.yaw);
         var velOriented = mat4.multiplyVec3(rotmat, currentPlace.vel, vec3.create());
@@ -106,7 +109,7 @@ var Player = (function () {
           needsDraw = true;
         }
       },
-      set movement (vec) { currentPlace.vel = vec; },
+      set movement (vec) { vec3.set(vec, movement); },
       get pitch () { return currentPlace.pitch; },
       set pitch (angle) { currentPlace.pitch = angle; aimChanged(); },
       get yaw () { return currentPlace.yaw; },
