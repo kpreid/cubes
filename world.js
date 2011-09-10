@@ -1,9 +1,9 @@
-function World(size, blockSet) {
+function World(sizes, blockSet) {
   "use strict";
 
-  var wx = size;
-  var wy = 16;
-  var wz = size;
+  var wx = sizes[0];
+  var wy = sizes[1];
+  var wz = sizes[2];
   var blocks = new Uint8Array(wx*wy*wz);
   
   var gray = 1;

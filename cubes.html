@@ -200,9 +200,14 @@
     }
     
     console.log("Begin worldgen");
-    var worldB1 = new World(16, BlockSet.colors);
-    var worldB2 = new World(16, BlockSet.colors);
-    var worldH = new World(256, BlockSet.newTextured([worldB1, worldB2]));
+
+    // The size of a texture tile, and therefore the size of a block-defining-block
+    var TILE_SIZE = 16;
+    
+    var blockWorldSize = [TILE_SIZE,TILE_SIZE,TILE_SIZE];
+    var worldB1 = new World(blockWorldSize, BlockSet.colors);
+    var worldB2 = new World(blockWorldSize, BlockSet.colors);
+    var worldH = new World([256,16,256], BlockSet.newTextured([worldB1, worldB2]));
     
     var worlds = [worldB1, worldB2, worldH];
     var worldIndex = 2;
@@ -457,7 +462,6 @@
       depthSortDirty();
     }
     
-    var TILE_SIZE = 16;
     var TILE_COUNT_U = 4;
     var TILE_COUNT_V = 4;
     var TILE_MAPPINGS = [
@@ -557,8 +561,9 @@
         {
           var pp = player.getPosition();
           var d = 2;
-          text += "XYZ: " + pp[0].toFixed(d) + " " + pp[1].toFixed(d) + " " + pp[2].toFixed(d) + "\n";
+          text += "XYZ: " + pp[0].toFixed(d) + "," + pp[1].toFixed(d) + "," + pp[2].toFixed(d) + "\n";
         }
+        text += "Selected: " + cubeSelection + "  Empty: " + emptySelection + "\n";
         if (dirtyChunks.length) {
           text += ("Chunk Q: " + dirtyChunks.length + "\n");
         }
