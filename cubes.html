@@ -586,7 +586,8 @@
       // TODO: use webgl utils to avoid wasting time if invisible
       setInterval(doStep, 1000*timestep);
 
-      input = new Input(document, player.input);
+      input = new Input(canvas, player.input);
+      canvas.focus();
     }
 
 </script>
@@ -596,7 +597,7 @@
 
 
 <body onload="webGLStart(document.getElementById('view-canvas'),document.getElementById('stub-2d'));">
-    <canvas id="view-canvas" class="viewport" width="640" height="480"></canvas>
+    <canvas id="view-canvas" tabindex="0" class="viewport" width="640" height="480"></canvas>
     <canvas style="display:none" id="stub-2d">
 </body>
 

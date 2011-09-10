@@ -1,6 +1,6 @@
 // TODO: explicitly connect global vars
 
-function Input(document, playerInput) {
+function Input(eventReceiver, playerInput) {
   "use strict";
 
   var keymap = [];
@@ -36,7 +36,7 @@ function Input(document, playerInput) {
     ];
   }
   
-  document.onkeydown = function (event) {
+  eventReceiver.addEventListener("keydown", function (event) {
     // avoid disturbing browser shortcuts
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     
@@ -56,8 +56,8 @@ function Input(document, playerInput) {
     } else {
       return true;
     }
-  };
-  document.onkeyup = function (event) {
+  });
+  eventReceiver.addEventListener("keyup", function (event) {
     var code = event.keyCode || event.which;
     if (interestingInMap(code)) {
       var wasSetInMap = keymap[code];
@@ -67,12 +67,12 @@ function Input(document, playerInput) {
     } else {
       return true;
     }
-  };
+  });
   
   
   var dx = 0;
   
-  document.onmousemove = function (event) {
+  eventReceiver.addEventListener("mousemove", function (event) {
     var swingY = event.clientY / (gl.viewportHeight*0.5) - 1;
     var swingX = event.clientX / (gl.viewportWidth*0.5) - 1;
     
@@ -81,19 +81,19 @@ function Input(document, playerInput) {
     
     // x effect
     dx = -0.2 * deadzone(swingX, 0.2);
-  }
-  document.onmouseout = function (event) {
+  });
+  eventReceiver.addEventListener("mouseout", function (event) {
     dx = 0;
-  }
+  });
 
-  document.onclick = function (event) {
+  eventReceiver.addEventListener("click", function (event) {
     playerInput.click([event.clientX, event.clientY], 0);
     return false;
-  }
-  document.oncontextmenu = function (event) {
+  });
+  eventReceiver.addEventListener("contextmenu", function (event) {
     playerInput.click([event.clientX, event.clientY], 1);
     return false;
-  }
+  });
   
   function step() {
     if (dx != 0) {
