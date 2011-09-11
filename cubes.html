@@ -222,10 +222,14 @@
       for (var i = 0; i < blockWorldCount; i++) blockWorlds.push(new World(blockWorldSize, BlockSet.colors));
 
       // big world
-      worldH = new World([256,64,256], BlockSet.newTextured(blockWorlds));
+      worldH = new World([300,64,300], BlockSet.newTextured(blockWorlds));
       var wy = worldH.wy;
       worldH.edit(function (x,y,z,value) {
-        var altitude = (y-wy/2) - Math.round((Math.sin(x/10) + Math.sin(z/10))*3);
+        var altitude = (y-wy/2) - Math.round(
+          (Math.sin(x/8) + Math.sin(z/8))*1
+          + (Math.sin(x/14) + Math.sin(z/14))*3
+          + (Math.sin(x/2) + Math.sin(z/2))*0.6
+        );
         return altitude == 0 ? 2 : altitude > 0 ? 0 : 1;
       });
       
@@ -491,12 +495,18 @@
           });
           text += "\n";
         }
+        {
+          text += fpsDesc + "\n";
+        }
         theInfo.data = text;
+        
+        renderCount++;
     }
     
     var timestep = 1/30;
     var needsDraw = true;
     var input;
+    var fpsDesc = "", frameCount = 0, renderCount = 0, chunkRenders = 0;
     
     function doStep() {
       player.step();
@@ -504,7 +514,7 @@
       player.getWorld().step();
 
       var wrend = player.getWorldRenderer();
-      wrend.updateSomeChunks();
+      chunkRenders += wrend.updateSomeChunks();
 
       input.step();
 
@@ -514,7 +524,16 @@
         drawScene(wrend);
         needsDraw = false;
       }
+      
+      frameCount++;
     }
+
+    setInterval(function () {
+      var idle = frameCount - renderCount;
+      fpsDesc = "FPS: " + frameCount + (idle > 0 ? " (" + idle + " idle)" : "") + ", " + chunkRenders + " chunk renders";
+      frameCount = renderCount = chunkRenders = 0;
+    }, 1000);
+    
 
     function webGLStart(canvas, info) {
       theCanvas = canvas;

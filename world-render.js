@@ -133,11 +133,10 @@ var WorldRenderer = (function () {
     }
 
     function updateSomeChunks() {
-      for (var i = 0; i < 3; i++) {
-        if (dirtyChunks.length > 0) {
-          calcChunk(dirtyChunks.pop());
-        }
+      for (var i = 0; i < 6 && dirtyChunks.length > 0; i++) {
+        calcChunk(dirtyChunks.pop());
       }
+      return i;
     }
     this.updateSomeChunks = updateSomeChunks;
 
