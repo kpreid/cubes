@@ -44,8 +44,11 @@ function World(sizes, blockSet) {
    * If the callback returns a true value, the traversal will be stopped.
    */
   function raycast(pt1, pt2, radius, callback) {
-    // voxel traversal algorithm
+    // From "A Fast Voxel Traversal Algorithm for Ray Tracing"
+    // by John Amanatides and Andrew Woo, 1987
+    // http://www.cse.yorku.ca/~amana/research/grid.pdf
     // http://citeseer.ist.psu.edu/viewdoc/summary?doi=10.1.1.42.3443
+    // The radius limit is my addition.
     var x = Math.floor(pt1[0]);
     var y = Math.floor(pt1[1]);
     var z = Math.floor(pt1[2]);
