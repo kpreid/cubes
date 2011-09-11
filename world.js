@@ -6,6 +6,9 @@ function World(sizes, blockSet) {
   var wz = sizes[2];
   var blocks = new Uint8Array(wx*wy*wz);
   
+  var numToDisturb = wx*wy*wz * 0.000001; // TODO needs to be timestep-dependent
+  console.log(numToDisturb);
+  
   // --- Internal functions ---
   
   function intbound(s, ds) {
@@ -115,6 +118,26 @@ function World(sizes, blockSet) {
     }
   }
   
+  function step() {
+    // turn fractional part of number of iterations into randomness - 1.25 = 1 3/4 and 2 1/4 of the time
+    var roundedNum = Math.floor(numToDisturb) + (Math.random() < (numToDisturb % 1) ? 1 : 0);
+    
+    for (var i = 0; i < roundedNum; i++) {
+      var x = Math.floor(Math.random() * wx);
+      var y = Math.floor(Math.random() * wy);
+      var z = Math.floor(Math.random() * wz);
+      
+      // Placeholder behavior - exchange block ids
+      var value = g(x,y,z);
+      if (value == 2) value = 3;
+      else if (value == 3) value = 2;
+      else continue;
+      s(x, y, z, value);
+      
+      player.getWorldRenderer().dirtyBlock(x,z); // TODO global variable
+    }
+  }
+  
   // --- Final init ---
   
   this.g = g;
@@ -124,6 +147,8 @@ function World(sizes, blockSet) {
   this.raw = blocks;
   this.raycast = raycast;
   this.edit = edit;
+  this.step = step;
+  
   this.wx = wx;
   this.wy = wy;
   this.wz = wz;

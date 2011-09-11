@@ -454,6 +454,8 @@
     
     function doStep() {
       player.step();
+      
+      player.getWorld().step();
 
       var wrend = player.getWorldRenderer();
       wrend.updateSomeChunks();
