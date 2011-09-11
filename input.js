@@ -157,9 +157,13 @@ function Input(eventReceiver, playerInput) {
       }
     }
     
+    var cs = window.getComputedStyle(menu, null);
+    var menuW = parseInt(cs.width);
+    var menuH = parseInt(cs.height);
+    
     menu.style.visibility = 'visible';
-    menu.style.left = (mousePos[0] + 1) + "px";
-    menu.style.top  = (mousePos[1] + 1) + "px";
+    menu.style.left = (mousePos[0] - menuW/2) + "px";
+    menu.style.top  = (mousePos[1] - menuH/2) + "px";
   }
   function hideMenu() {
     document.getElementById("menu").style.visibility = 'hidden';
