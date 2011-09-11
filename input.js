@@ -77,8 +77,12 @@ function Input(eventReceiver, playerInput) {
   eventReceiver.addEventListener("mousemove", function (event) {
     mousePos = [event.clientX, event.clientY];
 
-    var swingY = event.clientY / (gl.viewportHeight*0.5) - 1;
-    var swingX = event.clientX / (gl.viewportWidth*0.5) - 1;
+    var cs = window.getComputedStyle(eventReceiver, null);
+    var w = parseInt(cs.width);
+    var h = parseInt(cs.height);
+
+    var swingY = event.clientY / (h*0.5) - 1;
+    var swingX = event.clientX / (w*0.5) - 1;
     
     // y effect
     playerInput.pitch = -Math.PI/2 * swingY;

@@ -52,7 +52,7 @@ function BlockRenderer(blockSet) {
     // restore stuff (except for framebuffer which we're about to read)
     pMatrix = savePMatrix;
     mvMatrix = saveMVMatrix;
-    gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     
     var imageData = context2d.createImageData(rttFramebuffer.width, rttFramebuffer.height);
     var arrayC = imageData.data;

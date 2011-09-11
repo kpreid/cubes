@@ -195,11 +195,9 @@
     function updateViewport() {
       theCanvas.width = parseInt(window.getComputedStyle(theCanvas,null).width);
       theCanvas.height = parseInt(window.getComputedStyle(theCanvas,null).height);
-      gl.viewportWidth = theCanvas.width;
-      gl.viewportHeight = theCanvas.height;
       
-      gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-      mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 160.0, pMatrix);
+      gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+      mat4.perspective(45, gl.drawingBufferWidth / gl.drawingBufferHeight, 0.1, 160.0, pMatrix);
     }
     
     console.log("Begin worldgen");
@@ -297,7 +295,7 @@
     
     function raycastFromScreen(radius, callback) {
       var pos = input.getMousePos();
-      var glxy = [pos[0] / gl.viewportWidth * 2 - 1, -(pos[1] / gl.viewportHeight * 2 - 1)];
+      var glxy = [pos[0] / theCanvas.width * 2 - 1, -(pos[1] / theCanvas.height * 2 - 1)];
       
       var unproject = mat4.identity(mat4.create());
       player.render.applyViewTransform(unproject);
