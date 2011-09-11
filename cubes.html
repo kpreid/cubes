@@ -199,35 +199,61 @@
     
     console.log("Begin worldgen");
 
-    var blockWorldSize = [World.TILE_SIZE,World.TILE_SIZE,World.TILE_SIZE];
-    var worldB1 = new World(blockWorldSize, BlockSet.colors);
-    var worldB2 = new World(blockWorldSize, BlockSet.colors);
-    var worldH = new World([256,64,256], BlockSet.newTextured([worldB1, worldB2]));
-        
+    var worldH;
+    
     // generate initial world contents
     (function () {
-      function brgb(r,g,b) {
-        return ((b * 3) << 4) + ((g * 3) << 2) + (r * 3) << 0
-      }
-      
+      var blockWorldSize = [World.TILE_SIZE,World.TILE_SIZE,World.TILE_SIZE];
+      var blockWorldCount = 2;
+      var blockWorlds = [];
+      for (var i = 0; i < blockWorldCount; i++) blockWorlds.push(new World(blockWorldSize, BlockSet.colors));
+
+      // big world
+      worldH = new World([256,64,256], BlockSet.newTextured(blockWorlds));
       var wy = worldH.wy;
       worldH.edit(function (x,y,z,value) {
         var altitude = (y-wy/2) - Math.round((Math.sin(x/10) + Math.sin(z/10))*3);
         return altitude == 0 ? 2 : altitude > 0 ? 0 : 1;
       });
       
-      var wy = worldB2.wy;
-      worldB2.edit(function (x,y,z,value) {
-        var altitude = (y-wy/2) - Math.round((Math.sin(x/10) + Math.sin(z/10))*3);
-        return y == 15 ? 2 : y == 14 ? 3 : (Math.floor(x/3) + y + Math.floor(z/2)) % 1.5 ? 1 : 0xC0;
+      // --- block worlds ---
+
+      function brgb(r,g,b) {
+        return (((b * 3) << 4) + ((g * 3) << 2) + (r * 3) << 0) || 0xC0;
+      }
+      
+      function genv(x,y,z) {
+        return {
+          x: x,
+          y: y,
+          z: z,
+          te: y == 15 ?1:0,
+          tp: y == 14 ?1:0,
+          be: y == 0 ?1:0,
+          bp: y == 1 ?1:0,
+          se: (z == 0 || z == 15 || x == 0 || x == 15) ?1:0,
+          sp: (z == 1 || z == 14 || x == 1 || x == 14) ?1:0
+        };
+      }
+      
+      function flat(color) {
+        return function () { return color; }
+      }
+      function rgbPat(x,y,z) { return brgb(x/16*1.34,y/16*1.34,z/16*1.34); }
+      function specklePat(x,y,z) { return (Math.floor(x/3) + y + Math.floor(z/2)) % 1.5 ? 1 : 0xC0; }
+      
+      function genedit(world, patfunc) {
+        world.edit(function (x,y,z,value) {
+          return patfunc(genv(x,y,z))(x,y,z);
+        });
+      }
+      
+      genedit(blockWorlds[0], function (v) {
+        return (v.te||v.be||v.se) ? rgbPat : flat(0);
       });
       
-      var wx = worldB1.wx;
-      var wy = worldB1.wy;
-      var wz = worldB1.wz;
-      worldB1.edit(function (x,y,z,value) {
-        var edginess = (x==0||x==15?1:0) + (y==0||y==15?1:0) + (z==0||z==15?1:0);
-        return edginess ? brgb(x/16*1.34,y/16*1.34,z/16*1.34) || 0xC0 : 0;
+      genedit(blockWorlds[1], function (v) {
+        return v.te ? flat(2) : v.tp ? flat(3) : specklePat;
       });
     })();
     
