@@ -37,7 +37,8 @@ var UNIT_NX = vec3.create([-1,0,0]);
 var UNIT_NY = vec3.create([0,-1,0]);
 var UNIT_NZ = vec3.create([0,0,-1]);
 
-function prepareProgram(vertexShader, fragmentShader, attribs, uniforms) {
+function prepareProgram(gl, vertexShader, fragmentShader, attribs, uniforms) {
+  "use strict";
   var shaderProgram = gl.createProgram();
   gl.attachShader(shaderProgram, vertexShader);
   gl.attachShader(shaderProgram, fragmentShader);

@@ -422,7 +422,7 @@
       // should do live, but makes Chrome glitchy
       updateViewport();
     
-      prepareProgram(getShader(gl, "shader-vs"), getShader(gl, "shader-fs"), attribs, uniforms);
+      prepareProgram(gl, getShader(gl, "shader-vs"), getShader(gl, "shader-fs"), attribs, uniforms);
       initBuffers();
 
       gl.clearColor(0.2,0.2,0.5,1.0); // TODO: send to shader for fog
