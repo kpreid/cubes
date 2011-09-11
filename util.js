@@ -37,3 +37,31 @@ var UNIT_NX = vec3.create([-1,0,0]);
 var UNIT_NY = vec3.create([0,-1,0]);
 var UNIT_NZ = vec3.create([0,0,-1]);
 
+function prepareProgram(vertexShader, fragmentShader, attribs, uniforms) {
+  var shaderProgram = gl.createProgram();
+  gl.attachShader(shaderProgram, vertexShader);
+  gl.attachShader(shaderProgram, fragmentShader);
+  gl.linkProgram(shaderProgram);
+
+  if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+    console.error(gl.getProgramInfoLog(shaderProgram));
+    throw new Error("Could not link shader program; see console");
+  }
+
+  gl.useProgram(shaderProgram);
+  
+  function map(table, getter) {
+    for (var name in table) {
+      if (!table.hasOwnProperty(name)) continue;
+      table[name] = gl[getter](shaderProgram, name);
+      if (table[name] === -1 || table[name] === null) { // -1 for attrib, null for uniform
+        console.error(getter + "(" + name + ") failed for shader");
+      }
+    }
+  }
+  map(attribs, "getAttribLocation");
+  map(uniforms, "getUniformLocation");
+
+  gl.enableVertexAttribArray(attribs.aVertexPosition);
+  gl.enableVertexAttribArray(attribs.aVertexColor);
+}

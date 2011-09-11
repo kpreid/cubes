@@ -160,53 +160,31 @@
 
         if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
             console.error(gl.getShaderInfoLog(shader));
-            return null;
+            throw new Error("Could not compile shader");
         }
 
         return shader;
     }
 
-
-    var shaderProgram;
-
-    function initShaders() {
-        var fragmentShader = getShader(gl, "shader-fs");
-        var vertexShader = getShader(gl, "shader-vs");
-
-        shaderProgram = gl.createProgram();
-        gl.attachShader(shaderProgram, vertexShader);
-        gl.attachShader(shaderProgram, fragmentShader);
-        gl.linkProgram(shaderProgram);
-
-        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-            console.error("Could not initialise shaders");
-            console.error(gl.getProgramInfoLog(shaderProgram));
-        }
-
-        gl.useProgram(shaderProgram);
-
-        shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
-        gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
-
-        shaderProgram.vertexColorAttribute = gl.getAttribLocation(shaderProgram, "aVertexColor");
-        gl.enableVertexAttribArray(shaderProgram.vertexColorAttribute);
-
-        shaderProgram.textureCoordAttribute = gl.getAttribLocation(shaderProgram, "aTextureCoord");
-        gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute);
-
-        shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
-        shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
-        shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler");
-        shaderProgram.textureUniform = gl.getUniformLocation(shaderProgram, "uTextureEnabled");
-    }
-
+    // prepareProgram fills in these with the locations
+    var attribs = {
+      aVertexPosition: null,
+      aVertexColor: null,
+      aTextureCoord: null
+    };
+    var uniforms = {
+      uPMatrix: null,
+      uMVMatrix: null,
+      uSampler: null,
+      uTextureEnabled: null
+    };
 
     var mvMatrix = mat4.create();
     var pMatrix = mat4.create();
 
     function setMatrixUniforms() {
-        gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
-        gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
+        gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
+        gl.uniformMatrix4fv(uniforms.uMVMatrix, false, mvMatrix);
     }
 
     function updateViewport() {
@@ -300,24 +278,24 @@
       
       this.draw = function () {
         gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
-        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(attribs.aVertexPosition, 3, gl.FLOAT, false, 0, 0);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
-        gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 4, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(attribs.aVertexColor, 4, gl.FLOAT, false, 0, 0);
 
-        gl.uniform1i(shaderProgram.textureUniform, optTexture ? 1 : 0);
+        gl.uniform1i(uniforms.uTextureEnabled, optTexture ? 1 : 0);
 
         if (optTexture) {
-          gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute);
+          gl.enableVertexAttribArray(attribs.aTextureCoord);
           
           gl.bindBuffer(gl.ARRAY_BUFFER, tbuf);
-          gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
+          gl.vertexAttribPointer(attribs.aTextureCoord, 2, gl.FLOAT, false, 0, 0);
   
           gl.activeTexture(gl.TEXTURE0);
           gl.bindTexture(gl.TEXTURE_2D, optTexture);
-          gl.uniform1i(shaderProgram.samplerUniform, 0);
+          gl.uniform1i(uniforms.uSampler, 0);
         } else {
-          gl.disableVertexAttribArray(shaderProgram.textureCoordAttribute);
+          gl.disableVertexAttribArray(attribs.aTextureCoord);
         }
         setMatrixUniforms();
         gl.drawArrays(primitive, 0, numVertices);
@@ -444,7 +422,7 @@
       // should do live, but makes Chrome glitchy
       updateViewport();
     
-      initShaders();
+      prepareProgram(getShader(gl, "shader-vs"), getShader(gl, "shader-fs"), attribs, uniforms);
       initBuffers();
 
       gl.clearColor(0.2,0.2,0.5,1.0); // TODO: send to shader for fog
