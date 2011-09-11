@@ -73,6 +73,7 @@ function Input(eventReceiver, playerInput) {
   
   
   var dx = 0;
+  var prevx = 0;
   
   eventReceiver.addEventListener("mousemove", function (event) {
     mousePos = [event.clientX, event.clientY];
@@ -88,7 +89,10 @@ function Input(eventReceiver, playerInput) {
     playerInput.pitch = -Math.PI/2 * swingY;
     
     // x effect
-    dx = -0.2 * deadzone(swingX, 0.2);
+    var direct = -Math.PI/2 * swingX;
+    playerInput.yaw += (direct - prevx);
+    prevx = direct;
+    dx = -0.5 * deadzone(swingX, 0.4);
   }, false);
   eventReceiver.addEventListener("mouseout", function (event) {
     mousePos = [event.clientX, event.clientY];
