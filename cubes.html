@@ -204,7 +204,7 @@
     // generate initial world contents
     (function () {
       var blockWorldSize = [World.TILE_SIZE,World.TILE_SIZE,World.TILE_SIZE];
-      var blockWorldCount = 2;
+      var blockWorldCount = 10;
       var blockWorlds = [];
       for (var i = 0; i < blockWorldCount; i++) blockWorlds.push(new World(blockWorldSize, BlockSet.colors));
 
@@ -223,7 +223,7 @@
       }
       
       function genv(x,y,z) {
-        return {
+        var v = {
           x: x,
           y: y,
           z: z,
@@ -234,27 +234,53 @@
           se: (z == 0 || z == 15 || x == 0 || x == 15) ?1:0,
           sp: (z == 1 || z == 14 || x == 1 || x == 14) ?1:0
         };
+        v.s = v.te + v.be + v.se;
+        v.e = v.s > 1 ?1:0;
+        v.c = v.s > 0 ?1:0;
+        return v;
+      }
+      
+      function pick(a) {
+        return a[Math.floor(Math.random() * a.length)];
+      }
+      function pickColor() {
+        return Math.floor(Math.random() * 256);
+      }
+      function pickCond(p1, p2) {
+        var c = pick(["te","tp","be","bp","se","sp","s","e","c"]);
+        return function (v) { return v[c] ? p1(v) : p2(v); }
       }
       
       function flat(color) {
-        return function () { return color; }
+        return function (v) { return color; }
       }
-      function rgbPat(x,y,z) { return brgb(x/16*1.34,y/16*1.34,z/16*1.34); }
-      function specklePat(x,y,z) { return (Math.floor(x/3) + y + Math.floor(z/2)) % 1.5 ? 1 : 0xC0; }
+      function rgbPat(v) { return brgb(v.x/16*1.34,v.y/16*1.34,v.z/16*1.34); }
+      function speckle(p1, p2) {
+        return function (v) {
+          return (Math.floor(v.x/4) + v.y + Math.floor(v.z/2)) % 3 ? p1(v) : p2(v);
+        };
+      }
       
       function genedit(world, patfunc) {
         world.edit(function (x,y,z,value) {
-          return patfunc(genv(x,y,z))(x,y,z);
+          return patfunc(genv(x,y,z));
         });
       }
       
       genedit(blockWorlds[0], function (v) {
-        return (v.te||v.be||v.se) ? rgbPat : flat(0);
+        return ((v.te||v.be||v.se) ? rgbPat : flat(0))(v);
       });
       
       genedit(blockWorlds[1], function (v) {
-        return v.te ? flat(2) : v.tp ? flat(3) : specklePat;
+        return (v.te ? flat(2) : v.tp ? flat(3) : speckle(flat(1), flat(0xC0)))(v);
       });
+      
+      for (var i = 2; i < blockWorldCount; i++) {
+        var c = pickCond(flat(pickColor()), 
+                  pickCond(flat(pickColor()), 
+                    speckle(flat(pickColor()), flat(pickColor()))));
+        genedit(blockWorlds[i], c);
+      }
     })();
     
     console.log("End worldgen");

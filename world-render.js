@@ -5,8 +5,9 @@ var WorldRenderer = (function () {
   // Smaller chunks are faster to update when the world changes, but have a higher per-frame cost.
   var CHUNKSIZE = 12;
   
-  var TILE_COUNT_U = 4;
-  var TILE_COUNT_V = 4;
+  // TODO: make tile counts depend on blockset size
+  var TILE_COUNT_U = 16;
+  var TILE_COUNT_V = 16;
   var TILE_SIZE_U = 1/TILE_COUNT_U;
   var TILE_SIZE_V = 1/TILE_COUNT_V;
   var TILE_MAPPINGS = [
