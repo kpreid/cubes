@@ -206,11 +206,12 @@ var WorldRenderer = (function () {
               colors.push(color[0],color[1],color[2],color[3]);
             }
           }
+          var depthOriginBuf = vec3.create();
           function squares(origin, v1, v2, vDepth, tileLayers, texO, texD, color) {
             if (tileLayers == null) {
               square(origin, v1, v2, null, texO, texD, color);
             } else {
-              var depthOriginBuf = vec3.create(origin);
+              vec3.set(origin, depthOriginBuf);
               for (var i = 0; i < TILE_SIZE; i++) {
                 square(depthOriginBuf, v1, v2, tileLayers[i], texO, texD, color);
                 depthOriginBuf[0] += vDepth[0]*PIXEL_SIZE;
