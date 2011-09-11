@@ -8,7 +8,9 @@ var Player = (function () {
     this.pos = vec3.create([0,0,0]);
     this.vel = vec3.create([0,0,0]);
     this.yaw = Math.PI/4 * 5;
-    this.pitch = 0;
+
+    // Current tool/block id
+    this.tool = 2; // first non-bogus block id
 
     // must happen late
     this.wrend = new WorldRenderer(world, this); // ideally, would be readonly(this)
@@ -20,6 +22,9 @@ var Player = (function () {
     // Worlds we've been in
     var placeStack = [];
     var currentPlace = new Place(initialWorld);
+
+    // kludge: Since UI sets pitch absolutely, it's not a place variable
+    var pitch = 0;
   
     function aimChanged() {
       needsDraw = true; // because this routine is also 'view direction changed'
@@ -64,7 +69,7 @@ var Player = (function () {
     this.render = {
       applyViewTransform: function (matrix) {
         // look direction
-        mat4.rotate(matrix, -currentPlace.pitch, [1, 0, 0]);
+        mat4.rotate(matrix, -pitch, [1, 0, 0]);
         mat4.rotate(matrix, -currentPlace.yaw, [0, 1, 0]);
       
         // position
@@ -86,9 +91,9 @@ var Player = (function () {
     };
     
     this.input = Object.freeze({
-      click: function (button) {
+      click: function (button /* currently defunct */) {
         var changed = false;
-        if (button == 0) {
+        if (currentPlace.tool == BlockSet.ID_EMPTY) {
           // delete block
           // TODO: global variables
           if (cubeSelection != null) {
@@ -99,12 +104,12 @@ var Player = (function () {
               changed = true;
             }
           }
-        } else if (button == 1) {
+        } else {
           // create block
           if (emptySelection != null) {
             var x = emptySelection[0], y = emptySelection[1], z = emptySelection[2];
             if (!currentPlace.world.solid(x,y,z)) {
-              currentPlace.world.s(x,y,z, 64);
+              currentPlace.world.s(x,y,z, currentPlace.tool);
               currentPlace.wrend.dirtyBlock(x,z);
               changed = true;
             }
@@ -115,13 +120,16 @@ var Player = (function () {
           needsDraw = true;
         }
       },
+      get blockSet () { return currentPlace.world.blockSet; },
       set movement (vec) { vec3.set(vec, movement); },
-      get pitch () { return currentPlace.pitch; },
-      set pitch (angle) { currentPlace.pitch = angle; aimChanged(); },
+      get pitch () { return pitch; },
+      set pitch (angle) { pitch = angle; aimChanged(); },
       get yaw () { return currentPlace.yaw; },
       set yaw (angle) { currentPlace.yaw = angle; aimChanged(); },
+      get tool () { return currentPlace.tool; },
+      set tool (id) { currentPlace.tool = id; aimChanged(); },
       changeWorld: function (direction) {
-        // TODO: global variables cubeSelection, needsDraw
+        // TODO: global variables cubeSelection, aimChanged
         switch (direction) {
           case 1:
             if (cubeSelection == null) break;
@@ -135,13 +143,14 @@ var Player = (function () {
             currentPlace = new Place(world);
             vec3.set([World.TILE_SIZE/2, World.TILE_SIZE + 2, World.TILE_SIZE/2], currentPlace.pos);
             placeStack.push(oldPlace);
-            needsDraw = true;
+            aimChanged();
             
             break;
           case -1:
             if (placeStack.length <= 0) break;
             currentPlace = placeStack.pop();
-            needsDraw = true;
+            currentPlace.wrend.rebuildBlockTexture(); // TODO: kludge
+            aimChanged();
             break;
         }
       }

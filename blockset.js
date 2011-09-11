@@ -8,6 +8,7 @@ var BlockSet = (function () {
   BlockSet.ID_BOGUS = 1;
 
   BlockSet.colors = Object.freeze({
+    length: 256,
     textured: false,
     writeColor: function (blockID, scale, target, offset) {
       target[offset] = (blockID & 3) / 3 * scale;
@@ -26,6 +27,7 @@ var BlockSet = (function () {
     var tilings = [];
     for (var i = 0; i < worlds.length; i++) tilings.push({});
     return Object.freeze({
+      length: worlds.length + 1,
       textured: true,
       writeColor: function (blockID, scale, target, offset) {
         target[offset] = scale;

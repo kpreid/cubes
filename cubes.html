@@ -21,6 +21,24 @@
     margin: 0 0;
     display: table;
   }
+  
+  #menu {
+    position: fixed;
+    background: gray;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 5px;
+    display: table;
+  }
+  #menu canvas {
+    margin: 1px 1px;
+  }
+  #menu .selectedTool {
+    border-radius: 5px;
+    margin: -1px -1px; /* outlines don't have radius */
+    border: 2px solid white;
+    background: gray;
+  }
+  
 </style>
 
 <script src="webgl-debug.js"></script>
@@ -244,8 +262,9 @@
       var pos = input.getMousePos();
       var glxy = [pos[0] / gl.viewportWidth * 2 - 1, -(pos[1] / gl.viewportHeight * 2 - 1)];
       
-      var unproject = mat4.create();
-      mat4.multiply(pMatrix, mvMatrix, unproject);
+      var unproject = mat4.identity(mat4.create());
+      player.render.applyViewTransform(unproject);
+      mat4.multiply(pMatrix, unproject, unproject);
       mat4.inverse(unproject);
 
       var pt1 = fixedmultiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 0]));
@@ -436,10 +455,6 @@
       player = new Player(worldH);
       player.setPosition([worldH.wx/2, worldH.wy/2 + 10, worldH.wz/2]);
 
-      var blockRenderer = new BlockRenderer(worldH);
-      var cctx = document.getElementById('stub').getContext('2d');
-      cctx.putImageData(blockRenderer.blockToImageData(2, cctx), 0, 0);
-
       // TODO: use webgl utils to avoid wasting time if invisible
       setInterval(doStep, 1000*timestep);
 
@@ -455,8 +470,10 @@
 
 <body onload="webGLStart(document.getElementById('view-canvas'), document.getElementById('info'));">
     <canvas id="view-canvas" tabindex="0" class="viewport" width="640" height="480"></canvas>
-    <canvas id="stub" width="64" height="64" style="position:absolute; right:0; top:0"></canvas>
     <pre id="info">Loading...</pre>
+    
+    <div id="menu" style="visibility: hidden;">
+    </div>
 </body>
 
 </html>

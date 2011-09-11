@@ -3,7 +3,7 @@
 function Input(eventReceiver, playerInput) {
   "use strict";
 
-  var keymap = [];
+  var keymap = {};
   var mousePos = [0,0];
   
   function evalVel(pos, neg) {
@@ -45,8 +45,8 @@ function Input(eventReceiver, playerInput) {
 
     // handlers for 'action' keys (immediate effects)
     switch (String.fromCharCode(code)) {
-      case "R": playerInput.changeWorld(1); return false;
-      case "F": playerInput.changeWorld(-1); return false;
+      case "R": hideMenu(); playerInput.changeWorld(1); return false;
+      case "F": hideMenu(); playerInput.changeWorld(-1); return false;
     }
 
     // 'mode' keys such as movement directions go into the keymap
@@ -58,7 +58,8 @@ function Input(eventReceiver, playerInput) {
       return true;
     }
   }, false);
-  eventReceiver.addEventListener("keyup", function (event) {
+  document.addEventListener("keyup", function (event) {
+    // on document to catch key-ups after focus changes etc.
     var code = event.keyCode || event.which;
     if (interestingInMap(code)) {
       var wasSetInMap = keymap[code];
@@ -68,7 +69,7 @@ function Input(eventReceiver, playerInput) {
     } else {
       return true;
     }
-  }, false);
+  }, true);
   
   
   var dx = 0;
@@ -89,16 +90,29 @@ function Input(eventReceiver, playerInput) {
     mousePos = [event.clientX, event.clientY];
     dx = 0;
   }, false);
+  eventReceiver.onblur = function (event) {
+    keymap = {};
+    dx = 0;
+  };
 
   eventReceiver.addEventListener("click", function (event) {
     mousePos = [event.clientX, event.clientY];
-    playerInput.click(0);
+    if (menuVisible()) {
+      hideMenu();
+    } else {
+      eventReceiver.focus();
+      playerInput.click(0);
+    }
     return false;
   }, false);
-  eventReceiver.oncontextmenu = function (event) {
+  eventReceiver.oncontextmenu = function (event) { // On Firefox 5.0.1 (most recent tested 2011-09-10), addEventListener does not suppress the builtin context menu, so this is an attribute rather than a listener.
     mousePos = [event.clientX, event.clientY];
-    // On Firefox 5.0.1 (most recent tested 2011-09-10), addEventListener does not suppress the builtin context menu, so this is an attribute rather than a listener.
-    playerInput.click(1);
+    
+    if (menuVisible())
+      hideMenu();
+    else
+      showMenu();
+
     return false;
   };
   
@@ -109,6 +123,47 @@ function Input(eventReceiver, playerInput) {
     if (dx != 0) {
       playerInput.yaw += dx;
     }
+  }
+  
+  function menuVisible() {
+    return document.getElementById("menu").style.visibility !== "hidden";
+  }
+
+  function showMenu() {
+    var menu = document.getElementById("menu"); // TODO global id
+    while (menu.firstChild) menu.removeChild(menu.firstChild);
+
+    var blockSet = playerInput.blockSet;
+    var blockRenderer = new BlockRenderer(blockSet);
+    
+    var size = Math.min(64, 4096 / blockSet.length);
+    
+    for (var i = 0; i < blockSet.length; i++) {
+      var canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 64; // TODO magic number
+      canvas.style.width = canvas.style.height = size + "px";
+      if (i == playerInput.tool) {
+        canvas.className = "selectedTool";
+      }
+      menu.appendChild(canvas);
+      var cctx = canvas.getContext('2d');
+      cctx.putImageData(blockRenderer.blockToImageData(i, cctx), 0, 0);
+      canvas.onclick = (function (i) { return function () {
+        hideMenu();
+        playerInput.tool = i;
+      }; })(i);
+      if ((i+1) % 16 == 0) {
+        menu.appendChild(document.createElement('br'));
+      }
+    }
+    
+    menu.style.visibility = 'visible';
+    menu.style.left = (mousePos[0] + 1) + "px";
+    menu.style.top  = (mousePos[1] + 1) + "px";
+  }
+  function hideMenu() {
+    document.getElementById("menu").style.visibility = 'hidden';
+    eventReceiver.focus();
   }
   
   this.step = step;

@@ -1,7 +1,7 @@
 // Renders single blocks from a world.
 
-function BlockRenderer(world) {
-  var singleBlockWorld = new World([1,1,1], world.blockSet);
+function BlockRenderer(blockSet) {
+  var singleBlockWorld = new World([1,1,1], blockSet);
   singleBlockWorld.s(0,0,0,1);
   singleBlockR = new WorldRenderer(singleBlockWorld, {pos: [0,0,0]});
   
