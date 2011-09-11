@@ -48,7 +48,7 @@ var BlockSet = (function () {
           var world = worlds[wi];
           var opaque = true;
           
-          // TODO: To support non-cubical objects, we should slice the entire volume of the block and generate as many tiles as needed.
+          // To support non-cubical objects, we slice the entire volume of the block and generate as many tiles as needed. sliceWorld generates one such slice.
         
           function sliceWorld(faceName, layer, transform, layers) {
             // allocate next position
@@ -80,8 +80,11 @@ var BlockSet = (function () {
               var value = world.g(vec[0],vec[1],vec[2]);
               world.blockSet.writeColor(value, 255, data.data, c);
               if (data.data[c+3] < 255) {
-                opaque = false;
+                // A block is opaque if all of its outside (layer-0) pixels are opaque.
+                if (layer == 0)
+                  opaque = false;
               } else if (!world.opaque(view[0],view[1],view[2])) {
+                // A layer has significant content only if there is an UNOBSCURED (hence the above check) opaque pixel.
                 thisLayerNotEmpty = true;
               }
             }
