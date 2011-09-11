@@ -270,7 +270,7 @@
       function rgbPat(v) { return brgb(v.x/16*1.34,v.y/16*1.34,v.z/16*1.34); }
       function speckle(p1, p2) {
         return function (v) {
-          return (Math.floor(v.x/4) + v.y + Math.floor(v.z/2)) % 3 ? p1(v) : p2(v);
+          return (Math.floor(v.x/4) + v.y + Math.floor(v.z/2)) % 4 ? p1(v) : p2(v);
         };
       }
       
@@ -285,7 +285,9 @@
       });
       
       genedit(blockWorlds[1], function (v) {
-        return (v.te ? flat(2) : v.tp ? flat(3) : speckle(flat(1), flat(0xC0)))(v);
+        return (v.te ? speckle(flat(brgb(.67,.34,.34)), flat(brgb(.67,0,0))) :
+                v.tp ? flat(brgb(1,.34,.34)) :
+                speckle(flat(brgb(.34,0,0)), flat(brgb(0,0,0))))(v);
       });
       
       genedit(blockWorlds[2], speckle(flat(0), flat(brgb(0,1,0))));
