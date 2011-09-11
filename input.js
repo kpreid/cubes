@@ -129,43 +129,63 @@ function Input(eventReceiver, playerInput) {
     return document.getElementById("menu").style.visibility !== "hidden";
   }
 
+  var blockSetInMenu = null;
+  var menuCanvases = [];
   function showMenu() {
     var menu = document.getElementById("menu"); // TODO global id
-    while (menu.firstChild) menu.removeChild(menu.firstChild);
 
-    var blockSet = playerInput.blockSet;
-    var blockRenderer = new BlockRenderer(blockSet);
+    // TODO: Need to rebuild menu if blocks in the set have changed appearance
+    if (playerInput.blockSet !== blockSetInMenu) {
+      while (menu.firstChild) menu.removeChild(menu.firstChild);
+
+      blockSetInMenu = playerInput.blockSet;
+      var blockRenderer = new BlockRenderer(blockSetInMenu);
     
-    var size = Math.min(64, 4096 / blockSet.length);
+      var sidecount = Math.ceil(Math.sqrt(blockSetInMenu.length));
+      var size = Math.min(64, 300 / sidecount);
     
-    for (var i = 0; i < blockSet.length; i++) {
-      var canvas = document.createElement('canvas');
-      canvas.width = canvas.height = 64; // TODO magic number
-      canvas.style.width = canvas.style.height = size + "px";
-      if (i == playerInput.tool) {
-        canvas.className = "selectedTool";
+      for (var i = 0; i < blockSetInMenu.length; i++) {
+        var canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 64; // TODO magic number
+        canvas.style.width = canvas.style.height = size + "px";
+        menuCanvases[i] = canvas;
+        menu.appendChild(canvas);
+        var cctx = canvas.getContext('2d');
+        cctx.putImageData(blockRenderer.blockToImageData(i, cctx), 0, 0);
+        (function (canvas,i) {
+          canvas.onclick = function () {
+            hideMenu();
+            playerInput.tool = i;
+            return false;
+          };
+          canvas.onmousedown = canvas.onselectstart = function () {
+            canvas.className = "selectedTool";
+            return false; // inhibit selection
+          };
+          canvas.onmouseout = function () {
+            canvas.className = i == playerInput.tool ? "selectedTool" : "";
+            return true;
+          };
+        })(canvas,i);
+        if ((i+1) % sidecount == 0) {
+          menu.appendChild(document.createElement('br'));
+        }
       }
-      menu.appendChild(canvas);
-      var cctx = canvas.getContext('2d');
-      cctx.putImageData(blockRenderer.blockToImageData(i, cctx), 0, 0);
-      canvas.onclick = (function (i) { return function () {
-        hideMenu();
-        playerInput.tool = i;
-      }; })(i);
-      if ((i+1) % 16 == 0) {
-        menu.appendChild(document.createElement('br'));
-      }
+      
+      blockRenderer.delete();
+    }
+
+    for (var i = 0; i < blockSetInMenu.length; i++) {
+      menuCanvases[i].className = i == playerInput.tool ? "selectedTool" : "";
     }
     
     var cs = window.getComputedStyle(menu, null);
     var menuW = parseInt(cs.width);
     var menuH = parseInt(cs.height);
     
-    menu.style.visibility = 'visible';
     menu.style.left = (mousePos[0] - menuW/2) + "px";
     menu.style.top  = (mousePos[1] - menuH/2) + "px";
-    
-    blockRenderer.delete();
+    menu.style.visibility = 'visible';
   }
   function hideMenu() {
     document.getElementById("menu").style.visibility = 'hidden';
