@@ -164,6 +164,8 @@ function Input(eventReceiver, playerInput) {
     menu.style.visibility = 'visible';
     menu.style.left = (mousePos[0] - menuW/2) + "px";
     menu.style.top  = (mousePos[1] - menuH/2) + "px";
+    
+    blockRenderer.delete();
   }
   function hideMenu() {
     document.getElementById("menu").style.visibility = 'hidden';
