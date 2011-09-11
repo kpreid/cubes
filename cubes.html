@@ -217,7 +217,7 @@
     // generate initial world contents
     (function () {
       var blockWorldSize = [World.TILE_SIZE,World.TILE_SIZE,World.TILE_SIZE];
-      var blockWorldCount = 29;
+      var blockWorldCount = 5;
       var blockWorlds = [];
       for (var i = 0; i < blockWorldCount; i++) blockWorlds.push(new World(blockWorldSize, BlockSet.colors));
 
@@ -230,7 +230,10 @@
           + (Math.sin(x/14) + Math.sin(z/14))*3
           + (Math.sin(x/2) + Math.sin(z/2))*0.6
         );
-        return altitude == 0 ? 2 : altitude > 0 ? 0 : 1;
+        return altitude == 0 ? 2 :
+               altitude > 1 ? 0 : 
+               altitude == 1 ? Math.random() > 0.95 ? 4 : 0 :
+               1;
       });
       
       // --- block worlds ---
@@ -253,7 +256,7 @@
         };
         v.s = v.te + v.be + v.se;
         v.e = v.s > 1 ?1:0;
-        v.c = v.s > 0 ?1:0;
+        v.c = v.s > 2 ?1:0;
         return v;
       }
       
@@ -285,7 +288,8 @@
       }
       
       genedit(blockWorlds[0], function (v) {
-        return ((v.te||v.be||v.se) ? rgbPat : flat(0))(v);
+        //return ((v.te||v.be||v.se) ? rgbPat : flat(0))(v);
+        return rgbPat(v);
       });
       
       genedit(blockWorlds[1], function (v) {
@@ -294,9 +298,19 @@
                 speckle(flat(brgb(.34,0,0)), flat(brgb(0,0,0))))(v);
       });
       
-      genedit(blockWorlds[2], speckle(flat(0), flat(brgb(0,1,0))));
+      genedit(blockWorlds[2], function (v) {
+        return v.s ? speckle(flat(0), flat(brgb(0,1,0)))(v) : 0;
+      });
+
+      genedit(blockWorlds[3], function (v) {
+        return Math.abs(v.x - 8) + Math.abs(v.z - 8) <= 16-v.y ? v.y/2 : 0;
+      });
       
-      for (var i = 3; i < blockWorldCount; i++) {
+      genedit(blockWorlds[4], function (v) {
+        return Math.max(Math.abs(v.x - 8), Math.max(v.z - 8)) <= 4 ? 18 : 0;
+      });
+      
+      for (var i = 5; i < blockWorldCount; i++) {
         var c = pickCond(flat(pickColor()), 
                   pickCond(flat(pickColor()), 
                     speckle(flat(pickColor()), flat(pickColor()))));

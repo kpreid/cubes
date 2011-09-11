@@ -18,42 +18,42 @@ var WorldRenderer = (function () {
       // low z face
       1, 0, 0, 0,
       0, 1, 0, 0,
-      0, 0, 0, 0,
+      0, 0, 1, 0,
       0, 0, 0, 1
     ])],
     ["hz", mat4.create([
       // high z face
       1, 0, 0, 0,
       0, 1, 0, 0,
-      0, 0, 0, 0,
+      0, 0, -1, 0,
       0, 0, 15, 1
     ])],
     ["lx", mat4.create([
       // low x face
       0, 1, 0, 0,
       0, 0, 1, 0,
-      0, 0, 0, 0,
+      1, 0, 0, 0,
       0, 0, 0, 1
     ])],
     ["hx", mat4.create([
       // high x face
       0, 1, 0, 0,
       0, 0, 1, 0,
-      0, 0, 0, 0,
+      -1, 0, 0, 0,
       15, 0, 0, 1
     ])],
     ["ly", mat4.create([
       // low y face
       0, 0, 1, 0,
       1, 0, 0, 0,
-      0, 0, 0, 0,
+      0, 1, 0, 0,
       0, 0, 0, 1
     ])],
     ["hy", mat4.create([
       // high y face
       0, 0, 1, 0,
       1, 0, 0, 0,
-      0, 0, 0, 0,
+      0, -1, 0, 0,
       0, 15, 0, 1
     ])],
   ];
@@ -161,6 +161,8 @@ var WorldRenderer = (function () {
         var chunkLimitZ = xzkey[1] + CHUNKSIZE;
         var blockSet = world.blockSet;
         var textured = blockSet.textured;
+        var TILE_SIZE = World.TILE_SIZE;
+        var PIXEL_SIZE = 1/TILE_SIZE;
         chunks[xzkey] = new RenderBundle(gl.TRIANGLES,
                                          textured ? blockTexture : null, 
                                          function (vertices, colors, texcoords) {
@@ -181,15 +183,9 @@ var WorldRenderer = (function () {
           function square(origin, v1, v2, tileKey, texO, texD, color) {
             // texO and texD are the originward and v'ward texture coordinates, used to flip the texture coords vs. origin for the 'positive side' squares
 
-            pushVertex(origin);
-            pushVertex(vec3.add(origin, v1, vecbuf));
-            pushVertex(vec3.add(origin, v2, vecbuf));
-
-            pushVertex(vec3.add(vec3.add(origin, v1, vecbuf), v2, vecbuf));
-            pushVertex(vec3.add(origin, v2, vecbuf));
-            pushVertex(vec3.add(origin, v1, vecbuf));
-
             if (textured) {
+              if (tileKey == null) return; // transparent or obscured layer
+              
               pushTileCoord(tileKey, texO, texO);
               pushTileCoord(tileKey, TILE_SIZE_U, 0);
               pushTileCoord(tileKey, 0, TILE_SIZE_V);
@@ -198,8 +194,29 @@ var WorldRenderer = (function () {
               pushTileCoord(tileKey, TILE_SIZE_U, 0);
             }
 
+            pushVertex(origin);
+            pushVertex(vec3.add(origin, v1, vecbuf));
+            pushVertex(vec3.add(origin, v2, vecbuf));
+
+            pushVertex(vec3.add(vec3.add(origin, v1, vecbuf), v2, vecbuf));
+            pushVertex(vec3.add(origin, v2, vecbuf));
+            pushVertex(vec3.add(origin, v1, vecbuf));
+
             for (var i=0; i < 6; i++) {
               colors.push(color[0],color[1],color[2],color[3]);
+            }
+          }
+          function squares(origin, v1, v2, vDepth, tileLayers, texO, texD, color) {
+            if (tileLayers == null) {
+              square(origin, v1, v2, null, texO, texD, color);
+            } else {
+              var depthOriginBuf = vec3.create(origin);
+              for (var i = 0; i < TILE_SIZE; i++) {
+                square(depthOriginBuf, v1, v2, tileLayers[i], texO, texD, color);
+                depthOriginBuf[0] += vDepth[0]*PIXEL_SIZE;
+                depthOriginBuf[1] += vDepth[1]*PIXEL_SIZE;
+                depthOriginBuf[2] += vDepth[2]*PIXEL_SIZE;
+              }
             }
           }
 
@@ -207,19 +224,19 @@ var WorldRenderer = (function () {
           for (var y = 0;            y < wy         ; y++)
           for (var z = chunkOriginZ; z < chunkLimitZ; z++) {
             var value = world.g(x,y,z);
-            var tiling = textured ?
-              blockSet.tilings[value - 1] || blockSet.tilings[0 /* = ID_BOGUS - 1 */]
-              : DUMMY_TILING;
             if (world.solid(x,y,z)) {
+              var tiling = textured ?
+                blockSet.tilings[value - 1] || blockSet.tilings[0 /* = ID_BOGUS - 1 */]
+                : DUMMY_TILING;
               blockSet.writeColor(value, 1.0, colorbuf, 0);
               var c1 = [x,y,z];
               var c2 = [x+1,y+1,z+1];
-              if (!world.opaque(x-1,y,z)) square(c1, UNIT_PZ, UNIT_PY, tiling.lx, 0, TILE_SIZE_V, colorbuf);
-              if (!world.opaque(x,y-1,z)) square(c1, UNIT_PX, UNIT_PZ, tiling.ly, 0, TILE_SIZE_V, colorbuf);
-              if (!world.opaque(x,y,z-1)) square(c1, UNIT_PY, UNIT_PX, tiling.lz, 0, TILE_SIZE_V, colorbuf);
-              if (!world.opaque(x+1,y,z)) square(c2, UNIT_NY, UNIT_NZ, tiling.hx, TILE_SIZE_U, 0, colorbuf);
-              if (!world.opaque(x,y+1,z)) square(c2, UNIT_NZ, UNIT_NX, tiling.hy, TILE_SIZE_U, 0, colorbuf);
-              if (!world.opaque(x,y,z+1)) square(c2, UNIT_NX, UNIT_NY, tiling.hz, TILE_SIZE_U, 0, colorbuf);
+              if (!world.opaque(x-1,y,z)) squares(c1, UNIT_PZ, UNIT_PY, UNIT_PX, tiling.lx, 0, TILE_SIZE_V, colorbuf);
+              if (!world.opaque(x,y-1,z)) squares(c1, UNIT_PX, UNIT_PZ, UNIT_PY, tiling.ly, 0, TILE_SIZE_V, colorbuf);
+              if (!world.opaque(x,y,z-1)) squares(c1, UNIT_PY, UNIT_PX, UNIT_PZ, tiling.lz, 0, TILE_SIZE_V, colorbuf);
+              if (!world.opaque(x+1,y,z)) squares(c2, UNIT_NY, UNIT_NZ, UNIT_NX, tiling.hx, TILE_SIZE_U, 0, colorbuf);
+              if (!world.opaque(x,y+1,z)) squares(c2, UNIT_NZ, UNIT_NX, UNIT_NY, tiling.hy, TILE_SIZE_U, 0, colorbuf);
+              if (!world.opaque(x,y,z+1)) squares(c2, UNIT_NX, UNIT_NY, UNIT_NZ, tiling.hz, TILE_SIZE_U, 0, colorbuf);
             }
           }
           var t1 = Date.now();
