@@ -57,29 +57,36 @@
     #endif
     
     varying vec4 vColor;
-    varying vec4 vP;
+    varying vec3 vFixedOrientationPosition;
     varying vec2 vTextureCoord;
     varying float vFog;
 
+    uniform mat4 uPMatrix;
+    uniform mat4 uMVMatrix;
     uniform bool uTextureEnabled;
     uniform sampler2D uSampler;
     
-    const vec4 cFog = vec4(0.2,0.2,0.5,1.0); // TODO: make this a parameter
+    const vec4 cSky = vec4(0.1,0.3,0.5,1.0);   
+    const vec4 cHorizon = vec4(0.7,0.8,1.0,1.0);  
+    const vec4 cGround = vec4(0.5,0.4,0.4,1.0);
 
     void main(void) {
-        // If texturing, then vColor is the color *before* fog; if not, vColor is the color *after* fog.
+        vec4 texColor;
         if (uTextureEnabled) {
           // TODO: Do we actually need colorization of textures for our purposes?
-          vec4 texColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+          texColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
 
           // alpha test
           if (texColor.a <= 0.0)
             discard;
-
-          gl_FragColor = vColor * texColor * (1.0-vFog) + cFog * vFog;
         } else {
-          gl_FragColor = vColor;
+          texColor = vec4(1.0,1.0,1.0,1.0);
         }
+        float elevationSine = vFixedOrientationPosition.y / length(vFixedOrientationPosition); // TODO move out of frag
+        vec4 fogColor = elevationSine < 0.0
+          ? mix(cHorizon, cGround, clamp(log(1.0 + -elevationSine * 120.0), 0.0, 1.0))
+          : mix(cHorizon, cSky, clamp(log(1.0 + elevationSine * 2.0), 0.0, 1.0));
+        gl_FragColor = vColor * texColor * (1.0-vFog) + fogColor * vFog;
     }
 </script>
 
@@ -91,23 +98,23 @@
     uniform bool uTextureEnabled;
     uniform mat4 uMVMatrix;
     uniform mat4 uPMatrix;
+    uniform vec3 uViewPosition;
     
     varying vec4 vColor;
-    varying vec4 vP;
+    varying vec3 vFixedOrientationPosition;
     varying vec2 vTextureCoord;
     varying float vFog;
     
-    const vec4 cFog = vec4(0.2,0.2,0.5,1.0); // TODO: make this a parameter
-
     void main(void) {
-        vP = uMVMatrix * vec4(aVertexPosition, 1.0);
-        gl_Position = uPMatrix * vP;
+        vFixedOrientationPosition = aVertexPosition - uViewPosition;
+        vec4 relativePosition = uMVMatrix * vec4(aVertexPosition, 1.0);
+        gl_Position = uPMatrix * relativePosition;
         
         vTextureCoord = aTextureCoord;
         
-        float distanceForFog = length(vec3(vP))/160.0; // should range 0..1. TODO: use clip distance used in projection matrix
+        float distanceForFog = length(vec3(relativePosition))/160.0; // should range 0..1. TODO: use clip distance used in projection matrix
         vFog = clamp(pow(distanceForFog, 4.0), 0.0, 1.0);
-        vColor = uTextureEnabled ? aVertexColor : aVertexColor * (1.0-vFog) + cFog * vFog;
+        vColor = aVertexColor;
     }
 </script>
 
@@ -180,16 +187,19 @@
     var uniforms = {
       uPMatrix: null,
       uMVMatrix: null,
+      uViewPosition: null,
       uSampler: null,
       uTextureEnabled: null
     };
 
     var mvMatrix = mat4.create();
     var pMatrix = mat4.create();
+    var viewPosition = vec3.create();
 
     function setMatrixUniforms() {
         gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
         gl.uniformMatrix4fv(uniforms.uMVMatrix, false, mvMatrix);
+        gl.uniform3fv(uniforms.uViewPosition, viewPosition);
     }
 
     function updateViewport() {
@@ -298,7 +308,8 @@
       var glxy = [pos[0] / theCanvas.width * 2 - 1, -(pos[1] / theCanvas.height * 2 - 1)];
       
       var unproject = mat4.identity(mat4.create());
-      player.render.applyViewTransform(unproject);
+      player.render.applyViewPitch(unproject);
+      player.render.applyViewRotTranslation(unproject);
       mat4.multiply(pMatrix, unproject, unproject);
       mat4.inverse(unproject);
 
@@ -370,11 +381,33 @@
 
     var debugR;
     var selectionR;
+    var backdropR;
     
     function initBuffers() {
       debugR = new RenderBundle(gl.LINES, null, function (vertices, colors) {
       });
       
+      backdropR = new RenderBundle(gl.TRIANGLE_STRIP, null, function (vertices, colors) {
+        var x = 160, y = 160, z = -160; // within the backdrop clip dist, outside the normal clip dist
+        vertices.push(-x, -y, -z);
+        vertices.push(x, -y, -z);
+        vertices.push(-x, -y, z);
+        vertices.push(x, -y, z);
+        vertices.push(-x, y, z);
+        vertices.push(x, y, z);
+        vertices.push(-x, y, -z);
+        vertices.push(x, y, -z);
+        
+        colors.push(1, 0, 0, 1);
+        colors.push(1, 0, 0, 1);
+        colors.push(1, 0, 0, 1);
+        colors.push(1, 0, 0, 1);
+        colors.push(1, 0, 0, 1);
+        colors.push(1, 0, 0, 1);
+        colors.push(1, 0, 0, 1);
+        colors.push(1, 0, 0, 1);
+      });
+
       selectionR = new RenderBundle(gl.LINES, null, function (vertices, colors) {
         if (cubeSelection !== null) {
           var p = cubeSelection;
@@ -405,11 +438,22 @@
 
     var lastGLErrors = [];
     function drawScene(wrend) {
-        gl.clearColor(0.2,0.2,0.5,1.0); // This is being set every frame because the block renderer changes it. TODO: send to shader for fog
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        
         mat4.identity(mvMatrix);
-        player.render.applyViewTransform(mvMatrix);
+        player.render.applyViewPitch(mvMatrix);
+        viewPosition = [0,0,0];
+
+        // TODO: remove duplication of this computation (3)
+        mat4.perspective(45, gl.drawingBufferWidth / gl.drawingBufferHeight, 0.1, 320.0, pMatrix); // longer clipping distance so that backdrop is not clipped
+
+        gl.disable(gl.DEPTH_TEST);
+        backdropR.draw(); // dummy geometry to cause shader to render background as fully-fogged
+        gl.enable(gl.DEPTH_TEST);
+        gl.clear(gl.DEPTH_BUFFER_BIT);
+
+        mat4.perspective(45, gl.drawingBufferWidth / gl.drawingBufferHeight, 0.1, 160.0, pMatrix);
+
+        viewPosition = player.getPosition();
+        player.render.applyViewRotTranslation(mvMatrix);
         wrend.draw();
 
         debugR.draw();
@@ -484,7 +528,6 @@
       prepareProgram(gl, getShader(gl, "shader-vs"), getShader(gl, "shader-fs"), attribs, uniforms);
       initBuffers();
 
-      gl.clearColor(0.2,0.2,0.5,1.0); // TODO: send to shader for fog
       gl.enable(gl.DEPTH_TEST);
       gl.enable(gl.CULL_FACE);
 

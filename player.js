@@ -67,12 +67,11 @@ var Player = (function () {
       }
     };
     this.render = {
-      applyViewTransform: function (matrix) {
-        // look direction
+      applyViewPitch: function (matrix) {
         mat4.rotate(matrix, -pitch, [1, 0, 0]);
+      },
+      applyViewRotTranslation: function (matrix) {
         mat4.rotate(matrix, -currentPlace.yaw, [0, 1, 0]);
-      
-        // position
         var positionTrans = vec3.negate(currentPlace.pos, vec3.create());
         mat4.translate(matrix, positionTrans);
       }

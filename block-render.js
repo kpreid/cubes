@@ -28,7 +28,7 @@ function BlockRenderer(blockSet) {
   var oh = 0.8;
   
   function blockToImageData(blockID, context2d) {
-    // TODO: global variables gl, mvMatrix, pMatrix
+    // TODO: global variables gl, mvMatrix, pMatrix, viewPosition
     
     gl.bindFramebuffer(gl.FRAMEBUFFER, rttFramebuffer);
     
@@ -38,6 +38,7 @@ function BlockRenderer(blockSet) {
     
     var savePMatrix = pMatrix;
     var saveMVMatrix = mvMatrix;
+    var saveView = viewPosition;
     pMatrix = mat4.create();
     mat4.ortho(-ow, ow, -oh, oh, -1, 1, pMatrix); // Y-coordinates are flipped to get the image rightwayup
     mat4.identity(mvMatrix);
@@ -52,6 +53,7 @@ function BlockRenderer(blockSet) {
     // restore stuff (except for framebuffer which we're about to read)
     pMatrix = savePMatrix;
     mvMatrix = saveMVMatrix;
+    viewPosition = saveView;
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     
     var imageData = context2d.createImageData(rttFramebuffer.width, rttFramebuffer.height);

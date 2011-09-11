@@ -7,7 +7,6 @@ function World(sizes, blockSet) {
   var blocks = new Uint8Array(wx*wy*wz);
   
   var numToDisturb = wx*wy*wz * 0.000001; // TODO needs to be timestep-dependent
-  console.log(numToDisturb);
   
   // --- Internal functions ---
   
