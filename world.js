@@ -36,6 +36,9 @@ function World(sizes, blockSet) {
   function solid(x,y,z) {
     return g(x,y,z) != 0;
   }
+  function opaque(x,y,z) {
+    return blockSet.isOpaque(g(x,y,z));
+  }
   
   /**
    * Call the callback with (x,y,z,value) of all blocks along the line segment
@@ -117,6 +120,7 @@ function World(sizes, blockSet) {
   this.g = g;
   this.s = s;
   this.solid = solid;
+  this.opaque = opaque;
   this.raw = blocks;
   this.raycast = raycast;
   this.edit = edit;

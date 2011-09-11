@@ -14,8 +14,9 @@ var BlockSet = (function () {
       target[offset] = (blockID & 3) / 3 * scale;
       target[offset+1] = ((blockID >> 2) & 3) / 3 * scale;
       target[offset+2] = ((blockID >> 4) & 3) / 3 * scale;
-      target[offset+3] = scale;
+      target[offset+3] = blockID == BlockSet.ID_EMPTY ? 0 : scale;
     },
+    isOpaque: function (blockID) { return blockID != BlockSet.ID_EMPTY },
     generateBlockTextures: function () {},
     worldFor: function (blockID) { return null; }
   });
@@ -25,6 +26,7 @@ var BlockSet = (function () {
       throw new Error("Textured block set must have at least one world");
     }
     var tilings = [];
+    var opacities = [false];
     for (var i = 0; i < worlds.length; i++) tilings.push({});
     return Object.freeze({
       length: worlds.length + 1,
@@ -43,6 +45,9 @@ var BlockSet = (function () {
 
         for (var wi = 0; wi < worlds.length; wi++) {
           var world = worlds[wi];
+          var opaque = true;
+          
+          // TODO: To support non-cubical objects, we should slice the entire volume of the block and generate as many tiles as needed.
         
           function sliceWorld(name, transform) {
             // allocate next position
@@ -67,16 +72,23 @@ var BlockSet = (function () {
               mat4.multiplyVec3(transform, vec, vec);
               var value = world.g(vec[0],vec[1],vec[2]);
               world.blockSet.writeColor(value, 255, data.data, c);
+              if (data.data[c+3] < 255) {
+                opaque = false;
+              }
             }
 
             // u,v coordinates of this tile for use by the vertex generator
             tilings[wi][name] = [tileu / layout.TILE_COUNT_U, tilev / layout.TILE_COUNT_V];
+            opacities[wi + 1] = opaque;
+            
+            // TODO: If opacities change, we need to trigger rerender of chunks.
           }
           layout.TILE_MAPPINGS.forEach(function (m) {
             sliceWorld.apply(undefined, m);
           });
         }
       },
+      isOpaque: function (blockID) { return blockID in opacities ? opacities[blockID] : true },
       worldFor: function (blockID) {
         return worlds[blockID - 1] || null;
       }

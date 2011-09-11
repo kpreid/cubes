@@ -70,8 +70,13 @@
         // If texturing, then vColor is the color *before* fog; if not, vColor is the color *after* fog.
         if (uTextureEnabled) {
           // TODO: Do we actually need colorization of textures for our purposes?
-          gl_FragColor = vColor * texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t)) * (1.0-vFog)
-                       + cFog * vFog;
+          vec4 texColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+
+          // alpha test
+          if (texColor.a <= 0.0)
+            discard;
+
+          gl_FragColor = vColor * texColor * (1.0-vFog) + cFog * vFog;
         } else {
           gl_FragColor = vColor;
         }
@@ -275,7 +280,9 @@
         return (v.te ? flat(2) : v.tp ? flat(3) : speckle(flat(1), flat(0xC0)))(v);
       });
       
-      for (var i = 2; i < blockWorldCount; i++) {
+      genedit(blockWorlds[2], speckle(flat(0), flat(brgb(0,1,0))));
+      
+      for (var i = 3; i < blockWorldCount; i++) {
         var c = pickCond(flat(pickColor()), 
                   pickCond(flat(pickColor()), 
                     speckle(flat(pickColor()), flat(pickColor()))));

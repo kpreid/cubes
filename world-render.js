@@ -215,12 +215,12 @@ var WorldRenderer = (function () {
               blockSet.writeColor(value, 1.0, colorbuf, 0);
               var c1 = [x,y,z];
               var c2 = [x+1,y+1,z+1];
-              if (!world.solid(x-1,y,z)) square(c1, UNIT_PZ, UNIT_PY, tiling.lx, 0, TILE_SIZE_V, colorbuf);
-              if (!world.solid(x,y-1,z)) square(c1, UNIT_PX, UNIT_PZ, tiling.ly, 0, TILE_SIZE_V, colorbuf);
-              if (!world.solid(x,y,z-1)) square(c1, UNIT_PY, UNIT_PX, tiling.lz, 0, TILE_SIZE_V, colorbuf);
-              if (!world.solid(x+1,y,z)) square(c2, UNIT_NY, UNIT_NZ, tiling.hx, TILE_SIZE_U, 0, colorbuf);
-              if (!world.solid(x,y+1,z)) square(c2, UNIT_NZ, UNIT_NX, tiling.hy, TILE_SIZE_U, 0, colorbuf);
-              if (!world.solid(x,y,z+1)) square(c2, UNIT_NX, UNIT_NY, tiling.hz, TILE_SIZE_U, 0, colorbuf);
+              if (!world.opaque(x-1,y,z)) square(c1, UNIT_PZ, UNIT_PY, tiling.lx, 0, TILE_SIZE_V, colorbuf);
+              if (!world.opaque(x,y-1,z)) square(c1, UNIT_PX, UNIT_PZ, tiling.ly, 0, TILE_SIZE_V, colorbuf);
+              if (!world.opaque(x,y,z-1)) square(c1, UNIT_PY, UNIT_PX, tiling.lz, 0, TILE_SIZE_V, colorbuf);
+              if (!world.opaque(x+1,y,z)) square(c2, UNIT_NY, UNIT_NZ, tiling.hx, TILE_SIZE_U, 0, colorbuf);
+              if (!world.opaque(x,y+1,z)) square(c2, UNIT_NZ, UNIT_NX, tiling.hy, TILE_SIZE_U, 0, colorbuf);
+              if (!world.opaque(x,y,z+1)) square(c2, UNIT_NX, UNIT_NY, tiling.hz, TILE_SIZE_U, 0, colorbuf);
             }
           }
           var t1 = Date.now();
