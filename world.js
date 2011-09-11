@@ -1,4 +1,4 @@
-function World(sizes, blockSet, initFunc) {
+function World(sizes, blockSet) {
   "use strict";
 
   var wx = sizes[0];

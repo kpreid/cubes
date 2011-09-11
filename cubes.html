@@ -29,6 +29,7 @@
 <script type="text/javascript" src="blockset.js"></script>
 <script type="text/javascript" src="world.js"></script>
 <script type="text/javascript" src="world-render.js"></script>
+<script type="text/javascript" src="block-render.js"></script>
 <script type="text/javascript" src="player.js"></script>
 <script type="text/javascript" src="input.js"></script>
 
@@ -350,11 +351,12 @@
 
     var lastGLErrors = [];
     function drawScene(wrend) {
+        gl.clearColor(0.2,0.2,0.5,1.0); // This is being set every frame because the block renderer changes it. TODO: send to shader for fog
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
+        
         mat4.identity(mvMatrix);
         player.render.applyViewTransform(mvMatrix);
-        wrend.renderChunks();
+        wrend.draw();
 
         debugR.draw();
 
@@ -434,6 +436,10 @@
       player = new Player(worldH);
       player.setPosition([worldH.wx/2, worldH.wy/2 + 10, worldH.wz/2]);
 
+      var blockRenderer = new BlockRenderer(worldH);
+      var cctx = document.getElementById('stub').getContext('2d');
+      cctx.putImageData(blockRenderer.blockToImageData(2, cctx), 0, 0);
+
       // TODO: use webgl utils to avoid wasting time if invisible
       setInterval(doStep, 1000*timestep);
 
@@ -449,6 +455,7 @@
 
 <body onload="webGLStart(document.getElementById('view-canvas'), document.getElementById('info'));">
     <canvas id="view-canvas" tabindex="0" class="viewport" width="640" height="480"></canvas>
+    <canvas id="stub" width="64" height="64" style="position:absolute; right:0; top:0"></canvas>
     <pre id="info">Loading...</pre>
 </body>
 

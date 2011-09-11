@@ -140,13 +140,13 @@ var WorldRenderer = (function () {
     }
     this.updateSomeChunks = updateSomeChunks;
 
-    function renderChunks() {
+    function draw() {
       for (var index in chunks) {
         if (!chunks.hasOwnProperty(index)) continue;
         chunks[index].draw();
       }
     }
-    this.renderChunks = renderChunks;
+    this.draw = draw;
 
     function calcChunk(xzkey) {
       if (chunks[xzkey]) {
