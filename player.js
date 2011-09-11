@@ -55,12 +55,26 @@ var Player = (function () {
     }
 
     this.step = function () {
-      vec3.set(movement, currentPlace.vel);
+      // apply movement control to velocity
+      var controlOrientation = mat4.rotateY(mat4.identity(mat4.create()), currentPlace.yaw);
+      var movAdj = vec3.create();
+      mat4.multiplyVec3(controlOrientation, movement, movAdj);
+      vec3.scale(movAdj, PLAYER_SPEED);
+      //console.log(vec3.str(movAdj));
+      currentPlace.vel[0] += (movAdj[0] - currentPlace.vel[0]) * 0.4;
+      currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * 0.4;
+      currentPlace.vel[2] += (movAdj[2] - currentPlace.vel[2]) * 0.4;
+      
+      // apply surface-following to velocity
+      var world = currentPlace.world;
+      var x = Math.floor(currentPlace.pos[0]);
+      var z = Math.floor(currentPlace.pos[2]);
+      for (var y = 0; y < world.wy && world.solid(x,y,z); y++);
+      y += 3; // "standing" height
+      currentPlace.vel[1] = currentPlace.vel[1] * 0.8 + (y - currentPlace.pos[1]) * 3;
       
       if (vec3.length(currentPlace.vel) > 0) {
-        var rotmat = mat4.rotateY(mat4.identity(mat4.create()), currentPlace.yaw);
-        var velOriented = mat4.multiplyVec3(rotmat, currentPlace.vel, vec3.create());
-        var velStep = vec3.scale(velOriented, timestep*PLAYER_SPEED, vec3.create());
+        var velStep = vec3.scale(currentPlace.vel, timestep, vec3.create());
         vec3.add(currentPlace.pos, velStep);
 
         aimChanged();
