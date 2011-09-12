@@ -214,8 +214,20 @@
     }
 
     function updateViewport() {
-      theCanvas.width = parseInt(window.getComputedStyle(theCanvas,null).width);
-      theCanvas.height = parseInt(window.getComputedStyle(theCanvas,null).height);
+      var pagePixelWidth = parseInt(window.getComputedStyle(theCanvas,null).width);
+      var pagePixelHeight = parseInt(window.getComputedStyle(theCanvas,null).height);
+      
+      // Specify canvas resolution
+      theCanvas.width = pagePixelWidth;
+      theCanvas.height = pagePixelHeight;
+      
+      // WebGL is not guaranteed to give us that resolution; instead, what it
+      // can supply is returned in .drawingBuffer{Width,Height}. However, those
+      // properties are not supported by, at least, Firefox 6.0.2.
+      if (!("drawingBufferWidth" in gl)) {
+        gl.drawingBufferWidth = pagePixelWidth;
+        gl.drawingBufferHeight = pagePixelHeight;
+      }
       
       gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
       mat4.perspective(45, gl.drawingBufferWidth / gl.drawingBufferHeight, 0.1, 160.0, pMatrix);
