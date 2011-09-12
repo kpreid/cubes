@@ -81,6 +81,27 @@ var WorldRenderer = (function () {
     // Queue of chunks to render. Array (first-to-do at the end); each element is [x,z] where x and z are the low coordinates of the chunk.
     var dirtyChunks = [];
 
+    var textureDebugR = new RenderBundle(gl.TRIANGLE_STRIP, blockTexture, function (vertices, colors, texcoords) {
+      var x = 2;
+      var y = 2;
+      var z = -5;
+      vertices.push(-x, -y, z);
+      vertices.push(x, -y, z);
+      vertices.push(-x, y, z);
+      vertices.push(x, y, z);
+      
+      colors.push(1, 1, 1, 1);
+      colors.push(1, 1, 1, 1);
+      colors.push(1, 1, 1, 1);
+      colors.push(1, 1, 1, 1);
+
+      texcoords.push(0, 0);
+      texcoords.push(1, 0);
+      texcoords.push(0, 1);
+      texcoords.push(1, 1);
+    });
+    
+
     // --- methods, internals ---
     function rebuildBlockTexture() {
       if (!blockTexture) return;
@@ -144,6 +165,13 @@ var WorldRenderer = (function () {
       for (var index in chunks) {
         if (!chunks.hasOwnProperty(index)) continue;
         chunks[index].draw();
+      }
+      
+      if (false) { // TODO: Add a way to turn this on for debugging/amusement value. (Display of the raw texture.)
+        var mvsave = mvMatrix;
+        mvMatrix = mat4.identity(mat4.create());
+        textureDebugR.draw();
+        mvMatrix = mvsave;
       }
     }
     this.draw = draw;

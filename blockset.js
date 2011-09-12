@@ -39,6 +39,8 @@ var BlockSet = (function () {
       },
       tilings: tilings,
       generateBlockTextures: function (data, layout) {
+        // TODO: Optimize this by not rebuilding the entire texture, but only those worldblocks which have changed (eg when the user exits a block world). This will require a dynamic allocator for the texture tiles.
+        
         // (tileu,tilev) is the position in the texture of each block-face tile as they are generated.
         var tileu = -1;
         var tilev = 0;
