@@ -1,3 +1,13 @@
+// Except as noted,
+// Copyright 2011 Kevin Reid, under the terms of the MIT License as detailed in
+// the accompanying file README.md or <http://opensource.org/licenses/MIT>.
+//
+// Exception: The code in the function prepareProgram is derived from from
+// the Learning WebGL lessons, at http://learningwebgl.com/blog/?p=1786 (as of
+// September 2011). No license is stated on that site, but I (Kevin Reid)
+// believe that it is obviously the authors' intent to make this code free to
+// use.
+
 function mod(value, modulus) {
   "use strict";
   return (value % modulus + modulus) % modulus;
@@ -38,6 +48,8 @@ var UNIT_NY = vec3.create([0,-1,0]);
 var UNIT_NZ = vec3.create([0,0,-1]);
 
 function prepareProgram(gl, vertexShader, fragmentShader, attribs, uniforms) {
+  // See note in license statement at the top of this file.
+  
   "use strict";
   var shaderProgram = gl.createProgram();
   gl.attachShader(shaderProgram, vertexShader);

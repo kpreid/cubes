@@ -1,3 +1,13 @@
+// Except as noted,
+// Copyright 2011 Kevin Reid, under the terms of the MIT License as detailed in
+// the accompanying file README.md or <http://opensource.org/licenses/MIT>.
+//
+// Exception: The code for using framebuffers and renderbuffers is copied from
+// Learning WebGL, Lesson 16, at http://learningwebgl.com/blog/?p=1786 (as of
+// September 2011). No license is stated on that site, but I (Kevin Reid)
+// believe that it is obviously the authors' intent to make this code free to
+// use.
+
 // Renders single blocks from a world.
 
 function BlockRenderer(blockSet) {

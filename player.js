@@ -1,3 +1,6 @@
+// Copyright 2011 Kevin Reid, under the terms of the MIT License as detailed in
+// the accompanying file README.md or <http://opensource.org/licenses/MIT>.
+
 var Player = (function () {
   var PLAYER_SPEED = 6;
   var movement = vec3.create([0,0,0]);
