@@ -419,7 +419,7 @@
       });
       
       backdropR = new RenderBundle(gl.TRIANGLE_STRIP, null, function (vertices, colors) {
-        var x = 160, y = 160, z = -160; // within the backdrop clip dist, outside the normal clip dist
+        var x = 500, y = 160, z = -160; // within the backdrop clip dist, outside the normal clip (fog) distance
         vertices.push(-x, -y, -z);
         vertices.push(x, -y, -z);
         vertices.push(-x, -y, z);
@@ -481,7 +481,7 @@
         viewPosition = [0,0,0];
 
         // TODO: remove duplication of this computation (3)
-        mat4.perspective(45, gl.drawingBufferWidth / gl.drawingBufferHeight, 0.1, 320.0, pMatrix); // longer clipping distance so that backdrop is not clipped
+        mat4.perspective(45, gl.drawingBufferWidth / gl.drawingBufferHeight, 0.1, 1000.0, pMatrix); // longer clipping distance so that backdrop is not clipped
 
         gl.disable(gl.DEPTH_TEST);
         backdropR.draw(); // dummy geometry to cause shader to render background as fully-fogged
