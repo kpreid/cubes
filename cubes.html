@@ -431,7 +431,7 @@
       selectionR = new RenderBundle(gl.LINE_LOOP, null, function (vertices, colors) {
         var p = vec3.create(cubeSelection);
         var q = emptySelection;
-        if (p !== null && q !== null) {
+        if (cubeSelection !== null && emptySelection !== null) {
           // This works, but don't ask me to justify it. We're taking the vector between the two selection points and deriving a selection box for the face.
           
           var qp = vec3.subtract(p, q, vec3.create()); // face-direction vector
@@ -447,7 +447,7 @@
           colors.push(1,1,1,1); vertices.push(p[0]+qr[0],p[1]+qr[1],p[2]+qr[2]);
           colors.push(1,1,1,1); vertices.push(p[0]+qr[0]+qs[0],p[1]+qr[1]+qs[1],p[2]+qr[2]+qs[2]);
           colors.push(1,1,1,1); vertices.push(p[0]+qs[0],p[1]+qs[1],p[2]+qs[2]);
-        } else if (p !== null) {
+        } else if (cubeSelection !== null) {
           // TODO: Would like to throw this out, but can't because currently if you are outside the world grid there is no emptySelection.
           vertices.push(p[0], p[1], p[2]); colors.push(1, 1, 1, 1);
           vertices.push(p[0], p[1]+1, p[2]); colors.push(1, 1, 1, 1);
