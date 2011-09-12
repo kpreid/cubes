@@ -575,8 +575,11 @@
       theInfo = document.createTextNode("");
       info.appendChild(theInfo);
 
-      // should do live, but makes Chrome glitchy
       updateViewport();
+      window.addEventListener("resize", function () {
+        updateViewport();
+        return true;
+      }, false);
     
       prepareProgram(gl, getShader(gl, "shader-vs"), getShader(gl, "shader-fs"), attribs, uniforms);
       initBuffers();
