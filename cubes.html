@@ -412,7 +412,7 @@
         gl.drawArrays(primitive, 0, numVertices);
       };
       
-      this.delete = function () {
+      this.deleteResources = function () {
         gl.deleteBuffer(vbuf);
         gl.deleteBuffer(cbuf);
         if (tbuf) gl.deleteBuffer(tbuf);

@@ -165,7 +165,7 @@ var Player = (function () {
           case -1:
             if (placeStack.length <= 0) break;
             currentPlace = placeStack.pop();
-            currentPlace.wrend.rebuildBlockTexture(); // TODO: kludge
+            currentPlace.wrend.rebuildBlocks(); // TODO: kludge
             aimChanged();
             break;
         }

@@ -88,12 +88,12 @@ function BlockRenderer(blockSet) {
 
   return {
     blockToImageData: blockToImageData,
-    delete: function () {
+    deleteResources: function () {
       rttFramebuffer = null;
       gl.deleteRenderbuffer(renderbuffer1);
       gl.deleteRenderbuffer(renderbuffer2);
       gl.deleteFramebuffer(rttFramebuffer);
-      singleBlockR.delete();
+      singleBlockR.deleteResources();
     }
   }
 }

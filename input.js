@@ -183,7 +183,7 @@ function Input(eventReceiver, playerInput) {
         }
       }
       
-      blockRenderer.delete();
+      blockRenderer.deleteResources();
     }
 
     for (var i = 0; i < blockSetInMenu.length; i++) {

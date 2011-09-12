@@ -104,8 +104,18 @@ var WorldRenderer = (function () {
       texcoords.push(1, 1);
     });
     
-
     // --- methods, internals ---
+    
+    function deleteChunks() {
+      for (var index in chunks) {
+        if (!chunks.hasOwnProperty(index)) continue;
+        chunks[index].deleteResources();
+      }
+      
+      chunks = {};
+      dirtyChunks = [];
+    }
+    
     function rebuildBlockTexture() {
       if (!blockTexture) return;
 
@@ -118,14 +128,30 @@ var WorldRenderer = (function () {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
       gl.bindTexture(gl.TEXTURE_2D, null);
     }
-    this.rebuildBlockTexture = rebuildBlockTexture;
+    
+    function rebuildChunks() {
+      deleteChunks();
+      
+      for (var x = 0; x < world.wx; x += CHUNKSIZE)
+      for (var z = 0; z < world.wz; z += CHUNKSIZE) (function () {
+        dirtyBlock(x+1, z+1);
+      })();
+      setTimeout(depthSortDirty, 0); // deferred so rest of init can happen and establish player's loc
+    }
+    
+    function rebuildBlocks() {
+      // TODO: This massive delete should be avoided when possible; in particular,
+      // we don't need to flush the chunks if the texture allocation has not changed.
+      rebuildBlockTexture();
+      rebuildChunks();
+    }
+    this.rebuildBlocks = rebuildBlocks;
 
-    this.delete = function() {
-      for (var index in chunks) {
-        if (!chunks.hasOwnProperty(index)) continue;
-        chunks[index].delete();
-      }
+    function deleteResources() {
+      deleteChunks();
+      textureDebugR.deleteResources();
     };
+    this.deleteResources = deleteResources;
 
     function dirtyBlock(x,z) {
       function _dirty(x,z) {
@@ -291,14 +317,7 @@ var WorldRenderer = (function () {
     // --- init ---
 
     Object.freeze(this);
-
-    rebuildBlockTexture();
-
-    for (var x = 0; x < world.wx; x += CHUNKSIZE)
-    for (var z = 0; z < world.wz; z += CHUNKSIZE) (function () {
-      dirtyBlock(x+1, z+1);
-    })();
-    setTimeout(depthSortDirty, 0); // deferred so rest of init can happen and establish player's loc
+    rebuildBlocks();
   }
 
   return WorldRenderer;
