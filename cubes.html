@@ -15,7 +15,13 @@
 <meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
 
 <style type="text/css" media="screen">
+  /* ensure that our viewport canvas fills the window */
   html, body, .viewport { margin: 0; border: 0; width: 100%; height: 100%; }
+  
+  html {
+    background: gray; /* ordinarily invisible, but makes initial loading better */
+  }
+  
   .viewport {
     display: block; /* avoid invoking CSS line layout. */
     cursor: crosshair;
@@ -28,7 +34,7 @@
     
     font-family: monospace;
     color: white;
-    text-shadow: 0 0 .1em #0ff;
+    text-shadow: 0 0 .3em #000;
     margin: 0 0;
     display: table;
   }
@@ -52,7 +58,7 @@
   
   .error-notice {
     position: absolute;
-    top: 10em;
+    top: 5em;
     right: 50%;
     margin-right: -17em;
     
@@ -251,12 +257,10 @@
       mat4.perspective(45, gl.drawingBufferWidth / gl.drawingBufferHeight, 0.1, 160.0, pMatrix);
     }
     
-    console.log("Begin worldgen");
-
     var worldH;
-    
-    // generate initial world contents
-    (function () {
+    function generateInitialWorlds() {
+      console.log("Begin worldgen");
+
       var blockWorldSize = [World.TILE_SIZE,World.TILE_SIZE,World.TILE_SIZE];
       var blockWorldCount = 5;
       var blockWorlds = [];
@@ -357,10 +361,10 @@
                     speckle(flat(pickColor()), flat(pickColor()))));
         genedit(blockWorlds[i], c);
       }
-    })();
-    
-    console.log("End worldgen");
 
+      console.log("End worldgen");
+    }
+    
     var cubeSelection = null;
     var emptySelection = null;
     
@@ -590,53 +594,88 @@
       frameCount++;
     }
 
+    // statistics are reset once per second
     setInterval(function () {
       var idle = frameCount - renderCount;
       fpsDesc = "FPS: " + frameCount + (idle > 0 ? " (" + idle + " idle)" : "") + ", " + chunkRenders + " chunk renders";
       frameCount = renderCount = chunkRenders = 0;
     }, 1000);
     
+    // for making our loading more async
+    var ABORT = {};
+    function sequence(actions, catcher) {
+      function sub(i) {
+        if (i >= actions.length) {
+          return;
+        } else {
+          setTimeout(function () {
+            try {
+              if (actions[i]() === ABORT) return;
+            } catch (e) {
+              catcher(e);
+            }
+            sub(i+1);
+          }, 1);
+        }
+      }
+      sub(0);
+    }
 
     function webGLStart() {
-      try {
-        theCanvas = document.getElementById('view-canvas');
-        initGL(theCanvas);
-        if (!gl) {
-          document.getElementById("webgl-error-notice").style.removeProperty("display");
-          return;
-        }
+      var info = document.getElementById('info');
+      while (info.firstChild) info.removeChild(info.firstChild);
+      theInfo = document.createTextNode("");
+      info.appendChild(theInfo);
+      theInfo.data = "";
 
-        var info = document.getElementById('info');
-        while (info.firstChild) info.removeChild(info.firstChild);
-        theInfo = document.createTextNode("");
-        info.appendChild(theInfo);
-
-        updateViewport();
-        window.addEventListener("resize", function () {
+      sequence([
+        function () {
+          theInfo.data += "Preparing WebGL...\n";
+        },
+        function () {
+          theCanvas = document.getElementById('view-canvas');
+          initGL(theCanvas);
+          if (!gl) {
+            document.getElementById("webgl-error-notice").style.removeProperty("display");
+            return ABORT;
+          }
+          theInfo.data += "Generating worlds...\n";
+        },
+        generateInitialWorlds,
+        function () {
           updateViewport();
-          return true;
-        }, false);
-    
-        prepareProgram(gl, getShader(gl, "shader-vs"), getShader(gl, "shader-fs"), attribs, uniforms);
-        initBuffers();
+          window.addEventListener("resize", function () {
+            updateViewport();
+            return true;
+          }, false);
+          theInfo.data += "Compiling shaders...\n";
+        },
+        function () {
+          prepareProgram(gl, getShader(gl, "shader-vs"), getShader(gl, "shader-fs"), attribs, uniforms);
+          initBuffers();
+          gl.enable(gl.DEPTH_TEST);
+          gl.enable(gl.CULL_FACE);
+          theInfo.data += "Painting blocks...\n"; // this is what takes the time in world renderer construction
+        },
+        function () {
+          // done after some GL init because player creates world renderer object internally
+          player = new Player(worldH);
+          player.setPosition([worldH.wx/2, worldH.wy/2 + 10, worldH.wz/2]);
+          theInfo.data += "Finishing...\n";
+        },
+        function () {
+          input = new Input(theCanvas, player.input, document.getElementById("menu"));
+          theCanvas.focus();
 
-        gl.enable(gl.DEPTH_TEST);
-        gl.enable(gl.CULL_FACE);
-
-        // done after some GL init because player creates world renderer...
-        player = new Player(worldH);
-        player.setPosition([worldH.wx/2, worldH.wy/2 + 10, worldH.wz/2]);
-
-        // TODO: use webgl utils to avoid wasting time if invisible
-        setInterval(doStep, 1000*timestep);
-
-        input = new Input(theCanvas, player.input, document.getElementById("menu"));
-        theCanvas.focus();
-      } catch (e) {
+          // TODO: use webgl utils to avoid wasting time rendering frames if invisible
+          setInterval(doStep, 1000*timestep);
+        },
+      ], function (exception) {
+        theInfo.data += exception;
         document.getElementById("load-error-notice").style.removeProperty("display");
-        document.getElementById("load-error-text").appendChild(document.createTextNode("" + e));
-        throw e; // propagate to browser console
-      }
+        document.getElementById("load-error-text").appendChild(document.createTextNode("" + exception));
+        throw exception; // propagate to browser console
+      });
     }
 
 </script>
@@ -651,7 +690,7 @@
         <p>Sorry, but the web browser you are using does not appear to support WebGL (or even Canvas).</p>
       </div>
     </canvas>
-    <pre id="info">Loading...</pre>
+    <pre id="info">Not ready...</pre>
     <div id="menu" style="visibility: hidden; left: 1px; top: 1px;">
       <!-- arbitrary initial position -->
     </div>
