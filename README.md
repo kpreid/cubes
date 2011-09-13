@@ -10,16 +10,9 @@ Requirements and startup
 
 No compilation or server is required; simply open `cubes.html` in a WebGL-supporting browser.
 
-I have found the best performance to be with Google Chrome. Firefox is acceptable. Safari 5.0.1 is known not to work, apparently due to missing WebGL features (I have not investigated in detail).
+I have found the best performance to be with Google Chrome. Firefox is acceptable, but right-clicking does not work on Firefox 6.0.2. On Safari 5.1 the controls do not work except for block selection, at least because it does not fully support ECMAScript 5 accessors.
 
-Controls
---------
-
-Standard WASD keys, or arrow keys, to move horizontally. E moves up and C moves down; though these have little effect currently as the vertical position is fixed to follow the terrain.
-
-Blocks are selected using the mouse. The left button adds or removes blocks at the location of the white rectangle cursor; the right button brings up a menu for choosing blocks (the empty square at the top left is the removal tool).
-
-The R key enters the world of the selected block; the F key exits.
+For controls see the “Help” button in-game.
 
 License
 -------
