@@ -464,6 +464,7 @@
     
     function initBuffers() {
       debugR = new RenderBundle(gl.LINES, null, function (vertices, colors) {
+        if (player) player.renderDebug(vertices,colors);
       });
       
       backdropR = new RenderBundle(gl.TRIANGLE_STRIP, null, function (vertices, colors) {

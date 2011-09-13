@@ -50,6 +50,7 @@ function Input(eventReceiver, playerInput, menuElement) {
     switch (String.fromCharCode(code)) {
       case "R": hideMenu(); playerInput.changeWorld(1); return false;
       case "F": hideMenu(); playerInput.changeWorld(-1); return false;
+      case " ": playerInput.jump(); return false;
     }
 
     // 'mode' keys such as movement directions go into the keymap

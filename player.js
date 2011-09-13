@@ -56,8 +56,33 @@ var Player = (function () {
         needsDraw = true; // TODO: global variables
       }
     }
+    
+    var playerAABB = [
+      [-.6, .6], // x
+      [-3.4, .45], // y
+      [-.6, .6], // z
+    ];
 
+    this.renderDebug = function (vertices, colors) {
+      [[0,1,2], [1,2,0], [2,0,1]].forEach(function (dims) {
+        for (var du = 0; du < 2; du++)
+        for (var dv = 0; dv < 2; dv++)
+        for (var dw = 0; dw < 2; dw++) {
+          var p = vec3.create(currentPlace.pos);
+          p[dims[0]] += playerAABB[dims[0]][du];
+          p[dims[1]] += playerAABB[dims[1]][dv];
+          p[dims[2]] += playerAABB[dims[2]][dw];
+          
+          vertices.push(p[0],p[1],p[2]);
+          colors.push(0,0,1,1);
+        }
+      });
+    }
+
+    var EPSILON = 1e-3;
     this.step = function () {
+      var world = currentPlace.world;
+      
       // apply movement control to velocity
       var controlOrientation = mat4.rotateY(mat4.identity(mat4.create()), currentPlace.yaw);
       var movAdj = vec3.create();
@@ -65,23 +90,71 @@ var Player = (function () {
       vec3.scale(movAdj, PLAYER_SPEED);
       //console.log(vec3.str(movAdj));
       currentPlace.vel[0] += (movAdj[0] - currentPlace.vel[0]) * 0.4;
-      currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * 0.4;
+      currentPlace.vel[1] += movAdj[1] * 0.1;
       currentPlace.vel[2] += (movAdj[2] - currentPlace.vel[2]) * 0.4;
       
-      // apply surface-following to velocity
-      var world = currentPlace.world;
-      var x = Math.floor(currentPlace.pos[0]);
-      var z = Math.floor(currentPlace.pos[2]);
-      for (var y = 0; y < world.wy && world.solid(x,y,z); y++);
-      y += 3; // "standing" height
-      currentPlace.vel[1] = currentPlace.vel[1] * 0.8 + (y - currentPlace.pos[1]) * 3;
+      // gravity
+      currentPlace.vel[1] -= timestep * 9.81;
       
-      if (vec3.length(currentPlace.vel) > 0) {
-        var velStep = vec3.scale(currentPlace.vel, timestep, vec3.create());
-        vec3.add(currentPlace.pos, velStep);
-
-        aimChanged();
+      // early exit
+      if (vec3.length(currentPlace.vel) <= 0) return;
+      
+      var curPos = currentPlace.pos;
+      var curVel = currentPlace.vel;
+      var nextPos = vec3.scale(currentPlace.vel, timestep, vec3.create()); // TODO global variable timestep
+      vec3.add(nextPos, curPos);
+      
+      // collision
+      function sclamp(vec) {
+        // TODO: Clean up and optimize this mess
+        function nd(dim2,dir2) {return playerAABB[dim2][dir2]; }
+        var buf = vec3.create();
+        for (var fixed = 0; fixed < 3; fixed++) {
+          for (var fdir = 0; fdir < 2; fdir++) {
+            var fplane = vec[fixed] + nd(fixed, fdir);
+            var a = fixed == 0 ? 1 : 0;
+            var b = fixed == 2 ? 1 : 2;
+            buf[fixed] = Math.floor(fplane);
+            for (var ai = vec[a]+nd(a,0); ai < vec[a]+nd(a,1); ai++) {
+              for (var bi = vec[b]+nd(b,0); bi < vec[b]+nd(b,1); bi++) {
+                buf[a] = Math.floor(ai);
+                buf[b] = Math.floor(bi);
+                if (world.solid(buf[0],buf[1],buf[2])) return true;
+              }
+              buf[b] = Math.floor(vec[b]+nd(b,1));
+              if (world.solid(buf[0],buf[1],buf[2])) return true;
+            }
+            buf[a] = Math.floor(vec[a]+nd(a,1));
+            if (world.solid(buf[0],buf[1],buf[2])) return true;
+          }
+        }
       }
+      
+      // To resolve diagonal movement, we treat it as 3 orthogonal moves, updating nextPosIncr.
+      var nextPosIncr = vec3.create(curPos);
+      for (var dim = 0; dim < 3; dim++) {
+        var dir = curVel[dim] >= 0 ? 1 : 0;
+        var front = nextPos[dim] + playerAABB[dim][dir];
+        var partial = vec3.create(nextPosIncr);
+        partial[dim] = nextPos[dim]; // TODO: Sample multiple times if velocity exceeds 1 block/step
+        //console.log(dir, dim, playerAABB[dim][dir], front, partial);
+        if (sclamp(partial) || (dim == 1 && front < 0)) {
+          //console.log("clamped", dim);
+          nextPosIncr[dim] = dir ? Math.ceil(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 - EPSILON : Math.floor(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 + EPSILON;
+          curVel[dim] = 0;
+        } else {
+          nextPosIncr[dim] = nextPos[dim];
+        }
+        if (sclamp(nextPosIncr)) {
+          // Player got stuck.
+          //debugger;
+        }
+      }
+      
+      vec3.set(nextPosIncr, currentPlace.pos);
+      aimChanged();
+      
+      debugR.recompute();
     };
     this.render = {
       applyViewPitch: function (matrix) {
@@ -157,7 +230,7 @@ var Player = (function () {
             if (world == null) return; // TODO: UI message about this
             
             currentPlace = new Place(world);
-            vec3.set([World.TILE_SIZE/2, World.TILE_SIZE + 2, World.TILE_SIZE/2], currentPlace.pos);
+            vec3.set([World.TILE_SIZE/2, World.TILE_SIZE + playerAABB[1][0]+EPSILON, World.TILE_SIZE/2], currentPlace.pos);
             placeStack.push(oldPlace);
             aimChanged();
             
@@ -169,6 +242,10 @@ var Player = (function () {
             aimChanged();
             break;
         }
+      },
+      jump: function () {
+        // TODO: jump from ground, etc.
+        currentPlace.vel[1] = 10;
       }
     });
   }
