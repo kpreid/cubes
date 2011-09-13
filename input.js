@@ -3,7 +3,7 @@
 
 // TODO: explicitly connect global vars
 
-function Input(eventReceiver, playerInput) {
+function Input(eventReceiver, playerInput, menuElement) {
   "use strict";
 
   var keymap = {};
@@ -137,17 +137,16 @@ function Input(eventReceiver, playerInput) {
   }
   
   function menuVisible() {
-    return document.getElementById("menu").style.visibility !== "hidden";
+    return menuElement.style.visibility !== "hidden";
   }
 
   var blockSetInMenu = null;
   var menuCanvases = [];
   function showMenu() {
-    var menu = document.getElementById("menu"); // TODO global id
 
     // TODO: Need to rebuild menu if blocks in the set have changed appearance
     if (playerInput.blockSet !== blockSetInMenu) {
-      while (menu.firstChild) menu.removeChild(menu.firstChild);
+      while (menu.firstChild) menu.removeChild(menuElement.firstChild);
 
       blockSetInMenu = playerInput.blockSet;
       var blockRenderer = new BlockRenderer(blockSetInMenu);
@@ -160,7 +159,7 @@ function Input(eventReceiver, playerInput) {
         canvas.width = canvas.height = 64; // TODO magic number
         canvas.style.width = canvas.style.height = size + "px";
         menuCanvases[i] = canvas;
-        menu.appendChild(canvas);
+        menuElement.appendChild(canvas);
         var cctx = canvas.getContext('2d');
         cctx.putImageData(blockRenderer.blockToImageData(i, cctx), 0, 0);
         (function (canvas,i) {
@@ -179,7 +178,7 @@ function Input(eventReceiver, playerInput) {
           };
         })(canvas,i);
         if ((i+1) % sidecount == 0) {
-          menu.appendChild(document.createElement('br'));
+          menuElement.appendChild(document.createElement('br'));
         }
       }
       
@@ -190,16 +189,16 @@ function Input(eventReceiver, playerInput) {
       menuCanvases[i].className = i == playerInput.tool ? "selectedTool" : "";
     }
     
-    var cs = window.getComputedStyle(menu, null);
+    var cs = window.getComputedStyle(menuElement, null);
     var menuW = parseInt(cs.width);
     var menuH = parseInt(cs.height);
     
-    menu.style.left = (mousePos[0] - menuW/2) + "px";
-    menu.style.top  = (mousePos[1] - menuH/2) + "px";
-    menu.style.visibility = 'visible';
+    menuElement.style.left = (mousePos[0] - menuW/2) + "px";
+    menuElement.style.top  = (mousePos[1] - menuH/2) + "px";
+    menuElement.style.visibility = 'visible';
   }
   function hideMenu() {
-    document.getElementById("menu").style.visibility = 'hidden';
+    menuElement.style.visibility = 'hidden';
     eventReceiver.focus();
   }
   

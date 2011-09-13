@@ -50,6 +50,24 @@
     background: gray;
   }
   
+  .error-notice {
+    position: absolute;
+    top: 10em;
+    right: 50%;
+    margin-right: -17em;
+    
+    z-index: 1;
+    border-radius: 2em;
+    text-align: center;
+    max-width: 30em;
+    padding: 1em 2em;
+    border: .2em solid red;
+    
+    background: white;
+    color: black;
+    font-family: 'Lucida Grande', sans-serif;
+  }
+  
 </style>
 
 <script src="webgl-debug.js"></script>
@@ -579,35 +597,46 @@
     }, 1000);
     
 
-    function webGLStart(canvas, info) {
-      theCanvas = canvas;
-      initGL(canvas);
+    function webGLStart() {
+      try {
+        theCanvas = document.getElementById('view-canvas');
+        initGL(theCanvas);
+        if (!gl) {
+          document.getElementById("webgl-error-notice").style.removeProperty("display");
+          return;
+        }
 
-      while (info.firstChild) info.removeChild(info.firstChild);
-      theInfo = document.createTextNode("");
-      info.appendChild(theInfo);
+        var info = document.getElementById('info');
+        while (info.firstChild) info.removeChild(info.firstChild);
+        theInfo = document.createTextNode("");
+        info.appendChild(theInfo);
 
-      updateViewport();
-      window.addEventListener("resize", function () {
         updateViewport();
-        return true;
-      }, false);
+        window.addEventListener("resize", function () {
+          updateViewport();
+          return true;
+        }, false);
     
-      prepareProgram(gl, getShader(gl, "shader-vs"), getShader(gl, "shader-fs"), attribs, uniforms);
-      initBuffers();
+        prepareProgram(gl, getShader(gl, "shader-vs"), getShader(gl, "shader-fs"), attribs, uniforms);
+        initBuffers();
 
-      gl.enable(gl.DEPTH_TEST);
-      gl.enable(gl.CULL_FACE);
+        gl.enable(gl.DEPTH_TEST);
+        gl.enable(gl.CULL_FACE);
 
-      // done after some GL init because player creates world renderer...
-      player = new Player(worldH);
-      player.setPosition([worldH.wx/2, worldH.wy/2 + 10, worldH.wz/2]);
+        // done after some GL init because player creates world renderer...
+        player = new Player(worldH);
+        player.setPosition([worldH.wx/2, worldH.wy/2 + 10, worldH.wz/2]);
 
-      // TODO: use webgl utils to avoid wasting time if invisible
-      setInterval(doStep, 1000*timestep);
+        // TODO: use webgl utils to avoid wasting time if invisible
+        setInterval(doStep, 1000*timestep);
 
-      input = new Input(canvas, player.input);
-      canvas.focus();
+        input = new Input(theCanvas, player.input, document.getElementById("menu"));
+        theCanvas.focus();
+      } catch (e) {
+        document.getElementById("load-error-notice").style.removeProperty("display");
+        document.getElementById("load-error-text").appendChild(document.createTextNode("" + e));
+        throw e; // propagate to browser console
+      }
     }
 
 </script>
@@ -616,11 +645,22 @@
 </head>
 
 
-<body onload="webGLStart(document.getElementById('view-canvas'), document.getElementById('info'));">
-    <canvas id="view-canvas" tabindex="0" class="viewport" width="640" height="480"></canvas>
+<body onload="webGLStart();">
+    <canvas id="view-canvas" tabindex="0" class="viewport" width="640" height="480">
+      <div class="error-notice">
+        <p>Sorry, but the web browser you are using does not appear to support WebGL (or even Canvas).</p>
+      </div>
+    </canvas>
     <pre id="info">Loading...</pre>
     <div id="menu" style="visibility: hidden; left: 1px; top: 1px;">
       <!-- arbitrary initial position -->
+    </div>
+    <div id="webgl-error-notice" class="error-notice" style="display: none;">
+      <p>Sorry, the web browser you are using does not appear to support WebGL.</p>
+    </div>
+    <div id="load-error-notice" class="error-notice" style="display: none;">
+      <p>Sorry, but there was an unexpected error while loading the game.</p>
+      <p><pre id="load-error-text" style="white-space: pre-wrap;"></pre></p>
     </div>
 </body>
 
