@@ -64,7 +64,9 @@ var BlockSet = (function () {
                 tilev++;
               }
               if (tilev >= layout.TILE_COUNT_V) {
-                console.error("blockTexture too small to contain all tiles!");
+                if (typeof console !== 'undefined') 
+                  console.error("blockTexture too small to contain all tiles!");
+                // TODO: report problem on-screen or generate larger texture
                 tileu = 0;
                 tilev = 0;
               }

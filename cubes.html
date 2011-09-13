@@ -190,7 +190,7 @@
           WebGLDebugUtils.init(gl);
         }
         if (!gl) {
-            console.log("failed to get context: ", gl);
+            if (typeof console !== 'undefined') console.log("failed to get context: ", gl);
         }
     }
 
@@ -223,7 +223,8 @@
         gl.compileShader(shader);
 
         if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-            console.error(gl.getShaderInfoLog(shader));
+            if (typeof console !== 'undefined')
+              console.error(gl.getShaderInfoLog(shader));
             throw new Error("Could not compile shader");
         }
 
@@ -276,8 +277,6 @@
     
     var worldH;
     function generateInitialWorlds() {
-      console.log("Begin worldgen");
-
       var blockWorldSize = [World.TILE_SIZE,World.TILE_SIZE,World.TILE_SIZE];
       var blockWorldCount = 5;
       var blockWorlds = [];
@@ -378,8 +377,6 @@
                     speckle(flat(pickColor()), flat(pickColor()))));
         genedit(blockWorlds[i], c);
       }
-
-      console.log("End worldgen");
     }
     
     var cubeSelection = null;
@@ -621,15 +618,25 @@
     // for making our loading more async
     var ABORT = {};
     function sequence(actions, catcher) {
+      var t0 = undefined;
       function sub(i) {
         if (i >= actions.length) {
           return;
         } else {
           setTimeout(function () {
-            try {
-              if (actions[i]() === ABORT) return;
-            } catch (e) {
-              catcher(e);
+            var a = actions[i];
+            if (typeof a == 'string') {
+              var t1 = Date.now();
+              theInfo.data += a + "\n";
+              if (typeof console !== 'undefined')
+                console.log(t0 ? "(+"+(t1-t0)+" ms)" : "        ", a);
+              t0 = t1;
+            } else {
+              try {
+                if (actions[i]() === ABORT) return;
+              } catch (e) {
+                catcher(e);
+              }
             }
             sub(i+1);
           }, 1);
@@ -646,9 +653,7 @@
       theInfo.data = "";
 
       sequence([
-        function () {
-          theInfo.data += "Preparing WebGL...\n";
-        },
+        "Preparing WebGL...",
         function () {
           theCanvas = document.getElementById('view-canvas');
           initGL(theCanvas);
@@ -656,8 +661,8 @@
             document.getElementById("webgl-error-notice").style.removeProperty("display");
             return ABORT;
           }
-          theInfo.data += "Generating worlds...\n";
         },
+        "Generating worlds...",
         generateInitialWorlds,
         function () {
           updateViewport();
@@ -665,21 +670,21 @@
             updateViewport();
             return true;
           }, false);
-          theInfo.data += "Compiling shaders...\n";
         },
+        "Compiling shaders...",
         function () {
           prepareProgram(gl, getShader(gl, "shader-vs"), getShader(gl, "shader-fs"), attribs, uniforms);
           initBuffers();
           gl.enable(gl.DEPTH_TEST);
           gl.enable(gl.CULL_FACE);
-          theInfo.data += "Painting blocks...\n"; // this is what takes the time in world renderer construction
         },
+        "Painting blocks...", // this is what takes the time in world renderer construction
         function () {
           // done after some GL init because player creates world renderer object internally
           player = new Player(worldH);
           player.setPosition([worldH.wx/2, worldH.wy/2 + 10, worldH.wz/2]);
-          theInfo.data += "Finishing...\n";
         },
+        "Finishing...",
         function () {
           input = new Input(theCanvas, player.input, document.getElementById("menu"));
           theCanvas.focus();
@@ -687,6 +692,7 @@
           // TODO: use webgl utils to avoid wasting time rendering frames if invisible
           setInterval(doStep, 1000*timestep);
         },
+        "Ready!"
       ], function (exception) {
         theInfo.data += exception;
         document.getElementById("load-error-notice").style.removeProperty("display");

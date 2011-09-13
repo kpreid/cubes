@@ -57,7 +57,8 @@ function prepareProgram(gl, vertexShader, fragmentShader, attribs, uniforms) {
   gl.linkProgram(shaderProgram);
 
   if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-    console.error(gl.getProgramInfoLog(shaderProgram));
+    if (typeof console !== 'undefined')
+      console.error(gl.getProgramInfoLog(shaderProgram));
     throw new Error("Could not link shader program; see console");
   }
 
@@ -68,7 +69,8 @@ function prepareProgram(gl, vertexShader, fragmentShader, attribs, uniforms) {
       if (!table.hasOwnProperty(name)) continue;
       table[name] = gl[getter](shaderProgram, name);
       if (table[name] === -1 || table[name] === null) { // -1 for attrib, null for uniform
-        console.error(getter + "(" + name + ") failed for shader");
+        if (typeof console !== 'undefined')
+          console.error(getter + "(" + name + ") failed for shader");
       }
     }
   }
