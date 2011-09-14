@@ -184,7 +184,7 @@ var WorldRenderer = (function () {
         if (x < 0 || x >= world.wx || z < 0 || z >= world.wz) return;
         var k = [x,z];
         var c = chunks[k];
-        c.dirtyChunk = true;
+        if (c) c.dirtyChunk = true;
         dirtyChunks.push(k); // Note: This creates duplicates, but calcChunk will check the per-chunk dirty flag.
       }
 
