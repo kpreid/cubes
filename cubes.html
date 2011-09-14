@@ -283,7 +283,7 @@
       for (var i = 0; i < blockWorldCount; i++) blockWorlds.push(new World(blockWorldSize, BlockSet.colors));
 
       // big world
-      worldH = new World([300,64,300], BlockSet.newTextured(blockWorlds));
+      worldH = new World([400,64,400], BlockSet.newTextured(blockWorlds));
       var wy = worldH.wy;
       worldH.edit(function (x,y,z,value) {
         var altitude = (y-wy/2) - Math.round(
@@ -561,7 +561,6 @@
           text += "XYZ: " + pp[0].toFixed(d) + "," + pp[1].toFixed(d) + "," + pp[2].toFixed(d) + "\n";
         }
         text += "Selected: " + cubeSelection + "  Empty: " + emptySelection + "\n";
-        text += wrend.debugText();
         if (errs.length) {
           lastGLErrors = errs;
           text += "GL errors:";
@@ -576,9 +575,8 @@
           });
           text += "\n";
         }
-        {
-          text += fpsDesc + "\n";
-        }
+        text += fpsDesc + "\n";
+        text += wrend.debugText();
         theInfo.data = text;
         
         renderCount++;

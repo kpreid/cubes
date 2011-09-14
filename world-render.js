@@ -8,6 +8,33 @@ var WorldRenderer = (function () {
   // Smaller chunks are faster to update when the world changes, but have a higher per-frame cost.
   var CHUNKSIZE = 12;
   
+  // The maximum distance at which geometry can be seen. TODO: This same constant is scattered elsewhere in the code as a magic number
+  var RENDER_DISTANCE = 160;
+  
+  // The distance at which invisible chunks are dropped from memory. Arbitrary figure...
+  var DROP_CHUNK_DISTANCE_SQUARED = Math.pow(RENDER_DISTANCE + 2*CHUNKSIZE, 2);
+  
+  var CHUNK_DISTANCE = Math.ceil(RENDER_DISTANCE/CHUNKSIZE);
+  
+  function dist2sq(v) {
+    return v[0]*v[0]+v[1]*v[1];
+  }
+  
+  // A static table of the offsets of the chunks visible from the player location
+  var nearChunkOrder = [];
+  var boundSquared = Math.pow(RENDER_DISTANCE + CHUNKSIZE, 2);
+  for (var x = -CHUNK_DISTANCE-1; x <= CHUNK_DISTANCE; x++)
+  for (var z = -CHUNK_DISTANCE-1; z <= CHUNK_DISTANCE; z++) {
+    var v = [x*CHUNKSIZE,z*CHUNKSIZE];
+    if (dist2sq(v) <= boundSquared) {
+      nearChunkOrder.push(v);
+    }
+  }
+  nearChunkOrder.sort(function (a,b) {
+    return dist2sq(b) - dist2sq(a);
+  });
+  Object.freeze(nearChunkOrder);
+  
   // TODO: make tile counts depend on blockset size
   var TILE_COUNT_U = 16;
   var TILE_COUNT_V = 16;
@@ -82,7 +109,11 @@ var WorldRenderer = (function () {
     var chunks = {};
 
     // Queue of chunks to render. Array (first-to-do at the end); each element is [x,z] where x and z are the low coordinates of the chunk.
+    // Chunks may be actually dirty, or just need first rendering; each chunk has a .chunkDirty propert.
     var dirtyChunks = [];
+    
+    // The origin of the chunk which the player is currently in
+    var playerChunk = [0,0];
 
     var textureDebugR = new RenderBundle(gl.TRIANGLE_STRIP, blockTexture, function (vertices, colors, texcoords) {
       var x = 2;
@@ -131,12 +162,7 @@ var WorldRenderer = (function () {
     
     function rebuildChunks() {
       deleteChunks();
-      
-      for (var x = 0; x < world.wx; x += CHUNKSIZE)
-      for (var z = 0; z < world.wz; z += CHUNKSIZE) (function () {
-        dirtyBlock(x+1, z+1);
-      })();
-      setTimeout(depthSortDirty, 0); // deferred so rest of init can happen and establish player's loc
+      // updateSomeChunks will add them back
     }
     
     function rebuildBlocks() {
@@ -156,7 +182,10 @@ var WorldRenderer = (function () {
     function dirtyBlock(x,z) {
       function _dirty(x,z) {
         if (x < 0 || x >= world.wx || z < 0 || z >= world.wz) return;
-        dirtyChunks.push([x,z]); // TODO: de-duplicate
+        var k = [x,z];
+        var c = chunks[k];
+        c.dirtyChunk = true;
+        dirtyChunks.push(k); // Note: This creates duplicates, but calcChunk will check the per-chunk dirty flag.
       }
 
       var xm = mod(x, CHUNKSIZE);
@@ -172,19 +201,46 @@ var WorldRenderer = (function () {
     }
     this.dirtyBlock = dirtyBlock;
 
-    function depthSortDirty() {
-      var pp = place.pos;
-      dirtyChunks.sort(function (a,b) {
-        return (
-          Math.pow(b[0]-pp[0],2)+Math.pow(b[1]-pp[2],2)
-          - (Math.pow(a[0]-pp[0],2)+Math.pow(a[1]-pp[2],2))
-        );
-      });
-    }
-
     function updateSomeChunks() {
-      for (var i = 0; i < 6 && dirtyChunks.length > 0; i++) {
-        calcChunk(dirtyChunks.pop());
+      // TODO put this elsewhere
+      // Determine if chunks' visibility to the player has changed
+      var newPlayerChunk = [place.pos[0] - mod(place.pos[0], CHUNKSIZE),
+                            place.pos[2] - mod(place.pos[2], CHUNKSIZE)];
+      if (newPlayerChunk[0] != playerChunk[0] || newPlayerChunk[1] != playerChunk[1]) {
+        //console.log("nPC ", newPlayerChunk[0], newPlayerChunk[1]);
+        
+        playerChunk = newPlayerChunk;
+        
+        nearChunkOrder.forEach(function (offset) {
+          var chunkKey = [playerChunk[0] + offset[0], playerChunk[1] + offset[1]];
+          if (chunkKey[0] < 0 || chunkKey[0] + CHUNKSIZE >= world.wx ||
+              chunkKey[1] < 0 || chunkKey[1] + CHUNKSIZE >= world.wz)
+            return; // out of world bounds. TODO: Abstract this
+          if (!chunks[chunkKey]) {
+            //console.log("adding", chunkKey);
+            dirtyChunks.push(chunkKey);
+          }
+        });
+
+        // Drop now-invisible chunks. Has a higher boundary so that we're not constantly reloading chunks if the player is moving back and forth.
+        for (var key in chunks) {
+          if (!chunks.hasOwnProperty(key)) continue;
+          var xz = key.split(",");
+          if (xz.length != 2) continue;
+          
+          if (dist2sq([xz[0]-playerChunk[0],xz[1]-playerChunk[1]]) > DROP_CHUNK_DISTANCE_SQUARED) {
+            chunks[key].deleteResources();
+            delete chunks[key];
+          }
+        }
+      }
+      
+      var toCompute = Math.ceil(Math.log(dirtyChunks.length) / 3 + 1);
+      for (var i = 0; i < toCompute && dirtyChunks.length > 0; i++) {
+        if (calcChunk(dirtyChunks.pop())) {
+          // no work was done, take another chunk
+          i--;
+        }
       }
       return i;
     }
@@ -205,9 +261,18 @@ var WorldRenderer = (function () {
     }
     this.draw = draw;
 
+    // returns whether no work was done
     function calcChunk(xzkey) {
-      if (chunks[xzkey]) {
-        chunks[xzkey].recompute();
+      var c = chunks[xzkey];
+      if (c) {
+        if (c.dirtyChunk) {
+          c.dirtyChunk = false;
+          c.recompute();
+          needsDraw = true;
+          return false;
+        } else {
+          return true;
+        }
       } else {
         var wx = world.wx;
         var wy = world.wy;
@@ -301,8 +366,9 @@ var WorldRenderer = (function () {
           var t1 = Date.now();
           //console.log("Geometry regen:", t1-t0, "ms");
         });
+        needsDraw = true;
+        return false;
       }
-      needsDraw = true;
     }
 
     function debugText() {
