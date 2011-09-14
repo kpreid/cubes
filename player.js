@@ -230,7 +230,8 @@ var Player = (function () {
             if (world == null) return; // TODO: UI message about this
             
             currentPlace = new Place(world);
-            vec3.set([World.TILE_SIZE/2, World.TILE_SIZE + playerAABB[1][0]+EPSILON, World.TILE_SIZE/2], currentPlace.pos);
+            vec3.set([World.TILE_SIZE/2, World.TILE_SIZE - playerAABB[1][0] + EPSILON, World.TILE_SIZE/2], currentPlace.pos);
+            console.log(vec3.str(currentPlace.pos));
             placeStack.push(oldPlace);
             aimChanged();
             
