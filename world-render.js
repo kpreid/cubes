@@ -243,10 +243,10 @@ var WorldRenderer = (function () {
         }
       }
       
-      var toCompute = Math.ceil(Math.log(dirtyChunks.length) / 3 + 1);
+      var toCompute = dirtyChunks.length > 30 ? 3 : 1;
       for (var i = 0; i < toCompute && dirtyChunks.length > 0; i++) {
         if (calcChunk(dirtyChunks.pop())) {
-          // no work was done, take another chunk
+          // Chunk wasn't actually dirty; take another chunk
           i--;
         }
       }
