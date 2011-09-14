@@ -272,7 +272,7 @@ var WorldRenderer = (function () {
         if (c.dirtyChunk) {
           c.dirtyChunk = false;
           c.recompute();
-          needsDraw = true;
+          scheduleDraw();
           return false;
         } else {
           return true;
@@ -370,7 +370,7 @@ var WorldRenderer = (function () {
           var t1 = Date.now();
           //console.log("Geometry regen:", t1-t0, "ms");
         });
-        needsDraw = true;
+        scheduleDraw();
         return false;
       }
     }

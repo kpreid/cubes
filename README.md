@@ -27,6 +27,7 @@ Except as otherwise noted in individual files, all source code and other materia
 
 Summary of exceptions (not guaranteed to be up-to-date):
 
-* The file `webgl-debug.js` is from a third party and is licensed under “a BSD-style license”.
+* The file `webgl-debug.js` is from a third party and is licensed under “a BSD-style license” (context has been lost for what license that is).
+* The file `webgl-utils.js` is from a third party and is licensed under the BSD 3-clause license.
 * The file `glMatrix.js` is from a third party and is licensed under what [the OSI calls](http://www.opensource.org/licenses/Zlib) the zlib/libpng license.
 * Code in several files is derived from [the Learning WebGL Lessons](http://learningwebgl.com/blog/?page_id=1217).

@@ -30,7 +30,7 @@ var Player = (function () {
     var pitch = 0;
   
     function aimChanged() {
-      needsDraw = true; // because this routine is also 'view direction changed'
+      scheduleDraw(); // because this routine is also 'view direction changed'
 
       var oldSel = ""+cubeSelection+""+emptySelection; // TODO: global variables
       cubeSelection = emptySelection = null;
@@ -53,7 +53,7 @@ var Player = (function () {
       // redraw
       if (""+cubeSelection+""+emptySelection !== oldSel) {
         selectionR.recompute();
-        needsDraw = true; // TODO: global variables
+        scheduleDraw(); // TODO: global variables
       }
     }
     
@@ -206,7 +206,7 @@ var Player = (function () {
         }
         if (changed) {
           aimChanged(); // block aimed at moved...
-          needsDraw = true;
+          scheduleDraw();
         }
       },
       get blockSet () { return currentPlace.world.blockSet; },

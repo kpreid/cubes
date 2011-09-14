@@ -93,7 +93,8 @@
   }
 </style>
 
-<script src="webgl-debug.js"></script>
+<script type="text/javascript" src="webgl-debug.js"></script>
+<script type="text/javascript" src="webgl-utils.js"></script>
 <script type="text/javascript" src="glMatrix.js"></script>
 <script type="text/javascript" src="util.js"></script>
 <script type="text/javascript" src="blockset.js"></script>
@@ -538,7 +539,9 @@
     var player;
 
     var lastGLErrors = [];
-    function drawScene(wrend) {
+    function drawScene() {
+        var wrend = player.getWorldRenderer();
+      
         mat4.identity(mvMatrix);
         player.render.applyViewPitch(mvMatrix);
         viewPosition = [0,0,0];
@@ -597,7 +600,6 @@
     }
     
     var timestep = 1/30;
-    var needsDraw = true;
     var input;
     var fpsDesc = "", frameCount = 0, renderCount = 0, chunkRenders = 0;
     
@@ -606,19 +608,25 @@
       
       player.getWorld().step();
 
-      var wrend = player.getWorldRenderer();
-      chunkRenders += wrend.updateSomeChunks();
-
       input.step();
 
-      // TODO: As well as skipping rendering, skip the callback entirely
-      // if there's nothing to do.
-      if (needsDraw) {
-        drawScene(wrend);
-        needsDraw = false;
+    }
+    
+    var animFrameWasRequested = false;
+    function scheduleDraw() {
+      if (!animFrameWasRequested) {
+        window.requestAnimFrame(function () {
+          animFrameWasRequested = false;
+          frameCount++;
+
+          // done here because chunk updating should be deprioritized at the same time drawing would be
+          var wrend = player.getWorldRenderer();
+          chunkRenders += wrend.updateSomeChunks();
+
+          drawScene();
+        }, theCanvas);
+        animFrameWasRequested = true;
       }
-      
-      frameCount++;
     }
 
     // statistics are reset once per second
