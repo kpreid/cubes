@@ -58,9 +58,9 @@ var Player = (function () {
     }
     
     var playerAABB = [
-      [-.6, .6], // x
+      [-.7, .7], // x
       [-3.4, .45], // y
-      [-.6, .6], // z
+      [-.7, .7], // z
     ];
 
     this.renderDebug = function (vertices, colors) {
@@ -245,7 +245,7 @@ var Player = (function () {
       },
       jump: function () {
         // TODO: jump from ground, etc.
-        currentPlace.vel[1] = 10;
+        currentPlace.vel[1] = 8;
       }
     });
   }
