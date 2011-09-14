@@ -112,8 +112,8 @@ var WorldRenderer = (function () {
     // Chunks may be actually dirty, or just need first rendering; each chunk has a .chunkDirty propert.
     var dirtyChunks = [];
     
-    // The origin of the chunk which the player is currently in
-    var playerChunk = [0,0];
+    // The origin of the chunk which the player is currently in. Changes to this are used to decide to recompute chunk visibility.
+    var playerChunk = null;
 
     var textureDebugR = new RenderBundle(gl.TRIANGLE_STRIP, blockTexture, function (vertices, colors, texcoords) {
       var x = 2;
@@ -162,7 +162,7 @@ var WorldRenderer = (function () {
     
     function rebuildChunks() {
       deleteChunks();
-      // updateSomeChunks will add them back
+      playerChunk = null; // Force recomputation of visible chunks when interested
     }
     
     function rebuildBlocks() {
@@ -191,8 +191,12 @@ var WorldRenderer = (function () {
         var k = [x,z];
         if (!chunkIntersectsWorld(k)) return;
         var c = chunks[k];
-        if (c) c.dirtyChunk = true;
-        dirtyChunks.push(k); // Note: This creates duplicates, but calcChunk will check the per-chunk dirty flag.
+        if (c) {
+          // dirtyBlock is used only for "this block changed", so if there is
+          // not already a chunk, we don't create it.
+          c.dirtyChunk = true;
+          dirtyChunks.push(k);
+        }
       }
 
       var xm = mod(x, CHUNKSIZE);
@@ -213,7 +217,7 @@ var WorldRenderer = (function () {
       // Determine if chunks' visibility to the player has changed
       var newPlayerChunk = [place.pos[0] - mod(place.pos[0], CHUNKSIZE),
                             place.pos[2] - mod(place.pos[2], CHUNKSIZE)];
-      if (newPlayerChunk[0] != playerChunk[0] || newPlayerChunk[1] != playerChunk[1]) {
+      if (playerChunk == null || newPlayerChunk[0] != playerChunk[0] || newPlayerChunk[1] != playerChunk[1]) {
         //console.log("nPC ", newPlayerChunk[0], newPlayerChunk[1]);
         
         playerChunk = newPlayerChunk;
