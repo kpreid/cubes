@@ -179,10 +179,17 @@ var WorldRenderer = (function () {
     };
     this.deleteResources = deleteResources;
 
+    function chunkIntersectsWorld(chunkOrigin) {
+      var x = chunkOrigin[0];
+      var z = chunkOrigin[1];
+      return x >= 0 && x - CHUNKSIZE < world.wx &&
+             z >= 0 && z - CHUNKSIZE < world.wz;
+    }
+
     function dirtyBlock(x,z) {
       function _dirty(x,z) {
-        if (x < 0 || x >= world.wx || z < 0 || z >= world.wz) return;
         var k = [x,z];
+        if (!chunkIntersectsWorld(k)) return;
         var c = chunks[k];
         if (c) c.dirtyChunk = true;
         dirtyChunks.push(k); // Note: This creates duplicates, but calcChunk will check the per-chunk dirty flag.
@@ -211,13 +218,10 @@ var WorldRenderer = (function () {
         
         playerChunk = newPlayerChunk;
         
+        // Add chunks which are in viewing distance.
         nearChunkOrder.forEach(function (offset) {
           var chunkKey = [playerChunk[0] + offset[0], playerChunk[1] + offset[1]];
-          if (chunkKey[0] < 0 || chunkKey[0] + CHUNKSIZE >= world.wx ||
-              chunkKey[1] < 0 || chunkKey[1] + CHUNKSIZE >= world.wz)
-            return; // out of world bounds. TODO: Abstract this
-          if (!chunks[chunkKey]) {
-            //console.log("adding", chunkKey);
+          if (!chunks[chunkKey] && chunkIntersectsWorld(chunkKey)) {
             dirtyChunks.push(chunkKey);
           }
         });
