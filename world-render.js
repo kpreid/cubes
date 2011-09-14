@@ -291,14 +291,15 @@ var WorldRenderer = (function () {
         var chunkLimitZ = xzkey[1] + CHUNKSIZE;
         var blockSet = world.blockSet;
         var textured = blockSet.textured;
+        var tilings = blockSet.tilings;
         var TILE_SIZE = World.TILE_SIZE;
         var PIXEL_SIZE = 1/TILE_SIZE;
+        var ID_EMPTY = BlockSet.ID_EMPTY;
+        var BOGUS_TILING = textured ? tilings[BlockSet.ID_BOGUS - 1] : DUMMY_TILING;
         chunks[xzkey] = new RenderBundle(gl.TRIANGLES,
                                          textured ? blockTexture : null, 
                                          function (vertices, colors, texcoords) {
           var t0 = Date.now();
-          var blockSet = world.blockSet;
-          var tilings = blockSet.tilings;
           var colorbuf = [];
           var vecbuf = vec3.create();
 
@@ -355,12 +356,10 @@ var WorldRenderer = (function () {
           for (var y = 0;            y < wy         ; y++)
           for (var z = chunkOriginZ; z < chunkLimitZ; z++) {
             var value = world.g(x,y,z);
-            var thiso = world.opaque(x,y,z); // If this and its neighbor are opaque, then hide surfaces
-            if (world.solid(x,y,z)) {
-              var tiling = textured ?
-                blockSet.tilings[value - 1] || blockSet.tilings[0 /* = ID_BOGUS - 1 */]
-                : DUMMY_TILING;
-              blockSet.writeColor(value, 1.0, colorbuf, 0);
+            var thiso = blockSet.isOpaque(value); // If this and its neighbor are opaque, then hide surfaces
+            if (value != ID_EMPTY) {
+              var tiling = textured ? tilings[value - 1] || BOGUS_TILING : DUMMY_TILING;
+              blockSet.writeColor(value, 1.0, colorbuf, 0); // TODO: can skip this if textured if we switch the shader to not take colors with textures
               var c1 = [x,y,z];
               var c2 = [x+1,y+1,z+1];
               if (!thiso || !world.opaque(x-1,y,z)) squares(c1, UNIT_PZ, UNIT_PY, UNIT_PX, tiling.lx, 0, TILE_SIZE_V, colorbuf);
