@@ -7,33 +7,36 @@ var WorldRenderer = (function () {
   // The side length of the chunks the world is broken into for rendering.
   // Smaller chunks are faster to update when the world changes, but have a higher per-frame cost.
   var CHUNKSIZE = 12;
-  
-  // The maximum distance at which geometry can be seen. TODO: This same constant is scattered elsewhere in the code as a magic number
-  var RENDER_DISTANCE = 160;
-  
-  // The distance at which invisible chunks are dropped from memory. Arbitrary figure...
-  var DROP_CHUNK_DISTANCE_SQUARED = Math.pow(RENDER_DISTANCE + 2*CHUNKSIZE, 2);
-  
-  var CHUNK_DISTANCE = Math.ceil(RENDER_DISTANCE/CHUNKSIZE);
-  
+
+  // 2D Euclidean distance, squared (for efficiency).
   function dist2sq(v) {
     return v[0]*v[0]+v[1]*v[1];
   }
-  
-  // A static table of the offsets of the chunks visible from the player location
-  var nearChunkOrder = [];
-  var boundSquared = Math.pow(RENDER_DISTANCE + CHUNKSIZE, 2);
-  for (var x = -CHUNK_DISTANCE-1; x <= CHUNK_DISTANCE; x++)
-  for (var z = -CHUNK_DISTANCE-1; z <= CHUNK_DISTANCE; z++) {
-    var v = [x*CHUNKSIZE,z*CHUNKSIZE];
-    if (dist2sq(v) <= boundSquared) {
-      nearChunkOrder.push(v);
+    
+  var distanceInfoCache = {}, lastSeenRenderDistance = null;
+  function renderDistanceInfo() {
+    if (configRenderDistance !== lastSeenRenderDistance) {
+      // The distance at which invisible chunks are dropped from memory. Semi-arbitrary figure...
+      distanceInfoCache.dropChunkDistanceSquared = Math.pow(configRenderDistance + 2*CHUNKSIZE, 2);
+
+      // A static table of the offsets of the chunks visible from the player location
+      var nearChunkOrder = [];
+      var chunkDistance = Math.ceil(configRenderDistance/CHUNKSIZE);
+      var boundSquared = Math.pow(configRenderDistance + CHUNKSIZE, 2);
+      for (var x = -chunkDistance-1; x <= chunkDistance; x++)
+      for (var z = -chunkDistance-1; z <= chunkDistance; z++) {
+        var v = [x*CHUNKSIZE,z*CHUNKSIZE];
+        if (dist2sq(v) <= boundSquared) {
+          nearChunkOrder.push(v);
+        }
+      }
+      nearChunkOrder.sort(function (a,b) {
+        return dist2sq(b) - dist2sq(a);
+      });
+      distanceInfoCache.nearChunkOrder = Object.freeze(nearChunkOrder);
     }
+    return distanceInfoCache;
   }
-  nearChunkOrder.sort(function (a,b) {
-    return dist2sq(b) - dist2sq(a);
-  });
-  Object.freeze(nearChunkOrder);
   
   // TODO: make tile counts depend on blockset size
   var TILE_COUNT_U = 16;
@@ -108,9 +111,11 @@ var WorldRenderer = (function () {
     // Object holding all world rendering chunks which have RenderBundles created, indexed by "<x>,<z>" where x and z are the low coordinates (i.e. divisible by CHUNKSIZE).
     var chunks = {};
 
-    // Queue of chunks to render. Array (first-to-do at the end); each element is [x,z] where x and z are the low coordinates of the chunk.
-    // Chunks may be actually dirty, or just need first rendering; each chunk has a .chunkDirty propert.
+    // Queue of chunks to rerender. Array (first-to-do at the end); each element is [x,z] where x and z are the low coordinates of the chunk.
     var dirtyChunks = [];
+
+    // Queue of chunks to render for the first time. Distinguished from dirtyChunks in that it can be flushed if the view changes.
+    var addChunks = [];
     
     // The origin of the chunk which the player is currently in. Changes to this are used to decide to recompute chunk visibility.
     var playerChunk = null;
@@ -140,6 +145,7 @@ var WorldRenderer = (function () {
       
       chunks = {};
       dirtyChunks = [];
+      addChunks = [];
     }
     
     function rebuildBlockTexture() {
@@ -173,6 +179,12 @@ var WorldRenderer = (function () {
       textureDebugR.deleteResources();
     };
     this.deleteResources = deleteResources;
+
+    function changedRenderDistance() {
+      playerChunk = null; // TODO kludge. The effect of this is to reevaluate which chunks are visible
+      addChunks = [];
+    }
+    this.changedRenderDistance = changedRenderDistance;
 
     function chunkIntersectsWorld(chunkOrigin) {
       var x = chunkOrigin[0];
@@ -218,29 +230,31 @@ var WorldRenderer = (function () {
         playerChunk = newPlayerChunk;
         
         // Add chunks which are in viewing distance.
-        nearChunkOrder.forEach(function (offset) {
+        renderDistanceInfo().nearChunkOrder.forEach(function (offset) {
           var chunkKey = [playerChunk[0] + offset[0], playerChunk[1] + offset[1]];
           if (!chunks[chunkKey] && chunkIntersectsWorld(chunkKey)) {
-            dirtyChunks.push(chunkKey);
+            addChunks.push(chunkKey);
           }
         });
 
         // Drop now-invisible chunks. Has a higher boundary so that we're not constantly reloading chunks if the player is moving back and forth.
+        var dds = renderDistanceInfo().dropChunkDistanceSquared;
         for (var key in chunks) {
           if (!chunks.hasOwnProperty(key)) continue;
           var xz = key.split(",");
           if (xz.length != 2) continue;
           
-          if (dist2sq([xz[0]-playerChunk[0],xz[1]-playerChunk[1]]) > DROP_CHUNK_DISTANCE_SQUARED) {
+          if (dist2sq([xz[0]-playerChunk[0],xz[1]-playerChunk[1]]) > dds) {
             chunks[key].deleteResources();
             delete chunks[key];
           }
         }
       }
-      
-      var toCompute = dirtyChunks.length > 30 ? 3 : 1;
-      for (var i = 0; i < toCompute && dirtyChunks.length > 0; i++) {
-        if (calcChunk(dirtyChunks.pop())) {
+
+      var chunkQueue = dirtyChunks.length > 0 ? dirtyChunks : addChunks;
+      var toCompute = chunkQueue.length > 30 ? 3 : 1;
+      for (var i = 0; i < toCompute && chunkQueue.length > 0; i++) {
+        if (calcChunk(chunkQueue.pop())) {
           // Chunk wasn't actually dirty; take another chunk
           i--;
         }
@@ -375,8 +389,8 @@ var WorldRenderer = (function () {
 
     function debugText() {
       var text = "";
-      if (dirtyChunks.length > 0) {
-        text += "Chunk Q: " + dirtyChunks.length + "\n";
+      if (dirtyChunks.length > 0 || addChunks.length > 0) {
+        text += "Chunk Q: " + dirtyChunks.length + " dirty, " + addChunks.length + " new\n";
       }
       return text;
     }
