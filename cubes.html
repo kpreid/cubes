@@ -124,22 +124,22 @@
     const vec4 cGround = vec4(0.5,0.4,0.4,1.0);
 
     void main(void) {
-        vec4 texColor;
+        vec4 color;
         if (uTextureEnabled) {
-          // TODO: Do we actually need colorization of textures for our purposes?
-          texColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+          // If texturing is enabled, input vertex color is ignored.
+          color = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
 
           // alpha test
-          if (texColor.a <= 0.0)
+          if (color.a <= 0.0)
             discard;
         } else {
-          texColor = vec4(1.0,1.0,1.0,1.0);
+          color = vColor;
         }
         float elevationSine = vFixedOrientationPosition.y / length(vFixedOrientationPosition); // TODO move out of frag
         vec4 fogColor = elevationSine < 0.0
           ? mix(cHorizon, cGround, clamp(log(1.0 + -elevationSine * 120.0), 0.0, 1.0))
           : mix(cHorizon, cSky, clamp(log(1.0 + elevationSine * 2.0), 0.0, 1.0));
-        gl_FragColor = vColor * texColor * (1.0-vFog) + fogColor * vFog;
+        gl_FragColor = color * (1.0-vFog) + fogColor * vFog;
     }
 </script>
 
@@ -421,20 +421,20 @@
       
       this.recompute = function () {
         var vertices = [];
-        var colors = [];
+        var colors = optTexture ? null : [];
         var texcoords = optTexture ? [] : null;
-        calcFunc(vertices, colors, texcoords);
+        calcFunc(vertices, optTexture ? texcoords : colors);
         numVertices = Math.floor(vertices.length / 3);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-        
         if (optTexture) {
           gl.bindBuffer(gl.ARRAY_BUFFER, tbuf);
           gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texcoords), gl.STATIC_DRAW);
+        } else {
+          gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
+          gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
         }
       };
       
@@ -449,6 +449,7 @@
 
         if (optTexture) {
           gl.enableVertexAttribArray(attribs.aTextureCoord);
+          gl.disableVertexAttribArray(attribs.aVertexColor);
           
           gl.bindBuffer(gl.ARRAY_BUFFER, tbuf);
           gl.vertexAttribPointer(attribs.aTextureCoord, 2, gl.FLOAT, false, 0, 0);
@@ -458,6 +459,7 @@
           gl.uniform1i(uniforms.uSampler, 0);
         } else {
           gl.disableVertexAttribArray(attribs.aTextureCoord);
+          gl.enableVertexAttribArray(attribs.aVertexColor);
         }
         setMatrixUniforms();
         gl.drawArrays(primitive, 0, numVertices);

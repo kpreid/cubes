@@ -115,7 +115,7 @@ var WorldRenderer = (function () {
     // The origin of the chunk which the player is currently in. Changes to this are used to decide to recompute chunk visibility.
     var playerChunk = null;
 
-    var textureDebugR = new RenderBundle(gl.TRIANGLE_STRIP, blockTexture, function (vertices, colors, texcoords) {
+    var textureDebugR = new RenderBundle(gl.TRIANGLE_STRIP, blockTexture, function (vertices, texcoords) {
       var x = 2;
       var y = 2;
       var z = -5;
@@ -123,11 +123,6 @@ var WorldRenderer = (function () {
       vertices.push(x, -y, z);
       vertices.push(-x, y, z);
       vertices.push(x, y, z);
-      
-      colors.push(1, 1, 1, 1);
-      colors.push(1, 1, 1, 1);
-      colors.push(1, 1, 1, 1);
-      colors.push(1, 1, 1, 1);
 
       texcoords.push(0, 0);
       texcoords.push(1, 0);
@@ -298,7 +293,7 @@ var WorldRenderer = (function () {
         var BOGUS_TILING = textured ? tilings[BlockSet.ID_BOGUS - 1] : DUMMY_TILING;
         chunks[xzkey] = new RenderBundle(gl.TRIANGLES,
                                          textured ? blockTexture : null, 
-                                         function (vertices, colors, texcoords) {
+                                         function (vertices, colorsOrTexcoords) {
           var t0 = Date.now();
           var colorbuf = [];
           var vecbuf = vec3.create();
@@ -307,7 +302,7 @@ var WorldRenderer = (function () {
             vertices.push(vec[0], vec[1], vec[2]);
           }
           function pushTileCoord(tileKey, u, v) {
-            texcoords.push(tileKey[1] + u, 
+            colorsOrTexcoords.push(tileKey[1] + u, 
                            tileKey[0] + v);
           }
 
@@ -323,6 +318,10 @@ var WorldRenderer = (function () {
               pushTileCoord(tileKey, texD, texD);
               pushTileCoord(tileKey, 0, TILE_SIZE_V);
               pushTileCoord(tileKey, TILE_SIZE_U, 0);
+            } else {
+              for (var i=0; i < 6; i++) {
+                colorsOrTexcoords.push(color[0],color[1],color[2],color[3]);
+              }
             }
 
             pushVertex(origin);
@@ -332,10 +331,6 @@ var WorldRenderer = (function () {
             pushVertex(vec3.add(vec3.add(origin, v1, vecbuf), v2, vecbuf));
             pushVertex(vec3.add(origin, v2, vecbuf));
             pushVertex(vec3.add(origin, v1, vecbuf));
-
-            for (var i=0; i < 6; i++) {
-              colors.push(color[0],color[1],color[2],color[3]);
-            }
           }
           var depthOriginBuf = vec3.create();
           function squares(origin, v1, v2, vDepth, tileLayers, texO, texD, color) {
