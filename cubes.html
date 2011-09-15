@@ -541,11 +541,11 @@
     var player;
 
     var lastGLErrors = [];
-    function drawScene() {
-        var wrend = player.getWorldRenderer();
+    function drawScene(playerRender) {
+        var wrend = playerRender.getWorldRenderer();
       
         mat4.identity(mvMatrix);
-        player.render.applyViewPitch(mvMatrix);
+        playerRender.applyViewPitch(mvMatrix);
         viewPosition = [0,0,0];
 
         // TODO: remove duplication of this computation (3)
@@ -558,8 +558,8 @@
 
         mat4.perspective(45, gl.drawingBufferWidth / gl.drawingBufferHeight, 0.1, 160.0, pMatrix);
 
-        viewPosition = player.getPosition();
-        player.render.applyViewRotTranslation(mvMatrix);
+        viewPosition = playerRender.getPosition();
+        playerRender.applyViewRotTranslation(mvMatrix);
         wrend.draw();
 
         debugR.draw();
@@ -575,7 +575,7 @@
         
         var text = "";
         {
-          var pp = player.getPosition();
+          var pp = viewPosition;
           var d = 2;
           text += "XYZ: " + pp[0].toFixed(d) + "," + pp[1].toFixed(d) + "," + pp[2].toFixed(d) + "\n";
         }
@@ -606,12 +606,8 @@
     var fpsDesc = "", frameCount = 0, renderCount = 0, chunkRenders = 0;
     
     function doStep() {
-      player.step();
-      
-      player.getWorld().step();
-
+      player.stepYourselfAndWorld();
       input.step();
-
     }
     
     var animFrameWasRequested = false;
@@ -622,10 +618,9 @@
           frameCount++;
 
           // done here because chunk updating should be deprioritized at the same time drawing would be
-          var wrend = player.getWorldRenderer();
-          chunkRenders += wrend.updateSomeChunks();
+          chunkRenders += player.render.getWorldRenderer().updateSomeChunks();
 
-          drawScene();
+          drawScene(player.render);
         }, theCanvas);
         animFrameWasRequested = true;
       }

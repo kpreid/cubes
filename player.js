@@ -80,7 +80,7 @@ var Player = (function () {
     }
 
     var EPSILON = 1e-3;
-    this.step = function () {
+    function stepPlayer() {
       var world = currentPlace.world;
       
       // apply movement control to velocity
@@ -156,7 +156,14 @@ var Player = (function () {
       
       debugR.recompute();
     };
-    this.render = {
+    
+    this.stepYourselfAndWorld = function () {
+      stepPlayer();
+      currentPlace.world.step(currentPlace.wrend);
+    }
+    
+    // The facet for rendering
+    this.render = Object.freeze({
       applyViewPitch: function (matrix) {
         mat4.rotate(matrix, -pitch, [1, 0, 0]);
       },
@@ -164,21 +171,22 @@ var Player = (function () {
         mat4.rotate(matrix, -currentPlace.yaw, [0, 1, 0]);
         var positionTrans = vec3.negate(currentPlace.pos, vec3.create());
         mat4.translate(matrix, positionTrans);
+      },
+      getPosition: function() {
+        return vec3.create(currentPlace.pos);
+      },
+      getWorldRenderer: function () {
+        return currentPlace.wrend;
       }
-    };
-    this.getPosition = function() {
-      return vec3.create(currentPlace.pos);
-    };
+    });
     this.setPosition = function(p) {
       vec3.set(p, currentPlace.pos);
     };
     this.getWorld = function() {
       return currentPlace.world;
     };
-    this.getWorldRenderer = function() {
-      return currentPlace.wrend;
-    };
     
+    // The facet for user input
     this.input = Object.freeze({
       click: function (button /* currently defunct */) {
         var changed = false;

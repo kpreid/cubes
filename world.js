@@ -120,7 +120,7 @@ function World(sizes, blockSet) {
     }
   }
   
-  function step() {
+  function step(worldRenderer) { // TODO: that parameter is a kludge
     // turn fractional part of number of iterations into randomness - 1.25 = 1 3/4 and 2 1/4 of the time
     var roundedNum = Math.floor(numToDisturb) + (Math.random() < (numToDisturb % 1) ? 1 : 0);
     
@@ -136,7 +136,7 @@ function World(sizes, blockSet) {
       else continue;
       s(x, y, z, value);
       
-      player.getWorldRenderer().dirtyBlock(x,z); // TODO global variable
+      worldRenderer.dirtyBlock(x,z); // TODO global variable
     }
   }
   
