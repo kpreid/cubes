@@ -269,10 +269,12 @@ var WorldRenderer = (function () {
         chunks[index].draw();
       }
       
-      if (false) { // TODO: Add a way to turn this on for debugging/amusement value. (Display of the raw texture.)
+      if (configDebugTextureAllocation) {
         var mvsave = mvMatrix;
         mvMatrix = mat4.identity(mat4.create());
+        gl.disable(gl.DEPTH_TEST);
         textureDebugR.draw();
+        gl.enable(gl.DEPTH_TEST);
         mvMatrix = mvsave;
       }
     }

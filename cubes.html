@@ -182,7 +182,10 @@
     "use strict";
     
     var DEBUG = false;
+    
+    // Settable using the options sidebar
     var configRenderDistance = 160;
+    var configDebugTextureAllocation = false;
 
     var gl;
     var theCanvas;
@@ -776,18 +779,22 @@
       <button id="helpbtn" onclick="this.style.display='none'; document.getElementById('help').style.display='block'; document.getElementById('view-canvas').focus();">Help</button>
     </div>
 
-    <div id="options" class="sidebar" onclick="if (event.target.tagName == 'INPUT') return true; this.style.display='none'; document.getElementById('optionsbtn').style.display='inline'; document.getElementById('view-canvas').focus();" style="display: none;">
-      <h2 style="display: none;">Options</h2>
+    <div id="options" class="sidebar" onclick="if (event.target.tagName == 'INPUT' || event.target.tagName == 'LABEL') return true; this.style.display='none'; document.getElementById('optionsbtn').style.display='inline'; document.getElementById('view-canvas').focus();" style="display: none;">
+      <h2>Options</h2>
 
       <p>Click to close.</p>
       
       <form onsubmit="return false;" action="">
         <p>Render distance: <input type="range" min="10" max="500" value="160" maxlength="4" size="4" onchange="configRenderDistance = parseFloat(this.value); changedRenderDistance(); return true;"></p>
+        
+        <h3>Debug</h3>
+        
+        <p><label><input type="checkbox" onchange="configDebugTextureAllocation = this.checked; return true;"> Display block texture</label></p>
       </form>
     </div>
 
     <div id="help" class="sidebar" onclick="this.style.display='none'; document.getElementById('helpbtn').style.display='inline'; document.getElementById('view-canvas').focus();" style="display: none;">
-      <h2 style="display: none;">Help</h2>
+      <h2>Help</h2>
       
       <p>Click to close this help.</p>
       
