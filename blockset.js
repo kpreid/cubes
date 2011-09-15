@@ -23,6 +23,7 @@ var BlockSet = (function () {
     isOpaque: function (blockID) { return blockID != BlockSet.ID_EMPTY },
     rebuildBlockTexture: function (blockID) {},
     worldFor: function (blockID) { return null; },
+    behaviors: [],
     serialize: function () { return { type: "colors" }; }
   });
 
@@ -85,6 +86,7 @@ var BlockSet = (function () {
       throw new Error("Textured block set must have at least one world");
     }
     var tilings = [];
+    var behaviors = [];
     var opacities = [false];
     for (var i = 0; i < worlds.length; i++) tilings.push({});
     
@@ -210,9 +212,14 @@ var BlockSet = (function () {
       worldFor: function (blockID) {
         return worlds[blockID - 1] || null;
       },
+      behaviors: behaviors, // TODO should be RO (but needs to be fast)
+      setBehavior: function (worldID, behavior) {
+        behaviors[worldID + 1] = behavior;
+      },
       serialize: function () {
         return {
           type: "textured",
+          behaviors: behaviors.slice(),
           worlds: worlds.map(function (world) { return world.serialize(); })
         }
       }
@@ -228,7 +235,14 @@ var BlockSet = (function () {
     if (json.type === "colors") {
       return BlockSet.colors;
     } else if (json.type === "textured") {
-      return BlockSet.newTextured(json.worlds.map(function (world) { return World.unserialize(world); }));
+      var blockset = BlockSet.newTextured(
+        json.worlds.map(function (world) { return World.unserialize(world); }));
+      var behaviors = json.behaviors;
+      if (behaviors) {
+        for (var i = 0; i < json.behaviors.length; i++)
+          blockset.setBehavior(i-1, json.behaviors[i]);
+      }
+      return blockset;
     }
   };
 

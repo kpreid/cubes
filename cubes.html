@@ -102,6 +102,7 @@
 <script type="text/javascript" src="blockset.js"></script>
 <script type="text/javascript" src="world.js"></script>
 <script type="text/javascript" src="world-gen.js"></script>
+<script type="text/javascript" src="circuit.js"></script>
 <script type="text/javascript" src="world-render.js"></script>
 <script type="text/javascript" src="block-render.js"></script>
 <script type="text/javascript" src="player.js"></script>
@@ -328,29 +329,45 @@
     function RenderBundle(primitive, optTexture, calcFunc, options) {
       options = options || {};
       
-      var vbuf = gl.createBuffer();
-      if (!optTexture) var cbuf = gl.createBuffer();
-      if (optTexture) var tbuf = gl.createBuffer();
+      var varr, vbuf = gl.createBuffer();
+      if (!optTexture) var carr, cbuf = gl.createBuffer();
+      if (optTexture) var tarr, tbuf = gl.createBuffer();
       var numVertices;
       
-      this.recompute = function () {
-        var vertices = [];
-        var colors = optTexture ? null : [];
-        var texcoords = optTexture ? [] : null;
-        calcFunc(vertices, optTexture ? texcoords : colors);
-        numVertices = Math.floor(vertices.length / 3);
+      if (calcFunc != null) {
+        this.recompute = function () {
+          var vertices = [];
+          var colors = optTexture ? null : [];
+          var texcoords = optTexture ? [] : null;
+          calcFunc(vertices, optTexture ? texcoords : colors);
+          numVertices = Math.floor(vertices.length / 3);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+          gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
+          gl.bufferData(gl.ARRAY_BUFFER, varr = new Float32Array(vertices), gl.STATIC_DRAW);
 
-        if (optTexture) {
-          gl.bindBuffer(gl.ARRAY_BUFFER, tbuf);
-          gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texcoords), gl.STATIC_DRAW);
-        } else {
-          gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
-          gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-        }
-      };
+          if (optTexture) {
+            gl.bindBuffer(gl.ARRAY_BUFFER, tbuf);
+            gl.bufferData(gl.ARRAY_BUFFER, tarr = new Float32Array(texcoords), gl.STATIC_DRAW);
+          } else {
+            gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
+            gl.bufferData(gl.ARRAY_BUFFER, carr = new Float32Array(colors), gl.STATIC_DRAW);
+          }
+        };
+
+        this.recompute();
+      } else {
+        this.setNumVertices = function (v) {
+          numVertices = v;
+        };
+      }
+
+      // made available for partial updates
+      this.getVerticesA = function () { return varr; };
+      this.verticesB = vbuf;
+      this.getColorsA = function () { return carr; };
+      this.colorsB = cbuf;
+      this.getTexcoordsA = function () { return tarr; };
+      this.texcoordsB = tbuf;
       
       function draw() {
         gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
@@ -383,12 +400,10 @@
       
       this.deleteResources = function () {
         gl.deleteBuffer(vbuf);
-        gl.deleteBuffer(cbuf);
+        if (cbuf) gl.deleteBuffer(cbuf);
         if (tbuf) gl.deleteBuffer(tbuf);
         vbuf = cbuf = tbuf = numVertices = null;
       }
-      
-      this.recompute();
     }
     
     // TODO: the interface for this is lousy. blockWorld==null means we're creating a block, nonnull destroying
@@ -536,6 +551,21 @@
         text += totalVertices + " vertices\n";
         text += fpsDesc + "\n";
         text += wrend.debugText();
+        if (player.getSelection() !== null) {
+          var cube = player.getSelection().cube;
+          var world = player.getWorld();
+          var circuit = world.getCircuit(cube);
+          var value = world.g(cube[0],cube[1],cube[2]);
+          if (circuit !== null) {
+            var state = circuit.getBlockState(cube);
+            var stateText = "";
+            for (var key in state) {
+              if (!state.hasOwnProperty(key)) continue;
+              stateText += " " + key + ":" + state[key];
+            }
+            text += "Circuit: " + world.blockSet.behaviors[value] + "" + stateText + "\n";
+          }
+        }
         theInfo.data = text;
         
         totalVertices = 0;

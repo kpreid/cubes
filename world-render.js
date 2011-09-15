@@ -55,6 +55,9 @@ var WorldRenderer = (function () {
     // The origin of the chunk which the player is currently in. Changes to this are used to decide to recompute chunk visibility.
     var playerChunk = null;
     
+    // Like chunks, but for circuits. Indexed by the circuit origin block.
+    var circuitRenderers = {};
+
     var blockTexture = world.blockSet.texture;
     
     var particles = [];
@@ -83,6 +86,10 @@ var WorldRenderer = (function () {
       },
     });
     
+    var blockSet = world.blockSet;
+    var textured = blockSet.textured;
+    var tilings = blockSet.tilings;
+    
     // --- methods, internals ---
     
     function deleteChunks() {
@@ -90,8 +97,13 @@ var WorldRenderer = (function () {
         if (!chunks.hasOwnProperty(index)) continue;
         chunks[index].deleteResources();
       }
+      for (var index in circuitRenderers) {
+        if (!circuitRenderers.hasOwnProperty(index)) continue;
+        circuitRenderers[index].deleteResources();
+      }
       
       chunks = {};
+      circuitRenderers = {};
       dirtyChunks = [];
       addChunks = [];
     }
@@ -166,6 +178,20 @@ var WorldRenderer = (function () {
     }
     this.dirtyBlock = dirtyBlock;
 
+    var enough = 0;
+
+    function dirtyCircuit(circuit) {
+      var o = circuit.getOrigin();
+      var r = circuitRenderers[o];
+      if (r) r.recompute();
+    }
+    this.dirtyCircuit = dirtyCircuit;
+    
+    function deletedCircuit(circuit) {
+      delete circuitRenderers[circuit.getOrigin()];
+    }
+    this.deletedCircuit = deletedCircuit;
+
     function updateSomeChunks() {
       // Determine if chunks' visibility to the player has changed
       var newPlayerChunk = [place.pos[0] - mod(place.pos[0], CHUNKSIZE),
@@ -195,6 +221,20 @@ var WorldRenderer = (function () {
             delete chunks[key];
           }
         }
+        
+        // Drop now-invisible circuits
+        // TODO: This works off the origin, but circuits can be arbitrarily large so we should test against their AABB
+        for (var key in circuitRenderers) {
+          if (!circuitRenderers.hasOwnProperty(key)) continue;
+          var xyz = key.split(",");
+          if (xyz.length != 3) continue;
+          
+          if (dist2sq([xyz[0]-playerChunk[0],xyz[2]-playerChunk[1]]) > dds) {
+            circuitRenderers[key].deleteResources();
+            delete circuitRenderers[key];
+          }
+        }
+        
       }
 
       var chunkQueue = dirtyChunks.length > 0 ? dirtyChunks : addChunks;
@@ -232,6 +272,10 @@ var WorldRenderer = (function () {
       for (var index in chunks) {
         if (!chunks.hasOwnProperty(index)) continue;
         chunks[index].draw();
+      }
+      for (var index in circuitRenderers) {
+        if (!circuitRenderers.hasOwnProperty(index)) continue;
+        circuitRenderers[index].draw();
       }
       
       for (var i = 0; i < particles.length; i++) {
@@ -283,15 +327,13 @@ var WorldRenderer = (function () {
         var chunkOriginZ = xzkey[1];
         var chunkLimitX = xzkey[0] + CHUNKSIZE;
         var chunkLimitZ = xzkey[1] + CHUNKSIZE;
-        var blockSet = world.blockSet;
-        var textured = blockSet.textured;
-        var tilings = blockSet.tilings;
         var TILE_SIZE = World.TILE_SIZE;
         var PIXEL_SIZE = 1/TILE_SIZE;
         var TILE_SIZE_U = blockSet.texTileSizeU;
         var TILE_SIZE_V = blockSet.texTileSizeV;
         var ID_EMPTY = BlockSet.ID_EMPTY;
         var BOGUS_TILING = textured ? tilings[BlockSet.ID_BOGUS - 1] : DUMMY_TILING;
+        //var chunkAABB = [[chunkOriginX, chunkLimitX], [0, wy], [chunkOriginZ, chunkLimitZ]];
         chunks[xzkey] = new RenderBundle(gl.TRIANGLES,
                                          textured ? blockTexture : null, 
                                          function (vertices, colorsOrTexcoords) {
@@ -347,7 +389,7 @@ var WorldRenderer = (function () {
               }
             }
           }
-
+          
           for (var x = chunkOriginX; x < chunkLimitX; x++)
           for (var y = 0;            y < wy         ; y++)
           for (var z = chunkOriginZ; z < chunkLimitZ; z++) {
@@ -364,6 +406,15 @@ var WorldRenderer = (function () {
               if (!thiso || !world.opaque(x+1,y,z)) squares(c2, UNIT_NY, UNIT_NZ, UNIT_NX, tiling.hx, TILE_SIZE_U, 0, colorbuf);
               if (!thiso || !world.opaque(x,y+1,z)) squares(c2, UNIT_NZ, UNIT_NX, UNIT_NY, tiling.hy, TILE_SIZE_U, 0, colorbuf);
               if (!thiso || !world.opaque(x,y,z+1)) squares(c2, UNIT_NX, UNIT_NY, UNIT_NZ, tiling.hz, TILE_SIZE_U, 0, colorbuf);
+              var circuit = world.getCircuit(c1); // TODO: replace this with some other spatial indexing scheme so we don't have to check per-every-block
+              if (circuit) {
+                var o = circuit.getOrigin();
+                var r = circuitRenderers[o];
+                if (!r) {
+                  //if (enough++ < 100) console.log("new circuit " + o);
+                  circuitRenderers[o] = makeCircuitRenderer(circuit);
+                }
+              }
             }
           }
           var t1 = Date.now();
@@ -372,6 +423,86 @@ var WorldRenderer = (function () {
         //scheduleDraw();
         return false;
       }
+    }
+    
+    function makeCircuitRenderer(circuit) {
+      var dyns;
+      var chunkDynamic = new RenderBundle(gl.TRIANGLES, null, function (vertices, colors) {
+        dyns = [];
+        function pushVertex(vec) {
+          vertices.push(vec[0], vec[1], vec[2]);
+        }
+        circuit.blocks.forEach(function (block) {
+          var value = world.g(block[0],block[1],block[2]);
+          var state = circuit.getBlockState(block);
+          switch (blockSet.behaviors[value]) {
+            case Circuit.B_WIRE:
+              // This shows a stripe on every wire connected to an output.
+              //function paintWire(c) {
+              //  colors.push(1,1,1,1); vertices.push(block[0]+c[0],  block[1]+.2,block[2]+c[2]);
+              //  colors.push(1,1,1,1); vertices.push(block[0]+c[0],  block[1]+.2,block[2]-c[2]+1);
+              //  colors.push(1,1,1,1); vertices.push(block[0]-c[0]+1,block[1]+.2,block[2]-c[2]+1);
+              //  colors.push(1,1,1,1); vertices.push(block[0]-c[0]+1,block[1]+.2,block[2]-c[2]+1);
+              //  colors.push(1,1,1,1); vertices.push(block[0]-c[0]+1,block[1]+.2,block[2]+c[2]);
+              //  colors.push(1,1,1,1); vertices.push(block[0]+c[0],  block[1]+.2,block[2]+c[2]);
+              //}
+              //UNIT_AXES.forEach(function (direction) {
+              //  direction = Array.prototype.slice.call(direction);
+              //  if (state["wireTo "+direction]) {
+              //    var constrain = [0,0,0];
+              //    for (var i = 0; i < 3; i++) {
+              //      constrain[i] = direction[i] ? 0 : 0.48;
+              //    }
+              //    paintWire(constrain);
+              //  }
+              //});
+              break;
+            case Circuit.B_OUTPUT:
+              state.signalFrom.forEach(function (fromBlock) {
+                var delta = vec3.subtract(block, fromBlock, vec3.create());
+                var perp = vec3.cross(delta, delta[1] ? UNIT_PX : UNIT_PY, vec3.create());
+                vec3.normalize(perp);
+                vec3.scale(perp, .1);
+                var v0 = vec3.add     (vec3.add(fromBlock, [.5, .6, .5], vec3.create()), perp);
+                var v1 = vec3.add     (vec3.add(block,     [.5, .6, .5], vec3.create()), perp);
+                var v2 = vec3.subtract(vec3.add(block,     [.5, .6, .5], vec3.create()), perp);
+                var v3 = vec3.subtract(vec3.add(fromBlock, [.5, .6, .5], vec3.create()), perp);
+                var vbase = vertices.length;
+                var cbase = colors.length;
+                colors.push(1,1,1,1); pushVertex(v0);
+                colors.push(1,1,1,1); pushVertex(v1);
+                colors.push(1,1,1,1); pushVertex(v2);
+                colors.push(1,1,1,1); pushVertex(v2);
+                colors.push(1,1,1,1); pushVertex(v3);
+                colors.push(1,1,1,1); pushVertex(v0);
+                dyns.push(function () {
+                  var carr = chunkDynamic.getColorsA();
+                  for (var i = 0, p = cbase; i < 6; i++) { // 6 vertices for the square
+                    carr[p++] = 0;
+                    carr[p++] = Math.random();
+                    carr[p++] = 0;
+                    carr[p++] = 1;
+                  }
+                });
+              });
+              break;
+          }
+        });
+      });
+      
+      function updateDynamic() {
+        dyns.forEach(function (f) { f(); });
+        gl.bindBuffer(gl.ARRAY_BUFFER, chunkDynamic.colorsB);
+        gl.bufferData(gl.ARRAY_BUFFER, chunkDynamic.getColorsA(), gl.DYNAMIC_DRAW);
+      }
+      
+      var bareDraw = chunkDynamic.draw;
+      chunkDynamic.draw = function () {
+        updateDynamic();
+        bareDraw.call(chunkDynamic);
+      }
+      
+      return chunkDynamic;
     }
 
     function debugText() {

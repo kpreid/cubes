@@ -46,6 +46,14 @@ var UNIT_PZ = vec3.create([0,0,1]);
 var UNIT_NX = vec3.create([-1,0,0]);
 var UNIT_NY = vec3.create([0,-1,0]);
 var UNIT_NZ = vec3.create([0,0,-1]);
+var UNIT_AXES = Object.freeze([
+  UNIT_PX,
+  UNIT_PY,
+  UNIT_PZ,
+  UNIT_NX,
+  UNIT_NY,
+  UNIT_NZ,
+]);
 
 function prepareShader(gl, id) {
   // See note in license statement at the top of this file.  
@@ -97,4 +105,11 @@ function prepareProgram(gl, vertexShader, fragmentShader, attribs, uniforms) {
     var name = gl.getActiveUniform(program, i).name;
     uniforms[name] = gl.getUniformLocation(program, name);
   }
+}
+
+function intersectAABB(a1, a2) {
+  for (var dim = 0; dim < 3; dim++)
+    if (a1[dim][1] < a2[dim][0] || a2[dim][1] < a1[dim][0])
+      return false;
+  return true;
 }

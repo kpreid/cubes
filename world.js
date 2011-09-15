@@ -4,14 +4,25 @@
 function World(sizes, blockSet) {
   "use strict";
 
+  var world = this;
+
   var wx = sizes[0];
   var wy = sizes[1];
   var wz = sizes[2];
   var blocks = new Uint8Array(wx*wy*wz);
   
+  // Maps from "x,y,z" to circuit object
+  var blockCircuits = {};
+  
+  // Maps from an arbitrary block "x,y,z" to circuit object (no duplicate circuits)
+  var circuits = {};
+  
   var numToDisturb = wx*wy*wz * TIMESTEP * 0.00003;
   
   var changeListener = null;
+  
+  // TODO review mutation of this
+  var behaviors = blockSet.behaviors;
   
   // --- Internal functions ---
   
@@ -24,6 +35,73 @@ function World(sizes, blockSet) {
       // problem is now s+t*ds = 1
       return (1-s)/ds;
     }
+  }
+  
+  function isCircuitPart(value) {
+    return !!behaviors[value];
+  }
+  
+  function deleteCircuit(circuit) {
+    circuit.blocks.forEach(function (block) {
+      delete circuits[block];
+      delete blockCircuits[block];
+    });
+
+    if (changeListener) changeListener.deletedCircuit(circuit);
+  }
+  
+  // Flood-fill additional circuit parts adjacent to 'start'
+  function floodCircuit(circuit, start) {
+    if (!circuit) throw new Error("floodCircuit not given a circuit");
+    var q = [start];
+    
+    var block;
+    while (block = q.pop()) {
+      if (isCircuitPart(g(block[0],block[1],block[2]))) {
+        var existing = blockCircuits[block];
+        if (existing === circuit) {
+          continue; // don't add and don't traverse
+        } else if (existing !== circuit && existing !== undefined) {
+          console.log("floodCircuit met a different circuit!");
+          deleteCircuit(existing);
+        }
+        circuit.add(block);
+        blockCircuits[block] = circuit;
+
+        for (var dim = 0; dim < 3; dim++) {
+          var b2 = block.slice();
+          b2[dim]++;
+          q.push(b2);
+          b2 = block.slice();
+          b2[dim]--;
+          q.push(b2);
+        }
+      }
+    }
+    
+    circuit.compile();
+    if (changeListener) changeListener.dirtyCircuit(circuit);
+  }
+  
+  function becomeCircuit(block) {
+    var x = block[0];
+    var y = block[1];
+    var z = block[2];
+
+    var circuits = [blockCircuits[[x-1,y,z]], blockCircuits[[x,y-1,z]], blockCircuits[[x,y,z-1]],
+                    blockCircuits[[x+1,y,z]], blockCircuits[[x,y+1,z]], blockCircuits[[x,y,z+1]]];
+    var circuit = null;
+    circuits.forEach(function (c) {
+      if (c == null) return;
+      if (circuit == null) {
+        circuit = c;
+      }
+    });
+    if (!circuit) {
+      circuit = new Circuit(world);
+      circuits[block] = circuit;
+    }
+    floodCircuit(circuit, block);
   }
   
   // --- Methods ---
@@ -42,6 +120,20 @@ function World(sizes, blockSet) {
     
     var vec = [x,y,z];
     if (changeListener) changeListener.dirtyBlock(vec);
+
+    // Update circuits
+    var vec = [x,y,z];
+    var cp = isCircuitPart(val);
+    if (cp && !blockCircuits[vec]) {
+      becomeCircuit(vec);
+    } else if (!cp && blockCircuits[vec]) {
+      // No longer a circuit part.
+      console.log("deleting dead circuit");
+      deleteCircuit(blockCircuits[vec]);
+      [[x-1,y,z], [x,y-1,z], [x,y,z-1], [x+1,y,z], [x,y+1,z], [x,y,z+1]].forEach(function (neighbor) {
+        if (isCircuitPart(g(neighbor[0],neighbor[1],neighbor[2]))) becomeCircuit(neighbor);
+      })
+    }
   }
   function solid(x,y,z) {
     return g(x,y,z) != 0;
@@ -130,7 +222,27 @@ function World(sizes, blockSet) {
     }
   }
   
-  function step() { // TODO: that parameter is a kludge
+  function rebuildCircuits() {
+    blockCircuits = {};
+    circuits = {};
+    var vec;
+    for (var x = 0; x < wx; x++) {
+      var xbase = x*wy*wz;
+      for (var y = 0; y < wy; y++) {
+        var ybase = xbase + y*wz;
+        for (var z = 0; z < wz; z++) {
+          var value = blocks[ybase + z];
+          if (isCircuitPart(value) && !blockCircuits[vec = [x,y,z]]) {
+            var circuit = new Circuit(this);
+            circuits[vec] = circuit;
+            floodCircuit(circuit, vec);
+          }
+        }
+      }
+    }
+  }
+  
+  function step() {
     // turn fractional part of number of iterations into randomness - 1.25 = 1 3/4 and 2 1/4 of the time
     var roundedNum = Math.floor(numToDisturb) + (Math.random() < (numToDisturb % 1) ? 1 : 0);
     
@@ -193,7 +305,10 @@ function World(sizes, blockSet) {
   this.solid = solid;
   this.opaque = opaque;
   this.raw = blocks;
+  this.rebuildCircuits = rebuildCircuits;
   this.raycast = raycast;
+  this.getCircuits = function () { return circuits; }; // TODO should be read-only interface
+  this.getCircuit = function (block) { return blockCircuits[block] || null; }
   this.edit = edit;
   this.step = step;
   this.setChangeListener = setChangeListener;
@@ -225,6 +340,7 @@ World.unserialize = function (json) {
       raw[i] = blockID;
     }
   }
+  world.rebuildCircuits();
   return world;
 };
 
