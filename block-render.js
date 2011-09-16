@@ -56,7 +56,6 @@ function BlockRenderer(blockSet) {
     mat4.rotate(mvMatrix, Math.PI/4 * 0.555, [0, 1, 0]);
     mat4.translate(mvMatrix, [-0.5,-0.5,-0.5]);
     singleBlockWorld.s(0,0,0,blockID);
-    singleBlockR.dirtyBlock(0,0);
     singleBlockR.updateSomeChunks();
     singleBlockR.draw();
     

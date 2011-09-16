@@ -197,7 +197,6 @@ var Player = (function () {
             var x = cubeSelection[0], y = cubeSelection[1], z = cubeSelection[2];
             if (currentPlace.world.solid(x,y,z)) {
               currentPlace.world.s(x,y,z,0);
-              currentPlace.wrend.dirtyBlock(x,z);
               changed = true;
             }
           }
@@ -207,14 +206,12 @@ var Player = (function () {
             var x = emptySelection[0], y = emptySelection[1], z = emptySelection[2];
             if (!currentPlace.world.solid(x,y,z)) {
               currentPlace.world.s(x,y,z, currentPlace.tool);
-              currentPlace.wrend.dirtyBlock(x,z);
               changed = true;
             }
           }
         }
         if (changed) {
           aimChanged(); // block aimed at moved...
-          scheduleDraw();
         }
       },
       get blockSet () { return currentPlace.world.blockSet; },
@@ -246,6 +243,7 @@ var Player = (function () {
             break;
           case -1:
             if (placeStack.length <= 0) break;
+            currentPlace.wrend.deleteResources();
             currentPlace = placeStack.pop();
             currentPlace.wrend.rebuildBlocks(); // TODO: kludge
             aimChanged();

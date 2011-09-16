@@ -11,6 +11,8 @@ function World(sizes, blockSet) {
   
   var numToDisturb = wx*wy*wz * 0.000001; // TODO needs to be timestep-dependent
   
+  var changeListener = null;
+  
   // --- Internal functions ---
   
   function intbound(s, ds) {
@@ -32,11 +34,14 @@ function World(sizes, blockSet) {
     else
       return blocks[x*wy*wz + y*wz + z];
   }
-  function s(x,y,z,val) {
+  function s(x,y,z,val) { // TODO revisit making this not take a vec
     if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
       return;
-    else
-      blocks[x*wy*wz + y*wz + z] = val;
+    
+    blocks[x*wy*wz + y*wz + z] = val;
+    
+    var vec = [x,y,z];
+    if (changeListener) changeListener.dirtyBlock(vec);
   }
   function solid(x,y,z) {
     return g(x,y,z) != 0;
@@ -135,9 +140,14 @@ function World(sizes, blockSet) {
       else if (value == 3) value = 2;
       else continue;
       s(x, y, z, value);
-      
-      worldRenderer.dirtyBlock(x,z); // TODO global variable
     }
+  }
+  
+  function setChangeListener(l) {
+    if (changeListener !== l && changeListener !== null && l !== null) {
+      throw new Error("conflicting change listeners");
+    }
+    changeListener = l;
   }
   
   // --- Final init ---
@@ -150,6 +160,7 @@ function World(sizes, blockSet) {
   this.raycast = raycast;
   this.edit = edit;
   this.step = step;
+  this.setChangeListener = setChangeListener;
   
   this.wx = wx;
   this.wy = wy;

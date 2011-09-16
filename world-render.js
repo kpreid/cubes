@@ -101,6 +101,8 @@ var WorldRenderer = (function () {
   });
 
   function WorldRenderer(world, place) {
+    world.setChangeListener(this);
+    
     // Texture holding tiles
     var blockTexture = gl.createTexture();
 
@@ -177,6 +179,7 @@ var WorldRenderer = (function () {
     function deleteResources() {
       deleteChunks();
       textureDebugR.deleteResources();
+      world.setChangeListener(null);
     };
     this.deleteResources = deleteResources;
 
@@ -193,7 +196,10 @@ var WorldRenderer = (function () {
              z >= 0 && z - CHUNKSIZE < world.wz;
     }
 
-    function dirtyBlock(x,z) {
+    function dirtyBlock(vec) {
+      var x = vec[0];
+      var z = vec[2];
+      
       function _dirty(x,z) {
         var k = [x,z];
         if (!chunkIntersectsWorld(k)) return;
@@ -216,6 +222,8 @@ var WorldRenderer = (function () {
       if (zm == 0)           _dirty(x,z-CHUNKSIZE);
       if (xm == CHUNKSIZE-1) _dirty(x+CHUNKSIZE,z);
       if (zm == CHUNKSIZE-1) _dirty(x,z+CHUNKSIZE);
+
+      scheduleDraw();
     }
     this.dirtyBlock = dirtyBlock;
 
