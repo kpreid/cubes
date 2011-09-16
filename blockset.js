@@ -118,7 +118,7 @@ var BlockSet = (function () {
           });
         }
       },
-      isOpaque: function (blockID) { return blockID in opacities ? opacities[blockID] : true },
+      isOpaque: function (blockID) { return opacities[blockID] || !(blockID in opacities); },
       worldFor: function (blockID) {
         return worlds[blockID - 1] || null;
       }
