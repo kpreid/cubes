@@ -13,6 +13,7 @@ var BlockSet = (function () {
   BlockSet.colors = Object.freeze({
     length: 256,
     textured: false,
+    texture: null,
     writeColor: function (blockID, scale, target, offset) {
       target[offset] = (blockID & 3) / 3 * scale;
       target[offset+1] = ((blockID >> 2) & 3) / 3 * scale;
@@ -24,6 +25,60 @@ var BlockSet = (function () {
     worldFor: function (blockID) { return null; }
   });
 
+  // Texture parameters
+  // TODO: make tile counts depend on blockset size
+  var TILE_COUNT_U = 16;
+  var TILE_COUNT_V = 16;
+  var TILE_SIZE_U = 1/TILE_COUNT_U;
+  var TILE_SIZE_V = 1/TILE_COUNT_V;
+  var TILE_MAPPINGS = [
+    // in this matrix layout, the input (column) vector is the tile coords
+    // and the output (row) vector is the world space coords
+    // so the lower row is the translation component.
+    ["lz", mat4.create([
+      // low z face
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1
+    ])],
+    ["hz", mat4.create([
+      // high z face
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, -1, 0,
+      0, 0, 15, 1
+    ])],
+    ["lx", mat4.create([
+      // low x face
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      1, 0, 0, 0,
+      0, 0, 0, 1
+    ])],
+    ["hx", mat4.create([
+      // high x face
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      -1, 0, 0, 0,
+      15, 0, 0, 1
+    ])],
+    ["ly", mat4.create([
+      // low y face
+      0, 0, 1, 0,
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 0, 1
+    ])],
+    ["hy", mat4.create([
+      // high y face
+      0, 0, 1, 0,
+      1, 0, 0, 0,
+      0, -1, 0, 0,
+      0, 15, 0, 1
+    ])],
+  ];
+
   BlockSet.newTextured = function (worlds) {
     if (worlds.length < 1) {
       throw new Error("Textured block set must have at least one world");
@@ -31,9 +86,21 @@ var BlockSet = (function () {
     var tilings = [];
     var opacities = [false];
     for (var i = 0; i < worlds.length; i++) tilings.push({});
+    
+    // Texture holding tiles
+    // TODO: Confirm that WebGL garbage collects these, or add a delete method to BlockSet for use as needed
+    var blockTexture = gl.createTexture();
+    
+    // ImageData object used to buffer calculated texture data
+    var blockTextureData = document.createElement("canvas").getContext("2d")
+      .createImageData(World.TILE_SIZE * TILE_COUNT_U, World.TILE_SIZE * TILE_COUNT_V);
+    
     return Object.freeze({
       length: worlds.length + 1,
       textured: true,
+      texture: blockTexture,
+      texTileSizeU: TILE_SIZE_U,
+      texTileSizeV: TILE_SIZE_V,
       writeColor: function (blockID, scale, target, offset) {
         target[offset] = scale;
         target[offset+1] = scale;
@@ -41,7 +108,7 @@ var BlockSet = (function () {
         target[offset+3] = scale;
       },
       tilings: tilings,
-      generateBlockTextures: function (data, layout) {
+      generateBlockTextures: function () {
         // TODO: Optimize this by not rebuilding the entire texture, but only those worldblocks which have changed (eg when the user exits a block world). This will require a dynamic allocator for the texture tiles.
         
         // (tileu,tilev) is the position in the texture of each block-face tile as they are generated.
@@ -59,11 +126,11 @@ var BlockSet = (function () {
             // allocate next position
             if (alloc) {
               tileu++;
-              if (tileu >= layout.TILE_COUNT_U) {
+              if (tileu >= TILE_COUNT_U) {
                 tileu = 0;
                 tilev++;
               }
-              if (tilev >= layout.TILE_COUNT_V) {
+              if (tilev >= TILE_COUNT_V) {
                 if (typeof console !== 'undefined') 
                   console.error("blockTexture too small to contain all tiles!");
                 // TODO: report problem on-screen or generate larger texture
@@ -78,15 +145,15 @@ var BlockSet = (function () {
             // extract surface plane of block from world
             for (var u = 0; u < World.TILE_SIZE; u++)
             for (var v = 0; v < World.TILE_SIZE; v++) {
-              var c = ((pixu+u) * data.width + pixv+v) * 4;
+              var c = ((pixu+u) * blockTextureData.width + pixv+v) * 4;
               var vec = vec3.create([u,v,layer]);
               mat4.multiplyVec3(transform, vec, vec);
               var view = vec3.create([u,v,layer-1]);
               mat4.multiplyVec3(transform, view, view);
               
               var value = world.g(vec[0],vec[1],vec[2]);
-              world.blockSet.writeColor(value, 255, data.data, c);
-              if (data.data[c+3] < 255) {
+              world.blockSet.writeColor(value, 255, blockTextureData.data, c);
+              if (blockTextureData.data[c+3] < 255) {
                 // A block is opaque if all of its outside (layer-0) pixels are opaque.
                 if (layer == 0)
                   opaque = false;
@@ -103,10 +170,10 @@ var BlockSet = (function () {
 
               // TODO: If opacities change, we need to trigger rerender of chunks.
             }
-            layers[layer] = thisLayerNotEmpty ? [tileu / layout.TILE_COUNT_U, tilev / layout.TILE_COUNT_V] : null;
+            layers[layer] = thisLayerNotEmpty ? [tileu / TILE_COUNT_U, tilev / TILE_COUNT_V] : null;
             //console.log("id ", wi + 1, " face ", faceName, " layer ", layer, thisLayerNotEmpty ? " allocated" : " skipped");
           }
-          layout.TILE_MAPPINGS.forEach(function (m) {
+          TILE_MAPPINGS.forEach(function (m) {
             var faceName = m[0];
             var transform = m[1];
             var layers = [];
@@ -117,6 +184,12 @@ var BlockSet = (function () {
             }
           });
         }
+        
+        gl.bindTexture(gl.TEXTURE_2D, blockTexture);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, blockTextureData);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.bindTexture(gl.TEXTURE_2D, null);
       },
       isOpaque: function (blockID) { return opacities[blockID] || !(blockID in opacities); },
       worldFor: function (blockID) {

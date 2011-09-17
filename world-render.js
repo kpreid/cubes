@@ -38,78 +38,11 @@ var WorldRenderer = (function () {
     return distanceInfoCache;
   }
   
-  // TODO: make tile counts depend on blockset size
-  var TILE_COUNT_U = 16;
-  var TILE_COUNT_V = 16;
-  var TILE_SIZE_U = 1/TILE_COUNT_U;
-  var TILE_SIZE_V = 1/TILE_COUNT_V;
-  var TILE_MAPPINGS = [
-    // in this matrix layout, the input (column) vector is the tile coords
-    // and the output (row) vector is the world space coords
-    // so the lower row is the translation component.
-    ["lz", mat4.create([
-      // low z face
-      1, 0, 0, 0,
-      0, 1, 0, 0,
-      0, 0, 1, 0,
-      0, 0, 0, 1
-    ])],
-    ["hz", mat4.create([
-      // high z face
-      1, 0, 0, 0,
-      0, 1, 0, 0,
-      0, 0, -1, 0,
-      0, 0, 15, 1
-    ])],
-    ["lx", mat4.create([
-      // low x face
-      0, 1, 0, 0,
-      0, 0, 1, 0,
-      1, 0, 0, 0,
-      0, 0, 0, 1
-    ])],
-    ["hx", mat4.create([
-      // high x face
-      0, 1, 0, 0,
-      0, 0, 1, 0,
-      -1, 0, 0, 0,
-      15, 0, 0, 1
-    ])],
-    ["ly", mat4.create([
-      // low y face
-      0, 0, 1, 0,
-      1, 0, 0, 0,
-      0, 1, 0, 0,
-      0, 0, 0, 1
-    ])],
-    ["hy", mat4.create([
-      // high y face
-      0, 0, 1, 0,
-      1, 0, 0, 0,
-      0, -1, 0, 0,
-      0, 15, 0, 1
-    ])],
-  ];
   var DUMMY_TILING = Object.freeze({lx:null,ly:null,lz:null,hx:null,hy:null,hz:null});
-
-  var textureLayoutInfo = Object.freeze({
-    TILE_COUNT_U: TILE_COUNT_U,
-    TILE_COUNT_V: TILE_COUNT_V,
-    TILE_SIZE_U: TILE_SIZE_U,
-    TILE_SIZE_V: TILE_SIZE_V,
-    TILE_MAPPINGS: TILE_MAPPINGS
-  });
-
+  
   function WorldRenderer(world, place) {
     world.setChangeListener(this);
     
-    // Texture holding tiles
-    var blockTexture = gl.createTexture();
-
-    // ImageData object used to buffer calculated texture data
-    var blockTextureData = document.createElement("canvas").getContext("2d")
-      .createImageData(World.TILE_SIZE * TILE_COUNT_U, World.TILE_SIZE * TILE_COUNT_V);
-
     // Object holding all world rendering chunks which have RenderBundles created, indexed by "<x>,<z>" where x and z are the low coordinates (i.e. divisible by CHUNKSIZE).
     var chunks = {};
 
@@ -121,6 +54,8 @@ var WorldRenderer = (function () {
     
     // The origin of the chunk which the player is currently in. Changes to this are used to decide to recompute chunk visibility.
     var playerChunk = null;
+    
+    var blockTexture = world.blockSet.texture;
 
     var textureDebugR = new RenderBundle(gl.TRIANGLE_STRIP, blockTexture, function (vertices, texcoords) {
       var x = 2;
@@ -150,19 +85,6 @@ var WorldRenderer = (function () {
       addChunks = [];
     }
     
-    function rebuildBlockTexture() {
-      if (!blockTexture) return;
-
-      var data = blockTextureData;
-
-      world.blockSet.generateBlockTextures(blockTextureData, textureLayoutInfo);
-      gl.bindTexture(gl.TEXTURE_2D, blockTexture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, data);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-      gl.bindTexture(gl.TEXTURE_2D, null);
-    }
-    
     function rebuildChunks() {
       deleteChunks();
       playerChunk = null; // Force recomputation of visible chunks when interested
@@ -171,7 +93,7 @@ var WorldRenderer = (function () {
     function rebuildBlocks() {
       // TODO: This massive delete should be avoided when possible; in particular,
       // we don't need to flush the chunks if the texture allocation has not changed.
-      rebuildBlockTexture();
+      world.blockSet.generateBlockTextures();
       rebuildChunks();
     }
     this.rebuildBlocks = rebuildBlocks;
@@ -314,6 +236,8 @@ var WorldRenderer = (function () {
         var tilings = blockSet.tilings;
         var TILE_SIZE = World.TILE_SIZE;
         var PIXEL_SIZE = 1/TILE_SIZE;
+        var TILE_SIZE_U = blockSet.texTileSizeU;
+        var TILE_SIZE_V = blockSet.texTileSizeV;
         var ID_EMPTY = BlockSet.ID_EMPTY;
         var BOGUS_TILING = textured ? tilings[BlockSet.ID_BOGUS - 1] : DUMMY_TILING;
         chunks[xzkey] = new RenderBundle(gl.TRIANGLES,
