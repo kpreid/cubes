@@ -311,35 +311,6 @@
       var blockWorlds = [];
       for (var i = 0; i < blockWorldCount; i++) blockWorlds.push(new World(blockWorldSize, BlockSet.colors));
 
-      // big world
-      worldH = new World([400,128,400], BlockSet.newTextured(blockWorlds));
-      var wx = worldH.wx;
-      var wy = worldH.wy;
-      var wz = worldH.wz;
-      var mid = wy / 2;
-      var sin = Math.sin;
-      var round = Math.round;
-      // Using raw array access because it lets us cache the altitude computation, not because the overhead of .edit() is especially high.
-      var raw = worldH.raw;
-      for (var x = 0; x < wx; x++) {
-        var xbase = x*wy*wz;
-        for (var z = 0; z < wz; z++) {
-          var terrain = mid + round(
-            (Math.sin(x/8) + Math.sin(z/8))*1
-            + (Math.sin(x/14) + Math.sin(z/14))*3
-            + (Math.sin(x/2) + Math.sin(z/2))*0.6
-          );
-          for (var y = 0; y < wy; y++) {
-            var index = xbase + y*wz + z;
-            var altitude = y - terrain;
-            raw[index] = altitude > 1 ? 0 :
-                         altitude < 0 ? 1 :
-                         altitude == 0 ? 2 :
-                         /* altitude == 1 */ Math.random() > 0.99 ? 4 : 0;
-          }
-        }
-      }
-      
       // --- block worlds ---
 
       function brgb(r,g,b) {
@@ -422,6 +393,36 @@
                   pickCond(flat(pickColor()), 
                     speckle(flat(pickColor()), flat(pickColor()))));
         genedit(blockWorlds[i], c);
+      }
+      
+      // --- big world ---
+      
+      worldH = new World([400,128,400], BlockSet.newTextured(blockWorlds));
+      var wx = worldH.wx;
+      var wy = worldH.wy;
+      var wz = worldH.wz;
+      var mid = wy / 2;
+      var sin = Math.sin;
+      var round = Math.round;
+      // Using raw array access because it lets us cache the altitude computation, not because the overhead of .edit() is especially high.
+      var raw = worldH.raw;
+      for (var x = 0; x < wx; x++) {
+        var xbase = x*wy*wz;
+        for (var z = 0; z < wz; z++) {
+          var terrain = mid + round(
+            (Math.sin(x/8) + Math.sin(z/8))*1
+            + (Math.sin(x/14) + Math.sin(z/14))*3
+            + (Math.sin(x/2) + Math.sin(z/2))*0.6
+          );
+          for (var y = 0; y < wy; y++) {
+            var index = xbase + y*wz + z;
+            var altitude = y - terrain;
+            raw[index] = altitude > 1 ? 0 :
+                         altitude < 0 ? 1 :
+                         altitude == 0 ? 2 :
+                         /* altitude == 1 */ Math.random() > 0.99 ? 4 : 0;
+          }
+        }
       }
     }
     
