@@ -6,7 +6,7 @@
 var WorldRenderer = (function () {
   // The side length of the chunks the world is broken into for rendering.
   // Smaller chunks are faster to update when the world changes, but have a higher per-frame cost.
-  var CHUNKSIZE = 12;
+  var CHUNKSIZE = 10;
 
   // 2D Euclidean distance, squared (for efficiency).
   function dist2sq(v) {

@@ -184,7 +184,7 @@
     var DEBUG = false;
     
     // Settable using the options sidebar
-    var configRenderDistance = 160;
+    var configRenderDistance = 100;
     var configDebugTextureAllocation = false;
 
     var gl;
@@ -312,7 +312,7 @@
       for (var i = 0; i < blockWorldCount; i++) blockWorlds.push(new World(blockWorldSize, BlockSet.colors));
 
       // big world
-      worldH = new World([600,128,600], BlockSet.newTextured(blockWorlds));
+      worldH = new World([400,128,400], BlockSet.newTextured(blockWorlds));
       var wx = worldH.wx;
       var wy = worldH.wy;
       var wz = worldH.wz;
@@ -788,7 +788,7 @@
       <p>Click to close.</p>
       
       <form onsubmit="return false;" action="">
-        <p>Render distance: <input type="range" min="10" max="500" value="160" maxlength="4" size="4" onchange="configRenderDistance = parseFloat(this.value); changedRenderDistance(); return true;"></p>
+        <p>Render distance: <input type="range" min="10" max="500" value="100" maxlength="4" size="4" onchange="configRenderDistance = parseFloat(this.value); changedRenderDistance(); return true;"></p>
         
         <h3>Debug</h3>
         
