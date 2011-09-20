@@ -2,7 +2,11 @@
 // the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
 var Player = (function () {
-  var PLAYER_SPEED = 6;
+  // physics constants
+  var PLAYER_SPEED = 5; // cubes/s
+  var GRAVITY = 20; // cubes/s^2
+  var JUMP_SPEED = 10; // cubes/s
+  
   var movement = vec3.create([0,0,0]);
   
   // a Place stores a world and location in it; used for push/pop
@@ -11,12 +15,14 @@ var Player = (function () {
     this.pos = vec3.create([0,0,0]);
     this.vel = vec3.create([0,0,0]);
     this.yaw = Math.PI/4 * 5;
+    this.onGround = false;
 
     // Current tool/block id
     this.tool = 2; // first non-bogus block id
 
     // must happen late
     this.wrend = new WorldRenderer(world, this); // ideally, would be readonly(this)
+    
   }
   
   function Player(initialWorld) {
@@ -90,11 +96,12 @@ var Player = (function () {
       vec3.scale(movAdj, PLAYER_SPEED);
       //console.log(vec3.str(movAdj));
       currentPlace.vel[0] += (movAdj[0] - currentPlace.vel[0]) * 0.4;
-      currentPlace.vel[1] += movAdj[1] * 0.1;
+      if (movAdj[1] != 0)
+      currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * 0.4 + timestep * GRAVITY;
       currentPlace.vel[2] += (movAdj[2] - currentPlace.vel[2]) * 0.4;
       
       // gravity
-      currentPlace.vel[1] -= timestep * 9.81;
+      currentPlace.vel[1] -= timestep * GRAVITY;
       
       // early exit
       if (vec3.length(currentPlace.vel) <= 0) return;
@@ -131,6 +138,7 @@ var Player = (function () {
       }
       
       // To resolve diagonal movement, we treat it as 3 orthogonal moves, updating nextPosIncr.
+      currentPlace.onGround = false;
       var nextPosIncr = vec3.create(curPos);
       for (var dim = 0; dim < 3; dim++) {
         var dir = curVel[dim] >= 0 ? 1 : 0;
@@ -142,6 +150,9 @@ var Player = (function () {
           //console.log("clamped", dim);
           nextPosIncr[dim] = dir ? Math.ceil(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 - EPSILON : Math.floor(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 + EPSILON;
           curVel[dim] = 0;
+          if (dim == 1 && dir == 0) {
+            currentPlace.onGround = true;
+          }
         } else {
           nextPosIncr[dim] = nextPos[dim];
         }
@@ -250,8 +261,7 @@ var Player = (function () {
         }
       },
       jump: function () {
-        // TODO: jump from ground, etc.
-        currentPlace.vel[1] = 8;
+        if (currentPlace.onGround) currentPlace.vel[1] = JUMP_SPEED;
       }
     });
   }
