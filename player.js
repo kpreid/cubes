@@ -220,6 +220,7 @@ var Player = (function () {
             var x = emptySelection[0], y = emptySelection[1], z = emptySelection[2];
             if (!currentPlace.world.solid(x,y,z)) {
               currentPlace.world.s(x,y,z, currentPlace.tool);
+              currentPlace.wrend.renderCreateBlock(emptySelection, value);
               changed = true;
             }
           }

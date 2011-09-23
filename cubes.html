@@ -158,7 +158,7 @@
     
     uniform bool uParticleMode;     // flag we're rendering point particles
     uniform float uParticleInterp;  // particle system evolution time, [0.0, 1.0]
-    //uniform vec3 uParticleTarget; // particles fly to this point (disabled, doesn't look right yet)
+    uniform bool uParticleExplode; // particles explode or appear/fade?
     
     varying vec4 vColor;
     varying vec3 vFixedOrientationPosition;
@@ -170,9 +170,6 @@
         float pointScale;
         
         if (uParticleMode) {
-          //vec3 particleTarget = uParticleTarget;
-          //float middleTness = 1.0 - pow(2.0*(uParticleInterp - 0.5), 2.0); // goes from 0 to 1 to 0
-          
           // center of block
           vec3 blockPart = floor(aVertexPosition) + 0.5;
           // offset from center of block
@@ -185,8 +182,10 @@
             sin(dot(aVertexPosition, vec3(486.0, 282.4, 7.215)))
           ));
           
-          vertexPosition = aVertexPosition + (2.0 * scramble + 3.0 * particlePart) * pow(uParticleInterp, 4.0);
-          pointScale = 1.0 - uParticleInterp * 1.1;
+          vertexPosition = uParticleExplode
+            ? aVertexPosition + (1.0 * scramble + 0.5 * particlePart) * pow(uParticleInterp, 3.0)
+            : aVertexPosition + particlePart * (0.1 + uParticleInterp * 0.1);
+          pointScale = 1.0 - pow(uParticleInterp * 1.0, 2.0);
         } else {
           vertexPosition = aVertexPosition;
         }
@@ -303,8 +302,8 @@
       uTextureEnabled: null,
       uFogDistance: null,
       uParticleMode: null,
-      //uParticleTarget: null,
-      uParticleInterp: null
+      uParticleInterp: null,
+      uParticleExplode: null
     };
 
     // View and projection transformation globals. Sent to the shaders by setMatrixUniforms().
@@ -450,7 +449,8 @@
       
       // --- big world ---
       
-      worldH = new World([400,128,400], BlockSet.newTextured(blockWorlds));
+      var blocksetH = BlockSet.newTextured(blockWorlds);
+      worldH = new World([400,128,400], blocksetH);
       var wx = worldH.wx;
       var wy = worldH.wy;
       var wz = worldH.wz;
@@ -547,6 +547,7 @@
           gl.vertexAttribPointer(attribs.aVertexColor, 4, gl.FLOAT, false, 0, 0);
         }
         setMatrixUniforms();
+        totalVertices += numVertices;
         gl.drawArrays(primitive, 0, numVertices);
       };
       
@@ -560,18 +561,27 @@
       this.recompute();
     }
     
+    // TODO: the interface for this is lousy. blockWorld==null means we're creating a block, nonnull destroying
     function BlockParticles(location, blockWorld) {
+      var k = 2;
       var t0 = Date.now();
       var rb = new RenderBundle(gl.POINTS, null, function (vertices, colors) {
         var TILE_SIZE = World.TILE_SIZE;
         for (var x = 0; x < TILE_SIZE; x++) {
           for (var y = 0; y < TILE_SIZE; y++) {
             for (var z = 0; z < TILE_SIZE; z++) {
-              blockWorld.blockSet.writeColor(blockWorld.g(x,y,z), 1, colors, colors.length);
-              if (colors[colors.length - 1] <= 0.0) {
-                // transparent, skip
-                colors.length -= 4;
-                continue;
+              if (blockWorld == null) {
+                if (!(x < k || x >= TILE_SIZE-k || y < k || y >= TILE_SIZE-k || z < k || z >= TILE_SIZE-k))
+                  continue;
+                var c = 1.0 - Math.random() * 0.04;
+                colors.push(c,c,c,1);
+              } else {
+                blockWorld.blockSet.writeColor(blockWorld.g(x,y,z), 1, colors, colors.length);
+                if (colors[colors.length - 1] <= 0.0) {
+                  // transparent, skip
+                  colors.length -= 4;
+                  continue;
+                }
               }
               vertices.push(location[0]+(x+0.5)/TILE_SIZE,
                             location[1]+(y+0.5)/TILE_SIZE,
@@ -582,14 +592,14 @@
       });
       
       function t() {
-        return Math.min((Date.now() - t0) * 0.002, 1);
+        return Math.min((Date.now() - t0) * 0.003, 1);
       }
       
       var pd = rb.draw;
       rb.draw = function () {
         gl.uniform1i(uniforms.uParticleMode, 1);
+        gl.uniform1i(uniforms.uParticleExplode, blockWorld ? 1 : 0);
         gl.uniform1f(uniforms.uParticleInterp, t());
-        //gl.uniform3fv(uniforms.uParticleTarget, viewPosition);
         pd.call(this);
         gl.uniform1i(uniforms.uParticleMode, 0);
       }
@@ -719,14 +729,16 @@
           });
           text += "\n";
         }
+        text += totalVertices + " vertices\n";
         text += fpsDesc + "\n";
         text += wrend.debugText();
         theInfo.data = text;
         
+        totalVertices = 0;
         renderCount++;
     }
     
-    var fpsDesc = "", frameCount = 0, renderCount = 0, chunkRenders = 0;
+    var fpsDesc = "", frameCount = 0, renderCount = 0, chunkRenders = 0, totalVertices = 0;
     
     function doStep() {
       player.stepYourselfAndWorld();

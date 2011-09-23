@@ -209,6 +209,11 @@ var WorldRenderer = (function () {
     }
     this.renderDestroyBlock = renderDestroyBlock;
 
+    function renderCreateBlock(block, value) {
+      particles.push(new BlockParticles(block, null));
+    }
+    this.renderCreateBlock = renderCreateBlock;
+
     function draw() {
       for (var index in chunks) {
         if (!chunks.hasOwnProperty(index)) continue;
