@@ -97,18 +97,18 @@ var Player = (function () {
       //console.log(vec3.str(movAdj));
       currentPlace.vel[0] += (movAdj[0] - currentPlace.vel[0]) * 0.4;
       if (movAdj[1] != 0)
-      currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * 0.4 + timestep * GRAVITY;
+      currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * 0.4 + TIMESTEP * GRAVITY;
       currentPlace.vel[2] += (movAdj[2] - currentPlace.vel[2]) * 0.4;
       
       // gravity
-      currentPlace.vel[1] -= timestep * GRAVITY;
+      currentPlace.vel[1] -= TIMESTEP * GRAVITY;
       
       // early exit
       if (vec3.length(currentPlace.vel) <= 0) return;
       
       var curPos = currentPlace.pos;
       var curVel = currentPlace.vel;
-      var nextPos = vec3.scale(currentPlace.vel, timestep, vec3.create()); // TODO global variable timestep
+      var nextPos = vec3.scale(currentPlace.vel, TIMESTEP, vec3.create()); // TODO global variable timestep
       vec3.add(nextPos, curPos);
       
       // collision

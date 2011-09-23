@@ -182,14 +182,21 @@
     "use strict";
     
     var DEBUG = false;
+    var TIMESTEP = 1/30;
     
     // Settable using the options sidebar
     var configRenderDistance = 100;
     var configDebugTextureAllocation = false;
 
+    // GL objects
     var gl;
     var theCanvas;
     var theInfo;
+    
+    // Game state, etc. objects
+    var player;
+    var worldH;
+    var input;
     
     function initGL(canvas) {
         gl = canvas.getContext("experimental-webgl", {
@@ -304,7 +311,6 @@
       player.render.getWorldRenderer().changedRenderDistance();
     }
     
-    var worldH;
     function generateInitialWorlds() {
       var blockWorldSize = [World.TILE_SIZE,World.TILE_SIZE,World.TILE_SIZE];
       var blockWorldCount = 8;
@@ -313,11 +319,14 @@
 
       // --- block worlds ---
 
+      // TODO: move to BlockSet.colors
       function brgb(r,g,b) {
         return (((b * 3) << 4) + ((g * 3) << 2) + (r * 3) << 0) || 0xC0;
       }
       
-      // condition functions
+      // condition functions for procedural block generation
+      // Takes a coordinate vector and returns a boolean.
+      // TODO: Parameterize on TILE_SIZE.
       function vx(b) { return b[0]; }
       function vy(b) { return b[1]; }
       function vy(b) { return b[2]; }
@@ -410,9 +419,9 @@
         var xbase = x*wy*wz;
         for (var z = 0; z < wz; z++) {
           var terrain = mid + round(
-            (Math.sin(x/8) + Math.sin(z/8))*1
-            + (Math.sin(x/14) + Math.sin(z/14))*3
-            + (Math.sin(x/2) + Math.sin(z/2))*0.6
+            (sin(x/8) + sin(z/8))*1
+            + (sin(x/14) + sin(z/14))*3
+            + (sin(x/2) + sin(z/2))*0.6
           );
           for (var y = 0; y < wy; y++) {
             var index = xbase + y*wz + z;
@@ -447,7 +456,7 @@
     
     function RenderBundle(primitive, optTexture, calcFunc) {
       var vbuf = gl.createBuffer();
-      var cbuf = gl.createBuffer();
+      if (!optTexture) var cbuf = gl.createBuffer();
       if (optTexture) var tbuf = gl.createBuffer();
       var numVertices;
       
@@ -474,9 +483,6 @@
         gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
         gl.vertexAttribPointer(attribs.aVertexPosition, 3, gl.FLOAT, false, 0, 0);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
-        gl.vertexAttribPointer(attribs.aVertexColor, 4, gl.FLOAT, false, 0, 0);
-
         gl.uniform1i(uniforms.uTextureEnabled, optTexture ? 1 : 0);
 
         if (optTexture) {
@@ -492,6 +498,9 @@
         } else {
           gl.disableVertexAttribArray(attribs.aTextureCoord);
           gl.enableVertexAttribArray(attribs.aVertexColor);
+
+          gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
+          gl.vertexAttribPointer(attribs.aVertexColor, 4, gl.FLOAT, false, 0, 0);
         }
         setMatrixUniforms();
         gl.drawArrays(primitive, 0, numVertices);
@@ -572,8 +581,6 @@
       });
     }
     
-    var player;
-
     var lastGLErrors = [];
     function drawScene(playerRender) {
         var wrend = playerRender.getWorldRenderer();
@@ -636,8 +643,6 @@
         renderCount++;
     }
     
-    var timestep = 1/30;
-    var input;
     var fpsDesc = "", frameCount = 0, renderCount = 0, chunkRenders = 0;
     
     function doStep() {
@@ -743,7 +748,7 @@
           theCanvas.focus();
 
           // TODO: use webgl utils to avoid wasting time rendering frames if invisible
-          setInterval(doStep, 1000*timestep);
+          setInterval(doStep, 1000*TIMESTEP);
         },
         "Ready!"
       ], function (exception) {
