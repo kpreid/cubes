@@ -147,12 +147,12 @@ var WorldRenderer = (function () {
       if (xm == CHUNKSIZE-1) _dirty(x+CHUNKSIZE,z);
       if (zm == CHUNKSIZE-1) _dirty(x,z+CHUNKSIZE);
 
+      // TODO: This is actually "Schedule updateSomeChunks()" and shouldn't actually require a frame redraw
       scheduleDraw();
     }
     this.dirtyBlock = dirtyBlock;
 
     function updateSomeChunks() {
-      // TODO put this elsewhere
       // Determine if chunks' visibility to the player has changed
       var newPlayerChunk = [place.pos[0] - mod(place.pos[0], CHUNKSIZE),
                             place.pos[2] - mod(place.pos[2], CHUNKSIZE)];
@@ -191,6 +191,12 @@ var WorldRenderer = (function () {
           i--;
         }
       }
+      
+      if (chunkQueue.length > 0) {
+        // Schedule rendering more chunks
+        scheduleDraw();
+      }
+      
       return i;
     }
     this.updateSomeChunks = updateSomeChunks;
@@ -209,7 +215,6 @@ var WorldRenderer = (function () {
         chunks[index].draw();
       }
       
-      // TODO: need to request frames for as long as we have some particle systems
       for (var i = 0; i < particles.length; i++) {
         var particleSystem = particles[i];
         if (particleSystem.expired()) {
@@ -222,6 +227,10 @@ var WorldRenderer = (function () {
         } else {
           particleSystem.draw();
         }
+      }
+      if (particles.length > 0) {
+        // If there are any particle systems, we need to continue animating.
+        scheduleDraw();
       }
       
       if (configDebugTextureAllocation) {
@@ -237,12 +246,13 @@ var WorldRenderer = (function () {
 
     // returns whether no work was done
     function calcChunk(xzkey) {
+      // This would call scheduleDraw() to render the revised chunks, except that calcChunk is only called within a draw. Therefore, the calls are commented out (to be reenabled if the architecture changes).
       var c = chunks[xzkey];
       if (c) {
         if (c.dirtyChunk) {
           c.dirtyChunk = false;
           c.recompute();
-          scheduleDraw();
+          //scheduleDraw();
           return false;
         } else {
           return true;
@@ -342,7 +352,7 @@ var WorldRenderer = (function () {
           var t1 = Date.now();
           //console.log("Geometry regen:", t1-t0, "ms");
         });
-        scheduleDraw();
+        //scheduleDraw();
         return false;
       }
     }

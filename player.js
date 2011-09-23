@@ -162,15 +162,16 @@ var Player = (function () {
         }
       }
       
-      vec3.set(nextPosIncr, currentPlace.pos);
-      aimChanged();
-      
+      if (vec3.length(vec3.subtract(nextPosIncr, currentPlace.pos, vec3.create())) >= EPSILON) {
+        vec3.set(nextPosIncr, currentPlace.pos);
+        aimChanged();
+      }
       debugR.recompute();
     };
     
     this.stepYourselfAndWorld = function () {
       stepPlayer();
-      currentPlace.world.step(currentPlace.wrend);
+      currentPlace.world.step();
     }
     
     // The facet for rendering

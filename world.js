@@ -9,7 +9,7 @@ function World(sizes, blockSet) {
   var wz = sizes[2];
   var blocks = new Uint8Array(wx*wy*wz);
   
-  var numToDisturb = wx*wy*wz * 0.000001; // TODO needs to be timestep-dependent
+  var numToDisturb = wx*wy*wz * TIMESTEP * 0.00003;
   
   var changeListener = null;
   
@@ -125,7 +125,7 @@ function World(sizes, blockSet) {
     }
   }
   
-  function step(worldRenderer) { // TODO: that parameter is a kludge
+  function step() { // TODO: that parameter is a kludge
     // turn fractional part of number of iterations into randomness - 1.25 = 1 3/4 and 2 1/4 of the time
     var roundedNum = Math.floor(numToDisturb) + (Math.random() < (numToDisturb % 1) ? 1 : 0);
     
