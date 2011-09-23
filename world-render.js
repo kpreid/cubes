@@ -56,6 +56,8 @@ var WorldRenderer = (function () {
     var playerChunk = null;
     
     var blockTexture = world.blockSet.texture;
+    
+    var particles = [];
 
     var textureDebugR = new RenderBundle(gl.TRIANGLE_STRIP, blockTexture, function (vertices, texcoords) {
       var x = 2;
@@ -193,10 +195,33 @@ var WorldRenderer = (function () {
     }
     this.updateSomeChunks = updateSomeChunks;
 
+    function renderDestroyBlock(block, value) {
+      var blockWorld = world.blockSet.worldFor(value);
+      // TODO: add particles for color blocks
+      if (blockWorld)
+        particles.push(new BlockParticles(block, blockWorld));
+    }
+    this.renderDestroyBlock = renderDestroyBlock;
+
     function draw() {
       for (var index in chunks) {
         if (!chunks.hasOwnProperty(index)) continue;
         chunks[index].draw();
+      }
+      
+      // TODO: need to request frames for as long as we have some particle systems
+      for (var i = 0; i < particles.length; i++) {
+        var particleSystem = particles[i];
+        if (particleSystem.expired()) {
+          if (i < particles.length - 1) {
+            particles[i] = particles.pop();
+          } else {
+            particles.pop();
+          }
+          i--;
+        } else {
+          particleSystem.draw();
+        }
       }
       
       if (configDebugTextureAllocation) {

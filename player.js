@@ -207,7 +207,9 @@ var Player = (function () {
           if (cubeSelection != null) {
             var x = cubeSelection[0], y = cubeSelection[1], z = cubeSelection[2];
             if (currentPlace.world.solid(x,y,z)) {
+              var value = currentPlace.world.g(x,y,z);
               currentPlace.world.s(x,y,z,0);
+              currentPlace.wrend.renderDestroyBlock(cubeSelection, value);
               changed = true;
             }
           }

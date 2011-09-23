@@ -153,7 +153,12 @@
     uniform mat4 uMVMatrix;
     uniform mat4 uPMatrix;
     uniform vec3 uViewPosition;
+    uniform vec2 uPixelsPerClipUnit;
     uniform float uFogDistance;
+    
+    uniform bool uParticleMode;     // flag we're rendering point particles
+    uniform float uParticleInterp;  // particle system evolution time, [0.0, 1.0]
+    //uniform vec3 uParticleTarget; // particles fly to this point (disabled, doesn't look right yet)
     
     varying vec4 vColor;
     varying vec3 vFixedOrientationPosition;
@@ -161,9 +166,43 @@
     varying float vFog;
     
     void main(void) {
-        vFixedOrientationPosition = aVertexPosition - uViewPosition;
-        vec4 relativePosition = uMVMatrix * vec4(aVertexPosition, 1.0);
+        vec3 vertexPosition;
+        float pointScale;
+        
+        if (uParticleMode) {
+          //vec3 particleTarget = uParticleTarget;
+          //float middleTness = 1.0 - pow(2.0*(uParticleInterp - 0.5), 2.0); // goes from 0 to 1 to 0
+          
+          // center of block
+          vec3 blockPart = floor(aVertexPosition) + 0.5;
+          // offset from center of block
+          vec3 particlePart = mod(aVertexPosition, 1.0) - 0.5;
+          
+          // pseudorandom vector constant for the point
+          vec3 scramble = normalize(vec3(
+            sin(dot(aVertexPosition, vec3(24121.9, 2398.1, 234.8))),
+            sin(dot(aVertexPosition, vec3(1024.0, 28.0, 1834.0))),
+            sin(dot(aVertexPosition, vec3(486.0, 282.4, 7.215)))
+          ));
+          
+          vertexPosition = aVertexPosition + (2.0 * scramble + 3.0 * particlePart) * pow(uParticleInterp, 4.0);
+          pointScale = 1.0 - uParticleInterp * 1.1;
+        } else {
+          vertexPosition = aVertexPosition;
+        }
+        
+        vFixedOrientationPosition = vertexPosition - uViewPosition;
+        vec4 relativePosition = uMVMatrix * vec4(vertexPosition, 1.0);
         gl_Position = uPMatrix * relativePosition;
+        
+        if (uParticleMode) {
+          // Compute particle size
+          vec4 testPosition = relativePosition;
+          testPosition.x = uPixelsPerClipUnit.x / 16.0/* TODO: should be TILE_SIZE */ * 1.2/*appearance fudge factor*/;
+          testPosition.y = 0.0;
+          testPosition = uPMatrix * testPosition;
+          gl_PointSize = testPosition.x / testPosition.w * pointScale;
+        }
         
         vTextureCoord = aTextureCoord;
         
@@ -259,9 +298,13 @@
       uPMatrix: null,
       uMVMatrix: null,
       uViewPosition: null,
+      uPixelsPerClipUnit: null,
       uSampler: null,
       uTextureEnabled: null,
-      uFogDistance: null
+      uFogDistance: null,
+      uParticleMode: null,
+      //uParticleTarget: null,
+      uParticleInterp: null
     };
 
     // View and projection transformation globals. Sent to the shaders by setMatrixUniforms().
@@ -272,6 +315,7 @@
     function setMatrixUniforms() {
         gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix); // TODO: send this only when needed
         gl.uniformMatrix4fv(uniforms.uMVMatrix, false, mvMatrix);
+        gl.uniform2f(uniforms.uPixelsPerClipUnit, gl.drawingBufferWidth / 2, gl.drawingBufferHeight / 2);
         gl.uniform3fv(uniforms.uViewPosition, viewPosition);
     }
 
@@ -514,6 +558,45 @@
       }
       
       this.recompute();
+    }
+    
+    function BlockParticles(location, blockWorld) {
+      var t0 = Date.now();
+      var rb = new RenderBundle(gl.POINTS, null, function (vertices, colors) {
+        var TILE_SIZE = World.TILE_SIZE;
+        for (var x = 0; x < TILE_SIZE; x++) {
+          for (var y = 0; y < TILE_SIZE; y++) {
+            for (var z = 0; z < TILE_SIZE; z++) {
+              blockWorld.blockSet.writeColor(blockWorld.g(x,y,z), 1, colors, colors.length);
+              if (colors[colors.length - 1] <= 0.0) {
+                // transparent, skip
+                colors.length -= 4;
+                continue;
+              }
+              vertices.push(location[0]+(x+0.5)/TILE_SIZE,
+                            location[1]+(y+0.5)/TILE_SIZE,
+                            location[2]+(z+0.5)/TILE_SIZE);
+            }
+          }
+        }
+      });
+      
+      function t() {
+        return Math.min((Date.now() - t0) * 0.002, 1);
+      }
+      
+      var pd = rb.draw;
+      rb.draw = function () {
+        gl.uniform1i(uniforms.uParticleMode, 1);
+        gl.uniform1f(uniforms.uParticleInterp, t());
+        //gl.uniform3fv(uniforms.uParticleTarget, viewPosition);
+        pd.call(this);
+        gl.uniform1i(uniforms.uParticleMode, 0);
+      }
+      
+      rb.expired = function () { return t() >= 1; };
+      
+      return rb;
     }
 
     var debugR;
