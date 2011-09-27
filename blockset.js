@@ -191,10 +191,10 @@ var BlockSet = (function () {
           var transform = m[1];
           var layers = [];
           tilings[wi][faceName] = layers;
-          opacities[wi + 1] = opaque;
           for (var layer = 0; layer < World.TILE_SIZE; layer++) {
             sliceWorld(faceName, layer, transform, layers);
           }
+          opacities[wi + 1] = opaque; // set by sliceWorld
         });
 
         // TODO: arrange to do this only once if updating several blocks
