@@ -245,11 +245,13 @@ var Player = (function () {
             var x = cubeSelection[0], y = cubeSelection[1], z = cubeSelection[2];
             
             var oldPlace = currentPlace;
+            var blockID = currentPlace.world.g(x,y,z);
             
-            var world = currentPlace.world.blockSet.worldFor(currentPlace.world.g(x,y,z));
+            var world = currentPlace.world.blockSet.worldFor(blockID);
             if (world == null) return; // TODO: UI message about this
             
             currentPlace = new Place(world);
+            currentPlace.forBlock = blockID;
             vec3.set([World.TILE_SIZE/2, World.TILE_SIZE - playerAABB[1][0] + EPSILON, World.TILE_SIZE/2], currentPlace.pos);
             placeStack.push(oldPlace);
             aimChanged();
@@ -258,8 +260,9 @@ var Player = (function () {
           case -1:
             if (placeStack.length <= 0) break;
             currentPlace.wrend.deleteResources();
+            var blockID = currentPlace.forBlock;
             currentPlace = placeStack.pop();
-            currentPlace.wrend.rebuildBlocks(); // TODO: kludge
+            if (blockID) currentPlace.wrend.rebuildBlock(blockID);
             aimChanged();
             break;
         }

@@ -21,7 +21,7 @@ var BlockSet = (function () {
       target[offset+3] = blockID == BlockSet.ID_EMPTY ? 0 : scale;
     },
     isOpaque: function (blockID) { return blockID != BlockSet.ID_EMPTY },
-    generateBlockTextures: function () {},
+    rebuildBlockTexture: function (blockID) {},
     worldFor: function (blockID) { return null; }
   });
 
@@ -95,6 +95,32 @@ var BlockSet = (function () {
     var blockTextureData = document.createElement("canvas").getContext("2d")
       .createImageData(World.TILE_SIZE * TILE_COUNT_U, World.TILE_SIZE * TILE_COUNT_V);
     
+    // tile position allocator
+    var tileAllocMap = new Uint8Array(TILE_COUNT_U*TILE_COUNT_V);
+    var freePointer = 0;
+    function tileAlloc() {
+      var n = 0;
+      while (tileAllocMap[freePointer]) {
+        if ((++n) >= tileAllocMap.length) {
+          if (typeof console !== 'undefined') 
+            console.error("blockTexture too small to contain all tiles!");
+          break;
+        }
+        freePointer = mod(freePointer + 1, tileAllocMap.length);
+      }
+      tileAllocMap[freePointer] = 1;
+      return freePointer;
+    }
+    function tileFree(index) {
+      tileAllocMap[index] = 0;
+    }
+    function tileCoords(index) {
+      return [Math.floor(index / TILE_COUNT_U), mod(index, TILE_COUNT_U)];
+    }
+    
+    // table mapping block slices to tile indexes, format 'worldindex,facename,layerindex'
+    var usageMap = {};
+    
     var self = Object.freeze({
       length: worlds.length + 1,
       textured: true,
@@ -108,83 +134,70 @@ var BlockSet = (function () {
         target[offset+3] = scale;
       },
       tilings: tilings,
-      generateBlockTextures: function () {
-        // TODO: Optimize this by not rebuilding the entire texture, but only those worldblocks which have changed (eg when the user exits a block world). This will require a dynamic allocator for the texture tiles.
+      rebuildBlockTexture: function (blockID) {
+        var wi = blockID - 1;
+        if (blockID < 0 || blockID >= worlds.length) return;
         
-        // (tileu,tilev) is the position in the texture of each block-face tile as they are generated.
-        var tileu = -1;
-        var tilev = 0;
-        var alloc = true;
-
-        for (var wi = 0; wi < worlds.length; wi++) {
-          var world = worlds[wi];
-          var opaque = true;
+        var world = worlds[wi];
+        var opaque = true;
+        
+        // To support non-cubical objects, we slice the entire volume of the block and generate as many tiles as needed. sliceWorld generates one such slice.
+      
+        function sliceWorld(faceName, layer, transform, layers) {
+          var usageIndex = [wi,faceName,layer].toString();
           
-          // To support non-cubical objects, we slice the entire volume of the block and generate as many tiles as needed. sliceWorld generates one such slice.
-        
-          function sliceWorld(faceName, layer, transform, layers) {
-            // allocate next position
-            if (alloc) {
-              tileu++;
-              if (tileu >= TILE_COUNT_U) {
-                tileu = 0;
-                tilev++;
-              }
-              if (tilev >= TILE_COUNT_V) {
-                if (typeof console !== 'undefined') 
-                  console.error("blockTexture too small to contain all tiles!");
-                // TODO: report problem on-screen or generate larger texture
-                tileu = 0;
-                tilev = 0;
-              }
-            }
+          var index = usageMap[usageIndex] || (usageMap[usageIndex] = tileAlloc());
+          var coord = tileCoords(index);
+          var tileu = coord[0], tilev = coord[1];
 
-            var thisLayerNotEmpty = false;
-            var pixu = tileu*World.TILE_SIZE;
-            var pixv = tilev*World.TILE_SIZE;
-            // extract surface plane of block from world
-            for (var u = 0; u < World.TILE_SIZE; u++)
-            for (var v = 0; v < World.TILE_SIZE; v++) {
-              var c = ((pixu+u) * blockTextureData.width + pixv+v) * 4;
-              var vec = vec3.create([u,v,layer]);
-              mat4.multiplyVec3(transform, vec, vec);
-              var view = vec3.create([u,v,layer-1]);
-              mat4.multiplyVec3(transform, view, view);
-              
-              var value = world.g(vec[0],vec[1],vec[2]);
-              world.blockSet.writeColor(value, 255, blockTextureData.data, c);
-              if (blockTextureData.data[c+3] < 255) {
-                // A block is opaque if all of its outside (layer-0) pixels are opaque.
-                if (layer == 0)
-                  opaque = false;
-              } else if (!world.opaque(view[0],view[1],view[2])) {
-                // A layer has significant content only if there is an UNOBSCURED (hence the above check) opaque pixel.
-                thisLayerNotEmpty = true;
-              }
-            }
+          var thisLayerNotEmpty = false;
+          var pixu = tileu*World.TILE_SIZE;
+          var pixv = tilev*World.TILE_SIZE;
+          // extract surface plane of block from world
+          for (var u = 0; u < World.TILE_SIZE; u++)
+          for (var v = 0; v < World.TILE_SIZE; v++) {
+            var c = ((pixu+u) * blockTextureData.width + pixv+v) * 4;
+            var vec = vec3.create([u,v,layer]);
+            mat4.multiplyVec3(transform, vec, vec);
+            var view = vec3.create([u,v,layer-1]);
+            mat4.multiplyVec3(transform, view, view);
             
-            // We can reuse this tile iff it was blank
-            alloc = thisLayerNotEmpty;
-            if (thisLayerNotEmpty) {
-              // u,v coordinates of this tile for use by the vertex generator
-
-              // TODO: If opacities change, we need to trigger rerender of chunks.
+            var value = world.g(vec[0],vec[1],vec[2]);
+            world.blockSet.writeColor(value, 255, blockTextureData.data, c);
+            if (blockTextureData.data[c+3] < 255) {
+              // A block is opaque if all of its outside (layer-0) pixels are opaque.
+              if (layer == 0)
+                opaque = false;
+            } else if (!world.opaque(view[0],view[1],view[2])) {
+              // A layer has significant content only if there is an UNOBSCURED (hence the above check) opaque pixel.
+              thisLayerNotEmpty = true;
             }
-            layers[layer] = thisLayerNotEmpty ? [tileu / TILE_COUNT_U, tilev / TILE_COUNT_V] : null;
-            //console.log("id ", wi + 1, " face ", faceName, " layer ", layer, thisLayerNotEmpty ? " allocated" : " skipped");
           }
-          TILE_MAPPINGS.forEach(function (m) {
-            var faceName = m[0];
-            var transform = m[1];
-            var layers = [];
-            tilings[wi][faceName] = layers;
-            opacities[wi + 1] = opaque;
-            for (var layer = 0; layer < World.TILE_SIZE; layer++) {
-              sliceWorld(faceName, layer, transform, layers);
-            }
-          });
+          
+          // We can reuse this tile iff it was blank
+          if (thisLayerNotEmpty) {
+            // u,v coordinates of this tile for use by the vertex generator
+            layers[layer] = thisLayerNotEmpty ? [tileu / TILE_COUNT_U, tilev / TILE_COUNT_V] : null;
+
+            // TODO: If opacities change, we need to trigger rerender of chunks.
+          } else {
+            delete usageMap[usageIndex];
+            tileFree(index);
+          }
+          //console.log("id ", wi + 1, " face ", faceName, " layer ", layer, thisLayerNotEmpty ? " allocated" : " skipped");
         }
-        
+        TILE_MAPPINGS.forEach(function (m) {
+          var faceName = m[0];
+          var transform = m[1];
+          var layers = [];
+          tilings[wi][faceName] = layers;
+          opacities[wi + 1] = opaque;
+          for (var layer = 0; layer < World.TILE_SIZE; layer++) {
+            sliceWorld(faceName, layer, transform, layers);
+          }
+        });
+
+        // TODO: arrange to do this only once if updating several blocks
         gl.bindTexture(gl.TEXTURE_2D, blockTexture);
           gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, blockTextureData);
           gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -197,7 +210,8 @@ var BlockSet = (function () {
       }
     });
     
-    self.generateBlockTextures();
+    for (var id = BlockSet.ID_EMPTY + 1; id < self.length; id++)
+      self.rebuildBlockTexture(id);
 
     return self;    
   };

@@ -101,13 +101,13 @@ var WorldRenderer = (function () {
       playerChunk = null; // Force recomputation of visible chunks when interested
     }
     
-    function rebuildBlocks() {
+    function rebuildBlock(blockID) {
       // TODO: This massive delete should be avoided when possible; in particular,
       // we don't need to flush the chunks if the texture allocation has not changed.
-      world.blockSet.generateBlockTextures();
+      world.blockSet.rebuildBlockTexture(blockID);
       rebuildChunks();
     }
-    this.rebuildBlocks = rebuildBlocks;
+    this.rebuildBlock = rebuildBlock;
 
     function deleteResources() {
       deleteChunks();
