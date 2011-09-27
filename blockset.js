@@ -175,15 +175,16 @@ var BlockSet = (function () {
           }
           
           // We can reuse this tile iff it was blank
-          if (thisLayerNotEmpty) {
-            // u,v coordinates of this tile for use by the vertex generator
-            layers[layer] = thisLayerNotEmpty ? [tileu / TILE_COUNT_U, tilev / TILE_COUNT_V] : null;
-
-            // TODO: If opacities change, we need to trigger rerender of chunks.
-          } else {
+          if (!thisLayerNotEmpty) {
             delete usageMap[usageIndex];
             tileFree(index);
           }
+
+          // u,v coordinates of this tile for use by the vertex generator
+          layers[layer] = thisLayerNotEmpty ? [tileu / TILE_COUNT_U, tilev / TILE_COUNT_V] : null;
+
+          // TODO: trigger rerender of chunks only if we made changes to the tiling
+
           //console.log("id ", wi + 1, " face ", faceName, " layer ", layer, thisLayerNotEmpty ? " allocated" : " skipped");
         }
         TILE_MAPPINGS.forEach(function (m) {
