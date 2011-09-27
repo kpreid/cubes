@@ -487,8 +487,8 @@
       var glxy = [pos[0] / theCanvas.width * 2 - 1, -(pos[1] / theCanvas.height * 2 - 1)];
       
       var unproject = mat4.identity(mat4.create());
-      player.render.applyViewPitch(unproject);
-      player.render.applyViewRotTranslation(unproject);
+      player.render.applyViewRot(unproject);
+      player.render.applyViewTranslation(unproject);
       mat4.multiply(pMatrix, unproject, unproject);
       mat4.inverse(unproject);
 
@@ -611,34 +611,41 @@
 
     var debugR;
     var selectionR;
-    var backdropR;
+    var skyboxR;
     
     function initBuffers() {
       debugR = new RenderBundle(gl.LINES, null, function (vertices, colors) {
         if (player) player.renderDebug(vertices,colors);
       });
       
-      backdropR = new RenderBundle(gl.TRIANGLE_STRIP, null, function (vertices, colors) {
+      skyboxR = new RenderBundle(gl.TRIANGLES, null, function (vertices, colors) {
+        // abstracted in case this is useful elsewhere ...
+        function cube(vertices, colors, size, outward) {
+          function ppush(a, b, c) {
+            var v = [];
+            v[dim] = a;
+            v[da] = b;
+            v[db] = c;
+            vertices.push(v[0], v[1], v[2]);
+            colors.push(1, 0, 0, 1);
+          }
+          for (var dim = 0; dim < 3; dim++) {
+            for (var dir = -1; dir < 2; dir+=2) {
+              var da = mod(dim + (outward ? 1 : -1) * dir, 3);
+              var db = mod(dim + (outward ? 2 : -2) * dir, 3);
+              ppush(dir*size, -size, -size);
+              ppush(dir*size,  size, -size);
+              ppush(dir*size,  size,  size);
+              ppush(dir*size,  size,  size);
+              ppush(dir*size, -size,  size);
+              ppush(dir*size, -size, -size);
+            }
+          }
+        }
+        
         // While rendering this, the fog distance is adjusted so that anything
         // farther than 1 unit is fully fogged.
-        var x = 100, y = 10, z = -10;
-        vertices.push(-x, -y, -z);
-        vertices.push(x, -y, -z);
-        vertices.push(-x, -y, z);
-        vertices.push(x, -y, z);
-        vertices.push(-x, y, z);
-        vertices.push(x, y, z);
-        vertices.push(-x, y, -z);
-        vertices.push(x, y, -z);
-        
-        colors.push(1, 0, 0, 1);
-        colors.push(1, 0, 0, 1);
-        colors.push(1, 0, 0, 1);
-        colors.push(1, 0, 0, 1);
-        colors.push(1, 0, 0, 1);
-        colors.push(1, 0, 0, 1);
-        colors.push(1, 0, 0, 1);
-        colors.push(1, 0, 0, 1);
+        cube(vertices, colors, 10, false);
       });
 
       selectionR = new RenderBundle(gl.LINE_LOOP, null, function (vertices, colors) {
@@ -678,14 +685,18 @@
     function drawScene(playerRender) {
         var wrend = playerRender.getWorldRenderer();
 
-        // Rendering settings for backdrop
+        // Rendering settings for skybox
         mat4.identity(mvMatrix);
-        playerRender.applyViewPitch(mvMatrix);
+        playerRender.applyViewRot(mvMatrix);
         viewPosition = [0,0,0];
         gl.uniform1f(uniforms.uFogDistance, 1); // 0 would be div-by-0
         gl.disable(gl.DEPTH_TEST);
         
-        backdropR.draw(); // dummy geometry to cause shader to render background as fully-fogged
+        // The skybox exceeeds the fog distance, so it is rendered fully fogged
+        // and only the fog-shading determines the sky color. This ensures that
+        // normal geometry fades smoothly into the sky rather than turning
+        // a possibly-different fog color.
+        skyboxR.draw();
         
         // Rendering settings for normal geometry
         gl.enable(gl.DEPTH_TEST);
@@ -693,7 +704,7 @@
         gl.uniform1f(uniforms.uFogDistance, configRenderDistance);
 
         viewPosition = playerRender.getPosition();
-        playerRender.applyViewRotTranslation(mvMatrix);
+        playerRender.applyViewTranslation(mvMatrix);
 
         wrend.draw();
         debugR.draw();
