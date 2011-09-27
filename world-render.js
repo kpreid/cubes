@@ -381,7 +381,6 @@ var WorldRenderer = (function () {
     // --- init ---
 
     Object.freeze(this);
-    rebuildBlocks();
   }
 
   return WorldRenderer;

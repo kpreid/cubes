@@ -95,7 +95,7 @@ var BlockSet = (function () {
     var blockTextureData = document.createElement("canvas").getContext("2d")
       .createImageData(World.TILE_SIZE * TILE_COUNT_U, World.TILE_SIZE * TILE_COUNT_V);
     
-    return Object.freeze({
+    var self = Object.freeze({
       length: worlds.length + 1,
       textured: true,
       texture: blockTexture,
@@ -196,6 +196,10 @@ var BlockSet = (function () {
         return worlds[blockID - 1] || null;
       }
     });
+    
+    self.generateBlockTextures();
+
+    return self;    
   };
 
   return Object.freeze(BlockSet);
