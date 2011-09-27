@@ -96,16 +96,20 @@ var WorldRenderer = (function () {
       addChunks = [];
     }
     
-    function rebuildChunks() {
-      deleteChunks();
-      playerChunk = null; // Force recomputation of visible chunks when interested
+    function rerenderChunks() {
+      // TODO: not in near-to-far order.
+      dirtyChunks = [];
+      for (var index in chunks) {
+        if (!chunks.hasOwnProperty(index)) continue;
+        chunks[index].dirtyChunk = true;
+        dirtyChunks.push(index);
+      }
     }
     
     function rebuildBlock(blockID) {
-      // TODO: This massive delete should be avoided when possible; in particular,
-      // we don't need to flush the chunks if the texture allocation has not changed.
       world.blockSet.rebuildBlockTexture(blockID);
-      rebuildChunks();
+      // TODO: we don't need to flush the chunks if the texture tiling has not changed at all.
+      rerenderChunks();
     }
     this.rebuildBlock = rebuildBlock;
 
@@ -129,32 +133,33 @@ var WorldRenderer = (function () {
              z >= 0 && z - CHUNKSIZE < world.wz;
     }
 
+    // x,z must be multiples of CHUNKSIZE
+    function setDirtyChunk(x, z) {
+      var k = [x, z];
+      if (!chunkIntersectsWorld(k)) return;
+      var c = chunks[k];
+      if (c) {
+        // This routine is used only for "this block changed", so if there is
+        // not already a chunk, we don't create it.
+        c.dirtyChunk = true;
+        dirtyChunks.push(k);
+      }
+    }
+
     function dirtyBlock(vec) {
       var x = vec[0];
       var z = vec[2];
       
-      function _dirty(x,z) {
-        var k = [x,z];
-        if (!chunkIntersectsWorld(k)) return;
-        var c = chunks[k];
-        if (c) {
-          // dirtyBlock is used only for "this block changed", so if there is
-          // not already a chunk, we don't create it.
-          c.dirtyChunk = true;
-          dirtyChunks.push(k);
-        }
-      }
-
       var xm = mod(x, CHUNKSIZE);
       var zm = mod(z, CHUNKSIZE);
       x -= xm;
       z -= zm;
 
-      _dirty(x,z);
-      if (xm == 0)           _dirty(x-CHUNKSIZE,z);
-      if (zm == 0)           _dirty(x,z-CHUNKSIZE);
-      if (xm == CHUNKSIZE-1) _dirty(x+CHUNKSIZE,z);
-      if (zm == CHUNKSIZE-1) _dirty(x,z+CHUNKSIZE);
+      setDirtyChunk(x,z);
+      if (xm == 0)           setDirtyChunk(x-CHUNKSIZE,z);
+      if (zm == 0)           setDirtyChunk(x,z-CHUNKSIZE);
+      if (xm == CHUNKSIZE-1) setDirtyChunk(x+CHUNKSIZE,z);
+      if (zm == CHUNKSIZE-1) setDirtyChunk(x,z+CHUNKSIZE);
 
       // TODO: This is actually "Schedule updateSomeChunks()" and shouldn't actually require a frame redraw
       scheduleDraw();
