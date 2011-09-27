@@ -249,62 +249,10 @@
             if (typeof console !== 'undefined') console.log("failed to get context: ", gl);
         }
     }
-
-
-    function getShader(gl, id) {
-        var shaderScript = document.getElementById(id);
-        if (!shaderScript) {
-            return null;
-        }
-
-        var str = "";
-        var k = shaderScript.firstChild;
-        while (k) {
-            if (k.nodeType == 3) {
-                str += k.textContent;
-            }
-            k = k.nextSibling;
-        }
-
-        var shader;
-        if (shaderScript.type == "x-shader/x-fragment") {
-            shader = gl.createShader(gl.FRAGMENT_SHADER);
-        } else if (shaderScript.type == "x-shader/x-vertex") {
-            shader = gl.createShader(gl.VERTEX_SHADER);
-        } else {
-            return null;
-        }
-
-        gl.shaderSource(shader, str);
-        gl.compileShader(shader);
-
-        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-            if (typeof console !== 'undefined')
-              console.error(gl.getShaderInfoLog(shader));
-            throw new Error("Could not compile shader");
-        }
-
-        return shader;
-    }
-
-    // prepareProgram fills in these with the locations
-    var attribs = {
-      aVertexPosition: null,
-      aVertexColor: null,
-      aTextureCoord: null
-    };
-    var uniforms = {
-      uPMatrix: null,
-      uMVMatrix: null,
-      uViewPosition: null,
-      uPixelsPerClipUnit: null,
-      uSampler: null,
-      uTextureEnabled: null,
-      uFogDistance: null,
-      uParticleMode: null,
-      uParticleInterp: null,
-      uParticleExplode: null
-    };
+    
+    // prepareProgram fills in these with the locations of the shader program variables
+    var attribs = {};
+    var uniforms = {};
 
     // View and projection transformation globals. Sent to the shaders by setMatrixUniforms().
     var mvMatrix = mat4.create();
@@ -842,10 +790,17 @@
         },
         "Compiling shaders...",
         function () {
-          prepareProgram(gl, getShader(gl, "shader-vs"), getShader(gl, "shader-fs"), attribs, uniforms);
-          initBuffers();
+          prepareProgram(gl,
+                         prepareShader(gl, "shader-vs"),
+                         prepareShader(gl, "shader-fs"),
+                         attribs, uniforms);          
+          
+          // Initial GL state
+          gl.enableVertexAttribArray(attribs.aVertexPosition);
           gl.enable(gl.DEPTH_TEST);
           gl.enable(gl.CULL_FACE);
+          
+          initBuffers();
         },
         "Painting blocks...", // this is what takes the time in world renderer construction
         function () {

@@ -2,7 +2,7 @@
 // Copyright 2011 Kevin Reid, under the terms of the MIT License as detailed in
 // the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 //
-// Exception: The code in the function prepareProgram is derived from from
+// Exception: The code of prepareShader and prepareProgram is derived from
 // the Learning WebGL lessons, at http://learningwebgl.com/blog/?p=1786 (as of
 // September 2011). No license is stated on that site, but I (Kevin Reid)
 // believe that it is obviously the authors' intent to make this code free to
@@ -47,36 +47,54 @@ var UNIT_NX = vec3.create([-1,0,0]);
 var UNIT_NY = vec3.create([0,-1,0]);
 var UNIT_NZ = vec3.create([0,0,-1]);
 
-function prepareProgram(gl, vertexShader, fragmentShader, attribs, uniforms) {
-  // See note in license statement at the top of this file.
-  
+function prepareShader(gl, id) {
+  // See note in license statement at the top of this file.  
   "use strict";
-  var shaderProgram = gl.createProgram();
-  gl.attachShader(shaderProgram, vertexShader);
-  gl.attachShader(shaderProgram, fragmentShader);
-  gl.linkProgram(shaderProgram);
-
-  if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-    if (typeof console !== 'undefined')
-      console.error(gl.getProgramInfoLog(shaderProgram));
-    throw new Error("Could not link shader program; see console");
-  }
-
-  gl.useProgram(shaderProgram);
+  var scriptElement = document.getElementById(id);
+  var text = "";
+  for (var k = scriptElement.firstChild; k !== null; k = k.nextSibling)
+    if (k.nodeType == 3)
+      text += k.textContent;
   
-  function map(table, getter) {
-    for (var name in table) {
-      if (!table.hasOwnProperty(name)) continue;
-      table[name] = gl[getter](shaderProgram, name);
-      if (table[name] === -1 || table[name] === null) { // -1 for attrib, null for uniform
-        if (typeof console !== 'undefined')
-          console.error(getter + "(" + name + ") failed for shader");
-      }
-    }
+  var shader;
+  if (scriptElement.type == "x-shader/x-fragment") {
+    shader = gl.createShader(gl.FRAGMENT_SHADER);
+  } else if (scriptElement.type == "x-shader/x-vertex") {
+    shader = gl.createShader(gl.VERTEX_SHADER);
+  } else {
+    throw new Error("unknown shader script type");
   }
-  map(attribs, "getAttribLocation");
-  map(uniforms, "getUniformLocation");
+  
+  gl.shaderSource(shader, text);
+  gl.compileShader(shader);
+  
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    throw new Error(gl.getShaderInfoLog(shader));
+  }
+  
+  return shader;
+}
 
-  gl.enableVertexAttribArray(attribs.aVertexPosition);
-  gl.enableVertexAttribArray(attribs.aVertexColor);
+function prepareProgram(gl, vertexShader, fragmentShader, attribs, uniforms) {
+  // See note in license statement at the top of this file.  
+  "use strict";
+  var program = gl.createProgram();
+  gl.attachShader(program, vertexShader);
+  gl.attachShader(program, fragmentShader);
+  gl.linkProgram(program);
+
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    throw new Error(gl.getProgramInfoLog(program));
+  }
+
+  gl.useProgram(program);
+  
+  for (var i = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES) - 1; i >= 0; i--) {
+    var name = gl.getActiveAttrib(program, i).name;
+    attribs[name] = gl.getAttribLocation(program, name);
+  }
+  for (var i = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS) - 1; i >= 0; i--) {
+    var name = gl.getActiveUniform(program, i).name;
+    uniforms[name] = gl.getUniformLocation(program, name);
+  }
 }
