@@ -22,7 +22,8 @@ var BlockSet = (function () {
     },
     isOpaque: function (blockID) { return blockID != BlockSet.ID_EMPTY },
     rebuildBlockTexture: function (blockID) {},
-    worldFor: function (blockID) { return null; }
+    worldFor: function (blockID) { return null; },
+    serialize: function () { return { type: "colors" }; }
   });
 
   // Texture parameters
@@ -208,6 +209,12 @@ var BlockSet = (function () {
       isOpaque: function (blockID) { return opacities[blockID] || !(blockID in opacities); },
       worldFor: function (blockID) {
         return worlds[blockID - 1] || null;
+      },
+      serialize: function () {
+        return {
+          type: "textured",
+          worlds: worlds.map(function (world) { return world.serialize(); })
+        }
       }
     });
     
@@ -215,6 +222,14 @@ var BlockSet = (function () {
       self.rebuildBlockTexture(id);
 
     return self;    
+  };
+
+  BlockSet.unserialize = function (json) {
+    if (json.type === "colors") {
+      return BlockSet.colors;
+    } else if (json.type === "textured") {
+      return BlockSet.newTextured(json.worlds.map(function (world) { return World.unserialize(world); }));
+    }
   };
 
   return Object.freeze(BlockSet);

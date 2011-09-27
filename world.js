@@ -150,6 +150,37 @@ function World(sizes, blockSet) {
     changeListener = l;
   }
   
+  function serialize() {
+    var FIRST_BLOCK_CHARACTER = 0xA1;
+
+    var serBlocks = [];
+    
+    var seen = null;
+    var count = 0;
+    for (var i = 0; i < blocks.length; i++) {
+      var value = blocks[i];
+      if (seen === value || seen === null) {
+        count++;
+      } else {
+        serBlocks.push(String.fromCharCode(FIRST_BLOCK_CHARACTER + seen) + count);
+        count = 1;
+      }
+      seen = value;
+    }
+    if (count > 0) {
+      serBlocks.push(String.fromCharCode(FIRST_BLOCK_CHARACTER + seen) + count);
+    }
+    
+    return {
+      wx: wx,
+      wy: wy,
+      wz: wz,
+      blockSet: blockSet.serialize(),
+      blockCodeBase: FIRST_BLOCK_CHARACTER,
+      blocks: serBlocks.join("")
+    };
+  }
+  
   // --- Final init ---
   
   this.g = g;
@@ -161,6 +192,7 @@ function World(sizes, blockSet) {
   this.edit = edit;
   this.step = step;
   this.setChangeListener = setChangeListener;
+  this.serialize = serialize;
   
   this.wx = wx;
   this.wy = wy;
@@ -171,5 +203,24 @@ function World(sizes, blockSet) {
 
 // The size of a texture tile, and therefore the size of a block-defining-block
 World.TILE_SIZE = 16;
+
+World.unserialize = function (json) {
+  var base = json.blockCodeBase;
+  
+  var world = new World([json.wx, json.wy, json.wz], BlockSet.unserialize(json.blockSet));
+  var str = json.blocks;
+  var pat = /(.)([0-9]+)/g;
+  var raw = world.raw;
+  var length = raw.length;
+  var i, match;
+  for (i = 0; (match = pat.exec(str)) && i < length;) {
+    var blockID = match[1].charCodeAt(0) - base;
+    var limit = Math.min(length, i + parseInt(match[2]));
+    for (; i < limit; i++) {
+      raw[i] = blockID;
+    }
+  }
+  return world;
+};
 
 Object.freeze(World);

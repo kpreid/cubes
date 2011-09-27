@@ -642,7 +642,7 @@
       }
       sub(0);
     }
-
+    
     function webGLStart() {
       var info = document.getElementById('info');
       while (info.firstChild) info.removeChild(info.firstChild);
@@ -681,9 +681,28 @@
           
           initBuffers();
         },
-        "Generating worlds...",
+        "Loading worlds...",
         function () {
-          worldH = generateWorlds();
+          var hasLocalStorage = typeof localStorage !== 'undefined';
+          document.getElementById('local-save-controls').style.display = hasLocalStorage ? 'block' : 'none';
+          document.getElementById('local-save-warning').style.display = !hasLocalStorage ? 'block' : 'none';
+          if (hasLocalStorage) {
+            var worldData = localStorage.getItem("world");
+            if (worldData !== null) {
+              try {
+                worldH = World.unserialize(JSON.parse(worldData));
+              } catch (e) {
+                if (typeof console !== 'undefined')
+                  console.error(e);
+                alert("Failed to load saved world!");
+              }
+            }
+          } else {
+            console.warn("localStorage not available; world will not be saved.");
+          }
+          if (!worldH) {
+            worldH = generateWorlds();
+          }
         },
         "Painting blocks...", // this is what takes the time in world renderer construction
         function () {
@@ -736,11 +755,48 @@
       <button id="helpbtn" onclick="this.style.display='none'; document.getElementById('help').style.display='block'; document.getElementById('view-canvas').focus();">Help</button>
     </div>
 
-    <div id="options" class="sidebar" onclick="if (event.target.tagName == 'INPUT' || event.target.tagName == 'LABEL') return true; this.style.display='none'; document.getElementById('optionsbtn').style.display='inline'; document.getElementById('view-canvas').focus();" style="display: none;">
+    <div id="options" class="sidebar" onclick="if (event.target.tagName == 'INPUT' || event.target.tagName == 'LABEL' || event.target.tagName == 'BUTTON' || event.target.tagName == 'TEXTAREA') return true; this.style.display='none'; document.getElementById('optionsbtn').style.display='inline'; document.getElementById('view-canvas').focus();" style="display: none;">
+      <p>Click to close.</p>
+
+      <h2>World</h2>
+      
+      <form onsubmit="return false;" action=""  style="text-align: center">
+        <p id="local-save-controls">
+          <button onclick="
+            localStorage.setItem('world', JSON.stringify(worldH.serialize())); return false;
+          ">Save</button>
+          <button onclick="
+            player.setWorld( World.unserialize( JSON.parse( localStorage.getItem('world')))); return false;
+          ">Revert</button>
+        </p>
+        <p id="local-save-warning" style="display: none">
+          Your browser does not appear to support local storage. This world will be lost when you close the page.
+        </p>
+        <p style="">
+          <textarea id="loadfield" width="20" height="3" style="width: 80%;"></textarea>
+          <br>
+          <button onclick="
+            document.getElementById('loadfield').value = JSON.stringify(worldH.serialize()); return false;
+          ">Text Export</button>
+          <button onclick="
+            while (document.getElementById('load-error').firstChild)
+              document.getElementById('load-error').removeChild(
+                document.getElementById('load-error').firstChild);
+            try {
+              player.setWorld( World.unserialize( JSON.parse( document.getElementById('loadfield').value)));
+            } catch (e) {
+              console.log(e);
+              document.getElementById('load-error').appendChild(document.createTextNode(e));
+            }
+            return false;
+          ">Text Import</button>
+          <br>
+          <div id="load-error" style="text-shadow: 0 0 .3em red;"></div>
+        </p>
+      </form>
+      
       <h2>Options</h2>
 
-      <p>Click to close.</p>
-      
       <form onsubmit="return false;" action="">
         <p>Render distance: <input type="range" min="10" max="500" value="100" maxlength="4" size="4" onchange="configRenderDistance = parseFloat(this.value); changedRenderDistance(); return true;"></p>
         
