@@ -72,6 +72,15 @@ var WorldRenderer = (function () {
       texcoords.push(1, 0);
       texcoords.push(0, 1);
       texcoords.push(1, 1);
+    }, {
+      aroundDraw: function (draw) {
+        var mvsave = mvMatrix;
+        mvMatrix = mat4.identity(mat4.create());
+        gl.disable(gl.DEPTH_TEST);
+        draw();
+        mvMatrix = mvsave;
+        gl.enable(gl.DEPTH_TEST);
+      },
     });
     
     // --- methods, internals ---
@@ -241,9 +250,7 @@ var WorldRenderer = (function () {
       if (configDebugTextureAllocation) {
         var mvsave = mvMatrix;
         mvMatrix = mat4.identity(mat4.create());
-        gl.disable(gl.DEPTH_TEST);
         textureDebugR.draw();
-        gl.enable(gl.DEPTH_TEST);
         mvMatrix = mvsave;
       }
     }

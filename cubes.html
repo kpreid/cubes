@@ -498,7 +498,9 @@
       return player.getWorld().raycast(pt1, pt2, radius, callback);
     }
     
-    function RenderBundle(primitive, optTexture, calcFunc) {
+    function RenderBundle(primitive, optTexture, calcFunc, options) {
+      options = options || {};
+      
       var vbuf = gl.createBuffer();
       if (!optTexture) var cbuf = gl.createBuffer();
       if (optTexture) var tbuf = gl.createBuffer();
@@ -523,7 +525,7 @@
         }
       };
       
-      this.draw = function () {
+      function draw() {
         gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
         gl.vertexAttribPointer(attribs.aVertexPosition, 3, gl.FLOAT, false, 0, 0);
 
@@ -550,6 +552,7 @@
         totalVertices += numVertices;
         gl.drawArrays(primitive, 0, numVertices);
       };
+      this.draw = options.aroundDraw ? function () { options.aroundDraw(draw); } : draw;
       
       this.deleteResources = function () {
         gl.deleteBuffer(vbuf);
@@ -589,19 +592,18 @@
             }
           }
         }
+      }, {
+        aroundDraw: function (draw) {
+          gl.uniform1i(uniforms.uParticleMode, 1);
+          gl.uniform1i(uniforms.uParticleExplode, blockWorld ? 1 : 0);
+          gl.uniform1f(uniforms.uParticleInterp, t());
+          draw();
+          gl.uniform1i(uniforms.uParticleMode, 0);
+        }
       });
       
       function t() {
         return Math.min((Date.now() - t0) * 0.003, 1);
-      }
-      
-      var pd = rb.draw;
-      rb.draw = function () {
-        gl.uniform1i(uniforms.uParticleMode, 1);
-        gl.uniform1i(uniforms.uParticleExplode, blockWorld ? 1 : 0);
-        gl.uniform1f(uniforms.uParticleInterp, t());
-        pd.call(this);
-        gl.uniform1i(uniforms.uParticleMode, 0);
       }
       
       rb.expired = function () { return t() >= 1; };
@@ -678,6 +680,12 @@
           vertices.push(p[0], p[1]+1, p[2]+1); colors.push(1, 1, 1, 1);
           vertices.push(p[0], p[1], p[2]+1); colors.push(1, 1, 1, 1);
         }
+      }, {
+        aroundDraw: function (draw) {
+          gl.disable(gl.DEPTH_TEST);
+          draw();
+          gl.enable(gl.DEPTH_TEST);
+        }
       });
     }
     
@@ -708,10 +716,7 @@
 
         wrend.draw();
         debugR.draw();
-
-        gl.disable(gl.DEPTH_TEST);
         selectionR.draw();
-        gl.enable(gl.DEPTH_TEST);
         
         var e, errs = [];
         while (e = gl.getError()) {
