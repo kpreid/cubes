@@ -136,7 +136,7 @@ var BlockSet = (function () {
       tilings: tilings,
       rebuildBlockTexture: function (blockID) {
         var wi = blockID - 1;
-        if (blockID < 0 || blockID >= worlds.length) return;
+        if (wi < 0 || wi >= worlds.length) return;
         
         var world = worlds[wi];
         var opaque = true;
