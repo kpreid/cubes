@@ -702,11 +702,12 @@
         renderCount++;
     }
     
-    var fpsDesc = "", frameCount = 0, renderCount = 0, chunkRenders = 0, totalVertices = 0;
+    var fpsDesc = "", stepCount = 0, renderCount = 0, chunkRenders = 0, totalVertices = 0;
     
     function doStep() {
       player.stepYourselfAndWorld();
       input.step();
+      stepCount++;
     }
     
     var animFrameWasRequested = false;
@@ -714,7 +715,6 @@
       if (!animFrameWasRequested) {
         window.requestAnimFrame(function () {
           animFrameWasRequested = false;
-          frameCount++;
 
           // done here because chunk updating should be deprioritized at the same time drawing would be
           chunkRenders += player.render.getWorldRenderer().updateSomeChunks();
@@ -727,9 +727,8 @@
 
     // statistics are reset once per second
     setInterval(function () {
-      var idle = frameCount - renderCount;
-      fpsDesc = "FPS: " + frameCount + (idle > 0 ? " (" + idle + " idle)" : "") + ", " + chunkRenders + " chunk renders";
-      frameCount = renderCount = chunkRenders = 0;
+      fpsDesc = stepCount + " steps/s, " + renderCount + " frames/s, " + chunkRenders + " chunk rebuilds";
+      stepCount = renderCount = chunkRenders = 0;
     }, 1000);
     
     // for making our loading more async
