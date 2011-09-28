@@ -766,8 +766,15 @@
             localStorage.setItem('world', JSON.stringify(worldH.serialize())); return false;
           ">Save</button>
           <button onclick="
-            player.setWorld( World.unserialize( JSON.parse( localStorage.getItem('world')))); return false;
-          ">Revert</button>
+            worldH = World.unserialize( JSON.parse( localStorage.getItem('world')));
+            player.setWorld(worldH);
+            return false;
+          ">Revert to saved</button>
+          <button onclick="
+            worldH = generateWorlds();
+            player.setWorld(worldH);
+            return false;
+          ">Start over</button>
         </p>
         <p id="local-save-warning" style="display: none">
           Your browser does not appear to support local storage. This world will be lost when you close the page.
@@ -783,7 +790,8 @@
               document.getElementById('load-error').removeChild(
                 document.getElementById('load-error').firstChild);
             try {
-              player.setWorld( World.unserialize( JSON.parse( document.getElementById('loadfield').value)));
+              worldH = World.unserialize( JSON.parse( document.getElementById('loadfield').value))
+              player.setWorld(worldH);
             } catch (e) {
               console.log(e);
               document.getElementById('load-error').appendChild(document.createTextNode(e));
