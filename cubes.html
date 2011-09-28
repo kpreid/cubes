@@ -138,7 +138,7 @@
         } else {
           color = vColor;
         }
-        float elevationSine = vFixedOrientationPosition.y / length(vFixedOrientationPosition); // TODO move out of frag
+        float elevationSine = vFixedOrientationPosition.y / length(vFixedOrientationPosition);
         vec4 fogColor = elevationSine < 0.0
           ? mix(cHorizon, cGround, clamp(log(1.0 + -elevationSine * 120.0), 0.0, 1.0))
           : mix(cHorizon, cSky, clamp(log(1.0 + elevationSine * 2.0), 0.0, 1.0));
