@@ -30,7 +30,7 @@ var Player = (function () {
     
     // Worlds we've been in
     var placeStack = [];
-    var currentPlace = new Place(initialWorld);
+    var currentPlace;
 
     // kludge: Since UI sets pitch absolutely, it's not a place variable
     var pitch = 0;
@@ -197,6 +197,13 @@ var Player = (function () {
     this.getWorld = function() {
       return currentPlace.world;
     };
+    this.setWorld = function (world) {
+      while (placeStack.length) placeStack.pop().wrend.deleteResources();
+      currentPlace = new Place(world);
+      // TODO: move this position downward to free space rather than just imparting velocity
+      this.setPosition([world.wx/2, world.wy + playerAABB[1][0], world.wz/2]);
+      vec3.set([0,-120,0], currentPlace.vel);
+    };
     
     // The facet for user input
     this.input = Object.freeze({
@@ -271,6 +278,8 @@ var Player = (function () {
         if (currentPlace.onGround) currentPlace.vel[1] = JUMP_SPEED;
       }
     });
+    
+    this.setWorld(initialWorld);
   }
   
   return Player;
