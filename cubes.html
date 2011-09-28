@@ -255,15 +255,15 @@
     var attribs = {};
     var uniforms = {};
 
-    // View and projection transformation globals. Sent to the shaders by setMatrixUniforms().
-    var mvMatrix = mat4.create();
+    // Projection trans
+
+    // View and projection transformation globals.
     var pMatrix = mat4.create();
+    var mvMatrix = mat4.create();
     var viewPosition = vec3.create();
 
-    function setMatrixUniforms() {
-        gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix); // TODO: send this only when needed
+    function sendViewUniforms() {
         gl.uniformMatrix4fv(uniforms.uMVMatrix, false, mvMatrix);
-        gl.uniform2f(uniforms.uPixelsPerClipUnit, gl.drawingBufferWidth / 2, gl.drawingBufferHeight / 2);
         gl.uniform3fv(uniforms.uViewPosition, viewPosition);
     }
 
@@ -284,6 +284,8 @@
       }
       
       gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+      gl.uniform2f(uniforms.uPixelsPerClipUnit, gl.drawingBufferWidth / 2,
+                                                gl.drawingBufferHeight / 2);
 
       updateProjection();
     }
@@ -294,6 +296,8 @@
                        0.1, // near clip
                        configRenderDistance, // far clip
                        pMatrix);
+      
+      gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
       
       // uFogDistance is handled by drawScene.
     }
@@ -497,7 +501,7 @@
           gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
           gl.vertexAttribPointer(attribs.aVertexColor, 4, gl.FLOAT, false, 0, 0);
         }
-        setMatrixUniforms();
+        sendViewUniforms();
         totalVertices += numVertices;
         gl.drawArrays(primitive, 0, numVertices);
       };
@@ -770,7 +774,7 @@
       theInfo.data = "";
 
       sequence([
-        "Preparing WebGL...",
+        "Getting WebGL...",
         function () {
           theCanvas = document.getElementById('view-canvas');
           initGL(theCanvas);
@@ -779,22 +783,20 @@
             return ABORT;
           }
         },
-        "Generating worlds...",
-        generateInitialWorlds,
-        function () {
-          updateViewport();
-          window.addEventListener("resize", function () {
-            updateViewport();
-            return true;
-          }, false);
-        },
-        "Compiling shaders...",
+        "Setting up WebGL...",
         function () {
           prepareProgram(gl,
                          prepareShader(gl, "shader-vs"),
                          prepareShader(gl, "shader-fs"),
                          attribs, uniforms);          
           
+          // Set up viewport and projection matters
+          updateViewport();
+          window.addEventListener("resize", function () {
+            updateViewport();
+            return true;
+          }, false);
+
           // Initial GL state
           gl.enableVertexAttribArray(attribs.aVertexPosition);
           gl.enable(gl.DEPTH_TEST);
@@ -802,6 +804,8 @@
           
           initBuffers();
         },
+        "Generating worlds...",
+        generateInitialWorlds,
         "Painting blocks...", // this is what takes the time in world renderer construction
         function () {
           // done after some GL init because player creates world renderer object internally

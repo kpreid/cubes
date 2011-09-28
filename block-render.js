@@ -46,11 +46,11 @@ function BlockRenderer(blockSet) {
     gl.clearColor(0,0,0,0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     
-    var savePMatrix = pMatrix;
     var saveMVMatrix = mvMatrix;
     var saveView = viewPosition;
-    pMatrix = mat4.create();
-    mat4.ortho(-ow, ow, -oh, oh, -1, 1, pMatrix); // Y-coordinates are flipped to get the image rightwayup
+    var projection = mat4.create();
+    gl.uniformMatrix4fv(uniforms.uPMatrix, false,
+      mat4.ortho(-ow, ow, -oh, oh, -1, 1, mat4.create()));
     mat4.identity(mvMatrix);
     mat4.rotate(mvMatrix, Math.PI/4 * 0.6, [1, 0, 0]);
     mat4.rotate(mvMatrix, Math.PI/4 * 0.555, [0, 1, 0]);
@@ -60,7 +60,7 @@ function BlockRenderer(blockSet) {
     singleBlockR.draw();
     
     // restore stuff (except for framebuffer which we're about to read)
-    pMatrix = savePMatrix;
+    gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
     mvMatrix = saveMVMatrix;
     viewPosition = saveView;
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
