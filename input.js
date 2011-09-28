@@ -8,10 +8,15 @@ function Input(eventReceiver, playerInput, menuElement) {
 
   var keymap = {};
   var mousePos = [0,0];
-  
+
+  // --- Utilities ---
+
   function evalVel(pos, neg) {
     return pos ? neg ? 0 : 1 : neg ? -1 : 0;
   }
+  
+  // --- Keyboard events ---
+  
   function interestingInMap(code) {
     switch (code) {
       case 'A'.charCodeAt(0): case 37:
@@ -48,6 +53,16 @@ function Input(eventReceiver, playerInput, menuElement) {
 
     // handlers for 'action' keys (immediate effects)
     switch (String.fromCharCode(code)) {
+      case "1": playerInput.tool = 0; return false;
+      case "2": playerInput.tool = 1; return false;
+      case "3": playerInput.tool = 2; return false;
+      case "4": playerInput.tool = 3; return false;
+      case "5": playerInput.tool = 4; return false;
+      case "6": playerInput.tool = 5; return false;
+      case "7": playerInput.tool = 6; return false;
+      case "8": playerInput.tool = 7; return false;
+      case "9": playerInput.tool = 8; return false;
+      case "0": playerInput.tool = 9; return false;
       case "R": hideMenu(); playerInput.changeWorld(1); return false;
       case "F": hideMenu(); playerInput.changeWorld(-1); return false;
       case " ": playerInput.jump(); return false;
@@ -75,6 +90,7 @@ function Input(eventReceiver, playerInput, menuElement) {
     }
   }, true);
   
+  // --- Mouselook ---
   
   var dx = 0;
   var prevx = 0;
@@ -107,6 +123,8 @@ function Input(eventReceiver, playerInput, menuElement) {
     dx = 0;
   };
 
+  // --- Clicks ---
+
   eventReceiver.addEventListener("click", function (event) {
     mousePos = [event.clientX, event.clientY];
     if (menuVisible()) {
@@ -136,6 +154,8 @@ function Input(eventReceiver, playerInput, menuElement) {
       playerInput.yaw += dx;
     }
   }
+  
+  // --- Block menu ---
   
   function menuVisible() {
     return menuElement.style.visibility !== "hidden";
@@ -202,6 +222,8 @@ function Input(eventReceiver, playerInput, menuElement) {
     menuElement.style.visibility = 'hidden';
     eventReceiver.focus();
   }
+  
+  // --- Methods ---
   
   this.step = step;
   this.getMousePos = function () { return mousePos; };
