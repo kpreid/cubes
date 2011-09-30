@@ -309,9 +309,6 @@
     }
     
     
-    var cubeSelection = null;
-    var emptySelection = null;
-    
     function raycastFromScreen(radius, callback) {
       var pos = input.getMousePos();
       var glxy = [pos[0] / theCanvas.width * 2 - 1, -(pos[1] / theCanvas.height * 2 - 1)];
@@ -442,7 +439,6 @@
     }
 
     var debugR;
-    var selectionR;
     var skyboxR;
     
     function initBuffers() {
@@ -479,44 +475,6 @@
         // farther than 1 unit is fully fogged.
         cube(vertices, colors, 10, false);
       });
-
-      selectionR = new RenderBundle(gl.LINE_LOOP, null, function (vertices, colors) {
-        var p = vec3.create(cubeSelection);
-        var q = emptySelection;
-        if (cubeSelection !== null && emptySelection !== null) {
-          // This works, but don't ask me to justify it. We're taking the vector between the two selection points and deriving a selection box for the face.
-          
-          var qp = vec3.subtract(p, q, vec3.create()); // face-direction vector
-          var qr = [-qp[1], -qp[2], -qp[0]]; // first perpendicular vector 
-          var qs = vec3.cross(qp, qr, vec3.create()); // second perpendicular vector
-          
-          if (qp[0]+qp[1]+qp[2] > 0)
-            vec3.subtract(p, qr);
-          else
-            vec3.subtract(p, qp);
-          
-          colors.push(1,1,1,1); vertices.push(p[0],p[1],p[2]);
-          colors.push(1,1,1,1); vertices.push(p[0]+qr[0],p[1]+qr[1],p[2]+qr[2]);
-          colors.push(1,1,1,1); vertices.push(p[0]+qr[0]+qs[0],p[1]+qr[1]+qs[1],p[2]+qr[2]+qs[2]);
-          colors.push(1,1,1,1); vertices.push(p[0]+qs[0],p[1]+qs[1],p[2]+qs[2]);
-        } else if (cubeSelection !== null) {
-          // TODO: Would like to throw this out, but can't because currently if you are outside the world grid there is no emptySelection.
-          vertices.push(p[0], p[1], p[2]); colors.push(1, 1, 1, 1);
-          vertices.push(p[0], p[1]+1, p[2]); colors.push(1, 1, 1, 1);
-          vertices.push(p[0]+1, p[1]+1, p[2]); colors.push(1, 1, 1, 1);
-          vertices.push(p[0]+1, p[1], p[2]); colors.push(1, 1, 1, 1);
-          vertices.push(p[0]+1, p[1], p[2]+1); colors.push(1, 1, 1, 1);
-          vertices.push(p[0]+1, p[1]+1, p[2]+1); colors.push(1, 1, 1, 1);
-          vertices.push(p[0], p[1]+1, p[2]+1); colors.push(1, 1, 1, 1);
-          vertices.push(p[0], p[1], p[2]+1); colors.push(1, 1, 1, 1);
-        }
-      }, {
-        aroundDraw: function (draw) {
-          gl.disable(gl.DEPTH_TEST);
-          draw();
-          gl.enable(gl.DEPTH_TEST);
-        }
-      });
     }
     
     var lastGLErrors = [];
@@ -546,7 +504,7 @@
 
         wrend.draw();
         debugR.draw();
-        selectionR.draw();
+        player.render.selectionRender.draw();
         
         var e, errs = [];
         while (e = gl.getError()) {
@@ -560,7 +518,7 @@
           var d = 2;
           text += "XYZ: " + pp[0].toFixed(d) + "," + pp[1].toFixed(d) + "," + pp[2].toFixed(d) + "\n";
         }
-        text += "Selected: " + cubeSelection + "  Empty: " + emptySelection + "\n";
+        text += "Selected: " + player.getSelection() + "\n";
         if (errs.length) {
           lastGLErrors = errs;
           text += "GL errors:";

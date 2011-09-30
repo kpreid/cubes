@@ -51,8 +51,9 @@ function World(sizes, blockSet) {
   }
   
   /**
-   * Call the callback with (x,y,z,value) of all blocks along the line segment
-   * from pt1, through pt2, of length radius.
+   * Call the callback with (x,y,z,value,face) of all blocks along the line
+   * segment from pt1, through pt2, of length radius. 'face' is the normal
+   * vector of the face of that block that was entered.
    *
    * If the callback returns a true value, the traversal will be stopped.
    */
@@ -68,7 +69,6 @@ function World(sizes, blockSet) {
     var dx = pt2[0] - pt1[0];
     var dy = pt2[1] - pt1[1];
     var dz = pt2[2] - pt1[2];
-    var t = 0;
     var stepX = signum(dx);
     var stepY = signum(dy);
     var stepZ = signum(dz);
@@ -78,6 +78,7 @@ function World(sizes, blockSet) {
     var tDeltaX = stepX/dx;
     var tDeltaY = stepY/dy;
     var tDeltaZ = stepZ/dz;
+    var face = [0,0,0];
     
     // 't' is in units of (pt2-pt1), so adjust radius in blocks by that
     radius /= Math.sqrt(dx*dx+dy*dy+dz*dz);
@@ -85,7 +86,7 @@ function World(sizes, blockSet) {
     //console.log(stepX, stepY, stepZ, dx, dy, dz, tDeltaX, tDeltaY, tDeltaZ);
     while (true) {
       if (!(x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz))
-        if (callback(x, y, z, blocks[x*wy*wz + y*wz + z]))
+        if (callback(x, y, z, blocks[x*wy*wz + y*wz + z], face))
           break;
 
       if (tMaxX < tMaxY) {
@@ -93,20 +94,24 @@ function World(sizes, blockSet) {
           if (tMaxX > radius) break;
           x += stepX;
           tMaxX += tDeltaX;
+          face = [-stepX,0,0];
         } else {
           if (tMaxZ > radius) break;
           z += stepZ;
           tMaxZ += tDeltaZ;
+          face = [0,0,-stepZ];
         }
       } else {
         if (tMaxY < tMaxZ) {
           if (tMaxY > radius) break;
           y += stepY;
           tMaxY += tDeltaY;
+          face = [0,-stepY,0];
         } else {
           if (tMaxZ > radius) break;
           z += stepZ;
           tMaxZ += tDeltaZ;
+          face = [0,0,-stepZ];
         }
       }
     }

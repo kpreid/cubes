@@ -11,11 +11,15 @@ var Player = (function () {
   
   // a Place stores a world and location in it; used for push/pop
   function Place(world) {
+    // Body state
     this.world = world;
     this.pos = vec3.create([0,0,0]);
     this.vel = vec3.create([0,0,0]);
     this.yaw = Math.PI/4 * 5;
     this.onGround = false;
+
+    // Selection
+    this.selection = null;
 
     // Current tool/block id
     this.tool = 2; // first non-bogus block id
@@ -35,31 +39,64 @@ var Player = (function () {
     // kludge: Since UI sets pitch absolutely, it's not a place variable
     var pitch = 0;
   
+    var selectionR = new RenderBundle(gl.LINE_LOOP, null, function (vertices, colors) {
+      var sel = currentPlace ? currentPlace.selection : null;
+      if (sel !== null) {
+        var p = vec3.create(sel.cube);
+
+        // This works, but don't ask me to justify it. We're taking the face normal vector and deriving a selection box.
+        var qp = vec3.subtract(vec3.create(), sel.face);
+        var qr = [-qp[1], -qp[2], -qp[0]]; // first perpendicular vector 
+        var qs = vec3.cross(qp, qr, vec3.create()); // second perpendicular vector
+        
+        if (qp[0]+qp[1]+qp[2] > 0)
+          vec3.subtract(p, qr);
+        else
+          vec3.subtract(p, qp);
+        
+        colors.push(1,1,1,1); vertices.push(p[0],p[1],p[2]);
+        colors.push(1,1,1,1); vertices.push(p[0]+qr[0],p[1]+qr[1],p[2]+qr[2]);
+        colors.push(1,1,1,1); vertices.push(p[0]+qr[0]+qs[0],p[1]+qr[1]+qs[1],p[2]+qr[2]+qs[2]);
+        colors.push(1,1,1,1); vertices.push(p[0]+qs[0],p[1]+qs[1],p[2]+qs[2]);
+      }
+    }, {
+      aroundDraw: function (draw) {
+        gl.disable(gl.DEPTH_TEST);
+        draw();
+        gl.enable(gl.DEPTH_TEST);
+      }
+    });
+  
     function aimChanged() {
       scheduleDraw(); // because this routine is also 'view direction changed'
 
-      var oldSel = ""+cubeSelection+""+emptySelection; // TODO: global variables
-      cubeSelection = emptySelection = null;
+      var foundCube = null, foundFace = null;
 
       var w = currentPlace.world;
-      raycastFromScreen(20, function (x,y,z) {
+      raycastFromScreen(20, function (x,y,z,value,face) {
         if (w.solid(x,y,z)) {
-          cubeSelection = [x,y,z];
+          foundCube = Object.freeze([x,y,z]);
+          foundFace = face;
           return true;
-        } else {
-          emptySelection = [x,y,z];
-          return false;
         }
       });
-
-      // prevent selecting the edges of the world
-      if (cubeSelection === null)
-        emptySelection = null;
-
-      // redraw
-      if (""+cubeSelection+""+emptySelection !== oldSel) {
+      // Note: If we ever want to enable selection of the edges of the world,
+      // then that can be done by noting the last cube the raycast hit.
+      
+      if (foundCube !== null) {
+        var newSel = Object.freeze({
+          cube: foundCube,
+          face: foundFace,
+          toString: function () { return this.cube + ";" + this.face; }
+        });
+      } else {
+        var newSel = null;
+      }
+      
+      if ("" + currentPlace.selection !== "" + newSel) {
+        currentPlace.selection = newSel;
         selectionR.recompute();
-        scheduleDraw(); // TODO: global variables
+        scheduleDraw(); // TODO: global variable 
       }
     }
     
@@ -187,6 +224,7 @@ var Player = (function () {
       getPosition: function() {
         return vec3.create(currentPlace.pos);
       },
+      selectionRender: selectionR,
       getWorldRenderer: function () {
         return currentPlace.wrend;
       }
@@ -196,6 +234,9 @@ var Player = (function () {
     };
     this.getWorld = function() {
       return currentPlace.world;
+    };
+    this.getSelection = function() {
+      return currentPlace.selection;
     };
     this.setWorld = function (world) {
       while (placeStack.length) placeStack.pop().wrend.deleteResources();
@@ -212,22 +253,25 @@ var Player = (function () {
         if (currentPlace.tool == BlockSet.ID_EMPTY) {
           // delete block
           // TODO: global variables
-          if (cubeSelection != null) {
-            var x = cubeSelection[0], y = cubeSelection[1], z = cubeSelection[2];
+          if (currentPlace.selection !== null) {
+            var cube = currentPlace.selection.cube;
+            var x = cube[0], y = cube[1], z = cube[2];
             if (currentPlace.world.solid(x,y,z)) {
               var value = currentPlace.world.g(x,y,z);
               currentPlace.world.s(x,y,z,0);
-              currentPlace.wrend.renderDestroyBlock(cubeSelection, value);
+              currentPlace.wrend.renderDestroyBlock(cube, value);
               changed = true;
             }
           }
         } else {
           // create block
-          if (emptySelection != null) {
-            var x = emptySelection[0], y = emptySelection[1], z = emptySelection[2];
+          if (currentPlace.selection !== null) {
+            var cube = currentPlace.selection.cube;
+            var face = currentPlace.selection.face;
+            var x = cube[0]+face[0], y = cube[1]+face[1], z = cube[2]+face[2];
             if (!currentPlace.world.solid(x,y,z)) {
               currentPlace.world.s(x,y,z, currentPlace.tool);
-              currentPlace.wrend.renderCreateBlock(emptySelection, value);
+              currentPlace.wrend.renderCreateBlock([x,y,z], value);
               changed = true;
             }
           }
@@ -245,11 +289,11 @@ var Player = (function () {
       get tool () { return currentPlace.tool; },
       set tool (id) { currentPlace.tool = id; aimChanged(); },
       changeWorld: function (direction) {
-        // TODO: global variables cubeSelection, aimChanged
         switch (direction) {
           case 1:
-            if (cubeSelection == null) break;
-            var x = cubeSelection[0], y = cubeSelection[1], z = cubeSelection[2];
+            if (currentPlace.selection === null) break;
+            var cube = currentPlace.selection.cube;
+            var x = cube[0], y = cube[1], z = cube[2];
             
             var oldPlace = currentPlace;
             var blockID = currentPlace.world.g(x,y,z);
