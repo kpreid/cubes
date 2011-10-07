@@ -260,6 +260,13 @@ function World(sizes, blockSet) {
     }
   }
   
+  function setStandingOn(cube, value) {
+    var circuit = blockCircuits[cube];
+    if (circuit) {
+      circuit.setStandingOn(cube, value);
+    }
+  }
+  
   function setChangeListener(l) {
     if (changeListener !== l && changeListener !== null && l !== null) {
       throw new Error("conflicting change listeners");
@@ -311,6 +318,7 @@ function World(sizes, blockSet) {
   this.getCircuit = function (block) { return blockCircuits[block] || null; }
   this.edit = edit;
   this.step = step;
+  this.setStandingOn = setStandingOn;
   this.setChangeListener = setChangeListener;
   this.serialize = serialize;
   

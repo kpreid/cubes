@@ -479,7 +479,7 @@ var WorldRenderer = (function () {
                   var carr = chunkDynamic.getColorsA();
                   for (var i = 0, p = cbase; i < 6; i++) { // 6 vertices for the square
                     carr[p++] = 0;
-                    carr[p++] = Math.random();
+                    carr[p++] = circuit.getBlockState(fromBlock).st; // TODO kludge overly specific
                     carr[p++] = 0;
                     carr[p++] = 1;
                   }

@@ -16,7 +16,7 @@ var Player = (function () {
     this.pos = vec3.create([0,0,0]);
     this.vel = vec3.create([0,0,0]);
     this.yaw = Math.PI/4 * 5;
-    this.onGround = false;
+    this.standingOn = [];
 
     // Selection
     this.selection = null;
@@ -150,6 +150,7 @@ var Player = (function () {
       
       // collision
       function sclamp(vec) {
+        var hit = [];
         // TODO: Clean up and optimize this mess
         function nd(dim2,dir2) {return playerAABB[dim2][dir2]; }
         var buf = vec3.create();
@@ -163,19 +164,21 @@ var Player = (function () {
               for (var bi = vec[b]+nd(b,0); bi < vec[b]+nd(b,1); bi++) {
                 buf[a] = Math.floor(ai);
                 buf[b] = Math.floor(bi);
-                if (world.solid(buf[0],buf[1],buf[2])) return true;
+                if (world.solid(buf[0],buf[1],buf[2])) hit.push([buf[0],buf[1],buf[2]]);
               }
               buf[b] = Math.floor(vec[b]+nd(b,1));
-              if (world.solid(buf[0],buf[1],buf[2])) return true;
+              if (world.solid(buf[0],buf[1],buf[2])) hit.push([buf[0],buf[1],buf[2]]);
             }
             buf[a] = Math.floor(vec[a]+nd(a,1));
-            if (world.solid(buf[0],buf[1],buf[2])) return true;
+            if (world.solid(buf[0],buf[1],buf[2])) hit.push([buf[0],buf[1],buf[2]]);
           }
         }
+        return hit.length > 0 ? hit : null;
       }
       
       // To resolve diagonal movement, we treat it as 3 orthogonal moves, updating nextPosIncr.
-      currentPlace.onGround = false;
+      var previousStandingOn = currentPlace.standingOn;
+      currentPlace.standingOn = null;
       var nextPosIncr = vec3.create(curPos);
       for (var dim = 0; dim < 3; dim++) {
         var dir = curVel[dim] >= 0 ? 1 : 0;
@@ -183,12 +186,13 @@ var Player = (function () {
         var partial = vec3.create(nextPosIncr);
         partial[dim] = nextPos[dim]; // TODO: Sample multiple times if velocity exceeds 1 block/step
         //console.log(dir, dim, playerAABB[dim][dir], front, partial);
-        if (sclamp(partial) || (dim == 1 && front < 0)) {
+        var hit;
+        if ((hit = sclamp(partial)) || (dim == 1 && front < 0)) {
           //console.log("clamped", dim);
           nextPosIncr[dim] = dir ? Math.ceil(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 - EPSILON : Math.floor(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 + EPSILON;
           curVel[dim] = 0;
           if (dim == 1 && dir == 0) {
-            currentPlace.onGround = true;
+            currentPlace.standingOn = hit || [];
           }
         } else {
           nextPosIncr[dim] = nextPos[dim];
@@ -204,6 +208,17 @@ var Player = (function () {
         aimChanged();
       }
       debugR.recompute();
+      
+      var seen = {};
+      (currentPlace.standingOn || []).forEach(function (cube) {
+        seen[cube] = true;
+        world.setStandingOn(cube, true);
+      });
+      (previousStandingOn || []).forEach(function (cube) {
+        if (!seen[cube]) {
+          world.setStandingOn(cube, false);
+        }
+      });
     };
     
     this.stepYourselfAndWorld = function () {
@@ -319,7 +334,7 @@ var Player = (function () {
         }
       },
       jump: function () {
-        if (currentPlace.onGround) currentPlace.vel[1] = JUMP_SPEED;
+        if (currentPlace.standingOn) currentPlace.vel[1] = JUMP_SPEED;
       }
     });
     

@@ -9,6 +9,9 @@ var Circuit = (function () {
     var blocks = [];
     var aabb = null;
     var blockState = {};
+    var evaluate = function () {};
+
+    var state = false;
     
     this.world = world;
     this.blocks = blocks;
@@ -40,6 +43,7 @@ var Circuit = (function () {
         switch (beh) {
           case Circuit.B_OUTPUT:
             blockState[block].signalFrom = [];
+            blockState[block].outstate = false;
             break;
           case Circuit.B_INPUT:
             blockState[block].signalTo = [];
@@ -72,10 +76,30 @@ var Circuit = (function () {
           });
         }
       });
+      
+      evaluate = function () {
+        outputs.forEach(function (outputCube) {
+          var outputState = blockState[outputCube];
+          var inputs = outputState.signalFrom;
+          var flag = false;
+          inputs.forEach(function (inputCube) {
+            flag = flag || blockState[inputCube].st;
+          });
+          if (flag != outputState.outstate) {
+            outputState.outstate = flag;
+            player.render.getWorldRenderer().renderCreateBlock(outputCube);
+          }
+        });
+      }
     };
     this.getBlockState = function (block) {
       return blockState[block];
     };
+    
+    this.setStandingOn = function (cube,value) {
+      blockState[cube].st = value;
+      evaluate();
+    }
     
     Object.freeze(this);
   }
