@@ -71,22 +71,29 @@ function generateWorlds() {
             speckle(flat(brgb(.34,0,0)), flat(brgb(0,0,0))))(b);
   });
   
-  // "leaf block" transparency test
+  // ground block #2
   genedit(blockWorlds[2], function (b) {
-    return s(b) ? speckle(flat(0), flat(brgb(0,1,0)))(b) : 0;
+    return (te(b) ? speckle(flat(brgb(.34,.67,.34)), flat(brgb(0,.34,0))) :
+            tp(b) ? flat(brgb(.34,1,.34)) :
+            speckle(flat(brgb(0,.34,0)), flat(brgb(0,1,1))))(b);
   });
-
+  
   // pyramid thing
   genedit(blockWorlds[3], function (b) {
     return Math.abs(b[0] - 8) + Math.abs(b[2] - 8) <= 16-b[1] ? b[1]/2 : 0;
   });
   
-  // pillar thing
+  // "leaf block" transparency test
   genedit(blockWorlds[4], function (b) {
+    return s(b) ? speckle(flat(0), flat(brgb(0,1,0)))(b) : 0;
+  });
+
+  // pillar thing
+  genedit(blockWorlds[5], function (b) {
     return Math.max(Math.abs(b[0] - 8), Math.abs(b[2] - 8)) <= 4 ? 18 : 0;
   });
   
-  for (var i = 5; i < blockWorldCount; i++) {
+  for (var i = 6; i < blockWorldCount; i++) {
     var c = pickCond(flat(pickColor()), 
               pickCond(flat(pickColor()), 
                 speckle(flat(pickColor()), flat(pickColor()))));
