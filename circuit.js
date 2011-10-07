@@ -48,6 +48,10 @@ var Circuit = (function () {
           case Circuit.B_INPUT:
             blockState[block].signalTo = [];
             break;
+          case Circuit.B_OR:
+            blockState[block].signalTo = [];
+            blockState[block].signalFrom = [];
+            break;
         }
       });
       
@@ -56,6 +60,8 @@ var Circuit = (function () {
         var beh = behaviors[world.g(block[0],block[1],block[2])];
         if (beh == Circuit.B_OUTPUT) {
           outputs.push(block);
+        }
+        if (beh == Circuit.B_OUTPUT || beh == Circuit.B_OR) {
           UNIT_AXES.forEach(function (direction) {
             direction = Array.prototype.slice.call(direction);
             var bn = block.slice();
@@ -64,7 +70,7 @@ var Circuit = (function () {
               var bnBeh = behaviors[world.g(bn[0],bn[1],bn[2])];
               if (bnBeh == Circuit.B_WIRE) {
                 blockState[bn]["wireTo "+direction] = block;
-              } else if (bnBeh == Circuit.B_INPUT) {
+              } else if (bnBeh == Circuit.B_INPUT || bnBeh == Circuit.B_OR) {
                 // link input/output pairs
                 blockState[bn].signalTo.push(block);
                 blockState[block].signalFrom.push(bn.slice());
@@ -77,19 +83,61 @@ var Circuit = (function () {
         }
       });
       
+      var evaluators = [];
+      var seen = {};
+      
+      function compile(block) {
+        if (seen[block]) {
+          console.error("circuit loop!");
+          return;
+        }
+        seen[block] = true;
+        
+        var beh = behaviors[world.g(block[0],block[1],block[2])];
+        var state = blockState[block];
+        var evaluator;
+        switch (beh) {
+          case Circuit.B_OUTPUT:
+            var inputEvals = state.signalFrom.map(compile);
+            evaluator = function () {
+              var flag = false;
+              inputEvals.forEach(function (f) {
+                flag = flag || f();
+              });
+              state.value = flag;
+              if (flag != state.outstate) {
+                state.outstate = flag;
+                player.render.getWorldRenderer().renderCreateBlock(block); // TODO global variable/wrong world
+              }
+            }
+            break;
+          case Circuit.B_INPUT:
+            evaluator = function () {
+              state.value = state.st;
+            }
+            break;
+          case Circuit.B_OR:
+            var inputEvals = state.signalFrom.map(compile);
+            evaluator = function () {
+              var flag = false;
+              inputEvals.forEach(function (f) {
+                flag = flag || f();
+              });
+              state.value = flag;
+            }
+            break;
+          default:
+            evaluator = function () {
+              state.value = false;
+            }
+        }
+        evaluators.push(evaluator);
+        return function () { return state.value; };
+      }
+      outputs.forEach(compile);
+      
       evaluate = function () {
-        outputs.forEach(function (outputCube) {
-          var outputState = blockState[outputCube];
-          var inputs = outputState.signalFrom;
-          var flag = false;
-          inputs.forEach(function (inputCube) {
-            flag = flag || blockState[inputCube].st;
-          });
-          if (flag != outputState.outstate) {
-            outputState.outstate = flag;
-            player.render.getWorldRenderer().renderCreateBlock(outputCube);
-          }
-        });
+        evaluators.forEach(function (f) { f(); });
       }
     };
     this.getBlockState = function (block) {
@@ -108,6 +156,7 @@ var Circuit = (function () {
   Circuit.B_WIRE = "W";
   Circuit.B_INPUT = "I";
   Circuit.B_OUTPUT = "O";
+  Circuit.B_OR = "OR";
 
   return Object.freeze(Circuit);
 })();

@@ -29,8 +29,8 @@ var BlockSet = (function () {
 
   // Texture parameters
   // TODO: make tile counts depend on blockset size
-  var TILE_COUNT_U = 16;
-  var TILE_COUNT_V = 16;
+  var TILE_COUNT_U = 32;
+  var TILE_COUNT_V = 32;
   var TILE_SIZE_U = 1/TILE_COUNT_U;
   var TILE_SIZE_V = 1/TILE_COUNT_V;
   var TILE_MAPPINGS = [

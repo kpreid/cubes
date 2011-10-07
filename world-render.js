@@ -458,6 +458,7 @@ var WorldRenderer = (function () {
               //});
               break;
             case Circuit.B_OUTPUT:
+            case Circuit.B_OR:
               state.signalFrom.forEach(function (fromBlock) {
                 var delta = vec3.subtract(block, fromBlock, vec3.create());
                 var perp = vec3.cross(delta, delta[1] ? UNIT_PX : UNIT_PY, vec3.create());
@@ -479,7 +480,7 @@ var WorldRenderer = (function () {
                   var carr = chunkDynamic.getColorsA();
                   for (var i = 0, p = cbase; i < 6; i++) { // 6 vertices for the square
                     carr[p++] = 0;
-                    carr[p++] = circuit.getBlockState(fromBlock).st; // TODO kludge overly specific
+                    carr[p++] = circuit.getBlockState(fromBlock).value;
                     carr[p++] = 0;
                     carr[p++] = 1;
                   }

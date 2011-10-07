@@ -1,8 +1,10 @@
 function generateWorlds() {
   "use strict";
   
-  var blockWorldSize = [World.TILE_SIZE,World.TILE_SIZE,World.TILE_SIZE];
-  var blockWorldCount = 9;
+  var TILE_SIZE = World.TILE_SIZE;
+  
+  var blockWorldSize = [TILE_SIZE,TILE_SIZE,TILE_SIZE];
+  var blockWorldCount = 16;
   var blockWorlds = [];
   for (var i = 0; i < blockWorldCount; i++) blockWorlds.push(new World(blockWorldSize, BlockSet.colors));
 
@@ -31,6 +33,13 @@ function generateWorlds() {
   function s(b) { return te(b) + be(b) + xe(b) + ze(b); }
   function e(b) { return s(b) > 1 ?1:0; }
   function c(b) { return s(b) > 2 ?1:0; }
+  function rad(b) { 
+    return Math.sqrt(
+      Math.pow(b[0]-TILE_SIZE/2+0.5, 2) +
+      Math.pow(b[1]-TILE_SIZE/2+0.5, 2) +
+      Math.pow(b[2]-TILE_SIZE/2+0.5, 2)
+    );
+  }
   
   function pick(a) {
     return a[Math.floor(Math.random() * a.length)];
@@ -98,9 +107,15 @@ function generateWorlds() {
     return (e(b) && (b[0]+b[1]+b[2])%2) ? brgb(0,1,1) : 0;
   });
   
+  // or/bend block
+  genedit(blockWorlds[7], function (b) {
+    return (e(b) && (b[0]+b[1]+b[2])%2) ? brgb(0,1,1) :
+           rad(b) < 3 ? brgb(0.5,0.5,0.5) : 0;
+  });
+  
   // input and output have block appearances for now
   
-  for (var i = 7; i < blockWorldCount; i++) {
+  for (var i = 8; i < blockWorldCount; i++) {
     var c = pickCond(flat(pickColor()), 
               pickCond(flat(pickColor()), 
                 speckle(flat(pickColor()), flat(pickColor()))));
@@ -111,9 +126,11 @@ function generateWorlds() {
   
   var blockset = BlockSet.newTextured(blockWorlds);
   
-  blockset.setBehavior(6, Circuit.B_WIRE);
-  blockset.setBehavior(7, Circuit.B_INPUT);
-  blockset.setBehavior(8, Circuit.B_OUTPUT);
+  var CW,CI,CO,COR;
+  blockset.setBehavior((CW=7) -1, Circuit.B_WIRE);
+  blockset.setBehavior((COR=8)-1, Circuit.B_OR);
+  blockset.setBehavior((CI=9) -1, Circuit.B_INPUT);
+  blockset.setBehavior((CO=10)-1, Circuit.B_OUTPUT);
   
   var topWorld = new World([400,128,400], blockset);
   var wx = topWorld.wx;
@@ -144,12 +161,14 @@ function generateWorlds() {
   }    
   
   // circuit test
-  var circuitBase = 7;
-  topWorld.s(200,72,203,circuitBase+1);
-  topWorld.s(201,72,203,circuitBase+0);
-  topWorld.s(202,72,203,circuitBase+0);
-  topWorld.s(203,72,203,circuitBase+2);
-  topWorld.s(204,72,203,circuitBase+0);
+  topWorld.s(200,72,203,CI);
+  topWorld.s(201,72,203,CW);
+  topWorld.s(202,72,203,CW);
+  topWorld.s(203,72,203,CO);
+  topWorld.s(204,72,203,CW);
+  topWorld.s(205,72,203,COR);
+  topWorld.s(205,72,202,CW);
+  topWorld.s(205,72,201,CI);
 
   topWorld.rebuildCircuits();
   
