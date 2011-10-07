@@ -108,6 +108,7 @@ var Circuit = (function () {
               if (flag != state.outstate) {
                 state.outstate = flag;
                 player.render.getWorldRenderer().renderCreateBlock(block); // TODO global variable/wrong world
+                scheduleDraw();
               }
             }
             break;
