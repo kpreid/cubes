@@ -288,14 +288,13 @@ var WorldRenderer = (function () {
         var tilings = blockSet.tilings;
         var TILE_SIZE = World.TILE_SIZE;
         var PIXEL_SIZE = 1/TILE_SIZE;
-        var TILE_SIZE_U = blockSet.texTileSizeU;
-        var TILE_SIZE_V = blockSet.texTileSizeV;
         var ID_EMPTY = BlockSet.ID_EMPTY;
         var BOGUS_TILING = textured ? tilings[BlockSet.ID_BOGUS - 1] : DUMMY_TILING;
         chunks[xzkey] = new RenderBundle(gl.TRIANGLES,
                                          textured ? blockTexture : null, 
                                          function (vertices, colorsOrTexcoords) {
-          var t0 = Date.now();
+          var TILE_SIZE_UV = textured ? blockSet.getTexTileSize() : 0;
+
           var colorbuf = [];
           var vecbuf = vec3.create();
 
@@ -314,11 +313,11 @@ var WorldRenderer = (function () {
               if (tileKey == null) return; // transparent or obscured layer
               
               pushTileCoord(tileKey, texO, texO);
-              pushTileCoord(tileKey, TILE_SIZE_U, 0);
-              pushTileCoord(tileKey, 0, TILE_SIZE_V);
+              pushTileCoord(tileKey, TILE_SIZE_UV, 0);
+              pushTileCoord(tileKey, 0, TILE_SIZE_UV);
               pushTileCoord(tileKey, texD, texD);
-              pushTileCoord(tileKey, 0, TILE_SIZE_V);
-              pushTileCoord(tileKey, TILE_SIZE_U, 0);
+              pushTileCoord(tileKey, 0, TILE_SIZE_UV);
+              pushTileCoord(tileKey, TILE_SIZE_UV, 0);
             } else {
               for (var i=0; i < 6; i++) {
                 colorsOrTexcoords.push(color[0],color[1],color[2],color[3]);
@@ -358,16 +357,14 @@ var WorldRenderer = (function () {
               blockSet.writeColor(value, 1.0, colorbuf, 0); // TODO: can skip this if textured if we switch the shader to not take colors with textures
               var c1 = [x,y,z];
               var c2 = [x+1,y+1,z+1];
-              if (!thiso || !world.opaque(x-1,y,z)) squares(c1, UNIT_PZ, UNIT_PY, UNIT_PX, tiling.lx, 0, TILE_SIZE_V, colorbuf);
-              if (!thiso || !world.opaque(x,y-1,z)) squares(c1, UNIT_PX, UNIT_PZ, UNIT_PY, tiling.ly, 0, TILE_SIZE_V, colorbuf);
-              if (!thiso || !world.opaque(x,y,z-1)) squares(c1, UNIT_PY, UNIT_PX, UNIT_PZ, tiling.lz, 0, TILE_SIZE_V, colorbuf);
-              if (!thiso || !world.opaque(x+1,y,z)) squares(c2, UNIT_NY, UNIT_NZ, UNIT_NX, tiling.hx, TILE_SIZE_U, 0, colorbuf);
-              if (!thiso || !world.opaque(x,y+1,z)) squares(c2, UNIT_NZ, UNIT_NX, UNIT_NY, tiling.hy, TILE_SIZE_U, 0, colorbuf);
-              if (!thiso || !world.opaque(x,y,z+1)) squares(c2, UNIT_NX, UNIT_NY, UNIT_NZ, tiling.hz, TILE_SIZE_U, 0, colorbuf);
+              if (!thiso || !world.opaque(x-1,y,z)) squares(c1, UNIT_PZ, UNIT_PY, UNIT_PX, tiling.lx, 0, TILE_SIZE_UV, colorbuf);
+              if (!thiso || !world.opaque(x,y-1,z)) squares(c1, UNIT_PX, UNIT_PZ, UNIT_PY, tiling.ly, 0, TILE_SIZE_UV, colorbuf);
+              if (!thiso || !world.opaque(x,y,z-1)) squares(c1, UNIT_PY, UNIT_PX, UNIT_PZ, tiling.lz, 0, TILE_SIZE_UV, colorbuf);
+              if (!thiso || !world.opaque(x+1,y,z)) squares(c2, UNIT_NY, UNIT_NZ, UNIT_NX, tiling.hx, TILE_SIZE_UV, 0, colorbuf);
+              if (!thiso || !world.opaque(x,y+1,z)) squares(c2, UNIT_NZ, UNIT_NX, UNIT_NY, tiling.hy, TILE_SIZE_UV, 0, colorbuf);
+              if (!thiso || !world.opaque(x,y,z+1)) squares(c2, UNIT_NX, UNIT_NY, UNIT_NZ, tiling.hz, TILE_SIZE_UV, 0, colorbuf);
             }
           }
-          var t1 = Date.now();
-          //console.log("Geometry regen:", t1-t0, "ms");
         });
         //scheduleDraw();
         return false;

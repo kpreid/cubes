@@ -27,11 +27,6 @@ var BlockSet = (function () {
   });
 
   // Texture parameters
-  // TODO: make tile counts depend on blockset size
-  var TILE_COUNT_U = 16;
-  var TILE_COUNT_V = 16;
-  var TILE_SIZE_U = 1/TILE_COUNT_U;
-  var TILE_SIZE_V = 1/TILE_COUNT_V;
   var TILE_MAPPINGS = [
     // in this matrix layout, the input (column) vector is the tile coords
     // and the output (row) vector is the world space coords
@@ -86,26 +81,47 @@ var BlockSet = (function () {
     }
     var tilings = [];
     var opacities = [false];
+
     for (var i = 0; i < worlds.length; i++) tilings.push({});
     
     // Texture holding tiles
     // TODO: Confirm that WebGL garbage collects these, or add a delete method to BlockSet for use as needed
     var blockTexture = gl.createTexture();
     
-    // ImageData object used to buffer calculated texture data
-    var blockTextureData = document.createElement("canvas").getContext("2d")
-      .createImageData(World.TILE_SIZE * TILE_COUNT_U, World.TILE_SIZE * TILE_COUNT_V);
+    var tileCountSqrt = 1;
+    var tileUVSize;
+    var blockTextureData;
+    var tileAllocMap;
+    var freePointer;
+    var usageMap;
+    var textureLost = false;
+    function enlargeTexture() {
+      tileCountSqrt *= 2;
+      tileUVSize = 1/tileCountSqrt;
+
+      // ImageData object used to buffer calculated texture data
+      blockTextureData = document.createElement("canvas").getContext("2d")
+        .createImageData(World.TILE_SIZE * tileCountSqrt, World.TILE_SIZE * tileCountSqrt);
+
+      // tile position allocator
+      tileAllocMap = new Uint8Array(tileCountSqrt*tileCountSqrt);
+      freePointer = 0;
+      
+      // table mapping block slices to tile indexes, format 'worldindex,facename,layerindex'
+      usageMap = {};
+      
+      // Flag indicating reallocation
+      textureLost = true;
+    }
+    enlargeTexture();
     
-    // tile position allocator
-    var tileAllocMap = new Uint8Array(TILE_COUNT_U*TILE_COUNT_V);
-    var freePointer = 0;
     function tileAlloc() {
       var n = 0;
       while (tileAllocMap[freePointer]) {
         if ((++n) >= tileAllocMap.length) {
           if (typeof console !== 'undefined') 
-            console.error("blockTexture too small to contain all tiles!");
-          break;
+            console.info("Enlarging block texture to hold", (tileAllocMap.length + 1));
+          enlargeTexture();
         }
         freePointer = mod(freePointer + 1, tileAllocMap.length);
       }
@@ -116,18 +132,14 @@ var BlockSet = (function () {
       tileAllocMap[index] = 0;
     }
     function tileCoords(index) {
-      return [Math.floor(index / TILE_COUNT_U), mod(index, TILE_COUNT_U)];
+      return [Math.floor(index / tileCountSqrt), mod(index, tileCountSqrt)];
     }
-    
-    // table mapping block slices to tile indexes, format 'worldindex,facename,layerindex'
-    var usageMap = {};
-    
+        
     var self = Object.freeze({
       length: worlds.length + 1,
       textured: true,
       texture: blockTexture,
-      texTileSizeU: TILE_SIZE_U,
-      texTileSizeV: TILE_SIZE_V,
+      getTexTileSize: function () { return tileUVSize; },
       writeColor: function (blockID, scale, target, offset) {
         target[offset] = scale;
         target[offset+1] = scale;
@@ -182,7 +194,7 @@ var BlockSet = (function () {
           }
 
           // u,v coordinates of this tile for use by the vertex generator
-          layers[layer] = thisLayerNotEmpty ? [tileu / TILE_COUNT_U, tilev / TILE_COUNT_V] : null;
+          layers[layer] = thisLayerNotEmpty ? [tileu / tileCountSqrt, tilev / tileCountSqrt] : null;
 
           // TODO: trigger rerender of chunks only if we made changes to the tiling
 
@@ -194,10 +206,14 @@ var BlockSet = (function () {
           var layers = [];
           tilings[wi][faceName] = layers;
           for (var layer = 0; layer < World.TILE_SIZE; layer++) {
+            if (textureLost) return;
             sliceWorld(faceName, layer, transform, layers);
           }
           opacities[wi + 1] = opaque; // set by sliceWorld
         });
+        
+        // TODO: This results in wasted effort (esp. due to the control flow)
+        if (textureLost) rebuildAll();
 
         // TODO: arrange to do this only once if updating several blocks
         gl.bindTexture(gl.TEXTURE_2D, blockTexture);
@@ -218,8 +234,13 @@ var BlockSet = (function () {
       }
     });
     
-    for (var id = BlockSet.ID_EMPTY + 1; id < self.length; id++)
-      self.rebuildBlockTexture(id);
+    function rebuildAll() {
+      textureLost = false;
+      for (var id = BlockSet.ID_EMPTY + 1; id < self.length; id++)
+        self.rebuildBlockTexture(id);
+    }
+    
+    rebuildAll();
 
     return self;    
   };
