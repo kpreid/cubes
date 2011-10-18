@@ -130,7 +130,7 @@ function World(sizes, blockSet) {
     }
   }
   
-  function step() { // TODO: that parameter is a kludge
+  function step() {
     // turn fractional part of number of iterations into randomness - 1.25 = 1 3/4 and 2 1/4 of the time
     var roundedNum = Math.floor(numToDisturb) + (Math.random() < (numToDisturb % 1) ? 1 : 0);
     
