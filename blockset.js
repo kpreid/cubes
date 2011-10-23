@@ -292,7 +292,6 @@ var BlockSet = (function () {
       },
       
       // TODO: bundle texture/tilings into a facet
-      textured: true,
       get texture () {
         if (!texgen) {
           texgen = new Texgen();
