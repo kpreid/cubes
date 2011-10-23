@@ -98,3 +98,12 @@ function prepareProgram(gl, vertexShader, fragmentShader, attribs, uniforms) {
     uniforms[name] = gl.getUniformLocation(program, name);
   }
 }
+
+// Given an element, replace its contents with a text node and return that, so that the element's text can be updated by setting the .data property of the result.
+function dynamicText(elem) {
+  while (elem.firstChild) elem.removeChild(info.firstChild);
+  var textNode = document.createTextNode("");
+  elem.appendChild(textNode);
+  textNode.data = "";
+  return textNode;
+}
