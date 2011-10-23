@@ -1,18 +1,32 @@
 function generateWorlds() {
   "use strict";
+
+  // --- color worlds ---
+  
+  var colors = [];
+  for (var i = 1; i < 64+1; i++) {
+    colors.push(new BlockType.Color([
+      (i & 3) / 3,
+      ((i >> 2) & 3) / 3,
+      ((i >> 4) & 3) / 3,
+      1
+    ]));
+  }
+  var colorSet = new BlockSet(colors);
+
+  // convert color in [0,1] to block ID
+  function brgb(r,g,b) {
+    return (((b * 3) << 4) + ((g * 3) << 2) + (r * 3) << 0) || 0x40;
+  }
+  
+
+  // --- block worlds ---
   
   var blockWorldSize = [World.TILE_SIZE,World.TILE_SIZE,World.TILE_SIZE];
   var blockWorldCount = 8;
   var blockWorlds = [];
-  for (var i = 0; i < blockWorldCount; i++) blockWorlds.push(new World(blockWorldSize, BlockSet.colors));
+  for (var i = 0; i < blockWorldCount; i++) blockWorlds.push(new World(blockWorldSize, colorSet));
 
-  // --- block worlds ---
-
-  // TODO: move to BlockSet.colors
-  function brgb(r,g,b) {
-    return (((b * 3) << 4) + ((g * 3) << 2) + (r * 3) << 0) || 0xC0;
-  }
-  
   // condition functions for procedural block generation
   // Takes a coordinate vector and returns a boolean.
   // TODO: Parameterize on TILE_SIZE.
@@ -36,7 +50,7 @@ function generateWorlds() {
     return a[Math.floor(Math.random() * a.length)];
   }
   function pickColor() {
-    return Math.floor(Math.random() * 256);
+    return Math.floor(Math.random() * colorSet.length);
   }
   function pickCond(p1, p2) {
     var cond = pick([te,tp,be,bp,se,sp,s,e,c]);
@@ -102,7 +116,8 @@ function generateWorlds() {
   
   // --- big world ---
   
-  var blockset = BlockSet.newTextured(blockWorlds);
+  var blockset = new BlockSet(
+    blockWorlds.map(function (w) { return new BlockType.World(w); }));
   var topWorld = new World([400,128,400], blockset);
   var wx = topWorld.wx;
   var wy = topWorld.wy;

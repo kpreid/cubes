@@ -102,7 +102,9 @@ var WorldRenderer = (function () {
       for (var index in chunks) {
         if (!chunks.hasOwnProperty(index)) continue;
         chunks[index].dirtyChunk = true;
-        dirtyChunks.push(index);
+        var indexparts = index.split(",");
+        dirtyChunks.push([parseInt(indexparts[0],10),
+                          parseInt(indexparts[1],10)]);
       }
     }
     
@@ -289,7 +291,7 @@ var WorldRenderer = (function () {
         var TILE_SIZE = World.TILE_SIZE;
         var PIXEL_SIZE = 1/TILE_SIZE;
         var ID_EMPTY = BlockSet.ID_EMPTY;
-        var BOGUS_TILING = textured ? tilings[BlockSet.ID_BOGUS - 1] : DUMMY_TILING;
+        var BOGUS_TILING = textured ? tilings[BlockSet.ID_BOGUS] : DUMMY_TILING;
         chunks[xzkey] = new RenderBundle(gl.TRIANGLES,
                                          textured ? blockTexture : null, 
                                          function (vertices, colorsOrTexcoords) {
@@ -351,10 +353,10 @@ var WorldRenderer = (function () {
           for (var y = 0;            y < wy         ; y++)
           for (var z = chunkOriginZ; z < chunkLimitZ; z++) {
             var value = x < wx && z < wz ? rawBlocks[(x*wy+y)*wz+z] : ID_EMPTY; // inlined and simplified for efficiency
-            var thiso = blockSet.isOpaque(value); // If this and its neighbor are opaque, then hide surfaces
+            var btype = blockSet.get(value);
+            var thiso = btype.opaque; // If this and its neighbor are opaque, then hide surfaces
             if (value != ID_EMPTY) {
-              var tiling = textured ? tilings[value - 1] || BOGUS_TILING : DUMMY_TILING;
-              blockSet.writeColor(value, 1.0, colorbuf, 0); // TODO: can skip this if textured if we switch the shader to not take colors with textures
+              var tiling = textured ? tilings[value] || BOGUS_TILING : DUMMY_TILING;
               var c1 = [x,y,z];
               var c2 = [x+1,y+1,z+1];
               if (!thiso || !world.opaque(x-1,y,z)) squares(c1, UNIT_PZ, UNIT_PY, UNIT_PX, tiling.lx, 0, TILE_SIZE_UV, colorbuf);

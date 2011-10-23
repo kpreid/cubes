@@ -418,7 +418,7 @@
                 var c = 1.0 - Math.random() * 0.04;
                 colors.push(c,c,c,1);
               } else {
-                blockWorld.blockSet.writeColor(blockWorld.g(x,y,z), 1, colors, colors.length);
+                blockWorld.gt(x,y,z).writeColor(1, colors, colors.length);
                 if (colors[colors.length - 1] <= 0.0) {
                   // transparent, skip
                   colors.length -= 4;

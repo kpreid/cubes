@@ -34,6 +34,9 @@ function World(sizes, blockSet) {
     else
       return blocks[x*wy*wz + y*wz + z];
   }
+  function gt(x,y,z) {
+    return blockSet.get(g(x,y,z));
+  }
   function s(x,y,z,val) { // TODO revisit making this not take a vec
     if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
       return;
@@ -47,7 +50,7 @@ function World(sizes, blockSet) {
     return g(x,y,z) != 0;
   }
   function opaque(x,y,z) {
-    return blockSet.isOpaque(g(x,y,z));
+    return gt(x,y,z).opaque;
   }
   
   /**
@@ -189,6 +192,7 @@ function World(sizes, blockSet) {
   // --- Final init ---
   
   this.g = g;
+  this.gt = gt;
   this.s = s;
   this.solid = solid;
   this.opaque = opaque;
