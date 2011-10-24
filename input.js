@@ -53,18 +53,18 @@ function Input(eventReceiver, playerInput, menuElement) {
 
     // handlers for 'action' keys (immediate effects)
     switch (String.fromCharCode(code)) {
-      case "1": playerInput.tool = 0; return false;
-      case "2": playerInput.tool = 1; return false;
-      case "3": playerInput.tool = 2; return false;
-      case "4": playerInput.tool = 3; return false;
-      case "5": playerInput.tool = 4; return false;
-      case "6": playerInput.tool = 5; return false;
-      case "7": playerInput.tool = 6; return false;
-      case "8": playerInput.tool = 7; return false;
-      case "9": playerInput.tool = 8; return false;
-      case "0": playerInput.tool = 9; return false;
-      case "R": hideMenu(); playerInput.changeWorld(1); return false;
-      case "F": hideMenu(); playerInput.changeWorld(-1); return false;
+      case "1": playerInput.tool = 0; updateMenu(); return false;
+      case "2": playerInput.tool = 1; updateMenu(); return false;
+      case "3": playerInput.tool = 2; updateMenu(); return false;
+      case "4": playerInput.tool = 3; updateMenu(); return false;
+      case "5": playerInput.tool = 4; updateMenu(); return false;
+      case "6": playerInput.tool = 5; updateMenu(); return false;
+      case "7": playerInput.tool = 6; updateMenu(); return false;
+      case "8": playerInput.tool = 7; updateMenu(); return false;
+      case "9": playerInput.tool = 8; updateMenu(); return false;
+      case "0": playerInput.tool = 9; updateMenu(); return false;
+      case "R": playerInput.changeWorld(1); return false;
+      case "F": playerInput.changeWorld(-1); return false;
       case " ": playerInput.jump(); return false;
     }
 
@@ -106,13 +106,13 @@ function Input(eventReceiver, playerInput, menuElement) {
     var swingX = event.clientX / (w*0.5) - 1;
     
     // y effect
-    playerInput.pitch = -Math.PI/2 * swingY;
+    playerInput.pitch = 0;
     
     // x effect
-    var direct = -Math.PI/2 * swingX;
+    var direct = 0;
     playerInput.yaw += (direct - prevx);
     prevx = direct;
-    dx = -0.5 * deadzone(swingX, 0.4);
+    dx = -0.3 * deadzone(swingX, 0.4);
   }, false);
   eventReceiver.addEventListener("mouseout", function (event) {
     mousePos = [event.clientX, event.clientY];
@@ -127,22 +127,15 @@ function Input(eventReceiver, playerInput, menuElement) {
 
   eventReceiver.addEventListener("click", function (event) {
     mousePos = [event.clientX, event.clientY];
-    if (menuVisible()) {
-      hideMenu();
-    } else {
-      eventReceiver.focus();
-      playerInput.click(0);
-    }
+    eventReceiver.focus();
+    playerInput.click(0);
     return false;
   }, false);
   eventReceiver.oncontextmenu = function (event) { // On Firefox 5.0.1 (most recent tested 2011-09-10), addEventListener does not suppress the builtin context menu, so this is an attribute rather than a listener.
     mousePos = [event.clientX, event.clientY];
     
-    if (menuVisible())
-      hideMenu();
-    else
-      showMenu();
-
+    updateMenu();
+    
     return false;
   };
   
@@ -157,14 +150,9 @@ function Input(eventReceiver, playerInput, menuElement) {
   
   // --- Block menu ---
   
-  function menuVisible() {
-    return menuElement.style.visibility !== "hidden";
-  }
-
   var blockSetInMenu = null;
   var menuCanvases = [];
-  function showMenu() {
-
+  function updateMenu() {
     // TODO: Need to rebuild menu if blocks in the set have changed appearance
     if (playerInput.blockSet !== blockSetInMenu) {
       while (menu.firstChild) menu.removeChild(menuElement.firstChild);
@@ -185,8 +173,8 @@ function Input(eventReceiver, playerInput, menuElement) {
         cctx.putImageData(blockRenderer.blockToImageData(i, cctx), 0, 0);
         (function (canvas,i) {
           canvas.onclick = function () {
-            hideMenu();
             playerInput.tool = i;
+            updateMenu();
             return false;
           };
           canvas.onmousedown = canvas.onselectstart = function () {
@@ -198,9 +186,6 @@ function Input(eventReceiver, playerInput, menuElement) {
             return true;
           };
         })(canvas,i);
-        if ((i+1) % sidecount == 0) {
-          menuElement.appendChild(document.createElement('br'));
-        }
       }
       
       blockRenderer.deleteResources();
@@ -210,21 +195,18 @@ function Input(eventReceiver, playerInput, menuElement) {
       menuCanvases[i].className = i == playerInput.tool ? "selectedTool" : "";
     }
     
+    menuElement.style.left = "0px";
     var cs = window.getComputedStyle(menuElement, null);
     var menuW = parseInt(cs.width);
-    var menuH = parseInt(cs.height);
-    
-    menuElement.style.left = (mousePos[0] - menuW/2) + "px";
-    menuElement.style.top  = (mousePos[1] - menuH/2) + "px";
-    menuElement.style.visibility = 'visible';
+    menuElement.style.left = (theCanvas.width - menuW)/2 + "px";
   }
-  function hideMenu() {
-    menuElement.style.visibility = 'hidden';
-    eventReceiver.focus();
-  }
+  
+  updateMenu();
+  // TODO: calling updateMenu everywhere is a kludge
   
   // --- Methods ---
   
   this.step = step;
   this.getMousePos = function () { return mousePos; };
+  this.updateMenu = updateMenu;
 }

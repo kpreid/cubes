@@ -50,11 +50,15 @@
   }
   
   #menu {
-    position: fixed;
+    position: absolute;
+    left: auto;
+    right: auto;
+    bottom: 2px;
     background: gray;
     background: rgba(0, 0, 0, 0.5);
     border-radius: 5px;
-    display: table;
+    display: block;
+    text-align: center;
   }
   #menu canvas {
     margin: 1px 1px;
@@ -304,7 +308,7 @@
     }
     
     function updateProjection() {
-      mat4.perspective(60, // vertical FOV
+      mat4.perspective(90, // vertical FOV
                        gl.drawingBufferWidth / gl.drawingBufferHeight, // aspect ratio
                        0.1, // near clip
                        configRenderDistance, // far clip
@@ -733,9 +737,9 @@
       </canvas>
       <pre id="info" class="text-overlay">Not ready...</pre>
       <pre id="cursor-info" class="text-overlay"></pre>
-    </div>
-    <div id="menu" style="visibility: hidden; left: 1px; top: 1px;">
-      <!-- arbitrary initial position -->
+      <div id="menu">
+        <!-- arbitrary initial position -->
+      </div>
     </div>
     <div id="webgl-error-notice" class="error-notice" style="display: none;">
       <p>Sorry, the web browser you are using does not appear to support WebGL.</p>
