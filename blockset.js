@@ -8,6 +8,13 @@ var BlockType = (function () {
     throw new Error("abstract");
   }
   
+  // Called randomly by the world, at an average rate of 'baseRate' calls per second for each cube.
+  BlockType.prototype.doSpontaneousEffect = function (world, cube, baseRate) {
+    // TODO: Either remove this or give it a proper setter and a rate parameter and make it serialized
+    if (this.spontaneousConversion)
+      world.s(cube[0],cube[1],cube[2], this.spontaneousConversion);
+  };
+  
   BlockType.World = function (world) {
     if (!(this instanceof BlockType))
       throw new Error("bad constructor call");

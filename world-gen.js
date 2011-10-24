@@ -114,10 +114,17 @@ function generateWorlds() {
     genedit(blockWorlds[i], c);
   }
   
-  // --- big world ---
+  // --- main blockset ---
   
   var blockset = new BlockSet(
     blockWorlds.map(function (w) { return new BlockType.World(w); }));
+  
+  // TODO: this would be better written by making BlockTypes above
+  blockset.get(2).spontaneousConversion = 3;
+  blockset.get(3).spontaneousConversion = 2;
+  
+  // --- big world ---
+
   var topWorld = new World([400,128,400], blockset);
   var wx = topWorld.wx;
   var wy = topWorld.wy;

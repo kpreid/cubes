@@ -3,13 +3,16 @@
 
 function World(sizes, blockSet) {
   "use strict";
+  
+  var self = this;
 
   var wx = sizes[0];
   var wy = sizes[1];
   var wz = sizes[2];
   var blocks = new Uint8Array(wx*wy*wz);
   
-  var numToDisturb = wx*wy*wz * TIMESTEP * 0.00003;
+  var spontaneousBaseRate = 0.00003; // probability of block spontaneous effect call per block per second
+  var numToDisturb = wx*wy*wz * TIMESTEP * spontaneousBaseRate;
   
   var changeListener = null;
   
@@ -142,12 +145,7 @@ function World(sizes, blockSet) {
       var y = Math.floor(Math.random() * wy);
       var z = Math.floor(Math.random() * wz);
       
-      // Placeholder behavior - exchange block ids
-      var value = g(x,y,z);
-      if (value == 2) value = 3;
-      else if (value == 3) value = 2;
-      else continue;
-      s(x, y, z, value);
+      gt(x,y,z).doSpontaneousEffect(self, [x,y,z], spontaneousBaseRate);
     }
   }
   
