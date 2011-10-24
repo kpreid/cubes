@@ -248,9 +248,9 @@ var Player = (function () {
     
     // The facet for user input
     this.input = Object.freeze({
-      click: function (button /* currently defunct */) {
+      click: function (button) {
         var changed = false;
-        if (currentPlace.tool == BlockSet.ID_EMPTY) {
+        if (button == 0) {
           // delete block
           // TODO: global variables
           if (currentPlace.selection !== null) {

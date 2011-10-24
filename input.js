@@ -53,18 +53,18 @@ function Input(eventReceiver, playerInput, menuElement) {
 
     // handlers for 'action' keys (immediate effects)
     switch (String.fromCharCode(code)) {
-      case "1": playerInput.tool = 0; updateMenu(); return false;
-      case "2": playerInput.tool = 1; updateMenu(); return false;
-      case "3": playerInput.tool = 2; updateMenu(); return false;
-      case "4": playerInput.tool = 3; updateMenu(); return false;
-      case "5": playerInput.tool = 4; updateMenu(); return false;
-      case "6": playerInput.tool = 5; updateMenu(); return false;
-      case "7": playerInput.tool = 6; updateMenu(); return false;
-      case "8": playerInput.tool = 7; updateMenu(); return false;
-      case "9": playerInput.tool = 8; updateMenu(); return false;
-      case "0": playerInput.tool = 9; updateMenu(); return false;
-      case "R": playerInput.changeWorld(1); return false;
-      case "F": playerInput.changeWorld(-1); return false;
+      case "1": playerInput.tool = 1; updateMenu(); return false;
+      case "2": playerInput.tool = 2; updateMenu(); return false;
+      case "3": playerInput.tool = 3; updateMenu(); return false;
+      case "4": playerInput.tool = 4; updateMenu(); return false;
+      case "5": playerInput.tool = 5; updateMenu(); return false;
+      case "6": playerInput.tool = 6; updateMenu(); return false;
+      case "7": playerInput.tool = 7; updateMenu(); return false;
+      case "8": playerInput.tool = 8; updateMenu(); return false;
+      case "9": playerInput.tool = 9; updateMenu(); return false;
+      case "0": playerInput.tool = 10;updateMenu(); return false;
+      case "R": playerInput.changeWorld(1);  updateMenu(); return false;
+      case "F": playerInput.changeWorld(-1); updateMenu(); return false;
       case " ": playerInput.jump(); return false;
     }
 
@@ -134,7 +134,7 @@ function Input(eventReceiver, playerInput, menuElement) {
   eventReceiver.oncontextmenu = function (event) { // On Firefox 5.0.1 (most recent tested 2011-09-10), addEventListener does not suppress the builtin context menu, so this is an attribute rather than a listener.
     mousePos = [event.clientX, event.clientY];
     
-    updateMenu();
+    playerInput.click(1);
     
     return false;
   };
@@ -163,7 +163,7 @@ function Input(eventReceiver, playerInput, menuElement) {
       var sidecount = Math.ceil(Math.sqrt(blockSetInMenu.length));
       var size = Math.min(64, 300 / sidecount);
     
-      for (var i = 0; i < blockSetInMenu.length; i++) {
+      for (var i = 1; i < blockSetInMenu.length; i++) {
         var canvas = document.createElement('canvas');
         canvas.width = canvas.height = 64; // TODO magic number
         canvas.style.width = canvas.style.height = size + "px";
@@ -191,7 +191,7 @@ function Input(eventReceiver, playerInput, menuElement) {
       blockRenderer.deleteResources();
     }
 
-    for (var i = 0; i < blockSetInMenu.length; i++) {
+    for (var i = 1; i < blockSetInMenu.length; i++) {
       menuCanvases[i].className = i == playerInput.tool ? "selectedTool" : "";
     }
     
