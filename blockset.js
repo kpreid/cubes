@@ -50,7 +50,7 @@ var BlockType = (function () {
   };
   BlockType.Color.prototype = Object.create(BlockType.prototype);
   BlockType.Color.prototype.constructor = BlockType.Color;
-
+  
   BlockType.Color.prototype.writeColor =
       function (scale, target, offset) {
     target[offset]   = scale*this.color[0];
@@ -58,11 +58,11 @@ var BlockType = (function () {
     target[offset+2] = scale*this.color[2];
     target[offset+3] = scale*this.color[3];
   };
-
+  
   BlockType.Color.prototype.serialize = function () {
     return {color: this.color};
   };
-      
+  
   BlockType.air = new BlockType.Color([0,0,0,0]);
   
   BlockType.unserialize = function (json) {
@@ -97,11 +97,11 @@ var BlockSet = (function () {
     function enlargeTexture() {
       tileCountSqrt *= 2;
       self.tileUVSize = 1/tileCountSqrt;
-
+      
       // ImageData object used to buffer calculated texture data
       self.image = document.createElement("canvas").getContext("2d")
         .createImageData(World.TILE_SIZE * tileCountSqrt, World.TILE_SIZE * tileCountSqrt);
-
+      
       // tile position allocator
       tileAllocMap = new Uint8Array(tileCountSqrt*tileCountSqrt);
       freePointer = 0;
@@ -173,7 +173,7 @@ var BlockSet = (function () {
     var types = Array.prototype.slice.call(initialTypes);
     types.unshift(BlockType.air);
     var tilings = [];
-
+    
     for (var i = 0; i < types.length; i++) tilings.push({});
     
     var texgen = null;
@@ -181,7 +181,7 @@ var BlockSet = (function () {
     
     function rebuildOne(blockID) {
       var type = types[blockID];
-
+      
       var blockTextureData = texgen.image;
       var opaque = true;
       
@@ -200,7 +200,7 @@ var BlockSet = (function () {
           blockTextureData.data[c+2] = 255 * color[2];
           blockTextureData.data[c+3] = 255 * color[3];
         }
-
+        
         TILE_MAPPINGS.forEach(function (m) {
           var faceName = m[0];
           var transform = m[1];
@@ -211,19 +211,19 @@ var BlockSet = (function () {
             layers[layer] = layer == 0 ? texgen.uvFor(usageIndex) : null;
           }
         });
-        type.opaque = opaque; // TODO have blocktype itself handle this
+        type.opaque = opaque; // TODO have blocktype itself handle this; this is poor mutation practice
       } else if (type.world) {
         (function () {
           var world = type.world;
-
+          
           // To support non-cubical objects, we slice the entire volume of the block and generate as many tiles as needed. sliceWorld generates one such slice.
-    
+          
           function sliceWorld(faceName, layer, transform, layers) {
             var usageIndex = [blockID,faceName,layer].toString();
-        
+            
             var coord = texgen.allocationFor(usageIndex);
             var tileu = coord[0], tilev = coord[1];
-
+            
             var thisLayerNotEmpty = false;
             var pixu = tileu*World.TILE_SIZE;
             var pixv = tilev*World.TILE_SIZE;
@@ -247,17 +247,17 @@ var BlockSet = (function () {
                 thisLayerNotEmpty = true;
               }
             }
-        
+            
             // We can reuse this tile iff it was blank
             if (!thisLayerNotEmpty) {
               texgen.deallocateUsage(usageIndex);
             }
-
+            
             // u,v coordinates of this tile for use by the vertex generator
             layers[layer] = thisLayerNotEmpty ? texgen.uvFor(usageIndex) : null;
-
-            // TODO: trigger rerender of chunks only if we made changes to the tiling
-
+            
+            // TODO: trigger rerender of chunks only if we made changes to the tiling, not if only the colors changed
+            
             //console.log("id ", wi + 1, " face ", faceName, " layer ", layer, thisLayerNotEmpty ? " allocated" : " skipped");
           }
           TILE_MAPPINGS.forEach(function (m) {
@@ -333,7 +333,7 @@ var BlockSet = (function () {
       }
     });
     
-    return self;    
+    return self;
   }
   
   // This block ID is always empty air.
@@ -341,7 +341,7 @@ var BlockSet = (function () {
   
   // This block ID is used when an invalid block ID is met
   BlockSet.ID_BOGUS = 1;
-
+  
   // Texture parameters
   var TILE_MAPPINGS = [
     // in this matrix layout, the input (column) vector is the tile coords
@@ -409,6 +409,6 @@ var BlockSet = (function () {
       throw new Error("unknown BlockSet serialization type");
     }
   };
-
+  
   return Object.freeze(BlockSet);
 })();
