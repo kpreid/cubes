@@ -3,6 +3,8 @@
 
 function World(sizes, blockSet) {
   "use strict";
+  
+  var self = this;
 
   var world = this;
 
@@ -17,12 +19,10 @@ function World(sizes, blockSet) {
   // Maps from an arbitrary block "x,y,z" to circuit object (no duplicate circuits)
   var circuits = {};
   
-  var numToDisturb = wx*wy*wz * TIMESTEP * 0.00003;
+  var spontaneousBaseRate = 0.00003; // probability of block spontaneous effect call per block per second
+  var numToDisturb = wx*wy*wz * TIMESTEP * spontaneousBaseRate;
   
   var changeListener = null;
-  
-  // TODO review mutation of this
-  var behaviors = blockSet.behaviors;
   
   // --- Internal functions ---
   
@@ -38,7 +38,7 @@ function World(sizes, blockSet) {
   }
   
   function isCircuitPart(value) {
-    return !!behaviors[value];
+    return !!blockSet.get(value).behavior;
   }
   
   function deleteCircuit(circuit) {
@@ -112,6 +112,9 @@ function World(sizes, blockSet) {
     else
       return blocks[x*wy*wz + y*wz + z];
   }
+  function gt(x,y,z) {
+    return blockSet.get(g(x,y,z));
+  }
   function s(x,y,z,val) { // TODO revisit making this not take a vec
     if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
       return;
@@ -139,7 +142,7 @@ function World(sizes, blockSet) {
     return g(x,y,z) != 0;
   }
   function opaque(x,y,z) {
-    return blockSet.isOpaque(g(x,y,z));
+    return gt(x,y,z).opaque;
   }
   
   /**
@@ -251,12 +254,7 @@ function World(sizes, blockSet) {
       var y = Math.floor(Math.random() * wy);
       var z = Math.floor(Math.random() * wz);
       
-      // Placeholder behavior - exchange block ids
-      var value = g(x,y,z);
-      if (value == 2) value = 3;
-      else if (value == 3) value = 2;
-      else continue;
-      s(x, y, z, value);
+      gt(x,y,z).doSpontaneousEffect(self, [x,y,z], spontaneousBaseRate);
     }
   }
   
@@ -308,6 +306,7 @@ function World(sizes, blockSet) {
   // --- Final init ---
   
   this.g = g;
+  this.gt = gt;
   this.s = s;
   this.solid = solid;
   this.opaque = opaque;

@@ -38,8 +38,6 @@ var WorldRenderer = (function () {
     return distanceInfoCache;
   }
   
-  var DUMMY_TILING = Object.freeze({lx:null,ly:null,lz:null,hx:null,hy:null,hz:null});
-  
   function WorldRenderer(world, place) {
     world.setChangeListener(this);
     
@@ -88,7 +86,6 @@ var WorldRenderer = (function () {
     
     var blockSet = world.blockSet;
     var textured = blockSet.textured;
-    var tilings = blockSet.tilings;
     
     // --- methods, internals ---
     
@@ -114,7 +111,9 @@ var WorldRenderer = (function () {
       for (var index in chunks) {
         if (!chunks.hasOwnProperty(index)) continue;
         chunks[index].dirtyChunk = true;
-        dirtyChunks.push(index);
+        var indexparts = index.split(",");
+        dirtyChunks.push([parseInt(indexparts[0],10),
+                          parseInt(indexparts[1],10)]);
       }
     }
     
@@ -327,45 +326,37 @@ var WorldRenderer = (function () {
         var chunkOriginZ = xzkey[1];
         var chunkLimitX = xzkey[0] + CHUNKSIZE;
         var chunkLimitZ = xzkey[1] + CHUNKSIZE;
+        var tilings = blockSet.tilings;
         var TILE_SIZE = World.TILE_SIZE;
         var PIXEL_SIZE = 1/TILE_SIZE;
-        var TILE_SIZE_U = blockSet.texTileSizeU;
-        var TILE_SIZE_V = blockSet.texTileSizeV;
         var ID_EMPTY = BlockSet.ID_EMPTY;
-        var BOGUS_TILING = textured ? tilings[BlockSet.ID_BOGUS - 1] : DUMMY_TILING;
-        //var chunkAABB = [[chunkOriginX, chunkLimitX], [0, wy], [chunkOriginZ, chunkLimitZ]];
+        var BOGUS_TILING = tilings[BlockSet.ID_BOGUS];
         chunks[xzkey] = new RenderBundle(gl.TRIANGLES,
-                                         textured ? blockTexture : null, 
-                                         function (vertices, colorsOrTexcoords) {
-          var t0 = Date.now();
-          var colorbuf = [];
+                                         blockTexture,
+                                         function (vertices, texcoords) {
+          var TILE_SIZE_UV = blockSet.getTexTileSize();
+
           var vecbuf = vec3.create();
 
           function pushVertex(vec) {
             vertices.push(vec[0], vec[1], vec[2]);
           }
           function pushTileCoord(tileKey, u, v) {
-            colorsOrTexcoords.push(tileKey[1] + u, 
+            texcoords.push(tileKey[1] + u,
                            tileKey[0] + v);
           }
 
-          function square(origin, v1, v2, tileKey, texO, texD, color) {
+          function square(origin, v1, v2, tileKey, texO, texD) {
             // texO and texD are the originward and v'ward texture coordinates, used to flip the texture coords vs. origin for the 'positive side' squares
 
-            if (textured) {
-              if (tileKey == null) return; // transparent or obscured layer
-              
-              pushTileCoord(tileKey, texO, texO);
-              pushTileCoord(tileKey, TILE_SIZE_U, 0);
-              pushTileCoord(tileKey, 0, TILE_SIZE_V);
-              pushTileCoord(tileKey, texD, texD);
-              pushTileCoord(tileKey, 0, TILE_SIZE_V);
-              pushTileCoord(tileKey, TILE_SIZE_U, 0);
-            } else {
-              for (var i=0; i < 6; i++) {
-                colorsOrTexcoords.push(color[0],color[1],color[2],color[3]);
-              }
-            }
+            if (tileKey == null) return; // transparent or obscured layer
+            
+            pushTileCoord(tileKey, texO, texO);
+            pushTileCoord(tileKey, TILE_SIZE_UV, 0);
+            pushTileCoord(tileKey, 0, TILE_SIZE_UV);
+            pushTileCoord(tileKey, texD, texD);
+            pushTileCoord(tileKey, 0, TILE_SIZE_UV);
+            pushTileCoord(tileKey, TILE_SIZE_UV, 0);
 
             pushVertex(origin);
             pushVertex(vec3.add(origin, v1, vecbuf));
@@ -376,13 +367,13 @@ var WorldRenderer = (function () {
             pushVertex(vec3.add(origin, v1, vecbuf));
           }
           var depthOriginBuf = vec3.create();
-          function squares(origin, v1, v2, vDepth, tileLayers, texO, texD, color) {
+          function squares(origin, v1, v2, vDepth, tileLayers, texO, texD) {
             if (tileLayers == null) {
-              square(origin, v1, v2, null, texO, texD, color);
+              square(origin, v1, v2, null, texO, texD);
             } else {
               vec3.set(origin, depthOriginBuf);
               for (var i = 0; i < TILE_SIZE; i++) {
-                square(depthOriginBuf, v1, v2, tileLayers[i], texO, texD, color);
+                square(depthOriginBuf, v1, v2, tileLayers[i], texO, texD);
                 depthOriginBuf[0] += vDepth[0]*PIXEL_SIZE;
                 depthOriginBuf[1] += vDepth[1]*PIXEL_SIZE;
                 depthOriginBuf[2] += vDepth[2]*PIXEL_SIZE;
@@ -394,18 +385,18 @@ var WorldRenderer = (function () {
           for (var y = 0;            y < wy         ; y++)
           for (var z = chunkOriginZ; z < chunkLimitZ; z++) {
             var value = x < wx && z < wz ? rawBlocks[(x*wy+y)*wz+z] : ID_EMPTY; // inlined and simplified for efficiency
-            var thiso = blockSet.isOpaque(value); // If this and its neighbor are opaque, then hide surfaces
+            var btype = blockSet.get(value);
+            var thiso = btype.opaque; // If this and its neighbor are opaque, then hide surfaces
             if (value != ID_EMPTY) {
-              var tiling = textured ? tilings[value - 1] || BOGUS_TILING : DUMMY_TILING;
-              blockSet.writeColor(value, 1.0, colorbuf, 0); // TODO: can skip this if textured if we switch the shader to not take colors with textures
+              var tiling = tilings[value] || BOGUS_TILING;
               var c1 = [x,y,z];
               var c2 = [x+1,y+1,z+1];
-              if (!thiso || !world.opaque(x-1,y,z)) squares(c1, UNIT_PZ, UNIT_PY, UNIT_PX, tiling.lx, 0, TILE_SIZE_V, colorbuf);
-              if (!thiso || !world.opaque(x,y-1,z)) squares(c1, UNIT_PX, UNIT_PZ, UNIT_PY, tiling.ly, 0, TILE_SIZE_V, colorbuf);
-              if (!thiso || !world.opaque(x,y,z-1)) squares(c1, UNIT_PY, UNIT_PX, UNIT_PZ, tiling.lz, 0, TILE_SIZE_V, colorbuf);
-              if (!thiso || !world.opaque(x+1,y,z)) squares(c2, UNIT_NY, UNIT_NZ, UNIT_NX, tiling.hx, TILE_SIZE_U, 0, colorbuf);
-              if (!thiso || !world.opaque(x,y+1,z)) squares(c2, UNIT_NZ, UNIT_NX, UNIT_NY, tiling.hy, TILE_SIZE_U, 0, colorbuf);
-              if (!thiso || !world.opaque(x,y,z+1)) squares(c2, UNIT_NX, UNIT_NY, UNIT_NZ, tiling.hz, TILE_SIZE_U, 0, colorbuf);
+              if (!thiso || !world.opaque(x-1,y,z)) squares(c1, UNIT_PZ, UNIT_PY, UNIT_PX, tiling.lx, 0, TILE_SIZE_UV);
+              if (!thiso || !world.opaque(x,y-1,z)) squares(c1, UNIT_PX, UNIT_PZ, UNIT_PY, tiling.ly, 0, TILE_SIZE_UV);
+              if (!thiso || !world.opaque(x,y,z-1)) squares(c1, UNIT_PY, UNIT_PX, UNIT_PZ, tiling.lz, 0, TILE_SIZE_UV);
+              if (!thiso || !world.opaque(x+1,y,z)) squares(c2, UNIT_NY, UNIT_NZ, UNIT_NX, tiling.hx, TILE_SIZE_UV, 0);
+              if (!thiso || !world.opaque(x,y+1,z)) squares(c2, UNIT_NZ, UNIT_NX, UNIT_NY, tiling.hy, TILE_SIZE_UV, 0);
+              if (!thiso || !world.opaque(x,y,z+1)) squares(c2, UNIT_NX, UNIT_NY, UNIT_NZ, tiling.hz, TILE_SIZE_UV, 0);
               var circuit = world.getCircuit(c1); // TODO: replace this with some other spatial indexing scheme so we don't have to check per-every-block
               if (circuit) {
                 var o = circuit.getOrigin();
@@ -417,8 +408,6 @@ var WorldRenderer = (function () {
               }
             }
           }
-          var t1 = Date.now();
-          //console.log("Geometry regen:", t1-t0, "ms");
         });
         //scheduleDraw();
         return false;
@@ -433,9 +422,8 @@ var WorldRenderer = (function () {
           vertices.push(vec[0], vec[1], vec[2]);
         }
         circuit.blocks.forEach(function (block) {
-          var value = world.g(block[0],block[1],block[2]);
           var state = circuit.getBlockState(block);
-          switch (blockSet.behaviors[value]) {
+          switch (world.gt(block[0],block[1],block[2]).behavior) {
             case Circuit.B_WIRE:
               // This shows a stripe on every wire connected to an output.
               //function paintWire(c) {

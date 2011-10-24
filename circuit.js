@@ -4,7 +4,6 @@
 var Circuit = (function () {
   function Circuit(world) {
     var blockSet = world.blockSet;
-    var behaviors = blockSet.behaviors;
     
     var blocks = [];
     var aabb = null;
@@ -39,7 +38,7 @@ var Circuit = (function () {
       // Clear and initialize blockState
       blocks.forEach(function (block) {
         blockState[block] = {};
-        var beh = behaviors[world.g(block[0],block[1],block[2])];
+        var beh = world.gt(block[0],block[1],block[2]).behavior;
         switch (beh) {
           case Circuit.B_OUTPUT:
             blockState[block].signalFrom = [];
@@ -57,7 +56,7 @@ var Circuit = (function () {
       
       // Find connectivity
       blocks.forEach(function (block) {
-        var beh = behaviors[world.g(block[0],block[1],block[2])];
+        var beh = world.gt(block[0],block[1],block[2]).behavior;
         if (beh == Circuit.B_OUTPUT) {
           outputs.push(block);
         }
@@ -67,7 +66,7 @@ var Circuit = (function () {
             var bn = block.slice();
             vec3.add(bn, direction, bn);
             for (;; vec3.add(bn, direction, bn)) {
-              var bnBeh = behaviors[world.g(bn[0],bn[1],bn[2])];
+              var bnBeh = world.gt(bn[0],bn[1],bn[2]).behavior;
               if (bnBeh == Circuit.B_WIRE) {
                 blockState[bn]["wireTo "+direction] = block;
               } else if (bnBeh == Circuit.B_INPUT || bnBeh == Circuit.B_OR) {
@@ -93,7 +92,7 @@ var Circuit = (function () {
         }
         seen[block] = true;
         
-        var beh = behaviors[world.g(block[0],block[1],block[2])];
+        var beh = world.gt(block[0],block[1],block[2]).behavior;
         var state = blockState[block];
         var evaluator;
         switch (beh) {

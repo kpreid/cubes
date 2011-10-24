@@ -28,11 +28,20 @@
     cursor: crosshair;
   }
   
+  .overlay-bounds {
+    display: block;
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+  }
+  
   #info {
-    position: absolute;
     left: 1px;
     top: 1px;
-    
+  }
+  .text-overlay {
+    position: absolute;
     font-family: monospace;
     color: white;
     text-shadow: 0 0 .3em #000;
@@ -232,7 +241,10 @@
     // GL objects
     var gl;
     var theCanvas;
-    var theInfo;
+    
+    var sceneInfo;
+    var cursorInfoElem;
+    var cursorInfo;
     
     // Game state, etc. objects
     var player;
@@ -421,7 +433,7 @@
                 var c = 1.0 - Math.random() * 0.04;
                 colors.push(c,c,c,1);
               } else {
-                blockWorld.blockSet.writeColor(blockWorld.g(x,y,z), 1, colors, colors.length);
+                blockWorld.gt(x,y,z).writeColor(1, colors, colors.length);
                 if (colors[colors.length - 1] <= 0.0) {
                   // transparent, skip
                   colors.length -= 4;
@@ -526,6 +538,43 @@
           errs.push(e);
         }
         
+        // Selection info
+        cursorInfo.data = "";
+        var sel = player.getSelection();
+        if (sel != null) {
+          var sx = Infinity;
+          var sy = Infinity;
+          var cube = sel.cube;
+          for (var dx = 0; dx <= 1; dx++)
+          for (var dy = 0; dy <= 1; dy++)
+          for (var dz = 0; dz <= 1; dz++) {
+            var vec = [cube[0]+dx,cube[1]+dy,cube[2]+dz,1];
+            mat4.multiplyVec4(mvMatrix, vec);
+            mat4.multiplyVec4(pMatrix, vec);
+            sx = Math.min(sx, vec[0]/vec[3]);
+            sy = Math.min(sy, vec[1]/vec[3]);
+          }
+          if (isFinite(sx) && isFinite(sy)) {
+            cursorInfoElem.style.left = (sx + 1) / 2 * theCanvas.width + "px";
+            cursorInfoElem.style.top = (1 - sy) / 2 * theCanvas.height + "px";
+
+            var circuit = player.getWorld().getCircuit(cube);
+            var value = player.getWorld().g(cube[0],cube[1],cube[2]);
+            var type = player.getWorld().gt(cube[0],cube[1],cube[2]);
+            var text = value + " at " + sel.cube;
+            if (circuit !== null) {
+              var state = circuit.getBlockState(cube);
+              var stateText = "";
+              for (var key in state) {
+                if (!state.hasOwnProperty(key)) continue;
+                stateText += " " + key + ":" + state[key];
+              }
+              text += "\nCircuit: " + type.behavior + "" + stateText;
+            }
+            cursorInfo.data = text;
+          }
+        }
+        
         // Per-frame debug/stats info
         var text = "";
         {
@@ -533,7 +582,6 @@
           var d = 2;
           text += "XYZ: " + pp[0].toFixed(d) + "," + pp[1].toFixed(d) + "," + pp[2].toFixed(d) + "\n";
         }
-        text += "Selected: " + player.getSelection() + "\n";
         if (errs.length) {
           lastGLErrors = errs;
           text += "GL errors:";
@@ -551,22 +599,7 @@
         text += totalVertices + " vertices\n";
         text += fpsDesc + "\n";
         text += wrend.debugText();
-        if (player.getSelection() !== null) {
-          var cube = player.getSelection().cube;
-          var world = player.getWorld();
-          var circuit = world.getCircuit(cube);
-          var value = world.g(cube[0],cube[1],cube[2]);
-          if (circuit !== null) {
-            var state = circuit.getBlockState(cube);
-            var stateText = "";
-            for (var key in state) {
-              if (!state.hasOwnProperty(key)) continue;
-              stateText += " " + key + ":" + state[key];
-            }
-            text += "Circuit: " + world.blockSet.behaviors[value] + "" + stateText + "\n";
-          }
-        }
-        theInfo.data = text;
+        sceneInfo.data = text;
         
         totalVertices = 0;
         renderCount++;
@@ -613,16 +646,16 @@
             var a = actions[i];
             if (typeof a == 'string') {
               var t1 = Date.now();
-              theInfo.data += a + "\n";
+              sceneInfo.data += a + "\n";
               if (typeof console !== 'undefined')
                 console.log(t0 ? "(+"+(t1-t0)+" ms)" : "        ", a);
               t0 = t1;
             } else {
-              try {
+              //try {
                 if (actions[i]() === ABORT) return;
-              } catch (e) {
-                catcher(e);
-              }
+              //} catch (e) {
+              //  catcher(e);
+              //}
             }
             sub(i+1);
           }, 1);
@@ -632,11 +665,9 @@
     }
     
     function webGLStart() {
-      var info = document.getElementById('info');
-      while (info.firstChild) info.removeChild(info.firstChild);
-      theInfo = document.createTextNode("");
-      info.appendChild(theInfo);
-      theInfo.data = "";
+      sceneInfo = dynamicText(document.getElementById('info'));
+      cursorInfoElem = document.getElementById('cursor-info');
+      cursorInfo = dynamicText(cursorInfoElem);
 
       sequence([
         "Getting WebGL...",
@@ -677,13 +708,13 @@
           if (hasLocalStorage) {
             var worldData = localStorage.getItem("world");
             if (worldData !== null) {
-              try {
+              //try {
                 worldH = World.unserialize(JSON.parse(worldData));
-              } catch (e) {
-                if (typeof console !== 'undefined')
-                  console.error(e);
-                alert("Failed to load saved world!");
-              }
+              //} catch (e) {
+              //  if (typeof console !== 'undefined')
+              //    console.error(e);
+              //  alert("Failed to load saved world!");
+              //}
             }
           } else {
             console.warn("localStorage not available; world will not be saved.");
@@ -707,7 +738,7 @@
         },
         "Ready!"
       ], function (exception) {
-        theInfo.data += exception;
+        sceneInfo.data += exception;
         document.getElementById("load-error-notice").style.removeProperty("display");
         document.getElementById("load-error-text").appendChild(document.createTextNode("" + exception));
         throw exception; // propagate to browser console
@@ -721,12 +752,15 @@
 
 
 <body onload="webGLStart();">
-    <canvas id="view-canvas" tabindex="0" class="viewport" width="640" height="480">
-      <div class="error-notice">
-        <p>Sorry, but the web browser you are using does not appear to support WebGL (or even Canvas).</p>
-      </div>
-    </canvas>
-    <pre id="info">Not ready...</pre>
+    <div class="overlay-bounds">
+      <canvas id="view-canvas" tabindex="0" class="viewport" width="640" height="480">
+        <div class="error-notice">
+          <p>Sorry, but the web browser you are using does not appear to support WebGL (or even Canvas).</p>
+        </div>
+      </canvas>
+      <pre id="info" class="text-overlay">Not ready...</pre>
+      <pre id="cursor-info" class="text-overlay"></pre>
+    </div>
     <div id="menu" style="visibility: hidden; left: 1px; top: 1px;">
       <!-- arbitrary initial position -->
     </div>
@@ -777,13 +811,13 @@
             while (document.getElementById('load-error').firstChild)
               document.getElementById('load-error').removeChild(
                 document.getElementById('load-error').firstChild);
-            try {
+            //try {
               worldH = World.unserialize( JSON.parse( document.getElementById('loadfield').value))
               player.setWorld(worldH);
-            } catch (e) {
-              console.log(e);
-              document.getElementById('load-error').appendChild(document.createTextNode(e));
-            }
+            //} catch (e) {
+            //  console.log(e);
+            //  document.getElementById('load-error').appendChild(document.createTextNode(e));
+            //}
             return false;
           ">Text Import</button>
           <br>

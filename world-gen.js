@@ -1,23 +1,36 @@
 function generateWorlds() {
   "use strict";
   
-  var TILE_SIZE = World.TILE_SIZE;
+  // --- color worlds ---
   
+  var colors = [];
+  for (var i = 1; i < 64+1; i++) {
+    colors.push(new BlockType.Color([
+      (i & 3) / 3,
+      ((i >> 2) & 3) / 3,
+      ((i >> 4) & 3) / 3,
+      1
+    ]));
+  }
+  var colorSet = new BlockSet(colors);
+
+  // convert color in [0,1] to block ID
+  function brgb(r,g,b) {
+    return (((b * 3) << 4) + ((g * 3) << 2) + (r * 3) << 0) || 0x40;
+  }
+  
+
+  // --- block worlds ---
+  
+  var TILE_SIZE = World.TILE_SIZE;
   var blockWorldSize = [TILE_SIZE,TILE_SIZE,TILE_SIZE];
   var blockWorldCount = 16;
   var blockWorlds = [];
-  for (var i = 0; i < blockWorldCount; i++) blockWorlds.push(new World(blockWorldSize, BlockSet.colors));
+  for (var i = 0; i < blockWorldCount; i++) blockWorlds.push(new World(blockWorldSize, colorSet));
 
-  // --- block worlds ---
-
-  // TODO: move to BlockSet.colors
-  function brgb(r,g,b) {
-    return (((b * 3) << 4) + ((g * 3) << 2) + (r * 3) << 0) || 0xC0;
-  }
-  
   // condition functions for procedural block generation
   // Takes a coordinate vector and returns a boolean.
-  // TODO: Parameterize on TILE_SIZE.
+  // TODO: Parameterize fully on TILE_SIZE.
   function vx(b) { return b[0]; }
   function vy(b) { return b[1]; }
   function vy(b) { return b[2]; }
@@ -45,7 +58,7 @@ function generateWorlds() {
     return a[Math.floor(Math.random() * a.length)];
   }
   function pickColor() {
-    return Math.floor(Math.random() * 256);
+    return Math.floor(Math.random() * colorSet.length);
   }
   function pickCond(p1, p2) {
     var cond = pick([te,tp,be,bp,se,sp,s,e,c]);
@@ -122,16 +135,23 @@ function generateWorlds() {
     genedit(blockWorlds[i], c);
   }
   
-  // --- big world ---
+  // --- main blockset ---
   
-  var blockset = BlockSet.newTextured(blockWorlds);
+  var blockset = new BlockSet(
+    blockWorlds.map(function (w) { return new BlockType.World(w); }));
+  
+  // TODO: this would be better written by making BlockTypes above
+  blockset.get(2).spontaneousConversion = 3;
+  blockset.get(3).spontaneousConversion = 2;
   
   var CW,CI,CO,COR;
-  blockset.setBehavior((CW=7) -1, Circuit.B_WIRE);
-  blockset.setBehavior((COR=8)-1, Circuit.B_OR);
-  blockset.setBehavior((CI=9) -1, Circuit.B_INPUT);
-  blockset.setBehavior((CO=10)-1, Circuit.B_OUTPUT);
+  blockset.get(CW=7 ).behavior = Circuit.B_WIRE;
+  blockset.get(COR=8).behavior = Circuit.B_OR;
+  blockset.get(CI=9 ).behavior = Circuit.B_INPUT;
+  blockset.get(CO=10).behavior = Circuit.B_OUTPUT;
   
+  // --- big world ---
+
   var topWorld = new World([400,128,400], blockset);
   var wx = topWorld.wx;
   var wy = topWorld.wy;
