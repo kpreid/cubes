@@ -288,26 +288,21 @@ var Player = (function () {
       set yaw (angle) { currentPlace.yaw = angle; aimChanged(); },
       get tool () { return currentPlace.tool; },
       set tool (id) { currentPlace.tool = id; aimChanged(); },
+      enterWorld: function (blockID) {
+        var world = currentPlace.world.blockSet.get(blockID).world;
+        
+        if (!world) return; // TODO: UI message about this
+        
+        var oldPlace = currentPlace;
+        
+        currentPlace = new Place(world);
+        currentPlace.forBlock = blockID;
+        vec3.set([World.TILE_SIZE/2, World.TILE_SIZE - playerAABB[1][0] + EPSILON, World.TILE_SIZE/2], currentPlace.pos);
+        placeStack.push(oldPlace);
+        aimChanged();
+      },
       changeWorld: function (direction) {
         switch (direction) {
-          case 1:
-            if (currentPlace.selection === null) break;
-            var cube = currentPlace.selection.cube;
-            var x = cube[0], y = cube[1], z = cube[2];
-            
-            var oldPlace = currentPlace;
-            var blockID = currentPlace.world.g(x,y,z);
-            
-            var world = currentPlace.world.blockSet.worldFor(blockID);
-            if (world == null) return; // TODO: UI message about this
-            
-            currentPlace = new Place(world);
-            currentPlace.forBlock = blockID;
-            vec3.set([World.TILE_SIZE/2, World.TILE_SIZE - playerAABB[1][0] + EPSILON, World.TILE_SIZE/2], currentPlace.pos);
-            placeStack.push(oldPlace);
-            aimChanged();
-            
-            break;
           case -1:
             if (placeStack.length <= 0) break;
             currentPlace.wrend.deleteResources();

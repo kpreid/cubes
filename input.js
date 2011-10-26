@@ -3,7 +3,7 @@
 
 // TODO: explicitly connect global vars
 
-function Input(eventReceiver, playerInput, menuElement) {
+function Input(eventReceiver, playerInput, menuOuter, menuInner) {
   "use strict";
 
   var keymap = {};
@@ -63,8 +63,9 @@ function Input(eventReceiver, playerInput, menuElement) {
       case "8": playerInput.tool = 7; return false;
       case "9": playerInput.tool = 8; return false;
       case "0": playerInput.tool = 9; return false;
-      case "R": hideMenu(); playerInput.changeWorld(1); return false;
-      case "F": hideMenu(); playerInput.changeWorld(-1); return false;
+      case "\x1B"/*Esc*/:
+      case "R": if (menuVisible()) hideMenu(); else { playerInput.changeWorld(-1); showMenu(); } return false;
+      case "F": if (menuVisible()) hideMenu(); else { playerInput.changeWorld(-1); showMenu(); } return false;
       case " ": playerInput.jump(); return false;
     }
 
@@ -138,10 +139,7 @@ function Input(eventReceiver, playerInput, menuElement) {
   eventReceiver.oncontextmenu = function (event) { // On Firefox 5.0.1 (most recent tested 2011-09-10), addEventListener does not suppress the builtin context menu, so this is an attribute rather than a listener.
     mousePos = [event.clientX, event.clientY];
     
-    if (menuVisible())
-      hideMenu();
-    else
-      showMenu();
+    showMenu();
 
     return false;
   };
@@ -158,7 +156,7 @@ function Input(eventReceiver, playerInput, menuElement) {
   // --- Block menu ---
   
   function menuVisible() {
-    return menuElement.style.visibility !== "hidden";
+    return menuOuter.style.visibility !== "hidden";
   }
 
   var blockSetInMenu = null;
@@ -167,7 +165,7 @@ function Input(eventReceiver, playerInput, menuElement) {
 
     // TODO: Need to rebuild menu if blocks in the set have changed appearance
     if (playerInput.blockSet !== blockSetInMenu) {
-      while (menu.firstChild) menu.removeChild(menuElement.firstChild);
+      while (menuInner.firstChild) menuInner.removeChild(menuInner.firstChild);
 
       blockSetInMenu = playerInput.blockSet;
       var blockRenderer = new BlockRenderer(blockSetInMenu);
@@ -180,7 +178,7 @@ function Input(eventReceiver, playerInput, menuElement) {
         canvas.width = canvas.height = 64; // TODO magic number
         canvas.style.width = canvas.style.height = size + "px";
         menuCanvases[i] = canvas;
-        menuElement.appendChild(canvas);
+        menuInner.appendChild(canvas);
         var cctx = canvas.getContext('2d');
         cctx.putImageData(blockRenderer.blockToImageData(i, cctx), 0, 0);
         (function (canvas,i) {
@@ -193,13 +191,18 @@ function Input(eventReceiver, playerInput, menuElement) {
             canvas.className = "selectedTool";
             return false; // inhibit selection
           };
+          canvas.oncontextmenu = function (event) {
+            playerInput.enterWorld(i);
+            hideMenu();
+            return false;
+          };
           canvas.onmouseout = function () {
             canvas.className = i == playerInput.tool ? "selectedTool" : "";
             return true;
           };
         })(canvas,i);
         if ((i+1) % sidecount == 0) {
-          menuElement.appendChild(document.createElement('br'));
+          menuInner.appendChild(document.createElement('br'));
         }
       }
       
@@ -210,17 +213,16 @@ function Input(eventReceiver, playerInput, menuElement) {
       menuCanvases[i].className = i == playerInput.tool ? "selectedTool" : "";
     }
     
-    var cs = window.getComputedStyle(menuElement, null);
-    var menuW = parseInt(cs.width);
-    var menuH = parseInt(cs.height);
-    
-    menuElement.style.left = (mousePos[0] - menuW/2) + "px";
-    menuElement.style.top  = (mousePos[1] - menuH/2) + "px";
-    menuElement.style.visibility = 'visible';
+    menuOuter.style.visibility = 'visible';
   }
   function hideMenu() {
-    menuElement.style.visibility = 'hidden';
+    menuOuter.style.visibility = 'hidden';
     eventReceiver.focus();
+  }
+  
+  menuOuter.onclick = function () {
+    hideMenu();
+    return false;
   }
   
   // --- Methods ---

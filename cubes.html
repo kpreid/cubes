@@ -50,11 +50,19 @@
   }
   
   #menu {
-    position: fixed;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
     background: gray;
     background: rgba(0, 0, 0, 0.5);
-    border-radius: 5px;
+    
+  }
+  #menu-blocks {
+    
     display: table;
+    margin: auto;
   }
   #menu canvas {
     margin: 1px 1px;
@@ -703,7 +711,11 @@
         },
         "Finishing...",
         function () {
-          input = new Input(theCanvas, player.input, document.getElementById("menu"));
+          input = new Input(
+            theCanvas,
+            player.input,
+            document.getElementById("menu"),
+            document.getElementById("menu-blocks"));
           theCanvas.focus();
 
           // TODO: use webgl utils to avoid wasting time rendering frames if invisible
@@ -734,8 +746,10 @@
       <pre id="info" class="text-overlay">Not ready...</pre>
       <pre id="cursor-info" class="text-overlay"></pre>
     </div>
-    <div id="menu" style="visibility: hidden; left: 1px; top: 1px;">
-      <!-- arbitrary initial position -->
+    <div id="menu" style="visibility: hidden;">
+      <div id="menu-blocks">
+        
+      </div>
     </div>
     <div id="webgl-error-notice" class="error-notice" style="display: none;">
       <p>Sorry, the web browser you are using does not appear to support WebGL.</p>
