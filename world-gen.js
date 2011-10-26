@@ -153,5 +153,21 @@ function generateWorlds() {
     }
   }
   
+  window.generateBlock = function () {
+    var s = player.getWorld().blockSet;
+    var w = new World(blockWorldSize, colorSet);
+    
+    var c = pickCond(flat(pickColor()), 
+              pickCond(flat(pickColor()), 
+                speckle(flat(pickColor()), flat(pickColor()))));
+    genedit(w, c);
+    
+    
+    s.add(new BlockType.World(w));
+    
+    input.updateMenu();
+  };
+  
   return topWorld;
 }
+

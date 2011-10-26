@@ -174,11 +174,18 @@ function Input(eventReceiver, playerInput, menuOuter, menuInner) {
       var size = Math.min(64, 300 / sidecount);
     
       for (var i = 0; i < blockSetInMenu.length; i++) {
+        var item = document.createElement('div');
+        var button = document.createElement('button');
+        button.appendChild(document.createTextNode("Edit"));
         var canvas = document.createElement('canvas');
         canvas.width = canvas.height = 64; // TODO magic number
         canvas.style.width = canvas.style.height = size + "px";
         menuCanvases[i] = canvas;
-        menuInner.appendChild(canvas);
+        item.appendChild(canvas);
+        if (blockSetInMenu.get(i).world) item.appendChild(button);
+        item.style.display = "inline-block"; // TODO: stylesheet
+        canvas.style.display = "block"; // TODO: stylesheet
+        menuInner.appendChild(item);
         var cctx = canvas.getContext('2d');
         cctx.putImageData(blockRenderer.blockToImageData(i, cctx), 0, 0);
         (function (canvas,i) {
@@ -191,7 +198,7 @@ function Input(eventReceiver, playerInput, menuOuter, menuInner) {
             canvas.className = "selectedTool";
             return false; // inhibit selection
           };
-          canvas.oncontextmenu = function (event) {
+          button.onclick = function (event) {
             playerInput.enterWorld(i);
             hideMenu();
             return false;
@@ -228,5 +235,6 @@ function Input(eventReceiver, playerInput, menuOuter, menuInner) {
   // --- Methods ---
   
   this.step = step;
+  this.updateMenu = function () { blockSetInMenu = null; showMenu(); }; // TODO kludge
   this.getMousePos = function () { return mousePos; };
 }
