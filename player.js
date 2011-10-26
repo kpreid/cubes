@@ -37,7 +37,7 @@ var Player = (function () {
     var currentPlace;
 
     // kludge: Since UI sets pitch absolutely, it's not a place variable
-    var pitch = 0;
+    var pitch = -0.3;
   
     var selectionR = new RenderBundle(gl.LINE_LOOP, null, function (vertices, colors) {
       var sel = currentPlace ? currentPlace.selection : null;
@@ -288,7 +288,19 @@ var Player = (function () {
       set yaw (angle) { currentPlace.yaw = angle; aimChanged(); },
       get tool () { return currentPlace.tool; },
       set tool (id) { currentPlace.tool = id; aimChanged(); },
-      changeWorld: function (direction) {
+      enterWorld: function (blockID) {
+        var world = currentPlace.world.blockSet.get(blockID).world;
+
+        if (!world) return; // TODO: UI message about this
+
+        var oldPlace = currentPlace;
+
+        currentPlace = new Place(world);
+        currentPlace.forBlock = blockID;
+        vec3.set([World.TILE_SIZE/2, World.TILE_SIZE - playerAABB[1][0] + EPSILON, World.TILE_SIZE/2], currentPlace.pos);
+        placeStack.push(oldPlace);
+        aimChanged();
+      },      changeWorld: function (direction) {
         switch (direction) {
           case 1:
             if (currentPlace.selection === null) break;

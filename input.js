@@ -105,9 +105,6 @@ function Input(eventReceiver, playerInput, menuElement) {
     var swingY = event.clientY / (h*0.5) - 1;
     var swingX = event.clientX / (w*0.5) - 1;
     
-    // y effect
-    playerInput.pitch = 0;
-    
     // x effect
     var direct = 0;
     playerInput.yaw += (direct - prevx);
@@ -180,6 +177,11 @@ function Input(eventReceiver, playerInput, menuElement) {
           canvas.onmousedown = canvas.onselectstart = function () {
             canvas.className = "selectedTool";
             return false; // inhibit selection
+          };
+          canvas.oncontextmenu = function () {
+            playerInput.enterWorld(i);
+            updateMenu();
+            return false;
           };
           canvas.onmouseout = function () {
             canvas.className = i == playerInput.tool ? "selectedTool" : "";
