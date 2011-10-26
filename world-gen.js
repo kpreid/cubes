@@ -165,7 +165,7 @@ function generateWorlds() {
     
     s.add(new BlockType.World(w));
     
-    input.updateMenu();
+    setTimeout(function () { input.updateMenu(); }, 0);  // TODO kludge
   };
   
   return topWorld;

@@ -229,7 +229,7 @@ function Input(eventReceiver, playerInput, menuOuter, menuInner) {
   
   menuOuter.onclick = function () {
     hideMenu();
-    return false;
+    return true;
   }
   
   // --- Methods ---
