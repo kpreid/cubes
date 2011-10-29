@@ -101,7 +101,8 @@ function prepareProgram(gl, vertexShader, fragmentShader, attribs, uniforms) {
 
 // Given an element, replace its contents with a text node and return that, so that the element's text can be updated by setting the .data property of the result.
 function dynamicText(elem) {
-  while (elem.firstChild) elem.removeChild(info.firstChild);
+  "use strict";
+  while (elem.firstChild) elem.removeChild(elem.firstChild);
   var textNode = document.createTextNode("");
   elem.appendChild(textNode);
   textNode.data = "";
