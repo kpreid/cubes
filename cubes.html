@@ -425,9 +425,15 @@
                   continue;
                 }
               }
-              vertices.push(location[0]+(x+0.5)/TILE_SIZE,
-                            location[1]+(y+0.5)/TILE_SIZE,
-                            location[2]+(z+0.5)/TILE_SIZE);
+              var v = applyCubeSymmetry(mod(location[0], applyCubeSymmetry.NO_REFLECT_COUNT), 1, [
+                (x+0.5)/TILE_SIZE,
+                (y+0.5)/TILE_SIZE,
+                (z+0.5)/TILE_SIZE
+              ]);
+              
+              vertices.push(location[0]+v[0],
+                            location[1]+v[1],
+                            location[2]+v[2]);
             }
           }
         }
