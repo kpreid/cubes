@@ -32,20 +32,27 @@ function World(sizes, blockSet) {
   
   // --- Methods ---
   
+  // Return the block ID at the given coordinates
   function g(x,y,z) {
     if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
       return 0;
     else
       return blocks[x*wy*wz + y*wz + z];
   }
+  // Return the block type at the given coordinates
   function gt(x,y,z) {
     return blockSet.get(g(x,y,z));
   }
-  function gRot(x,y,z) {
+  // Return the block subdatum at the given coordinates
+  function gSub(x,y,z) {
     if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
       return 0;
     else
-      return blocks[x*wy*wz + y*wz + z];
+      return subData[x*wy*wz + y*wz + z];
+  }
+  // Return the block rotation at the given coordinates
+  function gRot(x,y,z) {
+    return gSub(x,y,z);
   }
   function s(x,y,z,val,subdatum) { // TODO revisit making this not take a vec
     if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
@@ -206,6 +213,7 @@ function World(sizes, blockSet) {
   this.g = g;
   this.gt = gt;
   this.gRot = gRot;
+  this.gSub = gSub;
   this.s = s;
   this.solid = solid;
   this.opaque = opaque;

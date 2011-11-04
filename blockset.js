@@ -4,8 +4,18 @@
 var BlockType = (function () {
   "use strict";
   
+  // TODO: serialize rotation and conversion properties
+  
   function BlockType() {
     throw new Error("abstract");
+  }
+  
+  function _BlockTypeSuper() {
+    if (!(this instanceof BlockType))
+      throw new Error("bad constructor call");
+    
+    this.automaticRotations = [0];
+    this.spontaneousConversion = undefined;
   }
   
   // Called randomly by the world, at an average rate of 'baseRate' calls per second for each cube.
@@ -16,12 +26,13 @@ var BlockType = (function () {
   };
   
   BlockType.World = function (world) {
-    if (!(this instanceof BlockType))
-      throw new Error("bad constructor call");
+    _BlockTypeSuper.call(this);
     
     this.world = world;
     this.color = null;
     this.opaque = undefined;
+    
+    Object.seal(this);
   };
   BlockType.World.prototype = Object.create(BlockType.prototype);
   BlockType.World.prototype.constructor = BlockType.World;
@@ -41,12 +52,13 @@ var BlockType = (function () {
   
   // rgba is an array of 4 elements in the range [0,1].
   BlockType.Color = function (rgba) {
-    if (!(this instanceof BlockType.Color))
-      throw new Error("bad constructor call");
+    _BlockTypeSuper.call(this);
     
     this.world = null;
     this.color = rgba;
     this.opaque = rgba[3] >= 1;
+
+    Object.seal(this);
   };
   BlockType.Color.prototype = Object.create(BlockType.prototype);
   BlockType.Color.prototype.constructor = BlockType.Color;

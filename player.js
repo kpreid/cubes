@@ -263,8 +263,8 @@ var Player = (function () {
             var x = cube[0], y = cube[1], z = cube[2];
             if (currentPlace.world.solid(x,y,z)) {
               var value = currentPlace.world.g(x,y,z);
+              currentPlace.wrend.renderDestroyBlock(cube);
               currentPlace.world.s(x, y, z, 0);
-              currentPlace.wrend.renderDestroyBlock(cube, value);
               changed = true;
             }
           }
@@ -274,10 +274,10 @@ var Player = (function () {
             var cube = currentPlace.selection.cube;
             var face = currentPlace.selection.face;
             var x = cube[0]+face[0], y = cube[1]+face[1], z = cube[2]+face[2];
+            var type = currentPlace.world.blockSet.get(currentPlace.tool);
             if (!currentPlace.world.solid(x,y,z)) {
               var raypts = getAimRay();
-              var symm = nearestCubeSymmetry(vec3.subtract(raypts[0], raypts[1]), [0,0,-1], PLACEHOLDER_ROTATIONS);
-              console.log(symm);
+              var symm = nearestCubeSymmetry(vec3.subtract(raypts[0], raypts[1]), [0,0,1], type.automaticRotations);
               currentPlace.world.s(x,y,z, currentPlace.tool, symm);
               currentPlace.wrend.renderCreateBlock([x,y,z], value);
               changed = true;

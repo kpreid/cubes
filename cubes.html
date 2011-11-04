@@ -409,10 +409,9 @@
     }
     
     // TODO: the interface for this is lousy. blockWorld==null means we're creating a block, nonnull destroying
-    function BlockParticles(world, location, blockWorld) {
+    function BlockParticles(world, location, blockWorld, symm) {
       var k = 2;
       var t0 = Date.now();
-      var symm = world.gRot(location[0], location[1], location[2]);
       var rb = new RenderBundle(gl.POINTS, null, function (vertices, colors) {
         var TILE_SIZE = World.TILE_SIZE;
         for (var x = 0; x < TILE_SIZE; x++) {
@@ -554,8 +553,11 @@
           if (isFinite(sx) && isFinite(sy)) {
             cursorInfoElem.style.left = (sx + 1) / 2 * theCanvas.width + "px";
             cursorInfoElem.style.top = (1 - sy) / 2 * theCanvas.height + "px";
+            var world = player.getWorld();
+            var sub = world.gSub(cube[0],cube[1],cube[2]);
             cursorInfo.data = 
-              player.getWorld().g(cube[0],cube[1],cube[2])
+              world.g(cube[0],cube[1],cube[2])
+              + (sub ? ":" + sub : "")
               + " at " + sel.cube;
           }
         }

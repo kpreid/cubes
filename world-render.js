@@ -230,16 +230,16 @@ var WorldRenderer = (function () {
     }
     this.updateSomeChunks = updateSomeChunks;
 
-    function renderDestroyBlock(block, value) {
-      var blockWorld = world.blockSet.worldFor(value);
+    function renderDestroyBlock(block) {
+      var blockWorld = world.blockSet.worldFor(world.g(block[0],block[1],block[2]));
       // TODO: add particles for color blocks
       if (blockWorld)
-        particles.push(new BlockParticles(world, block, blockWorld));
+        particles.push(new BlockParticles(world, block, blockWorld, world.gRot(block[0],block[1],block[2])));
     }
     this.renderDestroyBlock = renderDestroyBlock;
 
     function renderCreateBlock(block, value) {
-      particles.push(new BlockParticles(world, block, null));
+      particles.push(new BlockParticles(world, block, null, 0));
     }
     this.renderCreateBlock = renderCreateBlock;
 
