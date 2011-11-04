@@ -138,8 +138,8 @@
     void main(void) {
         vec4 color;
         if (uTextureEnabled) {
-          // If texturing is enabled, input vertex color is ignored.
-          color = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+          // If texturing is enabled, input vertex color is not specified by attribute, but it still determines lighting.
+          color = vColor * texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
 
           // alpha test
           if (color.a <= 0.0)
@@ -158,6 +158,7 @@
 <script id="shader-vs" type="x-shader/x-vertex">
     attribute vec3 aVertexPosition;
     attribute vec4 aVertexColor;
+    attribute vec3 aVertexNormal;
     attribute vec2 aTextureCoord;
 
     uniform bool uTextureEnabled;
@@ -175,6 +176,13 @@
     varying vec3 vFixedOrientationPosition;
     varying vec2 vTextureCoord;
     varying float vFog;
+    
+    float lighting() {
+      return 0.5 + 1.0*(
+          max(0.0, dot(normalize(vec3(1,-0.3,0)),    aVertexNormal))
+        + max(0.0, dot(normalize(vec3(-0.8,1,0.5)), aVertexNormal))
+      );
+    }
     
     void main(void) {
         vec3 vertexPosition;
@@ -222,7 +230,12 @@
         // fog color mixing parameter
         vFog = clamp(pow(distanceForFog, 4.0), 0.0, 1.0);
         
-        vColor = aVertexColor;
+        // color/lighting calculation
+        // if the vertex normal is zero, then that means "do not use lighting"
+        vColor = vec4(vec3(uTextureEnabled ? vec4(1.0) : aVertexColor) * 
+            (aVertexNormal == vec3(0,0,0)
+              ? 1.0 
+              : lighting()), aVertexColor.a);
     }
 </script>
 
@@ -346,24 +359,38 @@
       options = options || {};
       
       var vbuf = gl.createBuffer();
+      var nbuf = gl.createBuffer();
       if (!optTexture) var cbuf = gl.createBuffer();
       if (optTexture) var tbuf = gl.createBuffer();
       var numVertices;
       
       this.recompute = function () {
         var vertices = [];
+        var normals = [];
         var colors = optTexture ? null : [];
         var texcoords = optTexture ? [] : null;
-        calcFunc(vertices, optTexture ? texcoords : colors);
+        calcFunc(vertices, normals, optTexture ? texcoords : colors);
         numVertices = Math.floor(vertices.length / 3);
+
+        if (vertices.length !== normals.length) {
+          throw new Error("wrong number of normals");
+        }
 
         gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, nbuf);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
 
         if (optTexture) {
+          if (texcoords.length !== numVertices * 2) {
+            throw new Error("wrong number of texture coordinates");
+          }
           gl.bindBuffer(gl.ARRAY_BUFFER, tbuf);
           gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texcoords), gl.STATIC_DRAW);
         } else {
+          if (colors.length !== numVertices * 4) {
+            throw new Error("wrong number of colors");
+          }
           gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
           gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
         }
@@ -372,7 +399,9 @@
       function draw() {
         gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
         gl.vertexAttribPointer(attribs.aVertexPosition, 3, gl.FLOAT, false, 0, 0);
-
+        gl.bindBuffer(gl.ARRAY_BUFFER, nbuf);
+        gl.vertexAttribPointer(attribs.aVertexNormal, 3, gl.FLOAT, false, 0, 0);
+        
         gl.uniform1i(uniforms.uTextureEnabled, optTexture ? 1 : 0);
 
         if (optTexture) {
@@ -400,9 +429,10 @@
       
       this.deleteResources = function () {
         gl.deleteBuffer(vbuf);
-        gl.deleteBuffer(cbuf);
+        gl.deleteBuffer(nbuf);
+        if (cbuf) gl.deleteBuffer(cbuf);
         if (tbuf) gl.deleteBuffer(tbuf);
-        vbuf = cbuf = tbuf = numVertices = null;
+        vbuf = nbuf = cbuf = tbuf = numVertices = null;
       }
       
       this.recompute();
@@ -412,7 +442,7 @@
     function BlockParticles(world, location, blockWorld, symm) {
       var k = 2;
       var t0 = Date.now();
-      var rb = new RenderBundle(gl.POINTS, null, function (vertices, colors) {
+      var rb = new RenderBundle(gl.POINTS, null, function (vertices, normals, colors) {
         var TILE_SIZE = World.TILE_SIZE;
         for (var x = 0; x < TILE_SIZE; x++) {
           for (var y = 0; y < TILE_SIZE; y++) {
@@ -439,6 +469,7 @@
               vertices.push(location[0]+v[0],
                             location[1]+v[1],
                             location[2]+v[2]);
+              normals.push(0,0,0); // disable lighting
             }
           }
         }
@@ -465,11 +496,11 @@
     var skyboxR;
     
     function initBuffers() {
-      debugR = new RenderBundle(gl.LINES, null, function (vertices, colors) {
-        if (player) player.renderDebug(vertices,colors);
+      debugR = new RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
+        if (player) player.renderDebug(vertices, normals, colors);
       });
       
-      skyboxR = new RenderBundle(gl.TRIANGLES, null, function (vertices, colors) {
+      skyboxR = new RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {
         // abstracted in case this is useful elsewhere ...
         function cube(vertices, colors, size, outward) {
           function ppush(a, b, c) {
@@ -478,6 +509,7 @@
             v[da] = b;
             v[db] = c;
             vertices.push(v[0], v[1], v[2]);
+            normals.push(0,0,0); // TODO stub
             colors.push(1, 0, 0, 1);
           }
           for (var dim = 0; dim < 3; dim++) {
@@ -682,6 +714,7 @@
 
           // Initial GL state
           gl.enableVertexAttribArray(attribs.aVertexPosition);
+          gl.enableVertexAttribArray(attribs.aVertexNormal);
           gl.enable(gl.DEPTH_TEST);
           gl.enable(gl.CULL_FACE);
           
