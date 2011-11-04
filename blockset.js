@@ -8,20 +8,36 @@ var BlockType = (function () {
     throw new Error("abstract");
   }
   
+  function _BlockTypeSuper() {
+    if (!(this instanceof BlockType))
+      throw new Error("bad constructor call");
+    
+    // TODO: Both of these properties are to be replaced by circuits.
+    this.automaticRotations = [0];
+    this.spontaneousConversion = undefined;
+  }
+  
   // Called randomly by the world, at an average rate of 'baseRate' calls per second for each cube.
   BlockType.prototype.doSpontaneousEffect = function (world, cube, baseRate) {
     // TODO: Either remove this or give it a proper setter and a rate parameter and make it serialized
     if (this.spontaneousConversion)
       world.s(cube[0],cube[1],cube[2], this.spontaneousConversion);
   };
+  BlockType.prototype.serialize = function () {
+    return {
+      automaticRotations: this.automaticRotations,
+      spontaneousConversion: this.spontaneousConversion
+    };
+  }
   
   BlockType.World = function (world) {
-    if (!(this instanceof BlockType))
-      throw new Error("bad constructor call");
+    _BlockTypeSuper.call(this);
     
     this.world = world;
     this.color = null;
     this.opaque = undefined;
+    
+    Object.seal(this);
   };
   BlockType.World.prototype = Object.create(BlockType.prototype);
   BlockType.World.prototype.constructor = BlockType.World;
@@ -36,17 +52,20 @@ var BlockType = (function () {
   };
   
   BlockType.World.prototype.serialize = function () {
-    return {world: this.world.serialize()};
+    var json = BlockType.prototype.serialize.call(this);
+    json.world = this.world.serialize();
+    return json;
   };
   
   // rgba is an array of 4 elements in the range [0,1].
   BlockType.Color = function (rgba) {
-    if (!(this instanceof BlockType.Color))
-      throw new Error("bad constructor call");
+    _BlockTypeSuper.call(this);
     
     this.world = null;
     this.color = rgba;
     this.opaque = rgba[3] >= 1;
+
+    Object.seal(this);
   };
   BlockType.Color.prototype = Object.create(BlockType.prototype);
   BlockType.Color.prototype.constructor = BlockType.Color;
@@ -60,19 +79,25 @@ var BlockType = (function () {
   };
   
   BlockType.Color.prototype.serialize = function () {
-    return {color: this.color};
+    var json = BlockType.prototype.serialize.call(this);
+    json.color = this.color;
+    return json;
   };
   
   BlockType.air = new BlockType.Color([0,0,0,0]);
   
   BlockType.unserialize = function (json) {
+    var self;
     if (json.color) {
-      return new BlockType.Color(json.color);
+      self = new BlockType.Color(json.color);
     } else if (json.world) {
-      return new BlockType.World(World.unserialize(json.world));
+      self = new BlockType.World(World.unserialize(json.world));
     } else {
       throw new Error("unknown BlockType serialization type");
     }
+    self.automaticRotations = json.automaticRotations;
+    self.spontaneousConversion = json.spontaneousConversion;
+    return self;
   };
   
   return Object.freeze(BlockType);

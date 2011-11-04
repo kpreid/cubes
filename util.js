@@ -108,3 +108,54 @@ function dynamicText(elem) {
   textNode.data = "";
   return textNode;
 }
+
+function applyCubeSymmetry(which, size, vec) {
+  // Contributed by Jack Schmidt; see:
+  // <http://math.stackexchange.com/questions/78573/what-is-a-natural-way-to-enumerate-the-symmetries-of-a-cube>
+  "use strict";
+  
+  var x = vec[0];
+  var y = vec[1];
+  var z = vec[2];
+  
+   var t;
+   // Peel off the "are we a reflection?" bit
+   if( which & 32 ) { t=x; x=y; y=t; }
+   // Peel off the "do we swap the tetrahedrons?" bit
+   if( which & 16 ) { t=x; x=y; y=t; z=size-z; }
+   // Now we are in tetrahedral group, peel off the "120-ness"
+   switch( (which & (4+8) ) >> 2 ) {
+     case 0: break;
+     case 1: t=x; x=y; y=z; z=t; break;
+     case 2: t=z; z=y; y=x; x=t; break;
+     case 3: /* redundant w/ 0 */ break;
+   }
+   // Now we are in the Klein four group, peel off the "180-ness"
+   switch( which & (1+2) ) {
+     case 0: break;
+     case 1: x=size-x; y=size-y; break;
+     case 2: y=size-y; z=size-z; break;
+     case 3: z=size-z; x=size-x; break;
+   }
+   vec = vec3.create();
+   vec[0] = x;
+   vec[1] = y;
+   vec[2] = z;
+   return vec;
+}
+applyCubeSymmetry.COUNT = 60;
+applyCubeSymmetry.NO_REFLECT_COUNT = 27;
+
+// Find the cube symmetry (as in 'applyCubeSymmetry') which minimizes the angle between the rotation of the vector 'cubeVec' and the vector 'direction', among those listed in 'symmetries'.
+function nearestCubeSymmetry(direction, cubeVec, symmetries) {
+  var cosine = -Infinity;
+  var best = null;
+  for (var i = 0; i < symmetries.length; i++) {
+    var ia = vec3.dot(direction, applyCubeSymmetry(symmetries[i], 0, cubeVec));
+    if (ia > cosine) {
+      cosine = ia;
+      best = symmetries[i];
+    }
+  }
+  return best;
+}

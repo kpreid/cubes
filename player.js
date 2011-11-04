@@ -7,6 +7,11 @@ var Player = (function () {
   var GRAVITY = 20; // cubes/s^2
   var JUMP_SPEED = 10; // cubes/s
   
+  var PLACEHOLDER_ROTATIONS = [];
+  for (var i = 0; i < applyCubeSymmetry.NO_REFLECT_COUNT; i++) {
+    PLACEHOLDER_ROTATIONS.push(i);
+  }
+  
   var movement = vec3.create([0,0,0]);
   
   // a Place stores a world and location in it; used for push/pop
@@ -258,8 +263,8 @@ var Player = (function () {
             var x = cube[0], y = cube[1], z = cube[2];
             if (currentPlace.world.solid(x,y,z)) {
               var value = currentPlace.world.g(x,y,z);
-              currentPlace.world.s(x,y,z,0);
-              currentPlace.wrend.renderDestroyBlock(cube, value);
+              currentPlace.wrend.renderDestroyBlock(cube);
+              currentPlace.world.s(x, y, z, 0);
               changed = true;
             }
           }
@@ -269,8 +274,11 @@ var Player = (function () {
             var cube = currentPlace.selection.cube;
             var face = currentPlace.selection.face;
             var x = cube[0]+face[0], y = cube[1]+face[1], z = cube[2]+face[2];
+            var type = currentPlace.world.blockSet.get(currentPlace.tool);
             if (!currentPlace.world.solid(x,y,z)) {
-              currentPlace.world.s(x,y,z, currentPlace.tool);
+              var raypts = getAimRay();
+              var symm = nearestCubeSymmetry(vec3.subtract(raypts[0], raypts[1]), [0,0,1], type.automaticRotations);
+              currentPlace.world.s(x,y,z, currentPlace.tool, symm);
               currentPlace.wrend.renderCreateBlock([x,y,z], value);
               changed = true;
             }
