@@ -4,8 +4,6 @@
 var BlockType = (function () {
   "use strict";
   
-  // TODO: serialize rotation and conversion properties
-  
   function BlockType() {
     throw new Error("abstract");
   }
@@ -14,6 +12,7 @@ var BlockType = (function () {
     if (!(this instanceof BlockType))
       throw new Error("bad constructor call");
     
+    // TODO: Both of these properties are to be replaced by circuits.
     this.automaticRotations = [0];
     this.spontaneousConversion = undefined;
   }
@@ -24,6 +23,12 @@ var BlockType = (function () {
     if (this.spontaneousConversion)
       world.s(cube[0],cube[1],cube[2], this.spontaneousConversion);
   };
+  BlockType.prototype.serialize = function () {
+    return {
+      automaticRotations: this.automaticRotations,
+      spontaneousConversion: this.spontaneousConversion
+    };
+  }
   
   BlockType.World = function (world) {
     _BlockTypeSuper.call(this);
@@ -47,7 +52,9 @@ var BlockType = (function () {
   };
   
   BlockType.World.prototype.serialize = function () {
-    return {world: this.world.serialize()};
+    var json = BlockType.prototype.serialize.call(this);
+    json.world = this.world.serialize();
+    return json;
   };
   
   // rgba is an array of 4 elements in the range [0,1].
@@ -72,19 +79,25 @@ var BlockType = (function () {
   };
   
   BlockType.Color.prototype.serialize = function () {
-    return {color: this.color};
+    var json = BlockType.prototype.serialize.call(this);
+    json.color = this.color;
+    return json;
   };
   
   BlockType.air = new BlockType.Color([0,0,0,0]);
   
   BlockType.unserialize = function (json) {
+    var self;
     if (json.color) {
-      return new BlockType.Color(json.color);
+      self = new BlockType.Color(json.color);
     } else if (json.world) {
-      return new BlockType.World(World.unserialize(json.world));
+      self = new BlockType.World(World.unserialize(json.world));
     } else {
       throw new Error("unknown BlockType serialization type");
     }
+    self.automaticRotations = json.automaticRotations;
+    self.spontaneousConversion = json.spontaneousConversion;
+    return self;
   };
   
   return Object.freeze(BlockType);
