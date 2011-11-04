@@ -320,8 +320,8 @@
       player.render.getWorldRenderer().changedRenderDistance();
     }
     
-    
-    function raycastFromScreen(radius, callback) {
+    // Returns a pair of points along the line of aim of the screen cursor.
+    function getAimRay() {
       var pos = input.getMousePos();
       var glxy = [pos[0] / theCanvas.width * 2 - 1, -(pos[1] / theCanvas.height * 2 - 1)];
       
@@ -333,8 +333,13 @@
 
       var pt1 = fixedmultiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 0]));
       var pt2 = fixedmultiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 1]));
-      
-      return player.getWorld().raycast(pt1, pt2, radius, callback);
+
+      return [pt1, pt2];
+    }
+
+    function raycastFromScreen(radius, callback) {
+      var pts = getAimRay();
+      return player.getWorld().raycast(pts[0], pts[1], radius, callback);
     }
     
     function RenderBundle(primitive, optTexture, calcFunc, options) {
@@ -404,9 +409,10 @@
     }
     
     // TODO: the interface for this is lousy. blockWorld==null means we're creating a block, nonnull destroying
-    function BlockParticles(location, blockWorld) {
+    function BlockParticles(world, location, blockWorld) {
       var k = 2;
       var t0 = Date.now();
+      var symm = world.gRot(location[0], location[1], location[2]);
       var rb = new RenderBundle(gl.POINTS, null, function (vertices, colors) {
         var TILE_SIZE = World.TILE_SIZE;
         for (var x = 0; x < TILE_SIZE; x++) {
@@ -425,7 +431,7 @@
                   continue;
                 }
               }
-              var v = applyCubeSymmetry(mod(location[0], applyCubeSymmetry.NO_REFLECT_COUNT), 1, [
+              var v = applyCubeSymmetry(symm, 1, [
                 (x+0.5)/TILE_SIZE,
                 (y+0.5)/TILE_SIZE,
                 (z+0.5)/TILE_SIZE

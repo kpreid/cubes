@@ -234,12 +234,12 @@ var WorldRenderer = (function () {
       var blockWorld = world.blockSet.worldFor(value);
       // TODO: add particles for color blocks
       if (blockWorld)
-        particles.push(new BlockParticles(block, blockWorld));
+        particles.push(new BlockParticles(world, block, blockWorld));
     }
     this.renderDestroyBlock = renderDestroyBlock;
 
     function renderCreateBlock(block, value) {
-      particles.push(new BlockParticles(block, null));
+      particles.push(new BlockParticles(world, block, null));
     }
     this.renderCreateBlock = renderCreateBlock;
 
@@ -294,6 +294,7 @@ var WorldRenderer = (function () {
         var wy = world.wy;
         var wz = world.wz;
         var rawBlocks = world.raw; // for efficiency
+        var rawRotations = world.rawRotations;
         var chunkOriginX = xzkey[0];
         var chunkOriginZ = xzkey[1];
         var chunkLimitX = xzkey[0] + CHUNKSIZE;
@@ -357,9 +358,11 @@ var WorldRenderer = (function () {
           for (var x = chunkOriginX; x < chunkLimitX; x++)
           for (var y = 0;            y < wy         ; y++)
           for (var z = chunkOriginZ; z < chunkLimitZ; z++) {
-            var rot = ROT_DATA[mod(x, applyCubeSymmetry.NO_REFLECT_COUNT)];
-            
-            var value = x < wx && z < wz ? rawBlocks[(x*wy+y)*wz+z] : ID_EMPTY; // inlined and simplified for efficiency
+            // raw array access inlined and simplified for efficiency
+            var inBounds = x < wx && z < wz;
+            var rawIndex = (x*wy+y)*wz+z;
+            var value = inBounds ? rawBlocks[rawIndex] : ID_EMPTY;
+            var rot = inBounds ? ROT_DATA[rawRotations[rawIndex]] : ROT_DATA[0];
             var btype = blockSet.get(value);
             var thiso = btype.opaque; // If this and its neighbor are opaque, then hide surfaces
             if (value != ID_EMPTY) {

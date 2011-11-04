@@ -145,3 +145,17 @@ function applyCubeSymmetry(which, size, vec) {
 }
 applyCubeSymmetry.COUNT = 60;
 applyCubeSymmetry.NO_REFLECT_COUNT = 27;
+
+// Find the cube symmetry (as in 'applyCubeSymmetry') which minimizes the angle between the rotation of the vector 'cubeVec' and the vector 'direction', among those listed in 'symmetries'.
+function nearestCubeSymmetry(direction, cubeVec, symmetries) {
+  var cosine = -Infinity;
+  var best = null;
+  for (var i = 0; i < symmetries.length; i++) {
+    var ia = vec3.dot(direction, applyCubeSymmetry(symmetries[i], 0, cubeVec));
+    if (ia > cosine) {
+      cosine = ia;
+      best = symmetries[i];
+    }
+  }
+  return best;
+}
