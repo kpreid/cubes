@@ -12,6 +12,7 @@ function World(sizes, blockSet) {
   var wy = sizes[1];
   var wz = sizes[2];
   var blocks = new Uint8Array(wx*wy*wz);
+  var subData = new Uint8Array(wx*wy*wz);
   
   // Maps from "x,y,z" to circuit object
   var blockCircuits = {};
@@ -106,20 +107,35 @@ function World(sizes, blockSet) {
   
   // --- Methods ---
   
+  // Return the block ID at the given coordinates
   function g(x,y,z) {
     if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
       return 0;
     else
       return blocks[x*wy*wz + y*wz + z];
   }
+  // Return the block type at the given coordinates
   function gt(x,y,z) {
     return blockSet.get(g(x,y,z));
   }
-  function s(x,y,z,val) { // TODO revisit making this not take a vec
+  // Return the block subdatum at the given coordinates
+  function gSub(x,y,z) {
+    if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
+      return 0;
+    else
+      return subData[x*wy*wz + y*wz + z];
+  }
+  // Return the block rotation at the given coordinates
+  function gRot(x,y,z) {
+    return gSub(x,y,z);
+  }
+  function s(x,y,z,val,subdatum) { // TODO revisit making this not take a vec
     if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
       return;
     
-    blocks[x*wy*wz + y*wz + z] = val;
+    var index = x*wy*wz + y*wz + z
+    blocks[index] = val;
+    subData[index] = subdatum;
     
     var vec = [x,y,z];
     if (changeListener) changeListener.dirtyBlock(vec);
@@ -220,6 +236,7 @@ function World(sizes, blockSet) {
         for (var z = 0; z < wz; z++) {
           var index = ybase + z;
           blocks[index] = func(x,y,z,blocks[index]);
+          subData[index] = 0;
         }
       }
     }
@@ -272,34 +289,38 @@ function World(sizes, blockSet) {
     changeListener = l;
   }
   
-  function serialize() {
-    var FIRST_BLOCK_CHARACTER = 0xA1;
-
-    var serBlocks = [];
+  var RLE_BASE = 0xA1;
+  function rleBytes(bytes) {
+    var ser = [];
     
     var seen = null;
     var count = 0;
-    for (var i = 0; i < blocks.length; i++) {
-      var value = blocks[i];
+    var len = bytes.length;
+    for (var i = 0; i < len; i++) {
+      var value = bytes[i];
       if (seen === value || seen === null) {
         count++;
       } else {
-        serBlocks.push(String.fromCharCode(FIRST_BLOCK_CHARACTER + seen) + count);
+        ser.push(String.fromCharCode(RLE_BASE + seen) + count);
         count = 1;
       }
       seen = value;
     }
     if (count > 0) {
-      serBlocks.push(String.fromCharCode(FIRST_BLOCK_CHARACTER + seen) + count);
+      ser.push(String.fromCharCode(RLE_BASE + seen) + count);
     }
-    
+    return ser.join("");
+  }
+  
+  function serialize() {
     return {
       wx: wx,
       wy: wy,
       wz: wz,
       blockSet: blockSet.serialize(),
-      blockCodeBase: FIRST_BLOCK_CHARACTER,
-      blocks: serBlocks.join("")
+      blockCodeBase: RLE_BASE,
+      blocks: rleBytes(blocks),
+      subData: rleBytes(subData)
     };
   }
   
@@ -307,11 +328,15 @@ function World(sizes, blockSet) {
   
   this.g = g;
   this.gt = gt;
+  this.gRot = gRot;
+  this.gSub = gSub;
   this.s = s;
   this.solid = solid;
   this.opaque = opaque;
   this.raw = blocks;
   this.rebuildCircuits = rebuildCircuits;
+  // TODO: Defining the rotations as being identical to the subdata is a placeholder until we have circuits.
+  this.rawRotations = this.rawSubData = subData;
   this.raycast = raycast;
   this.getCircuits = function () { return circuits; }; // TODO should be read-only interface
   this.getCircuit = function (block) { return blockCircuits[block] || null; }
@@ -334,19 +359,23 @@ World.TILE_SIZE = 16;
 World.unserialize = function (json) {
   var base = json.blockCodeBase;
   
-  var world = new World([json.wx, json.wy, json.wz], BlockSet.unserialize(json.blockSet));
-  var str = json.blocks;
-  var pat = /(.)([0-9]+)/g;
-  var raw = world.raw;
-  var length = raw.length;
-  var i, match;
-  for (i = 0; (match = pat.exec(str)) && i < length;) {
-    var blockID = match[1].charCodeAt(0) - base;
-    var limit = Math.min(length, i + parseInt(match[2]));
-    for (; i < limit; i++) {
-      raw[i] = blockID;
+  function unrleBytes(str, array) {
+    var pat = /(.)([0-9]+)/g;
+    var length = array.length;
+    var i, match;
+    for (i = 0; (match = pat.exec(str)) && i < length;) {
+      var blockID = match[1].charCodeAt(0) - base;
+      var limit = Math.min(length, i + parseInt(match[2]));
+      for (; i < limit; i++) {
+        array[i] = blockID;
+      }
     }
   }
+  
+  var world = new World([json.wx, json.wy, json.wz], BlockSet.unserialize(json.blockSet));
+  var str = json.blocks;
+  unrleBytes(json.blocks, world.raw);
+  unrleBytes(json.subData, world.rawSubData);
   world.rebuildCircuits();
   return world;
 };

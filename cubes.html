@@ -321,8 +321,8 @@
       player.render.getWorldRenderer().changedRenderDistance();
     }
     
-    
-    function raycastFromScreen(radius, callback) {
+    // Returns a pair of points along the line of aim of the screen cursor.
+    function getAimRay() {
       var pos = input.getMousePos();
       var glxy = [pos[0] / theCanvas.width * 2 - 1, -(pos[1] / theCanvas.height * 2 - 1)];
       
@@ -334,8 +334,13 @@
 
       var pt1 = fixedmultiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 0]));
       var pt2 = fixedmultiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 1]));
-      
-      return player.getWorld().raycast(pt1, pt2, radius, callback);
+
+      return [pt1, pt2];
+    }
+
+    function raycastFromScreen(radius, callback) {
+      var pts = getAimRay();
+      return player.getWorld().raycast(pts[0], pts[1], radius, callback);
     }
     
     function RenderBundle(primitive, optTexture, calcFunc, options) {
@@ -419,7 +424,7 @@
     }
     
     // TODO: the interface for this is lousy. blockWorld==null means we're creating a block, nonnull destroying
-    function BlockParticles(location, blockWorld) {
+    function BlockParticles(world, location, blockWorld, symm) {
       var k = 2;
       var t0 = Date.now();
       var rb = new RenderBundle(gl.POINTS, null, function (vertices, colors) {
@@ -440,9 +445,15 @@
                   continue;
                 }
               }
-              vertices.push(location[0]+(x+0.5)/TILE_SIZE,
-                            location[1]+(y+0.5)/TILE_SIZE,
-                            location[2]+(z+0.5)/TILE_SIZE);
+              var v = applyCubeSymmetry(symm, 1, [
+                (x+0.5)/TILE_SIZE,
+                (y+0.5)/TILE_SIZE,
+                (z+0.5)/TILE_SIZE
+              ]);
+              
+              vertices.push(location[0]+v[0],
+                            location[1]+v[1],
+                            location[2]+v[2]);
             }
           }
         }
@@ -558,10 +569,16 @@
             cursorInfoElem.style.left = (sx + 1) / 2 * theCanvas.width + "px";
             cursorInfoElem.style.top = (1 - sy) / 2 * theCanvas.height + "px";
 
-            var circuit = player.getWorld().getCircuit(cube);
-            var value = player.getWorld().g(cube[0],cube[1],cube[2]);
-            var type = player.getWorld().gt(cube[0],cube[1],cube[2]);
-            var text = value + " at " + sel.cube;
+            var world = player.getWorld();
+            var value = world.g(cube[0],cube[1],cube[2]);
+            var sub = world.gSub(cube[0],cube[1],cube[2]);
+            var type = world.gt(cube[0],cube[1],cube[2]);
+            var text = 
+              value
+              + (sub ? ":" + sub : "")
+              + " at " + sel.cube;
+
+            var circuit = world.getCircuit(cube);
             if (circuit !== null) {
               var state = circuit.getBlockState(cube);
               var stateText = "";

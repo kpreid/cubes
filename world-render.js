@@ -12,7 +12,22 @@ var WorldRenderer = (function () {
   function dist2sq(v) {
     return v[0]*v[0]+v[1]*v[1];
   }
-    
+
+  // Block rotation precalculations
+  var ROT_DATA = [];
+  for (var i = 0; i < applyCubeSymmetry.COUNT; i++) {
+    ROT_DATA.push({
+      pos:  applyCubeSymmetry(i, 1, [1,1,1]),
+      zero: applyCubeSymmetry(i, 1, [0,0,0]),
+      nx:   applyCubeSymmetry(i, 0, UNIT_NX),
+      ny:   applyCubeSymmetry(i, 0, UNIT_NY),
+      nz:   applyCubeSymmetry(i, 0, UNIT_NZ),
+      px:   applyCubeSymmetry(i, 0, UNIT_PX),
+      py:   applyCubeSymmetry(i, 0, UNIT_PY),
+      pz:   applyCubeSymmetry(i, 0, UNIT_PZ)
+    });
+  }
+
   var distanceInfoCache = {}, lastSeenRenderDistance = null;
   function renderDistanceInfo() {
     if (configRenderDistance !== lastSeenRenderDistance) {
@@ -254,16 +269,16 @@ var WorldRenderer = (function () {
     }
     this.updateSomeChunks = updateSomeChunks;
 
-    function renderDestroyBlock(block, value) {
-      var blockWorld = world.blockSet.worldFor(value);
+    function renderDestroyBlock(block) {
+      var blockWorld = world.blockSet.worldFor(world.g(block[0],block[1],block[2]));
       // TODO: add particles for color blocks
       if (blockWorld)
-        particles.push(new BlockParticles(block, blockWorld));
+        particles.push(new BlockParticles(world, block, blockWorld, world.gRot(block[0],block[1],block[2])));
     }
     this.renderDestroyBlock = renderDestroyBlock;
 
     function renderCreateBlock(block, value) {
-      particles.push(new BlockParticles(block, null));
+      particles.push(new BlockParticles(world, block, null, 0));
     }
     this.renderCreateBlock = renderCreateBlock;
 
@@ -322,6 +337,7 @@ var WorldRenderer = (function () {
         var wy = world.wy;
         var wz = world.wz;
         var rawBlocks = world.raw; // for efficiency
+        var rawRotations = world.rawRotations;
         var chunkOriginX = xzkey[0];
         var chunkOriginZ = xzkey[1];
         var chunkLimitX = xzkey[0] + CHUNKSIZE;
@@ -384,19 +400,23 @@ var WorldRenderer = (function () {
           for (var x = chunkOriginX; x < chunkLimitX; x++)
           for (var y = 0;            y < wy         ; y++)
           for (var z = chunkOriginZ; z < chunkLimitZ; z++) {
-            var value = x < wx && z < wz ? rawBlocks[(x*wy+y)*wz+z] : ID_EMPTY; // inlined and simplified for efficiency
+            // raw array access inlined and simplified for efficiency
+            var inBounds = x < wx && z < wz;
+            var rawIndex = (x*wy+y)*wz+z;
+            var value = inBounds ? rawBlocks[rawIndex] : ID_EMPTY;
+            var rot = inBounds ? ROT_DATA[rawRotations[rawIndex]] : ROT_DATA[0];
             var btype = blockSet.get(value);
             var thiso = btype.opaque; // If this and its neighbor are opaque, then hide surfaces
             if (value != ID_EMPTY) {
               var tiling = tilings[value] || BOGUS_TILING;
-              var c1 = [x,y,z];
-              var c2 = [x+1,y+1,z+1];
-              if (!thiso || !world.opaque(x-1,y,z)) squares(c1, UNIT_PZ, UNIT_PY, UNIT_PX, tiling.lx, 0, TILE_SIZE_UV);
-              if (!thiso || !world.opaque(x,y-1,z)) squares(c1, UNIT_PX, UNIT_PZ, UNIT_PY, tiling.ly, 0, TILE_SIZE_UV);
-              if (!thiso || !world.opaque(x,y,z-1)) squares(c1, UNIT_PY, UNIT_PX, UNIT_PZ, tiling.lz, 0, TILE_SIZE_UV);
-              if (!thiso || !world.opaque(x+1,y,z)) squares(c2, UNIT_NY, UNIT_NZ, UNIT_NX, tiling.hx, TILE_SIZE_UV, 0);
-              if (!thiso || !world.opaque(x,y+1,z)) squares(c2, UNIT_NZ, UNIT_NX, UNIT_NY, tiling.hy, TILE_SIZE_UV, 0);
-              if (!thiso || !world.opaque(x,y,z+1)) squares(c2, UNIT_NX, UNIT_NY, UNIT_NZ, tiling.hz, TILE_SIZE_UV, 0);
+              var c1 = vec3.add([x,y,z], rot.zero);
+              var c2 = vec3.add([x,y,z], rot.pos);
+              if (!thiso || !world.opaque(x+rot.nx[0],y+rot.nx[1],z+rot.nx[2])) squares(c1, rot.pz, rot.py, rot.px, tiling.lx, 0, TILE_SIZE_UV);
+              if (!thiso || !world.opaque(x+rot.ny[0],y+rot.ny[1],z+rot.ny[2])) squares(c1, rot.px, rot.pz, rot.py, tiling.ly, 0, TILE_SIZE_UV);
+              if (!thiso || !world.opaque(x+rot.nz[0],y+rot.nz[1],z+rot.nz[2])) squares(c1, rot.py, rot.px, rot.pz, tiling.lz, 0, TILE_SIZE_UV);
+              if (!thiso || !world.opaque(x+rot.px[0],y+rot.px[1],z+rot.px[2])) squares(c2, rot.ny, rot.nz, rot.nx, tiling.hx, TILE_SIZE_UV, 0);
+              if (!thiso || !world.opaque(x+rot.py[0],y+rot.py[1],z+rot.py[2])) squares(c2, rot.nz, rot.nx, rot.ny, tiling.hy, TILE_SIZE_UV, 0);
+              if (!thiso || !world.opaque(x+rot.pz[0],y+rot.pz[1],z+rot.pz[2])) squares(c2, rot.nx, rot.ny, rot.nz, tiling.hz, TILE_SIZE_UV, 0);
               var circuit = world.getCircuit(c1); // TODO: replace this with some other spatial indexing scheme so we don't have to check per-every-block
               if (circuit) {
                 var o = circuit.getOrigin();

@@ -8,21 +8,37 @@ var BlockType = (function () {
     throw new Error("abstract");
   }
   
+  function _BlockTypeSuper() {
+    if (!(this instanceof BlockType))
+      throw new Error("bad constructor call");
+    
+    // TODO: Both of these properties are to be replaced by circuits.
+    this.automaticRotations = [0];
+    this.spontaneousConversion = null;
+    this.behavior = null;
+  }
+  
   // Called randomly by the world, at an average rate of 'baseRate' calls per second for each cube.
   BlockType.prototype.doSpontaneousEffect = function (world, cube, baseRate) {
     // TODO: Either remove this or give it a proper setter and a rate parameter and make it serialized
     if (this.spontaneousConversion)
       world.s(cube[0],cube[1],cube[2], this.spontaneousConversion);
   };
+  BlockType.prototype.serialize = function () {
+    return {
+      automaticRotations: this.automaticRotations,
+      spontaneousConversion: this.spontaneousConversion
+    };
+  }
   
   BlockType.World = function (world) {
-    if (!(this instanceof BlockType))
-      throw new Error("bad constructor call");
+    _BlockTypeSuper.call(this);
     
     this.world = world;
     this.color = null;
     this.opaque = undefined;
-    this.behavior = null;
+    
+    Object.seal(this);
   };
   BlockType.World.prototype = Object.create(BlockType.prototype);
   BlockType.World.prototype.constructor = BlockType.World;
@@ -50,12 +66,13 @@ var BlockType = (function () {
   
   // rgba is an array of 4 elements in the range [0,1].
   BlockType.Color = function (rgba) {
-    if (!(this instanceof BlockType.Color))
-      throw new Error("bad constructor call");
+    _BlockTypeSuper.call(this);
     
     this.world = null;
     this.color = rgba;
     this.opaque = rgba[3] >= 1;
+
+    Object.seal(this);
   };
   BlockType.Color.prototype = Object.create(BlockType.prototype);
   BlockType.Color.prototype.constructor = BlockType.Color;
@@ -85,9 +102,11 @@ var BlockType = (function () {
     } else {
       throw new Error("unknown BlockType serialization type");
     }
-    
+
     self.behavior = json.behavior || null;
-    
+    self.automaticRotations = json.automaticRotations || [0];
+    self.spontaneousConversion = json.spontaneousConversion || null;
+
     return self;
   };
   
