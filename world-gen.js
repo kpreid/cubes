@@ -99,7 +99,7 @@ function generateWorlds() {
   
   // pyramid thing
   genedit(types[3].world, function (b) {
-    return Math.abs(b[0] - 8) + Math.abs(b[1] - 8) <= 16-b[2] ? b[2]/2 : 0;
+    return Math.abs(b[0] - 7.5) + Math.abs(b[1] - 7.5) <= 15.5-b[2] ? b[2]/2 + 1 : 0;
   });
   types[3].automaticRotations = sixFaceRotations;
   
