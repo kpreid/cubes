@@ -1,6 +1,9 @@
 function generateWorlds() {
   "use strict";
 
+  // Given an object facing the +z direction, these will rotate that face to...
+  var sixFaceRotations = [0/*+z*/, 2/*-z*/, 4/*+y*/, 4+2/*-y*/, 16+8/*-x*/, 16+11/*+x*/];
+
   // --- color worlds ---
   
   var colors = [];
@@ -24,8 +27,8 @@ function generateWorlds() {
   
   var blockWorldSize = [World.TILE_SIZE,World.TILE_SIZE,World.TILE_SIZE];
   var blockWorldCount = 8;
-  var blockWorlds = [];
-  for (var i = 0; i < blockWorldCount; i++) blockWorlds.push(new World(blockWorldSize, colorSet));
+  var types = [];
+  for (var i = 0; i < blockWorldCount; i++) types.push(new BlockType.World(new World(blockWorldSize, colorSet)));
 
   // condition functions for procedural block generation
   // Takes a coordinate vector and returns a boolean.
@@ -74,36 +77,39 @@ function generateWorlds() {
   }
   
   // color cube - world base
-  genedit(blockWorlds[0], function (b) {
+  genedit(types[0].world, function (b) {
     return rgbPat(b);
   });
   
   // ground block
-  genedit(blockWorlds[1], function (b) {
+  genedit(types[1].world, function (b) {
     return (te(b) ? speckle(flat(brgb(.67,.34,.34)), flat(brgb(.67,0,0))) :
             tp(b) ? flat(brgb(1,.34,.34)) :
             speckle(flat(brgb(.34,0,0)), flat(brgb(0,0,0))))(b);
   });
+  types[1].spontaneousConversion = 2+1;
   
   // ground block #2
-  genedit(blockWorlds[2], function (b) {
+  genedit(types[2].world, function (b) {
     return (te(b) ? speckle(flat(brgb(.34,.67,.34)), flat(brgb(0,.34,0))) :
             tp(b) ? flat(brgb(.34,1,.34)) :
             speckle(flat(brgb(0,.34,0)), flat(brgb(0,1,1))))(b);
   });
+  types[2].spontaneousConversion = 1+1;
   
   // pyramid thing
-  genedit(blockWorlds[3], function (b) {
-    return Math.abs(b[0] - 8) + Math.abs(b[2] - 8) <= 16-b[1] ? b[1]/2 : 0;
+  genedit(types[3].world, function (b) {
+    return Math.abs(b[0] - 8) + Math.abs(b[1] - 8) <= 16-b[2] ? b[2]/2 : 0;
   });
+  types[3].automaticRotations = sixFaceRotations;
   
   // "leaf block" transparency test
-  genedit(blockWorlds[4], function (b) {
+  genedit(types[4].world, function (b) {
     return s(b) ? speckle(flat(0), flat(brgb(0,1,0)))(b) : 0;
   });
 
   // pillar thing
-  genedit(blockWorlds[5], function (b) {
+  genedit(types[5].world, function (b) {
     return Math.max(Math.abs(b[0] - 8), Math.abs(b[2] - 8)) <= 4 ? 18 : 0;
   });
   
@@ -111,17 +117,12 @@ function generateWorlds() {
     var c = pickCond(flat(pickColor()), 
               pickCond(flat(pickColor()), 
                 speckle(flat(pickColor()), flat(pickColor()))));
-    genedit(blockWorlds[i], c);
+    genedit(types[i].world, c);
   }
   
   // --- main blockset ---
   
-  var blockset = new BlockSet(
-    blockWorlds.map(function (w) { return new BlockType.World(w); }));
-  
-  // TODO: this would be better written by making BlockTypes above
-  blockset.get(2).spontaneousConversion = 3;
-  blockset.get(3).spontaneousConversion = 2;
+  var blockset = new BlockSet(types);
   
   // --- big world ---
 
@@ -134,6 +135,7 @@ function generateWorlds() {
   var round = Math.round;
   // Using raw array access because it lets us cache the altitude computation, not because the overhead of .edit() is especially high.
   var raw = topWorld.raw;
+  var rawSubData = topWorld.rawSubData;
   for (var x = 0; x < wx; x++) {
     var xbase = x*wy*wz;
     for (var z = 0; z < wz; z++) {
@@ -148,7 +150,7 @@ function generateWorlds() {
         raw[index] = altitude > 1 ? 0 :
                      altitude < 0 ? 1 :
                      altitude == 0 ? 2 :
-                     /* altitude == 1 */ Math.random() > 0.99 ? 4 : 0;
+                     /* altitude == 1 */ Math.random() > 0.99 ? (rawSubData[index] = 4, 4) : 0;
       }
     }
   }
