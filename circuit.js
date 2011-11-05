@@ -2,6 +2,8 @@
 // the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
 var Circuit = (function () {
+  var DEBUG_WIRE = false;
+  
   function blockOutputKeys(block) {
     return UNIT_AXES.map(function (direction) {
       direction = Array.prototype.slice.call(direction);
@@ -49,7 +51,7 @@ var Circuit = (function () {
       return aabb;
     };
     this.compile = function () { // TODO should be implicit
-      console.info("Recompiling a circuit");
+      if (DEBUG_WIRE) console.info("Recompiling a circuit");
       var outputs = [];
       var nodes = [];
       var netSerial = 0;
@@ -75,13 +77,13 @@ var Circuit = (function () {
       
       // Build graph edges
       function traceNet(net, block, directions) {
-        console.group("traceNet " + net + " " + block + ":" + getBehavior(block) + " : " + directions);
+        if (DEBUG_WIRE) console.group("traceNet " + net + " " + block + ":" + getBehavior(block) + " : " + directions);
         directions.forEach(function (direction) {
           direction = Array.prototype.slice.call(direction);
           var bn = block.slice();
           vec3.add(bn, direction, bn);
           for (;; vec3.add(bn, direction, bn)) {
-            console.log("walk " + bn);
+            if (DEBUG_WIRE) console.log("walk " + bn);
             var bnBeh = getBehavior(bn);
             var comingFrom = vec3.negate(direction, []);
             if (!bnBeh) {
@@ -102,10 +104,10 @@ var Circuit = (function () {
             }
           }
         });
-        console.groupEnd();
+        if (DEBUG_WIRE) console.groupEnd();
       }
       function traceIntoNode(net, block, comingFrom) {
-        console.group("traceIntoNode " + net + " " + block + ":" + getBehavior(block) + " " + comingFrom);
+        if (DEBUG_WIRE) console.group("traceIntoNode " + net + " " + block + ":" + getBehavior(block) + " " + comingFrom);
         UNIT_AXES.forEach(function (direction) {
           direction = Array.prototype.slice.call(direction);
           if (""+direction === ""+comingFrom) {
@@ -129,17 +131,17 @@ var Circuit = (function () {
           net.push([block,direction])
           traceNet(net, block, [direction]);
         });
-        console.groupEnd();
+        if (DEBUG_WIRE) console.groupEnd();
       }
       nodes.forEach(function (block) {
-        console.group("root " + block + ":" + getBehavior(block));
+        if (DEBUG_WIRE) console.group("root " + block + ":" + getBehavior(block));
         if (getBehavior(block) == Circuit.B_JUNCTION) {
           // do not trace from junctions (not implemented yet)
-          console.groupEnd();
+          if (DEBUG_WIRE) console.groupEnd();
           return;
         }
         traceIntoNode(null, block, null);
-        console.groupEnd();
+        if (DEBUG_WIRE) console.groupEnd();
       });
       
       var evaluators = [];
