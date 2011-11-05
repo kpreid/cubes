@@ -147,7 +147,7 @@ function generateWorlds() {
   
   var CW,CI,CO,COR;
   blockset.get(CW=7 ).behavior = Circuit.B_WIRE;
-  blockset.get(COR=8).behavior = Circuit.B_OR;
+  blockset.get(COR=8).behavior = Circuit.B_JUNCTION;
   blockset.get(CI=9 ).behavior = Circuit.B_INPUT;
   blockset.get(CO=10).behavior = Circuit.B_OUTPUT;
   

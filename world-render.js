@@ -441,61 +441,36 @@ var WorldRenderer = (function () {
         function pushVertex(vec) {
           vertices.push(vec[0], vec[1], vec[2]);
         }
-        circuit.blocks.forEach(function (block) {
-          var state = circuit.getBlockState(block);
-          switch (world.gt(block[0],block[1],block[2]).behavior) {
-            case Circuit.B_WIRE:
-              // This shows a stripe on every wire connected to an output.
-              //function paintWire(c) {
-              //  colors.push(1,1,1,1); vertices.push(block[0]+c[0],  block[1]+.2,block[2]+c[2]);
-              //  colors.push(1,1,1,1); vertices.push(block[0]+c[0],  block[1]+.2,block[2]-c[2]+1);
-              //  colors.push(1,1,1,1); vertices.push(block[0]-c[0]+1,block[1]+.2,block[2]-c[2]+1);
-              //  colors.push(1,1,1,1); vertices.push(block[0]-c[0]+1,block[1]+.2,block[2]-c[2]+1);
-              //  colors.push(1,1,1,1); vertices.push(block[0]-c[0]+1,block[1]+.2,block[2]+c[2]);
-              //  colors.push(1,1,1,1); vertices.push(block[0]+c[0],  block[1]+.2,block[2]+c[2]);
-              //}
-              //UNIT_AXES.forEach(function (direction) {
-              //  direction = Array.prototype.slice.call(direction);
-              //  if (state["wireTo "+direction]) {
-              //    var constrain = [0,0,0];
-              //    for (var i = 0; i < 3; i++) {
-              //      constrain[i] = direction[i] ? 0 : 0.48;
-              //    }
-              //    paintWire(constrain);
-              //  }
-              //});
-              break;
-            case Circuit.B_OUTPUT:
-            case Circuit.B_OR:
-              state.signalFrom.forEach(function (fromBlock) {
-                var delta = vec3.subtract(block, fromBlock, vec3.create());
-                var perp = vec3.cross(delta, delta[1] ? UNIT_PX : UNIT_PY, vec3.create());
-                vec3.normalize(perp);
-                vec3.scale(perp, .1);
-                var v0 = vec3.add     (vec3.add(fromBlock, [.5, .6, .5], vec3.create()), perp);
-                var v1 = vec3.add     (vec3.add(block,     [.5, .6, .5], vec3.create()), perp);
-                var v2 = vec3.subtract(vec3.add(block,     [.5, .6, .5], vec3.create()), perp);
-                var v3 = vec3.subtract(vec3.add(fromBlock, [.5, .6, .5], vec3.create()), perp);
-                var vbase = vertices.length;
-                var cbase = colors.length;
-                colors.push(1,1,1,1); pushVertex(v0);
-                colors.push(1,1,1,1); pushVertex(v1);
-                colors.push(1,1,1,1); pushVertex(v2);
-                colors.push(1,1,1,1); pushVertex(v2);
-                colors.push(1,1,1,1); pushVertex(v3);
-                colors.push(1,1,1,1); pushVertex(v0);
-                dyns.push(function () {
-                  var carr = chunkDynamic.getColorsA();
-                  for (var i = 0, p = cbase; i < 6; i++) { // 6 vertices for the square
-                    carr[p++] = 0;
-                    carr[p++] = circuit.getBlockState(fromBlock).value;
-                    carr[p++] = 0;
-                    carr[p++] = 1;
-                  }
-                });
-              });
-              break;
-          }
+        circuit.getEdges().forEach(function (record) {
+          var net = record[0];
+          var fromBlock = record[1];
+          var block = record[2];
+
+          var delta = vec3.subtract(block, fromBlock, vec3.create());
+          var perp = vec3.cross(delta, delta[1] ? UNIT_PX : UNIT_PY, vec3.create());
+          vec3.normalize(perp);
+          vec3.scale(perp, .1);
+          var v0 = vec3.add     (vec3.add(fromBlock, [.5, .6, .5], vec3.create()), perp);
+          var v1 = vec3.add     (vec3.add(block,     [.5, .6, .5], vec3.create()), perp);
+          var v2 = vec3.subtract(vec3.add(block,     [.5, .6, .5], vec3.create()), perp);
+          var v3 = vec3.subtract(vec3.add(fromBlock, [.5, .6, .5], vec3.create()), perp);
+          var vbase = vertices.length;
+          var cbase = colors.length;
+          colors.push(1,1,1,1); pushVertex(v0);
+          colors.push(1,1,1,1); pushVertex(v1);
+          colors.push(1,1,1,1); pushVertex(v2);
+          colors.push(1,1,1,1); pushVertex(v2);
+          colors.push(1,1,1,1); pushVertex(v3);
+          colors.push(1,1,1,1); pushVertex(v0);
+          dyns.push(function () {
+            var carr = chunkDynamic.getColorsA();
+            for (var i = 0, p = cbase; i < 6; i++) { // 6 vertices for the square
+              carr[p++] = 0;
+              carr[p++] = circuit.getNetValue(net);
+              carr[p++] = 0;
+              carr[p++] = 1;
+            }
+          });
         });
       });
       

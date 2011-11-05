@@ -580,13 +580,7 @@
 
             var circuit = world.getCircuit(cube);
             if (circuit !== null) {
-              var state = circuit.getBlockState(cube);
-              var stateText = "";
-              for (var key in state) {
-                if (!state.hasOwnProperty(key)) continue;
-                stateText += " " + key + ":" + state[key];
-              }
-              text += "\nCircuit: " + type.behavior + "" + stateText;
+              text += "\nCircuit: " + type.behavior + " " + circuit.describeBlock(cube);
             }
             cursorInfo.data = text;
           }
