@@ -611,7 +611,7 @@
         var sel = player.getSelection();
         if (sel != null) {
           var sx = Infinity;
-          var sy = Infinity;
+          var sy = -Infinity;
           var cube = sel.cube;
           for (var dx = 0; dx <= 1; dx++)
           for (var dy = 0; dy <= 1; dy++)
@@ -620,11 +620,11 @@
             mat4.multiplyVec4(mvMatrix, vec);
             mat4.multiplyVec4(pMatrix, vec);
             sx = Math.min(sx, vec[0]/vec[3]);
-            sy = Math.min(sy, vec[1]/vec[3]);
+            sy = Math.max(sy, vec[1]/vec[3]);
           }
           if (isFinite(sx) && isFinite(sy)) {
             cursorInfoElem.style.left = (sx + 1) / 2 * theCanvas.width + "px";
-            cursorInfoElem.style.top = (1 - sy) / 2 * theCanvas.height + "px";
+            cursorInfoElem.style.bottom = (sy + 1) / 2 * theCanvas.height + "px";
             var world = player.getWorld();
             var sub = world.gSub(cube[0],cube[1],cube[2]);
             cursorInfo.data = 
