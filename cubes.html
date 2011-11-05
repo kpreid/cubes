@@ -127,6 +127,7 @@
     varying vec2 vTextureCoord;
     varying float vFog;
     varying vec3 vNormal;
+    varying float vDistanceFromEye;
 
     uniform mat4 uPMatrix;
     uniform mat4 uMVMatrix;
@@ -141,6 +142,7 @@
     const float cTileSize = 16.0; // TODO: duplicate hardcoded value
     const float cModEpsilon = 1e-20;
     const float cTileCurvature = 0.2;
+    const float cTileBumpDistance = 7.0;
 
     const float cLightAmbient = 0.5;
     const vec3 cLight1Dir = vec3(0.8,-0.2,0);
@@ -163,7 +165,7 @@
       vec3 normal;
       if (uBumpMapping) {
         vec3 cell = (mod(vGridPosition * cTileSize + cModEpsilon, 1.0) - vec3(0.5)) * 2.0;
-        normal = normalize(vNormal + cTileCurvature * pow7vec3(cell));
+        normal = normalize(vNormal + cTileCurvature / max(1.0, vDistanceFromEye / cTileBumpDistance) * pow7vec3(cell));
       } else {
         normal = vNormal;
       }
@@ -219,6 +221,7 @@
     varying vec2 vTextureCoord;
     varying vec3 vNormal;
     varying float vFog;
+    varying float vDistanceFromEye;
     
     void main(void) {
         vec3 vertexPosition;
@@ -262,10 +265,10 @@
         vTextureCoord = aTextureCoord;
         
         // linear distance from eye, scaled to 1.0 = 100% fog
-        float distanceForFog = length(vec3(relativePosition))/uFogDistance;
+        vDistanceFromEye = length(vec3(relativePosition));
         
         // fog color mixing parameter
-        vFog = clamp(pow(distanceForFog, 4.0), 0.0, 1.0);
+        vFog = clamp(pow(vDistanceFromEye/uFogDistance, 4.0), 0.0, 1.0);
         
         vColor = uTextureEnabled ? vec4(1.0) : aVertexColor;
         vNormal = aVertexNormal;
