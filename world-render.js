@@ -72,7 +72,7 @@ var WorldRenderer = (function () {
     
     var particles = [];
 
-    var textureDebugR = new RenderBundle(gl.TRIANGLE_STRIP, blockTexture, function (vertices, normals, texcoords) {
+    var textureDebugR = new RenderBundle(gl.TRIANGLE_STRIP, world.blockSet.texture, function (vertices, normals, texcoords) {
       var x = 2;
       var y = 2;
       var z = -5;
@@ -305,14 +305,16 @@ var WorldRenderer = (function () {
         var chunkLimitX = xzkey[0] + CHUNKSIZE;
         var chunkLimitZ = xzkey[1] + CHUNKSIZE;
         var blockSet = world.blockSet;
-        var tilings = blockSet.tilings;
         var TILE_SIZE = World.TILE_SIZE;
         var PIXEL_SIZE = 1/TILE_SIZE;
         var ID_EMPTY = BlockSet.ID_EMPTY;
-        var BOGUS_TILING = tilings[BlockSet.ID_BOGUS];
         chunks[xzkey] = new RenderBundle(gl.TRIANGLES,
                                          blockTexture,
                                          function (vertices, normals, texcoords) {
+                                           
+          var tilings = blockSet.tilings; // has side effect of updating tiling if needed
+          var BOGUS_TILING = tilings[BlockSet.ID_BOGUS];
+
           var TILE_SIZE_UV = blockSet.getTexTileSize();
 
           var vecbuf = vec3.create();

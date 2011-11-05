@@ -309,6 +309,22 @@ var BlockSet = (function () {
       gl.bindTexture(gl.TEXTURE_2D, null);
     }
     
+    function freshenTexture() {
+      if (!texgen) {
+        texgen = new Texgen();
+      }
+      while (texgen.textureLost) {
+        //console.info("Performing full block texture rebuild.");
+        texgen.textureLost = false;
+        var l = self.length;
+        for (var id = BlockSet.ID_EMPTY + 1; id < l && !texgen.textureLost; id++)
+          rebuildOne(id);
+      }
+      while (typesToRerender.length) {
+        rebuildOne(typesToRerender.pop());
+      }
+    }
+    
     var self = Object.freeze({
       get length () { return types.length; },
       
@@ -325,23 +341,14 @@ var BlockSet = (function () {
       
       // TODO: bundle texture/tilings into a facet
       get texture () {
-        if (!texgen) {
-          texgen = new Texgen();
-        }
-        while (texgen.textureLost) {
-          //console.info("Performing full block texture rebuild.");
-          texgen.textureLost = false;
-          var l = self.length;
-          for (var id = BlockSet.ID_EMPTY + 1; id < l && !texgen.textureLost; id++)
-            rebuildOne(id);
-        }
-        while (typesToRerender.length) {
-          rebuildOne(typesToRerender.pop());
-        }
+        freshenTexture();
         return texgen.texture;
       },
       getTexTileSize: function () { return texgen.tileUVSize; },
-      tilings: tilings,
+      get tilings () {
+        freshenTexture();
+        return tilings;
+      },
       rebuildBlockTexture: function (blockID) {
         blockID = +blockID;
         if (blockID < 0 || blockID >= types.length) return;
