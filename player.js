@@ -248,7 +248,7 @@ var Player = (function () {
       while (placeStack.length) placeStack.pop().wrend.deleteResources();
       currentPlace = new Place(world);
       // TODO: move this position downward to free space rather than just imparting velocity
-      this.setPosition([world.wx/2, world.wy + playerAABB[1][0], world.wz/2]);
+      this.setPosition([world.wx/2, world.wy - playerAABB[1][0] + EPSILON, world.wz/2]);
       vec3.set([0,-120,0], currentPlace.vel);
     };
     
@@ -312,7 +312,7 @@ var Player = (function () {
             
             currentPlace = new Place(world);
             currentPlace.forBlock = blockID;
-            vec3.set([World.TILE_SIZE/2, World.TILE_SIZE - playerAABB[1][0] + EPSILON, World.TILE_SIZE/2], currentPlace.pos);
+            vec3.set([World.TILE_SIZE/8, World.TILE_SIZE - playerAABB[1][0] + EPSILON, World.TILE_SIZE/8], currentPlace.pos);
             placeStack.push(oldPlace);
             aimChanged();
             
