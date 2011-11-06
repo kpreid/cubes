@@ -44,7 +44,7 @@ var Player = (function () {
     // kludge: Since UI sets pitch absolutely, it's not a place variable
     var pitch = -0.3;
   
-    var selectionR = new RenderBundle(gl.LINE_LOOP, null, function (vertices, colors) {
+    var selectionR = new RenderBundle(gl.LINE_LOOP, null, function (vertices, normals, colors) {
       var sel = currentPlace ? currentPlace.selection : null;
       if (sel !== null) {
         var p = vec3.create(sel.cube);
@@ -59,10 +59,10 @@ var Player = (function () {
         else
           vec3.subtract(p, qp);
         
-        colors.push(1,1,1,1); vertices.push(p[0],p[1],p[2]);
-        colors.push(1,1,1,1); vertices.push(p[0]+qr[0],p[1]+qr[1],p[2]+qr[2]);
-        colors.push(1,1,1,1); vertices.push(p[0]+qr[0]+qs[0],p[1]+qr[1]+qs[1],p[2]+qr[2]+qs[2]);
-        colors.push(1,1,1,1); vertices.push(p[0]+qs[0],p[1]+qs[1],p[2]+qs[2]);
+        colors.push(1,1,1,1); normals.push(0,0,0); vertices.push(p[0],p[1],p[2]);
+        colors.push(1,1,1,1); normals.push(0,0,0); vertices.push(p[0]+qr[0],p[1]+qr[1],p[2]+qr[2]);
+        colors.push(1,1,1,1); normals.push(0,0,0); vertices.push(p[0]+qr[0]+qs[0],p[1]+qr[1]+qs[1],p[2]+qr[2]+qs[2]);
+        colors.push(1,1,1,1); normals.push(0,0,0); vertices.push(p[0]+qs[0],p[1]+qs[1],p[2]+qs[2]);
       }
     }, {
       aroundDraw: function (draw) {
@@ -111,7 +111,7 @@ var Player = (function () {
       [-.7, .7], // z
     ];
 
-    this.renderDebug = function (vertices, colors) {
+    this.renderDebug = function (vertices, normals, colors) {
       [[0,1,2], [1,2,0], [2,0,1]].forEach(function (dims) {
         for (var du = 0; du < 2; du++)
         for (var dv = 0; dv < 2; dv++)
@@ -122,6 +122,7 @@ var Player = (function () {
           p[dims[2]] += playerAABB[dims[2]][dw];
           
           vertices.push(p[0],p[1],p[2]);
+          normals.push(0,0,0);
           colors.push(0,0,1,1);
         }
       });

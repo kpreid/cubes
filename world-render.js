@@ -72,7 +72,7 @@ var WorldRenderer = (function () {
     
     var particles = [];
 
-    var textureDebugR = new RenderBundle(gl.TRIANGLE_STRIP, blockTexture, function (vertices, texcoords) {
+    var textureDebugR = new RenderBundle(gl.TRIANGLE_STRIP, world.blockSet.texture, function (vertices, normals, texcoords) {
       var x = 2;
       var y = 2;
       var z = -5;
@@ -80,6 +80,11 @@ var WorldRenderer = (function () {
       vertices.push(x, -y, z);
       vertices.push(-x, y, z);
       vertices.push(x, y, z);
+      
+      normals.push(0,0,0);
+      normals.push(0,0,0);
+      normals.push(0,0,0);
+      normals.push(0,0,0);
 
       texcoords.push(0, 0);
       texcoords.push(1, 0);
@@ -300,14 +305,16 @@ var WorldRenderer = (function () {
         var chunkLimitX = xzkey[0] + CHUNKSIZE;
         var chunkLimitZ = xzkey[1] + CHUNKSIZE;
         var blockSet = world.blockSet;
-        var tilings = blockSet.tilings;
         var TILE_SIZE = World.TILE_SIZE;
         var PIXEL_SIZE = 1/TILE_SIZE;
         var ID_EMPTY = BlockSet.ID_EMPTY;
-        var BOGUS_TILING = tilings[BlockSet.ID_BOGUS];
         chunks[xzkey] = new RenderBundle(gl.TRIANGLES,
                                          blockTexture,
-                                         function (vertices, texcoords) {
+                                         function (vertices, normals, texcoords) {
+                                           
+          var tilings = blockSet.tilings; // has side effect of updating tiling if needed
+          var BOGUS_TILING = tilings[BlockSet.ID_BOGUS];
+
           var TILE_SIZE_UV = blockSet.getTexTileSize();
 
           var vecbuf = vec3.create();
@@ -315,12 +322,15 @@ var WorldRenderer = (function () {
           function pushVertex(vec) {
             vertices.push(vec[0], vec[1], vec[2]);
           }
+          function pushNormal(vec) {
+            normals.push(vec[0], vec[1], vec[2]);
+          }
           function pushTileCoord(tileKey, u, v) {
             texcoords.push(tileKey[1] + u,
                            tileKey[0] + v);
           }
 
-          function square(origin, v1, v2, tileKey, texO, texD) {
+          function square(origin, v1, v2, tileKey, texO, texD, normal) {
             // texO and texD are the originward and v'ward texture coordinates, used to flip the texture coords vs. origin for the 'positive side' squares
 
             if (tileKey == null) return; // transparent or obscured layer
@@ -339,15 +349,25 @@ var WorldRenderer = (function () {
             pushVertex(vec3.add(vec3.add(origin, v1, vecbuf), v2, vecbuf));
             pushVertex(vec3.add(origin, v2, vecbuf));
             pushVertex(vec3.add(origin, v1, vecbuf));
+            
+            pushNormal(normal);
+            pushNormal(normal);
+            pushNormal(normal);
+            pushNormal(normal);
+            pushNormal(normal);
+            pushNormal(normal);
           }
           var depthOriginBuf = vec3.create();
-          function squares(origin, v1, v2, vDepth, tileLayers, texO, texD) {
-            if (tileLayers == null) {
+          function squares(origin, v1, v2, vDepth, vFacing, tileLayers, texO, texD) {
+            if (thiso && world.opaque(x+vFacing[0],y+vFacing[1],z+vFacing[2])) {
+              // this face is invisible
+              return
+            } else if (tileLayers == null) {
               square(origin, v1, v2, null, texO, texD);
             } else {
               vec3.set(origin, depthOriginBuf);
               for (var i = 0; i < TILE_SIZE; i++) {
-                square(depthOriginBuf, v1, v2, tileLayers[i], texO, texD);
+                square(depthOriginBuf, v1, v2, tileLayers[i], texO, texD, vFacing);
                 depthOriginBuf[0] += vDepth[0]*PIXEL_SIZE;
                 depthOriginBuf[1] += vDepth[1]*PIXEL_SIZE;
                 depthOriginBuf[2] += vDepth[2]*PIXEL_SIZE;
@@ -369,12 +389,12 @@ var WorldRenderer = (function () {
               var tiling = tilings[value] || BOGUS_TILING;
               var c1 = vec3.add([x,y,z], rot.zero);
               var c2 = vec3.add([x,y,z], rot.pos);
-              if (!thiso || !world.opaque(x+rot.nx[0],y+rot.nx[1],z+rot.nx[2])) squares(c1, rot.pz, rot.py, rot.px, tiling.lx, 0, TILE_SIZE_UV);
-              if (!thiso || !world.opaque(x+rot.ny[0],y+rot.ny[1],z+rot.ny[2])) squares(c1, rot.px, rot.pz, rot.py, tiling.ly, 0, TILE_SIZE_UV);
-              if (!thiso || !world.opaque(x+rot.nz[0],y+rot.nz[1],z+rot.nz[2])) squares(c1, rot.py, rot.px, rot.pz, tiling.lz, 0, TILE_SIZE_UV);
-              if (!thiso || !world.opaque(x+rot.px[0],y+rot.px[1],z+rot.px[2])) squares(c2, rot.ny, rot.nz, rot.nx, tiling.hx, TILE_SIZE_UV, 0);
-              if (!thiso || !world.opaque(x+rot.py[0],y+rot.py[1],z+rot.py[2])) squares(c2, rot.nz, rot.nx, rot.ny, tiling.hy, TILE_SIZE_UV, 0);
-              if (!thiso || !world.opaque(x+rot.pz[0],y+rot.pz[1],z+rot.pz[2])) squares(c2, rot.nx, rot.ny, rot.nz, tiling.hz, TILE_SIZE_UV, 0);
+              squares(c1, rot.pz, rot.py, rot.px, rot.nx, tiling.lx, 0, TILE_SIZE_UV);
+              squares(c1, rot.px, rot.pz, rot.py, rot.ny, tiling.ly, 0, TILE_SIZE_UV);
+              squares(c1, rot.py, rot.px, rot.pz, rot.nz, tiling.lz, 0, TILE_SIZE_UV);
+              squares(c2, rot.ny, rot.nz, rot.nx, rot.px, tiling.hx, TILE_SIZE_UV, 0);
+              squares(c2, rot.nz, rot.nx, rot.ny, rot.py, tiling.hy, TILE_SIZE_UV, 0);
+              squares(c2, rot.nx, rot.ny, rot.nz, rot.pz, tiling.hz, TILE_SIZE_UV, 0);
             }
           }
         });
