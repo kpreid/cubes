@@ -66,13 +66,15 @@
     background: gray;
   }
   
-  .error-notice {
+  #error-notices {
     position: absolute;
     top: 5em;
     right: 50%;
     margin-right: -17em;
-    
+
     z-index: 1;
+  }
+  .error-notice {
     border-radius: 2em;
     text-align: center;
     max-width: 30em;
@@ -739,6 +741,12 @@
       cursorInfo = dynamicText(cursorInfoElem);
 
       sequence([
+        function () {
+          if (typeof testGettersWork === 'undefined' || !testGettersWork()) {
+            document.getElementById("feature-error-notice").style.removeProperty("display");
+            document.getElementById("feature-error-text").appendChild(document.createTextNode("ECMAScript 5 property accessors on frozen objects"));
+          }
+        },
         "Getting WebGL...",
         function () {
           theCanvas = document.getElementById('view-canvas');
@@ -837,12 +845,19 @@
     <div id="menu" style="visibility: hidden; left: 1px; top: 1px;">
       <!-- arbitrary initial position -->
     </div>
-    <div id="webgl-error-notice" class="error-notice" style="display: none;">
-      <p>Sorry, the web browser you are using does not appear to support WebGL.</p>
-    </div>
+    <div id="error-notices">
     <div id="load-error-notice" class="error-notice" style="display: none;">
       <p>Sorry, but there was an unexpected error while loading the game.</p>
       <p><pre id="load-error-text" style="white-space: pre-wrap;"></pre></p>
+    </div>
+    <div id="feature-error-notice" class="error-notice" style="display: none;">
+      <p>Sorry, the browser you are using does not support some required features. These problems were detected:</p>
+      <p><pre id="feature-error-text" style="white-space: pre-wrap;"></pre></p>
+      <p>If you are looking for a compatible browser, I recommend Google Chrome.</p>
+    </div>
+    <div id="webgl-error-notice" class="error-notice" style="display: none;">
+      <p>Sorry, the web browser you are using does not appear to support WebGL.</p>
+    </div>
     </div>
 
     <div id="toggles">

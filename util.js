@@ -8,6 +8,15 @@
 // believe that it is obviously the authors' intent to make this code free to
 // use.
 
+function testGettersWork() {
+  var y = 0;
+  var o = Object.freeze({
+    set x(v) { y = v; }
+  });
+  o.x = 43;
+  return y === 43;
+}
+
 function mod(value, modulus) {
   "use strict";
   return (value % modulus + modulus) % modulus;
