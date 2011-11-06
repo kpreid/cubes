@@ -1,3 +1,58 @@
+// Copyright 2011 Kevin Reid, under the terms of the MIT License as detailed in
+// the accompanying file README.md or <http://opensource.org/licenses/MIT>.
+
+var WorldGen = (function () {
+  "use strict";
+  
+  var WorldGen = {
+    // Generate a blockset containing RGB colors with the specified number of
+    // levels in each channel, and a function from (r,g,b) to block ID.
+    colorBlocks: function (reds, greens, blues) {
+      if (reds*greens*blues >= 256)
+        throw new Error("Color resolution would result in " + reds*greens*blues + " > 255 colors.");
+    
+      // convert color components in [0,1] to block ID
+      function colorToID(r,g,b) {
+        // || 1 is protection against generating air from invalid input
+        if (r < 0 || g < 0 || b < 0 || r > 1 || g > 1 || b > 1) {
+          throw new Error("bad color " + r + " " + g + " " + b);
+        }
+        var r = 1 +                Math.floor(r*(reds-1))
+                  + reds*(         Math.floor(g*(greens-1))
+                          + greens*Math.floor(b*(blues-1)));
+        if (r < 1 || r > 245) debugger;
+        return r;
+      }
+
+      // convert block ID to RGBA tuple
+      function idToColor(id) {
+        var i = id - 1;
+        return [
+          mod(i, reds) / (reds-1),
+          mod(Math.floor(i/reds), greens) / (greens-1),
+          mod(Math.floor(i/reds/greens), blues) / (blues-1),
+          1
+        ];
+      }
+
+      var colors = [];
+      for (var i = 1; i < (reds*greens*blues)+1; i++) {
+        colors.push(new BlockType.Color(idToColor(i)));
+      }
+      var colorSet = new BlockSet(colors);
+
+      return {
+        blockset: colorSet,
+        colorToID: colorToID,
+        idToColor: idToColor
+      };
+    }
+  };
+  
+  return Object.freeze(WorldGen);
+})();
+  
+// TODO: refactor this into WorldGen methods
 function generateWorlds() {
   "use strict";
 
@@ -6,22 +61,9 @@ function generateWorlds() {
 
   // --- color worlds ---
   
-  var colors = [];
-  for (var i = 1; i < 64+1; i++) {
-    colors.push(new BlockType.Color([
-      (i & 3) / 3,
-      ((i >> 2) & 3) / 3,
-      ((i >> 4) & 3) / 3,
-      1
-    ]));
-  }
-  var colorSet = new BlockSet(colors);
-
-  // convert color in [0,1] to block ID
-  function brgb(r,g,b) {
-    return (((b * 3) << 4) + ((g * 3) << 2) + (r * 3) << 0) || 0x40;
-  }
-  
+  var colors = WorldGen.colorBlocks(7,7,5);
+  var colorSet = colors.blockset;
+  var brgb = colors.colorToID;
 
   // --- block worlds ---
   
@@ -29,7 +71,8 @@ function generateWorlds() {
   var blockWorldSize = [TILE_SIZE,TILE_SIZE,TILE_SIZE];
   var blockWorldCount = 16;
   var types = [];
-  for (var i = 0; i < blockWorldCount; i++) types.push(new BlockType.World(new World(blockWorldSize, colorSet)));
+  for (var i = 0; i < blockWorldCount; i++)
+    types.push(new BlockType.World(new World(blockWorldSize, colorSet)));
 
   // condition functions for procedural block generation
   // Takes a coordinate vector and returns a boolean.
@@ -71,7 +114,7 @@ function generateWorlds() {
   function flat(color) {
     return function (b) { return color; }
   }
-  function rgbPat(b) { return brgb(b[0]/16*1.34,b[1]/16*1.34,b[2]/16*1.34); }
+  function rgbPat(b) { return brgb(b[0]/15,b[1]/15,b[2]/15); }
   function speckle(p1, p2) {
     return function (b) {
       return (Math.floor(b[0]/4) + b[1] + Math.floor(b[2]/2)) % 4 ? p1(b) : p2(b);
@@ -107,7 +150,9 @@ function generateWorlds() {
   
   // pyramid thing
   genedit(types[3].world, function (b) {
-    return Math.abs(b[0] - 8) + Math.abs(b[1] - 8) <= 16-b[2] ? b[2]/2 : 0;
+    if (Math.abs(b[0] - 7.5) + Math.abs(b[1] - 7.5) > 15.5-b[2])
+      return 0;
+    return brgb(mod((b[2]+2)/8, 1), Math.floor((b[2]+2)/8)*0.5, 0);
   });
   types[3].automaticRotations = sixFaceRotations;
   
@@ -118,7 +163,7 @@ function generateWorlds() {
 
   // pillar thing
   genedit(types[5].world, function (b) {
-    return Math.max(Math.abs(b[0] - 8), Math.abs(b[2] - 8)) <= 4 ? 18 : 0;
+    return Math.max(Math.abs(b[0] - 8), Math.abs(b[2] - 8)) <= 4 ? brgb(.5,.5,0) : 0;
   });
   
   // wire
