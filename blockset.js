@@ -34,13 +34,17 @@ var BlockType = (function () {
     _BlockTypeSuper.call(this);
     
     this.world = world;
-    this.color = null;
     this.opaque = undefined;
     
     Object.seal(this);
   };
   BlockType.World.prototype = Object.create(BlockType.prototype);
   BlockType.World.prototype.constructor = BlockType.World;
+  
+  Object.defineProperty(BlockType.World.prototype, "color", {
+    enumerable: true,
+    value: null
+  });
   
   // TODO: implement nonstubbily
   BlockType.World.prototype.writeColor =
@@ -77,14 +81,23 @@ var BlockType = (function () {
   BlockType.Color = function (rgba) {
     _BlockTypeSuper.call(this);
     
-    this.world = null;
     this.color = rgba;
-    this.opaque = rgba[3] >= 1;
 
-    Object.freeze(this);
+    Object.seal(this);
   };
   BlockType.Color.prototype = Object.create(BlockType.prototype);
   BlockType.Color.prototype.constructor = BlockType.Color;
+
+  Object.defineProperty(BlockType.Color.prototype, "opaque", {
+    enumerable: true,
+    get: function () {
+      return this.color[3] >= 1;
+    }
+  });
+  Object.defineProperty(BlockType.Color.prototype, "world", {
+    enumerable: true,
+    value: null
+  });
   
   BlockType.Color.prototype.writeColor =
       function (scale, target, offset) {
