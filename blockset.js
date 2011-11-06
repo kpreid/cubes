@@ -51,6 +51,22 @@ var BlockType = (function () {
     target[offset+3] = scale;
   };
   
+  BlockType.World.prototype._recomputeOpacity = function () {
+    var opaque = true;
+    for (var dim = 0; dim < 3; dim++) {
+      var ud = mod(dim+1,3);
+      var vd = mod(dim+2,3);
+      for (var u = 0; u < World.TILE_SIZE; u++)
+      for (var v = 0; v < World.TILE_SIZE; v++) {
+        var vec = [u,v,0];
+        opaque = opaque && this.world.opaque(vec[dim],vec[ud],vec[vd]);
+        vec[2] = World.TILE_SIZE - 1;
+        opaque = opaque && this.world.opaque(vec[dim],vec[ud],vec[vd]);
+      }
+    }
+    this.opaque = opaque;
+  }
+  
   BlockType.World.prototype.serialize = function () {
     var json = BlockType.prototype.serialize.call(this);
     json.world = this.world.serialize();
@@ -65,7 +81,7 @@ var BlockType = (function () {
     this.color = rgba;
     this.opaque = rgba[3] >= 1;
 
-    Object.seal(this);
+    Object.freeze(this);
   };
   BlockType.Color.prototype = Object.create(BlockType.prototype);
   BlockType.Color.prototype.constructor = BlockType.Color;
@@ -131,7 +147,7 @@ var BlockSet = (function () {
       tileAllocMap = new Uint8Array(tileCountSqrt*tileCountSqrt);
       freePointer = 0;
       
-      // table mapping block slices to tile indexes, format 'worldindex,facename,layerindex'
+      // table mapping block slices to tile indexes, format 'worldindex,dimName,layerindex'
       usageMap = {};
       
       // Flag indicating reallocation
@@ -208,7 +224,6 @@ var BlockSet = (function () {
       var type = types[blockID];
       
       var blockTextureData = texgen.image;
-      var opaque = true;
       
       if (type.color) { // TODO: factor this conditional into BlockType
         var color = type.color;
@@ -227,74 +242,89 @@ var BlockSet = (function () {
         }
         
         TILE_MAPPINGS.forEach(function (m) {
-          var faceName = m[0];
+          var dimName = m[0];
           var transform = m[1];
           var layers = [];
-          tilings[blockID][faceName] = layers;
+          tilings[blockID]["l" + dimName] = layers;
+          tilings[blockID]["h" + dimName] = layers;
           for (var layer = 0; layer < World.TILE_SIZE; layer++) {
             // u,v coordinates of this tile for use by the vertex generator
             layers[layer] = layer == 0 ? texgen.uvFor(usageIndex) : null;
           }
         });
-        type.opaque = opaque; // TODO have blocktype itself handle this; this is poor mutation practice
       } else if (type.world) {
         (function () {
           var world = type.world;
+          type._recomputeOpacity(); // TODO kludge
           
           // To support non-cubical objects, we slice the entire volume of the block and generate as many tiles as needed. sliceWorld generates one such slice.
           
-          function sliceWorld(faceName, layer, transform, layers) {
-            var usageIndex = [blockID,faceName,layer].toString();
+          function sliceWorld(dimName, layerL, transform, layersL, layersH) {
+            var layerH = World.TILE_SIZE - 1 - layerL;
+            var usageIndex = [blockID,dimName,layerL].toString();
             
             var coord = texgen.allocationFor(usageIndex);
             var tileu = coord[0], tilev = coord[1];
             
-            var thisLayerNotEmpty = false;
+            var thisLayerNotEmptyL = false;
+            var thisLayerNotEmptyH = false;
             var pixu = tileu*World.TILE_SIZE;
             var pixv = tilev*World.TILE_SIZE;
             // extract surface plane of block from world
             for (var u = 0; u < World.TILE_SIZE; u++)
             for (var v = 0; v < World.TILE_SIZE; v++) {
               var c = ((pixu+u) * blockTextureData.width + pixv+v) * 4;
-              var vec = vec3.create([u,v,layer]);
+              var vec = vec3.create([u,v,layerL]);
               mat4.multiplyVec3(transform, vec, vec);
-              var view = vec3.create([u,v,layer-1]);
-              mat4.multiplyVec3(transform, view, view);
+              var viewL = vec3.create([u,v,layerL-1]);
+              mat4.multiplyVec3(transform, viewL, viewL);
+              var viewH = vec3.create([u,v,layerL+1]);
+              mat4.multiplyVec3(transform, viewH, viewH);
           
               var type = world.gt(vec[0],vec[1],vec[2]);
               type.writeColor(255, blockTextureData.data, c);
-              if (blockTextureData.data[c+3] < 255) {
-                // A block is opaque if all of its outside (layer-0) pixels are opaque.
-                if (layer == 0)
-                  opaque = false;
-              } else if (!world.opaque(view[0],view[1],view[2])) {
-                // A layer has significant content only if there is an UNOBSCURED (hence the above check) opaque pixel.
-                thisLayerNotEmpty = true;
+
+              if (blockTextureData.data[c+3] > 0) {
+                // A layer has significant content only if there is an UNOBSCURED opaque pixel.
+                // If a layer is "empty" in this sense, it is not rendered.
+                // If it is empty from both directions, then it is deallocated.
+                if (!world.opaque(viewL[0],viewL[1],viewL[2])) {
+                  thisLayerNotEmptyL = true;
+                }
+                if (!world.opaque(viewH[0],viewH[1],viewH[2])) {
+                  thisLayerNotEmptyH = true;
+                }
               }
             }
             
-            // We can reuse this tile iff it was blank
-            if (!thisLayerNotEmpty) {
+            // We can reuse this tile iff it was blank or fully obscured
+            if (!thisLayerNotEmptyL && !thisLayerNotEmptyH) {
               texgen.deallocateUsage(usageIndex);
             }
             
             // u,v coordinates of this tile for use by the vertex generator
-            layers[layer] = thisLayerNotEmpty ? texgen.uvFor(usageIndex) : null;
+            layersL[layerL] = thisLayerNotEmptyL ? texgen.uvFor(usageIndex) : null;
+            layersH[layerH] = thisLayerNotEmptyH ? texgen.uvFor(usageIndex) : null;
             
             // TODO: trigger rerender of chunks only if we made changes to the tiling, not if only the colors changed
             
-            //console.log("id ", wi + 1, " face ", faceName, " layer ", layer, thisLayerNotEmpty ? " allocated" : " skipped");
+            //console.log("id ", wi + 1, " dim ", dimName, " layer ", layer, (thisLayerNotEmptyL || thisLayerNotEmptyH) ? " allocated" : " skipped");
           }
           TILE_MAPPINGS.forEach(function (m) {
-            var faceName = m[0];
+            var dimName = m[0];
             var transform = m[1];
-            var layers = [];
-            tilings[blockID][faceName] = layers;
-            for (var layer = 0; layer < World.TILE_SIZE; layer++) {
+            var layersL = tilings[blockID]["l" + dimName] = [];
+            var layersH = tilings[blockID]["h" + dimName] = [];
+            if (type.opaque) {
               if (texgen.textureLost) return;
-              sliceWorld(faceName, layer, transform, layers);
+              sliceWorld(dimName, 0, transform, layersL, layersH);
+              sliceWorld(dimName, 15, transform, layersL, layersH);
+            } else {
+              for (var layer = 0; layer < World.TILE_SIZE; layer++) {
+                if (texgen.textureLost) return;
+                sliceWorld(dimName, layer, transform, layersL, layersH);
+              }
             }
-            type.opaque = opaque; // TODO have blocktype itself handle this
           });
         })();
       } else {
@@ -307,6 +337,22 @@ var BlockSet = (function () {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
       gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+    
+    function freshenTexture() {
+      if (!texgen) {
+        texgen = new Texgen();
+      }
+      while (texgen.textureLost) {
+        //console.info("Performing full block texture rebuild.");
+        texgen.textureLost = false;
+        var l = self.length;
+        for (var id = BlockSet.ID_EMPTY + 1; id < l && !texgen.textureLost; id++)
+          rebuildOne(id);
+      }
+      while (typesToRerender.length) {
+        rebuildOne(typesToRerender.pop());
+      }
     }
     
     var self = Object.freeze({
@@ -325,23 +371,14 @@ var BlockSet = (function () {
       
       // TODO: bundle texture/tilings into a facet
       get texture () {
-        if (!texgen) {
-          texgen = new Texgen();
-        }
-        while (texgen.textureLost) {
-          //console.info("Performing full block texture rebuild.");
-          texgen.textureLost = false;
-          var l = self.length;
-          for (var id = BlockSet.ID_EMPTY + 1; id < l && !texgen.textureLost; id++)
-            rebuildOne(id);
-        }
-        while (typesToRerender.length) {
-          rebuildOne(typesToRerender.pop());
-        }
+        freshenTexture();
         return texgen.texture;
       },
       getTexTileSize: function () { return texgen.tileUVSize; },
-      tilings: tilings,
+      get tilings () {
+        freshenTexture();
+        return tilings;
+      },
       rebuildBlockTexture: function (blockID) {
         blockID = +blockID;
         if (blockID < 0 || blockID >= types.length) return;
@@ -372,47 +409,26 @@ var BlockSet = (function () {
     // in this matrix layout, the input (column) vector is the tile coords
     // and the output (row) vector is the world space coords
     // so the lower row is the translation component.
-    ["lz", mat4.create([
+    ["z", mat4.create([
       // low z face
       1, 0, 0, 0,
       0, 1, 0, 0,
       0, 0, 1, 0,
       0, 0, 0, 1
     ])],
-    ["hz", mat4.create([
-      // high z face
-      1, 0, 0, 0,
-      0, 1, 0, 0,
-      0, 0, -1, 0,
-      0, 0, 15, 1
-    ])],
-    ["lx", mat4.create([
+    ["x", mat4.create([
       // low x face
       0, 1, 0, 0,
       0, 0, 1, 0,
       1, 0, 0, 0,
       0, 0, 0, 1
     ])],
-    ["hx", mat4.create([
-      // high x face
-      0, 1, 0, 0,
-      0, 0, 1, 0,
-      -1, 0, 0, 0,
-      15, 0, 0, 1
-    ])],
-    ["ly", mat4.create([
+    ["y", mat4.create([
       // low y face
       0, 0, 1, 0,
       1, 0, 0, 0,
       0, 1, 0, 0,
       0, 0, 0, 1
-    ])],
-    ["hy", mat4.create([
-      // high y face
-      0, 0, 1, 0,
-      1, 0, 0, 0,
-      0, -1, 0, 0,
-      0, 15, 0, 1
     ])],
   ];
   
