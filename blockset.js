@@ -51,6 +51,22 @@ var BlockType = (function () {
     target[offset+3] = scale;
   };
   
+  BlockType.World.prototype._recomputeOpacity = function () {
+    var opaque = true;
+    for (var dim = 0; dim < 3; dim++) {
+      var ud = mod(dim+1,3);
+      var vd = mod(dim+2,3);
+      for (var u = 0; u < World.TILE_SIZE; u++)
+      for (var v = 0; v < World.TILE_SIZE; v++) {
+        var vec = [u,v,0];
+        opaque = opaque && this.world.opaque(vec[dim],vec[ud],vec[vd]);
+        vec[2] = World.TILE_SIZE - 1;
+        opaque = opaque && this.world.opaque(vec[dim],vec[ud],vec[vd]);
+      }
+    }
+    this.opaque = opaque;
+  }
+  
   BlockType.World.prototype.serialize = function () {
     var json = BlockType.prototype.serialize.call(this);
     json.world = this.world.serialize();
@@ -65,7 +81,7 @@ var BlockType = (function () {
     this.color = rgba;
     this.opaque = rgba[3] >= 1;
 
-    Object.seal(this);
+    Object.freeze(this);
   };
   BlockType.Color.prototype = Object.create(BlockType.prototype);
   BlockType.Color.prototype.constructor = BlockType.Color;
@@ -208,7 +224,6 @@ var BlockSet = (function () {
       var type = types[blockID];
       
       var blockTextureData = texgen.image;
-      var opaque = true;
       
       if (type.color) { // TODO: factor this conditional into BlockType
         var color = type.color;
@@ -237,10 +252,10 @@ var BlockSet = (function () {
             layers[layer] = layer == 0 ? texgen.uvFor(usageIndex) : null;
           }
         });
-        type.opaque = opaque; // TODO have blocktype itself handle this; this is poor mutation practice
       } else if (type.world) {
         (function () {
           var world = type.world;
+          type._recomputeOpacity(); // TODO kludge
           
           // To support non-cubical objects, we slice the entire volume of the block and generate as many tiles as needed. sliceWorld generates one such slice.
           
@@ -268,11 +283,8 @@ var BlockSet = (function () {
           
               var type = world.gt(vec[0],vec[1],vec[2]);
               type.writeColor(255, blockTextureData.data, c);
-              if (blockTextureData.data[c+3] < 255) {
-                // A block is opaque if all of its outside (layer-0) pixels are opaque.
-                if (layerL == 0 || layerH == 0)
-                  opaque = false;
-              } else {
+
+              if (blockTextureData.data[c+3] > 0) {
                 // A layer has significant content only if there is an UNOBSCURED opaque pixel.
                 // If a layer is "empty" in this sense, it is not rendered.
                 // If it is empty from both directions, then it is deallocated.
@@ -303,11 +315,16 @@ var BlockSet = (function () {
             var transform = m[1];
             var layersL = tilings[blockID]["l" + dimName] = [];
             var layersH = tilings[blockID]["h" + dimName] = [];
-            for (var layer = 0; layer < World.TILE_SIZE; layer++) {
+            if (type.opaque) {
               if (texgen.textureLost) return;
-              sliceWorld(dimName, layer, transform, layersL, layersH);
+              sliceWorld(dimName, 0, transform, layersL, layersH);
+              sliceWorld(dimName, 15, transform, layersL, layersH);
+            } else {
+              for (var layer = 0; layer < World.TILE_SIZE; layer++) {
+                if (texgen.textureLost) return;
+                sliceWorld(dimName, layer, transform, layersL, layersH);
+              }
             }
-            type.opaque = opaque; // TODO have blocktype itself handle this
           });
         })();
       } else {
