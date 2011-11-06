@@ -159,6 +159,11 @@
       return y*y*x;
     }
 
+    // Add amount of any component over 1.0 to all components (makes overbright colors turn to white)
+    vec3 spill(vec3 v) {
+      return v + vec3(max(1.0, max(v.r, max(v.g, v.b))) - 1.0);
+    }
+
     float lighting() {
       // 'cell' is a vector with components in [-1.0, 1.0] indicating this point's
       // offset from the center of its sub-cube
@@ -189,6 +194,8 @@
           if (color.a <= 0.0)
             discard;
         }
+        
+        color = vec4(spill(vec3(color)), color.a);
 
         float elevationSine = vFixedOrientationPosition.y / length(vFixedOrientationPosition);
         vec4 fogColor = elevationSine < 0.0
