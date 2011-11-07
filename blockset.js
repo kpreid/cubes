@@ -58,15 +58,17 @@ var BlockType = (function () {
   };
   
   BlockType.World.prototype._recomputeOpacity = function () {
+    var TILE_SIZE = this.world.wx; // assumed cubical
+    var TILE_LASTINDEX = TILE_SIZE - 1;
     var opaque = true;
     for (var dim = 0; dim < 3; dim++) {
       var ud = mod(dim+1,3);
       var vd = mod(dim+2,3);
-      for (var u = 0; u < World.TILE_SIZE; u++)
-      for (var v = 0; v < World.TILE_SIZE; v++) {
+      for (var u = 0; u < TILE_SIZE; u++)
+      for (var v = 0; v < TILE_SIZE; v++) {
         var vec = [u,v,0];
         opaque = opaque && this.world.opaque(vec[dim],vec[ud],vec[vd]);
-        vec[2] = World.TILE_SIZE - 1;
+        vec[2] = TILE_LASTINDEX;
         opaque = opaque && this.world.opaque(vec[dim],vec[ud],vec[vd]);
       }
     }
@@ -143,6 +145,10 @@ var BlockSet = (function () {
     // Texture holding tiles
     // TODO: Confirm that WebGL garbage collects these, or add a delete method to BlockSet for use as needed
     this.texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, this.texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.bindTexture(gl.TEXTURE_2D, null);
     
     var tileCountSqrt = 8; // initial allocation; gets multiplied by 2
     var blockTextureData;
@@ -218,14 +224,17 @@ var BlockSet = (function () {
     function tileCoords(index) {
       return [Math.floor(index / tileCountSqrt), mod(index, tileCountSqrt)];
     }
-    
-    
   }
   
   function BlockSet(initialTypes) {
     if (initialTypes.length < 1) {
       throw new Error("Block set must start with at least one type");
     }
+
+    // not at top level because world.js is not yet loaded
+    var TILE_SIZE = World.TILE_SIZE;
+    var TILE_LASTINDEX = TILE_SIZE - 1;
+
     var types = Array.prototype.slice.call(initialTypes);
     types.unshift(BlockType.air);
     var tilings = [];
@@ -237,34 +246,42 @@ var BlockSet = (function () {
     
     function rebuildOne(blockID) {
       var blockType = types[blockID];
+      var tiling = tilings[blockID];
       
-      var blockTextureData = texgen.image;
+      var texWidth = texgen.image.width;
+      var texData = texgen.image.data;
       
       if (blockType.color) { // TODO: factor this conditional into BlockType
         var color = blockType.color;
         var usageIndex = blockID.toString();
         var coord = texgen.allocationFor(usageIndex);
+        var uv = texgen.uvFor(usageIndex);
+        var r = 255 * color[0];
+        var g = 255 * color[1];
+        var b = 255 * color[2];
+        var a = 255 * color[3];
+
         var tileu = coord[0], tilev = coord[1];
-        var pixu = tileu*World.TILE_SIZE;
-        var pixv = tilev*World.TILE_SIZE;
-        for (var u = 0; u < World.TILE_SIZE; u++)
-        for (var v = 0; v < World.TILE_SIZE; v++) {
-          var c = ((pixu+u) * blockTextureData.width + pixv+v) * 4;
-          blockTextureData.data[c+0] = 255 * color[0];
-          blockTextureData.data[c+1] = 255 * color[1];
-          blockTextureData.data[c+2] = 255 * color[2];
-          blockTextureData.data[c+3] = 255 * color[3];
+        var pixu = tileu*TILE_SIZE;
+        var pixv = tilev*TILE_SIZE;
+        for (var u = 0; u < TILE_SIZE; u++)
+        for (var v = 0; v < TILE_SIZE; v++) {
+          var c = ((pixu+u) * texWidth + pixv+v) * 4;
+          texData[c+0] = r;
+          texData[c+1] = g;
+          texData[c+2] = b;
+          texData[c+3] = a;
         }
         
         TILE_MAPPINGS.forEach(function (m) {
           var dimName = m[0];
           var transform = m[1];
           var layers = [];
-          tilings[blockID]["l" + dimName] = layers;
-          tilings[blockID]["h" + dimName] = layers;
-          for (var layer = 0; layer < World.TILE_SIZE; layer++) {
+          tiling["l" + dimName] = layers;
+          tiling["h" + dimName] = layers;
+          for (var layer = 0; layer < TILE_SIZE; layer++) {
             // u,v coordinates of this tile for use by the vertex generator
-            layers[layer] = layer == 0 ? texgen.uvFor(usageIndex) : null;
+            layers[layer] = layer == 0 ? uv : null;
           }
         });
       } else if (blockType.world) {
@@ -274,39 +291,47 @@ var BlockSet = (function () {
           
           // To support non-cubical objects, we slice the entire volume of the block and generate as many tiles as needed. sliceWorld generates one such slice.
           
+          // data structures for slice loop
+          var vec = vec3.create();
+          var viewL = vec3.create();
+          var viewH = vec3.create();
+          
           function sliceWorld(dimName, layerL, transform, layersL, layersH) {
-            var layerH = World.TILE_SIZE - 1 - layerL;
-            var usageIndex = [blockID,dimName,layerL].toString();
+            var layerH = TILE_LASTINDEX - layerL;
+            var usageIndex = blockID + "," + dimName + "," + layerL;
             
             var coord = texgen.allocationFor(usageIndex);
             var tileu = coord[0], tilev = coord[1];
             
             var thisLayerNotEmptyL = false;
             var thisLayerNotEmptyH = false;
-            var pixu = tileu*World.TILE_SIZE;
-            var pixv = tilev*World.TILE_SIZE;
+            var pixu = tileu*TILE_SIZE;
+            var pixv = tilev*TILE_SIZE;
+            
+            // viewL is the offset of the subcube which would block the view
+            // of this subcube if it is opaque.
+            viewL[0] = 0; viewL[1] = 0; viewL[2] = -1;
+            viewH[0] = 0; viewH[1] = 0; viewH[2] = +1;
+            mat4.multiplyVec3(transform, viewL, viewL);
+            mat4.multiplyVec3(transform, viewH, viewH);
+            
             // extract surface plane of block from world
-            for (var u = 0; u < World.TILE_SIZE; u++)
-            for (var v = 0; v < World.TILE_SIZE; v++) {
-              var c = ((pixu+u) * blockTextureData.width + pixv+v) * 4;
-              var vec = vec3.create([u,v,layerL]);
+            for (var u = 0; u < TILE_SIZE; u++)
+            for (var v = 0; v < TILE_SIZE; v++) {
+              var c = ((pixu+u) * texWidth + pixv+v) * 4;
+              vec[0] = u; vec[1] = v; vec[2] = layerL;
               mat4.multiplyVec3(transform, vec, vec);
-              var viewL = vec3.create([u,v,layerL-1]);
-              mat4.multiplyVec3(transform, viewL, viewL);
-              var viewH = vec3.create([u,v,layerL+1]);
-              mat4.multiplyVec3(transform, viewH, viewH);
           
-              var subType = world.gt(vec[0],vec[1],vec[2]);
-              subType.writeColor(255, blockTextureData.data, c);
+              world.gt(vec[0],vec[1],vec[2]).writeColor(255, texData, c);
 
-              if (blockTextureData.data[c+3] > 0) {
+              if (texData[c+3] > 0) {
                 // A layer has significant content only if there is an UNOBSCURED opaque pixel.
                 // If a layer is "empty" in this sense, it is not rendered.
                 // If it is empty from both directions, then it is deallocated.
-                if (!world.opaque(viewL[0],viewL[1],viewL[2])) {
+                if (!world.opaque(vec[0]+viewL[0],vec[1]+viewL[1],vec[2]+viewL[2])) {
                   thisLayerNotEmptyL = true;
                 }
-                if (!world.opaque(viewH[0],viewH[1],viewH[2])) {
+                if (!world.opaque(vec[0]+viewH[0],vec[1]+viewH[1],vec[2]+viewH[2])) {
                   thisLayerNotEmptyH = true;
                 }
               }
@@ -318,7 +343,7 @@ var BlockSet = (function () {
             } else {
               // u,v coordinates of this tile for use by the vertex generator
               var uv = texgen.uvFor(usageIndex);
-              // If the layer has unobscured content, and it is not an interior surface of an opaque block, then add it to rendering. Note that the TILE_MAPPINGS loop skips slicing interiors of opaque blocks, but they still need to have the 15th layer excluded because the choice of call to sliceWorld does not express that.
+              // If the layer has unobscured content, and it is not an interior surface of an opaque block, then add it to rendering. Note that the TILE_MAPPINGS loop skips slicing interiors of opaque blocks, but they still need to have the last layer excluded because the choice of call to sliceWorld does not express that.
               layersL[layerL] = thisLayerNotEmptyL && (!blockType.opaque || layerL == 0) ? uv : null;
               layersH[layerH] = thisLayerNotEmptyH && (!blockType.opaque || layerH == 0) ? uv : null;
             }
@@ -330,14 +355,14 @@ var BlockSet = (function () {
           TILE_MAPPINGS.forEach(function (m) {
             var dimName = m[0];
             var transform = m[1];
-            var layersL = tilings[blockID]["l" + dimName] = [];
-            var layersH = tilings[blockID]["h" + dimName] = [];
+            var layersL = tiling["l" + dimName] = [];
+            var layersH = tiling["h" + dimName] = [];
             if (blockType.opaque) {
               if (texgen.textureLost) return;
-              sliceWorld(dimName, 0, transform, layersL, layersH);
-              sliceWorld(dimName, 15, transform, layersL, layersH);
+              sliceWorld(dimName, 0,              transform, layersL, layersH);
+              sliceWorld(dimName, TILE_LASTINDEX, transform, layersL, layersH);
             } else {
-              for (var layer = 0; layer < World.TILE_SIZE; layer++) {
+              for (var layer = 0; layer < TILE_SIZE; layer++) {
                 if (texgen.textureLost) return;
                 sliceWorld(dimName, layer, transform, layersL, layersH);
               }
@@ -347,16 +372,10 @@ var BlockSet = (function () {
       } else {
         throw new Error("Don't know how to render the BlockType");
       }
-      
-      // TODO: arrange to do this only once if updating several blocks
-      gl.bindTexture(gl.TEXTURE_2D, texgen.texture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, blockTextureData);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-      gl.bindTexture(gl.TEXTURE_2D, null);
     }
     
     function freshenTexture() {
+      var upload = false;
       if (!texgen) {
         texgen = new Texgen();
       }
@@ -366,9 +385,16 @@ var BlockSet = (function () {
         var l = self.length;
         for (var id = BlockSet.ID_EMPTY + 1; id < l && !texgen.textureLost; id++)
           rebuildOne(id);
+        upload = true;
       }
       while (typesToRerender.length) {
         rebuildOne(typesToRerender.pop());
+        upload = true;
+      }
+      if (upload) {
+        gl.bindTexture(gl.TEXTURE_2D, texgen.texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texgen.image);
+        gl.bindTexture(gl.TEXTURE_2D, null);
       }
     }
     
