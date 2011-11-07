@@ -312,14 +312,16 @@ var BlockSet = (function () {
               }
             }
             
-            // We can reuse this tile iff it was blank or fully obscured
             if (!thisLayerNotEmptyL && !thisLayerNotEmptyH) {
+              // We can reuse this tile iff it was blank or fully obscured
               texgen.deallocateUsage(usageIndex);
+            } else {
+              // u,v coordinates of this tile for use by the vertex generator
+              var uv = texgen.uvFor(usageIndex);
+              // If the layer has unobscured content, and it is not an interior surface of an opaque block, then add it to rendering. Note that the TILE_MAPPINGS loop skips slicing interiors of opaque blocks, but they still need to have the 15th layer excluded because the choice of call to sliceWorld does not express that.
+              layersL[layerL] = thisLayerNotEmptyL && (!type.opaque || layerL == 0) ? uv : null;
+              layersH[layerH] = thisLayerNotEmptyH && (!type.opaque || layerH == 0) ? uv : null;
             }
-            
-            // u,v coordinates of this tile for use by the vertex generator
-            layersL[layerL] = thisLayerNotEmptyL ? texgen.uvFor(usageIndex) : null;
-            layersH[layerH] = thisLayerNotEmptyH ? texgen.uvFor(usageIndex) : null;
             
             // TODO: trigger rerender of chunks only if we made changes to the tiling, not if only the colors changed
             
