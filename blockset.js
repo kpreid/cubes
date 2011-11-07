@@ -139,6 +139,42 @@ var BlockType = (function () {
 var BlockSet = (function () {
   "use strict";
   
+  // Texture parameters
+  var TILE_MAPPINGS = [
+    // in this matrix layout, the input (column) vector is the tile coords
+    // and the output (row) vector is the world space coords
+    // so the lower row is the translation component.
+    ["z", mat4.create([
+      // low z face
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1
+    ])],
+    ["x", mat4.create([
+      // low x face
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      1, 0, 0, 0,
+      0, 0, 0, 1
+    ])],
+    ["y", mat4.create([
+      // low y face
+      0, 0, 1, 0,
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 0, 1
+    ])],
+  ];
+
+  var EMPTY_TILING = {};
+  TILE_MAPPINGS.forEach(function (m) {
+    var dimName = m[0];
+    EMPTY_TILING["l" + dimName] = [];
+    EMPTY_TILING["h" + dimName] = [];
+  });
+  Object.freeze(EMPTY_TILING);
+  
   function Texgen() {
     var self = this;
     
@@ -227,19 +263,16 @@ var BlockSet = (function () {
   }
   
   function BlockSet(initialTypes) {
-    if (initialTypes.length < 1) {
-      throw new Error("Block set must start with at least one type");
-    }
-
     // not at top level because world.js is not yet loaded
     var TILE_SIZE = World.TILE_SIZE;
     var TILE_LASTINDEX = TILE_SIZE - 1;
 
+    // All block sets unconditionally have the standard empty block at ID 0.
     var types = Array.prototype.slice.call(initialTypes);
     types.unshift(BlockType.air);
-    var tilings = [];
-    
-    for (var i = 0; i < types.length; i++) tilings.push({});
+
+    var tilings = [EMPTY_TILING];
+    for (var i = 1; i < types.length; i++) tilings.push({});
     
     var texgen = null;
     var typesToRerender = [];
@@ -409,7 +442,7 @@ var BlockSet = (function () {
       },
       
       get: function (blockID) {
-        return types[blockID] || types[BlockSet.ID_BOGUS];
+        return types[blockID] || types[BlockSet.ID_BOGUS] || types[BlockSet.ID_EMPTY];
       },
       
       // TODO: bundle texture/tilings into a facet
@@ -420,6 +453,7 @@ var BlockSet = (function () {
       getTexTileSize: function () { return texgen.tileUVSize; },
       get tilings () {
         freshenTexture();
+        tilings.bogus = tilings[BlockSet.ID_BOGUS] || EMPTY_TILING;
         return tilings;
       },
       rebuildBlockTexture: function (blockID) {
@@ -446,34 +480,6 @@ var BlockSet = (function () {
   
   // This block ID is used when an invalid block ID is met
   BlockSet.ID_BOGUS = 1;
-  
-  // Texture parameters
-  var TILE_MAPPINGS = [
-    // in this matrix layout, the input (column) vector is the tile coords
-    // and the output (row) vector is the world space coords
-    // so the lower row is the translation component.
-    ["z", mat4.create([
-      // low z face
-      1, 0, 0, 0,
-      0, 1, 0, 0,
-      0, 0, 1, 0,
-      0, 0, 0, 1
-    ])],
-    ["x", mat4.create([
-      // low x face
-      0, 1, 0, 0,
-      0, 0, 1, 0,
-      1, 0, 0, 0,
-      0, 0, 0, 1
-    ])],
-    ["y", mat4.create([
-      // low y face
-      0, 0, 1, 0,
-      1, 0, 0, 0,
-      0, 1, 0, 0,
-      0, 0, 0, 1
-    ])],
-  ];
   
   BlockSet.unserialize = function (json, unserialize) {
     if (json.type === "colors") {

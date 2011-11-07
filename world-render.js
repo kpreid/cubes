@@ -313,7 +313,7 @@ var WorldRenderer = (function () {
                                          function (vertices, normals, texcoords) {
                                            
           var tilings = blockSet.tilings; // has side effect of updating tiling if needed
-          var BOGUS_TILING = tilings[BlockSet.ID_BOGUS];
+          var BOGUS_TILING = tilings.bogus;
 
           var TILE_SIZE_UV = blockSet.getTexTileSize();
 
