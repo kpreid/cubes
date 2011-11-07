@@ -66,13 +66,15 @@
     background: gray;
   }
   
-  .error-notice {
+  #error-notices {
     position: absolute;
     top: 5em;
     right: 50%;
     margin-right: -17em;
-    
+
     z-index: 1;
+  }
+  .error-notice {
     border-radius: 2em;
     text-align: center;
     max-width: 30em;
@@ -761,6 +763,12 @@
       cursorInfo = dynamicText(cursorInfoElem);
 
       sequence([
+        function () {
+          if (typeof testGettersWork === 'undefined' || !testGettersWork()) {
+            document.getElementById("feature-error-notice").style.removeProperty("display");
+            document.getElementById("feature-error-text").appendChild(document.createTextNode("ECMAScript 5 property accessors on frozen objects"));
+          }
+        },
         "Getting WebGL...",
         function () {
           theCanvas = document.getElementById('view-canvas');
@@ -804,7 +812,7 @@
             var worldData = localStorage.getItem("world");
             if (worldData !== null) {
               //try {
-                worldH = World.unserialize(JSON.parse(worldData));
+                worldH = cyclicUnserialize(JSON.parse(worldData), World);
               //} catch (e) {
               //  if (typeof console !== 'undefined')
               //    console.error(e);
@@ -859,12 +867,19 @@
     <div id="menu" style="visibility: hidden; left: 1px; top: 1px;">
       <!-- arbitrary initial position -->
     </div>
-    <div id="webgl-error-notice" class="error-notice" style="display: none;">
-      <p>Sorry, the web browser you are using does not appear to support WebGL.</p>
-    </div>
+    <div id="error-notices">
     <div id="load-error-notice" class="error-notice" style="display: none;">
       <p>Sorry, but there was an unexpected error while loading the game.</p>
       <p><pre id="load-error-text" style="white-space: pre-wrap;"></pre></p>
+    </div>
+    <div id="feature-error-notice" class="error-notice" style="display: none;">
+      <p>Sorry, the browser you are using does not support some required features. These problems were detected:</p>
+      <p><pre id="feature-error-text" style="white-space: pre-wrap;"></pre></p>
+      <p>If you are looking for a compatible browser, I recommend Google Chrome.</p>
+    </div>
+    <div id="webgl-error-notice" class="error-notice" style="display: none;">
+      <p>Sorry, the web browser you are using does not appear to support WebGL.</p>
+    </div>
     </div>
 
     <div id="toggles">
@@ -880,10 +895,10 @@
       <form onsubmit="return false;" action=""  style="text-align: center">
         <p id="local-save-controls">
           <button onclick="
-            localStorage.setItem('world', JSON.stringify(worldH.serialize())); return false;
+            localStorage.setItem('world', JSON.stringify(cyclicSerialize(worldH))); return false;
           ">Save</button>
           <button onclick="
-            worldH = World.unserialize( JSON.parse( localStorage.getItem('world')));
+            worldH = cyclicUnserialize(JSON.parse(localStorage.getItem('world')), World);
             player.setWorld(worldH);
             return false;
           ">Revert to saved</button>
@@ -900,14 +915,14 @@
           <textarea id="loadfield" width="20" height="3" style="width: 80%;"></textarea>
           <br>
           <button onclick="
-            document.getElementById('loadfield').value = JSON.stringify(worldH.serialize()); return false;
+            document.getElementById('loadfield').value = JSON.stringify(cyclicSerialize(worldH)); return false;
           ">Text Export</button>
           <button onclick="
             while (document.getElementById('load-error').firstChild)
               document.getElementById('load-error').removeChild(
                 document.getElementById('load-error').firstChild);
             //try {
-              worldH = World.unserialize( JSON.parse( document.getElementById('loadfield').value))
+              worldH = cyclicUnserialize(JSON.parse(document.getElementById('loadfield').value), World)
               player.setWorld(worldH);
             //} catch (e) {
             //  console.log(e);

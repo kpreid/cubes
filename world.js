@@ -312,12 +312,12 @@ function World(sizes, blockSet) {
     return ser.join("");
   }
   
-  function serialize() {
+  function serialize(subSerialize) {
     return {
       wx: wx,
       wy: wy,
       wz: wz,
-      blockSet: blockSet.serialize(),
+      blockSet: subSerialize(blockSet),
       blockCodeBase: RLE_BASE,
       blocks: rleBytes(blocks),
       subData: rleBytes(subData)
@@ -356,7 +356,7 @@ function World(sizes, blockSet) {
 // The size of a texture tile, and therefore the size of a block-defining-block
 World.TILE_SIZE = 16;
 
-World.unserialize = function (json) {
+World.unserialize = function (json, unserialize) {
   var base = json.blockCodeBase;
   
   function unrleBytes(str, array) {
@@ -372,7 +372,7 @@ World.unserialize = function (json) {
     }
   }
   
-  var world = new World([json.wx, json.wy, json.wz], BlockSet.unserialize(json.blockSet));
+  var world = new World([json.wx, json.wy, json.wz], unserialize(json.blockSet, BlockSet));
   var str = json.blocks;
   unrleBytes(json.blocks, world.raw);
   unrleBytes(json.subData, world.rawSubData);
