@@ -293,7 +293,7 @@
     var TIMESTEP = 1/30;
     
     // Settable using the options sidebar
-    var configRenderDistance = 100;
+    var configRenderDistance = 60;
     var configLighting = true;
     var configBumpMapping = true;
     var configDebugTextureAllocation = false;
@@ -938,7 +938,7 @@
       <h2>Options</h2>
 
       <form onsubmit="return false;" action="">
-        <div class="optionline">Render distance: <input type="range" min="10" max="500" value="100" maxlength="4" size="4" onchange="configRenderDistance = parseFloat(this.value); changedRenderDistance(); return true;" style="vertical-align: middle;"></div>
+        <div class="optionline">Render distance: <input type="range" min="10" max="500" value="60" maxlength="4" size="4" onchange="configRenderDistance = parseFloat(this.value); changedRenderDistance(); return true;" style="vertical-align: middle;"></div>
         <div class="optionline"><label><input type="checkbox" checked onchange="configLighting = this.checked; changedRenderOptions(); return true;"> Lighting</label></div>
         <div class="optionline"><label><input type="checkbox" checked onchange="configBumpMapping = this.checked; changedRenderOptions(); return true;"> Bump mapping</label></div>
         
