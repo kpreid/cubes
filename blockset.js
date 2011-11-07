@@ -14,7 +14,7 @@ var BlockType = (function () {
     
     // TODO: Both of these properties are to be replaced by circuits.
     this.automaticRotations = [0];
-    this.spontaneousConversion = undefined;
+    this.spontaneousConversion = null;
   }
   
   // Called randomly by the world, at an average rate of 'baseRate' calls per second for each cube.
@@ -23,11 +23,13 @@ var BlockType = (function () {
     if (this.spontaneousConversion)
       world.s(cube[0],cube[1],cube[2], this.spontaneousConversion);
   };
-  BlockType.prototype.serialize = function () {
-    return {
-      automaticRotations: this.automaticRotations,
-      spontaneousConversion: this.spontaneousConversion
-    };
+  BlockType.prototype.serialize = function (serialize) {
+    var json = {};
+    if (this.automaticRotations.length !== 1 || this.automaticRotations[0] !== 0)
+      json.automaticRotations = this.automaticRotations;
+    if (this.spontaneousConversion)
+      json.spontaneousConversion = this.spontaneousConversion;
+    return json;
   }
   
   BlockType.World = function (world) {
@@ -71,9 +73,9 @@ var BlockType = (function () {
     this.opaque = opaque;
   }
   
-  BlockType.World.prototype.serialize = function () {
+  BlockType.World.prototype.serialize = function (serialize) {
     var json = BlockType.prototype.serialize.call(this);
-    json.world = this.world.serialize();
+    json.world = serialize(this.world);
     return json;
   };
   
@@ -107,7 +109,7 @@ var BlockType = (function () {
     target[offset+3] = scale*this.color[3];
   };
   
-  BlockType.Color.prototype.serialize = function () {
+  BlockType.Color.prototype.serialize = function (serialize) {
     var json = BlockType.prototype.serialize.call(this);
     json.color = this.color;
     return json;
@@ -115,17 +117,17 @@ var BlockType = (function () {
   
   BlockType.air = new BlockType.Color([0,0,0,0]);
   
-  BlockType.unserialize = function (json) {
+  BlockType.unserialize = function (json, unserialize) {
     var self;
     if (json.color) {
       self = new BlockType.Color(json.color);
     } else if (json.world) {
-      self = new BlockType.World(World.unserialize(json.world));
+      self = new BlockType.World(unserialize(json.world, World));
     } else {
       throw new Error("unknown BlockType serialization type");
     }
-    self.automaticRotations = json.automaticRotations;
-    self.spontaneousConversion = json.spontaneousConversion;
+    self.automaticRotations = json.automaticRotations || [0];
+    self.spontaneousConversion = json.spontaneousConversion || null;
     return self;
   };
   
@@ -400,10 +402,10 @@ var BlockSet = (function () {
       worldFor: function (blockID) {
         return types[blockID] ? types[blockID].world : null;
       },
-      serialize: function () {
+      serialize: function (serialize) {
         return {
           type: "types",
-          types: types.slice(1).map(function (type) { return type.serialize(); })
+          types: types.slice(1).map(function (type) { return serialize(type); })
         }
       }
     });
@@ -445,18 +447,18 @@ var BlockSet = (function () {
     ])],
   ];
   
-  BlockSet.unserialize = function (json) {
+  BlockSet.unserialize = function (json, unserialize) {
     if (json.type === "colors") {
       throw new Error("BlockSet.colors no longer available");
     } else if (json.type === "textured") {
       // obsolete serialization type
       var blockTypes = json.worlds.map(function (world) {
-        return BlockType.world(World.unserialize(world));
+        return BlockType.world(unserialize(world, World));
       });
       return new BlockSet(blockTypes);
     } else if (json.type === "types") {
       var blockTypes = json.types.map(function (type) {
-        return BlockType.unserialize(type);
+        return unserialize(type, BlockType);
       });
       return new BlockSet(blockTypes);
     } else {

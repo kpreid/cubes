@@ -790,7 +790,7 @@
             var worldData = localStorage.getItem("world");
             if (worldData !== null) {
               try {
-                worldH = World.unserialize(JSON.parse(worldData));
+                worldH = cyclicUnserialize(JSON.parse(worldData), World);
               } catch (e) {
                 if (typeof console !== 'undefined')
                   console.error(e);
@@ -873,10 +873,10 @@
       <form onsubmit="return false;" action=""  style="text-align: center">
         <p id="local-save-controls">
           <button onclick="
-            localStorage.setItem('world', JSON.stringify(worldH.serialize())); return false;
+            localStorage.setItem('world', JSON.stringify(cyclicSerialize(worldH))); return false;
           ">Save</button>
           <button onclick="
-            worldH = World.unserialize( JSON.parse( localStorage.getItem('world')));
+            worldH = cyclicUnserialize(JSON.parse(localStorage.getItem('world')), World);
             player.setWorld(worldH);
             return false;
           ">Revert to saved</button>
@@ -893,14 +893,14 @@
           <textarea id="loadfield" width="20" height="3" style="width: 80%;"></textarea>
           <br>
           <button onclick="
-            document.getElementById('loadfield').value = JSON.stringify(worldH.serialize()); return false;
+            document.getElementById('loadfield').value = JSON.stringify(cyclicSerialize(worldH)); return false;
           ">Text Export</button>
           <button onclick="
             while (document.getElementById('load-error').firstChild)
               document.getElementById('load-error').removeChild(
                 document.getElementById('load-error').firstChild);
             try {
-              worldH = World.unserialize( JSON.parse( document.getElementById('loadfield').value))
+              worldH = cyclicUnserialize(JSON.parse(document.getElementById('loadfield').value), World)
               player.setWorld(worldH);
             } catch (e) {
               console.log(e);

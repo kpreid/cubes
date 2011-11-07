@@ -9,12 +9,45 @@
 // use.
 
 function testGettersWork() {
+  "use strict";
   var y = 0;
   var o = Object.freeze({
     set x(v) { y = v; }
   });
   o.x = 43;
   return y === 43;
+}
+
+function cyclicSerialize(root) {
+  "use strict";
+  var seen = [];
+  function serialize(obj) {
+    var i;
+    for (i = 0; i < seen.length; i++) {
+      if (seen[i] === obj) // TODO use WeakMap if available
+        return i;
+    }
+    seen.push(obj);
+    var json = obj.serialize(serialize);
+    json["#"] = i;
+    return json;
+  }
+  return serialize(root);
+}
+
+function cyclicUnserialize(json, constructor) {
+  "use strict";
+  var seen = [];
+  function unserialize(json, constructor) {
+    if (typeof json === "number" && json >= 0) {
+      return seen[json];
+    } else if (typeof json === "object") {
+      return seen[+(json["#"])] = constructor.unserialize(json, unserialize);
+    } else {
+      throw new Error("Don't know how to unserialize from a " + typeof json);
+    }
+  }
+  return unserialize(json, constructor);
 }
 
 function mod(value, modulus) {
