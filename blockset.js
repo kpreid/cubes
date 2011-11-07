@@ -236,12 +236,12 @@ var BlockSet = (function () {
     var typesToRerender = [];
     
     function rebuildOne(blockID) {
-      var type = types[blockID];
+      var blockType = types[blockID];
       
       var blockTextureData = texgen.image;
       
-      if (type.color) { // TODO: factor this conditional into BlockType
-        var color = type.color;
+      if (blockType.color) { // TODO: factor this conditional into BlockType
+        var color = blockType.color;
         var usageIndex = blockID.toString();
         var coord = texgen.allocationFor(usageIndex);
         var tileu = coord[0], tilev = coord[1];
@@ -267,10 +267,10 @@ var BlockSet = (function () {
             layers[layer] = layer == 0 ? texgen.uvFor(usageIndex) : null;
           }
         });
-      } else if (type.world) {
+      } else if (blockType.world) {
         (function () {
-          var world = type.world;
-          type._recomputeOpacity(); // TODO kludge
+          var world = blockType.world;
+          blockType._recomputeOpacity(); // TODO kludge
           
           // To support non-cubical objects, we slice the entire volume of the block and generate as many tiles as needed. sliceWorld generates one such slice.
           
@@ -296,8 +296,8 @@ var BlockSet = (function () {
               var viewH = vec3.create([u,v,layerL+1]);
               mat4.multiplyVec3(transform, viewH, viewH);
           
-              var type = world.gt(vec[0],vec[1],vec[2]);
-              type.writeColor(255, blockTextureData.data, c);
+              var subType = world.gt(vec[0],vec[1],vec[2]);
+              subType.writeColor(255, blockTextureData.data, c);
 
               if (blockTextureData.data[c+3] > 0) {
                 // A layer has significant content only if there is an UNOBSCURED opaque pixel.
@@ -319,8 +319,8 @@ var BlockSet = (function () {
               // u,v coordinates of this tile for use by the vertex generator
               var uv = texgen.uvFor(usageIndex);
               // If the layer has unobscured content, and it is not an interior surface of an opaque block, then add it to rendering. Note that the TILE_MAPPINGS loop skips slicing interiors of opaque blocks, but they still need to have the 15th layer excluded because the choice of call to sliceWorld does not express that.
-              layersL[layerL] = thisLayerNotEmptyL && (!type.opaque || layerL == 0) ? uv : null;
-              layersH[layerH] = thisLayerNotEmptyH && (!type.opaque || layerH == 0) ? uv : null;
+              layersL[layerL] = thisLayerNotEmptyL && (!blockType.opaque || layerL == 0) ? uv : null;
+              layersH[layerH] = thisLayerNotEmptyH && (!blockType.opaque || layerH == 0) ? uv : null;
             }
             
             // TODO: trigger rerender of chunks only if we made changes to the tiling, not if only the colors changed
@@ -332,7 +332,7 @@ var BlockSet = (function () {
             var transform = m[1];
             var layersL = tilings[blockID]["l" + dimName] = [];
             var layersH = tilings[blockID]["h" + dimName] = [];
-            if (type.opaque) {
+            if (blockType.opaque) {
               if (texgen.textureLost) return;
               sliceWorld(dimName, 0, transform, layersL, layersH);
               sliceWorld(dimName, 15, transform, layersL, layersH);
