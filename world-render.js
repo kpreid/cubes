@@ -218,7 +218,7 @@ var WorldRenderer = (function () {
       }
 
       var chunkQueue = dirtyChunks.length > 0 ? dirtyChunks : addChunks;
-      var toCompute = chunkQueue.length > 30 ? 3 : 1;
+      var toCompute = chunkQueue.length > 30 ? 6 : 1;
       for (var i = 0; i < toCompute && chunkQueue.length > 0; i++) {
         if (calcChunk(chunkQueue.pop())) {
           // Chunk wasn't actually dirty; take another chunk
@@ -302,8 +302,8 @@ var WorldRenderer = (function () {
         var rawRotations = world.rawRotations;
         var chunkOriginX = xzkey[0];
         var chunkOriginZ = xzkey[1];
-        var chunkLimitX = xzkey[0] + CHUNKSIZE;
-        var chunkLimitZ = xzkey[1] + CHUNKSIZE;
+        var chunkLimitX = Math.min(wx, xzkey[0] + CHUNKSIZE);
+        var chunkLimitZ = Math.min(wz, xzkey[1] + CHUNKSIZE);
         var blockSet = world.blockSet;
         var TILE_SIZE = World.TILE_SIZE;
         var PIXEL_SIZE = 1/TILE_SIZE;
@@ -357,7 +357,11 @@ var WorldRenderer = (function () {
             pushNormal(normal);
             pushNormal(normal);
           }
+          
+          var c1 = vec3.create();
+          var c2 = vec3.create();
           var depthOriginBuf = vec3.create();
+          var thiso; // used by squares, assigned by loop
           function squares(origin, v1, v2, vDepth, vFacing, tileLayers, texO, texD) {
             if (thiso && world.opaque(x+vFacing[0],y+vFacing[1],z+vFacing[2])) {
               // this face is invisible
@@ -379,23 +383,28 @@ var WorldRenderer = (function () {
           for (var y = 0;            y < wy         ; y++)
           for (var z = chunkOriginZ; z < chunkLimitZ; z++) {
             // raw array access inlined and simplified for efficiency
-            var inBounds = x < wx && z < wz;
             var rawIndex = (x*wy+y)*wz+z;
-            var value = inBounds ? rawBlocks[rawIndex] : ID_EMPTY;
-            var rot = inBounds ? ROT_DATA[rawRotations[rawIndex]] : ROT_DATA[0];
+            var value = rawBlocks[rawIndex];
+
+            if (value === ID_EMPTY) continue;
+
+            var rot = ROT_DATA[rawRotations[rawIndex]];
+            var rzero = rot.zero;
+            var rpos = rot.pos;
+            c1[0] = x+rzero[0]; c2[0] = x+rpos[0];
+            c1[1] = y+rzero[1]; c2[1] = y+rpos[1];
+            c1[2] = z+rzero[2]; c2[2] = z+rpos[2];
+
             var btype = blockSet.get(value);
-            var thiso = btype.opaque; // If this and its neighbor are opaque, then hide surfaces
-            if (value != ID_EMPTY) {
-              var tiling = tilings[value] || BOGUS_TILING;
-              var c1 = vec3.add([x,y,z], rot.zero);
-              var c2 = vec3.add([x,y,z], rot.pos);
-              squares(c1, rot.pz, rot.py, rot.px, rot.nx, tiling.lx, 0, TILE_SIZE_UV);
-              squares(c1, rot.px, rot.pz, rot.py, rot.ny, tiling.ly, 0, TILE_SIZE_UV);
-              squares(c1, rot.py, rot.px, rot.pz, rot.nz, tiling.lz, 0, TILE_SIZE_UV);
-              squares(c2, rot.ny, rot.nz, rot.nx, rot.px, tiling.hx, TILE_SIZE_UV, 0);
-              squares(c2, rot.nz, rot.nx, rot.ny, rot.py, tiling.hy, TILE_SIZE_UV, 0);
-              squares(c2, rot.nx, rot.ny, rot.nz, rot.pz, tiling.hz, TILE_SIZE_UV, 0);
-            }
+            var tiling = tilings[value] || BOGUS_TILING;
+            thiso = btype.opaque; // -- Note used by squares()
+
+            squares(c1, rot.pz, rot.py, rot.px, rot.nx, tiling.lx, 0, TILE_SIZE_UV);
+            squares(c1, rot.px, rot.pz, rot.py, rot.ny, tiling.ly, 0, TILE_SIZE_UV);
+            squares(c1, rot.py, rot.px, rot.pz, rot.nz, tiling.lz, 0, TILE_SIZE_UV);
+            squares(c2, rot.ny, rot.nz, rot.nx, rot.px, tiling.hx, TILE_SIZE_UV, 0);
+            squares(c2, rot.nz, rot.nx, rot.ny, rot.py, tiling.hy, TILE_SIZE_UV, 0);
+            squares(c2, rot.nx, rot.ny, rot.nz, rot.pz, tiling.hz, TILE_SIZE_UV, 0);
           }
         });
         //scheduleDraw();
