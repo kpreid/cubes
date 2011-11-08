@@ -4,6 +4,8 @@
 // TODO: global variable 'gl'
 
 var WorldRenderer = (function () {
+  "use strict";
+  
   // The side length of the chunks the world is broken into for rendering.
   // Smaller chunks are faster to update when the world changes, but have a higher per-frame cost.
   var CHUNKSIZE = 10;
@@ -94,10 +96,12 @@ var WorldRenderer = (function () {
       aroundDraw: function (draw) {
         var mvsave = mvMatrix;
         mvMatrix = mat4.identity(mat4.create());
+        sendViewUniforms();
         gl.disable(gl.DEPTH_TEST);
         draw();
         mvMatrix = mvsave;
         gl.enable(gl.DEPTH_TEST);
+        sendViewUniforms();
       },
     });
     
@@ -251,7 +255,9 @@ var WorldRenderer = (function () {
     function draw() {
       for (var index in chunks) {
         if (!chunks.hasOwnProperty(index)) continue;
-        chunks[index].draw();
+        var chunk = chunks[index];
+        if (aabbInView(chunk.aabb))
+          chunk.draw();
       }
       
       for (var i = 0; i < particles.length; i++) {
@@ -407,7 +413,13 @@ var WorldRenderer = (function () {
             squares(c2, rot.nx, rot.ny, rot.nz, rot.pz, tiling.hz, TILE_SIZE_UV, 0);
           }
         });
-        //scheduleDraw();
+        
+        chunks[xzkey].aabb = [
+          [chunkOriginX, chunkLimitX],
+          [0, world.wy],
+          [chunkOriginZ, chunkLimitZ]
+        ];
+        
         return false;
       }
     }

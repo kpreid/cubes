@@ -334,10 +334,67 @@
     var pMatrix = mat4.create();
     var mvMatrix = mat4.create();
     var viewPosition = vec3.create();
+    var viewFrustum; // computed
 
+    function calculateFrustum() {
+      var matrix = mat4.multiply(pMatrix, mvMatrix, mat4.create());
+      mat4.inverse(matrix);
+      // matrix is now a clip-space-to-model-space conversion
+      
+      function dehomog(v4) {
+        return [v4[0]/v4[3], v4[1]/v4[3], v4[2]/v4[3]];
+      }
+      // Return a function which tests whether the point is in the half-space bounded by the plane containing origin, pt1, and pt2, and pointed toward by pt1 cross pt2.
+      function makeHalfSpaceTest(origin, pt1, pt2) {
+        var normal = vec3.cross(
+          vec3.subtract(pt1, origin, vec3.create()),
+          vec3.subtract(pt2, origin, vec3.create()),
+          vec3.create());
+        var vecbuf = vec3.create();
+        return function (point) {
+          vec3.subtract(point, origin, vecbuf);
+          return vec3.dot(vecbuf, normal) > 0;
+        }
+      }
+      var lbn = dehomog(mat4.multiplyVec4(matrix, [-1,-1,-1,1]));
+      var lbf = dehomog(mat4.multiplyVec4(matrix, [-1,-1, 1,1]));
+      var ltn = dehomog(mat4.multiplyVec4(matrix, [-1, 1,-1,1]));
+      var ltf = dehomog(mat4.multiplyVec4(matrix, [-1, 1, 1,1]));
+      var rbn = dehomog(mat4.multiplyVec4(matrix, [ 1,-1,-1,1]));
+      var rbf = dehomog(mat4.multiplyVec4(matrix, [ 1,-1, 1,1]));
+      var rtn = dehomog(mat4.multiplyVec4(matrix, [ 1, 1,-1,1]));
+      var rtf = dehomog(mat4.multiplyVec4(matrix, [ 1, 1, 1,1]));
+      
+      viewFrustum = [
+        makeHalfSpaceTest(lbn, lbf, ltf), // left
+        makeHalfSpaceTest(rtn, rtf, rbf), // right
+        makeHalfSpaceTest(ltn, ltf, rtf), // top
+        makeHalfSpaceTest(rbn, rbf, lbf), // bottom
+        makeHalfSpaceTest(lbn, ltn, rtn), // near
+        makeHalfSpaceTest(lbf, rbf, ltf), // far
+      ];
+    }
+
+    function aabbInView(aabb) {
+      for (var i = 0; i < viewFrustum.length; i++) {
+        var outside = true;
+        for (var xb = 0; xb < 2; xb++)
+        for (var yb = 0; yb < 2; yb++)
+        for (var zb = 0; zb < 2; zb++) {
+          var vec = [aabb[0][xb], aabb[1][yb], aabb[2][zb]];
+          if (viewFrustum[i](vec))
+            outside = false;
+        }
+        if (outside)
+          return false;
+      }
+      return true;
+    }
+    
     function sendViewUniforms() {
         gl.uniformMatrix4fv(uniforms.uMVMatrix, false, mvMatrix);
         gl.uniform3fv(uniforms.uViewPosition, viewPosition);
+        calculateFrustum();
     }
 
     function updateViewport() {
@@ -473,7 +530,6 @@
           gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
           gl.vertexAttribPointer(attribs.aVertexColor, 4, gl.FLOAT, false, 0, 0);
         }
-        sendViewUniforms();
         totalVertices += numVertices;
         gl.drawArrays(primitive, 0, numVertices);
       };
@@ -592,6 +648,7 @@
         mat4.identity(mvMatrix);
         playerRender.applyViewRot(mvMatrix);
         viewPosition = [0,0,0];
+        sendViewUniforms();
         gl.uniform1f(uniforms.uFogDistance, 1); // 0 would be div-by-0
         gl.disable(gl.DEPTH_TEST);
         
@@ -608,6 +665,7 @@
 
         viewPosition = playerRender.getPosition();
         playerRender.applyViewTranslation(mvMatrix);
+        sendViewUniforms();
 
         wrend.draw();
         debugR.draw();
