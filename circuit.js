@@ -2,6 +2,7 @@
 // the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
 var Circuit = (function () {
+  "use strict";
   var DEBUG_WIRE = false;
   
   function blockOutputKeys(block) {
@@ -25,10 +26,31 @@ var Circuit = (function () {
     var cGraph = {};
     var cEdges = []; // used for circuit viewing only
     
-    // Circuit state -- TODO: Allow multiple instantiation
-    var cState = {};
-    var evaluate = function () {};
-
+    var localState = {};
+    
+    var evaluate = function (state) {throw new Error("uncompiled");};
+    
+    function refreshLocal() {
+      localState = {
+        allowWorldEdit: true
+      };
+      evaluate(localState);
+    }
+    
+    function behaviorFaceIsOutput(beh, direction) {
+      var evaluator;
+      switch (beh) {
+        case Circuit.B_OUTPUT:
+          return false;
+        case Circuit.B_INPUT:
+          return true;
+        case Circuit.B_NOR:
+          return !direction[0];
+        default:
+          return false;
+      }
+    }
+    
     // --- Methods ---
     
     this.world = world;
@@ -58,14 +80,12 @@ var Circuit = (function () {
       
       // Clear and initialize; find active nodes and outputs
       cGraph = {};
-      cState = {};
       cEdges = [];
       blocks.forEach(function (block) {
         var beh = getBehavior(block);
         if (beh && beh != Circuit.B_WIRE) {
           // Initialize state
           cGraph[block] = {};
-          cState[block] = undefined;
           
           // Build indexes
           nodes.push(block);
@@ -76,34 +96,32 @@ var Circuit = (function () {
       });
       
       // Build graph edges
-      function traceNet(net, block, directions) {
-        if (DEBUG_WIRE) console.group("traceNet " + net + " " + block + ":" + getBehavior(block) + " : " + directions);
-        directions.forEach(function (direction) {
-          direction = Array.prototype.slice.call(direction);
-          var bn = block.slice();
-          vec3.add(bn, direction, bn);
-          for (;; vec3.add(bn, direction, bn)) {
-            if (DEBUG_WIRE) console.log("walk " + bn);
-            var bnBeh = getBehavior(bn);
-            var comingFrom = vec3.negate(direction, []);
-            if (!bnBeh) {
-              break; // not a circuit element
-            } else if (bnBeh == Circuit.B_WIRE) {
-              continue; // pass-through
-            } else if (cGraph[bn][comingFrom] && cGraph[bn][comingFrom] !== net) {
-              throw new Error("met different net!");
-            } else if (cGraph[bn][comingFrom] && cGraph[bn][comingFrom] === net) {
-              break; // already traced -- TODO: this case unnecessary/can'thappen?
-            } else {
-              // found new unclaimed node
-              cGraph[bn][comingFrom] = net;
-              net.push([bn,comingFrom]);
-              traceIntoNode(net, bn, comingFrom);
-              cEdges.push([net,block,bn]);
-              break;
-            }
+      function traceNet(net, block, direction) {
+        if (DEBUG_WIRE) console.group("traceNet " + net + " " + block + ":" + getBehavior(block) + " : " + direction);
+        direction = Array.prototype.slice.call(direction);
+        var bn = block.slice();
+        vec3.add(bn, direction, bn);
+        for (;; vec3.add(bn, direction, bn)) {
+          if (DEBUG_WIRE) console.log("walk " + bn);
+          var bnBeh = getBehavior(bn);
+          var comingFrom = vec3.negate(direction, []);
+          if (!bnBeh) {
+            return false; // not a circuit element
+          } else if (bnBeh == Circuit.B_WIRE) {
+            continue; // pass-through
+          } else if (cGraph[bn][comingFrom] && cGraph[bn][comingFrom] !== net) {
+            throw new Error("met different net!");
+          } else if (cGraph[bn][comingFrom] && cGraph[bn][comingFrom] === net) {
+            return true; // already traced -- TODO: this case unnecessary/can'thappen?
+          } else {
+            // found new unclaimed node
+            cGraph[bn][comingFrom] = net;
+            net.push([bn,comingFrom]);
+            traceIntoNode(net, bn, comingFrom);
+            cEdges.push([net,block,bn]);
+            return true;
           }
-        });
+        }
         if (DEBUG_WIRE) console.groupEnd();
       }
       function traceIntoNode(net, block, comingFrom) {
@@ -128,8 +146,13 @@ var Circuit = (function () {
           }
           
           cGraph[block][direction] = net;
-          net.push([block,direction])
-          traceNet(net, block, [direction]);
+          net.push([block,direction]);
+          var found = traceNet(net, block, direction);
+          
+          if (!found) {
+            // nothing found, useless net. (Note net will still have entries)
+            cGraph[block][direction] = null;
+          }
         });
         if (DEBUG_WIRE) console.groupEnd();
       }
@@ -150,13 +173,13 @@ var Circuit = (function () {
       function blockEvaluator(block, faceDirection) {
         compile(block);
         var key = ""+block+"/"+faceDirection;
-        return function () { return cState[key]; };
+        return function (state) { return state[key]; };
       }
       
       function netEvaluator(net) {
         compileNet(net);
         var key = net.serial;
-        return function () { return cState[key]; };
+        return function (state) { return state[key]; };
       }
       
       function compileNet(net) {
@@ -169,14 +192,15 @@ var Circuit = (function () {
         net.forEach(function (record) {
           var block = record[0];
           var faceDirection = record[1];
-          getters.push(blockEvaluator(block, faceDirection));
+          if (behaviorFaceIsOutput(getBehavior(block), faceDirection))
+            getters.push(blockEvaluator(block, faceDirection));
         });
-        evaluators.push(function () {
+        evaluators.push(function (state) {
           var flag = false;
           getters.forEach(function (f) {
-            flag = flag || f();
+            flag = flag || f(state);
           });
-          cState[key] = flag;
+          state[key] = flag;
         });
       }
       
@@ -186,9 +210,9 @@ var Circuit = (function () {
         seen[blockKey] = true;
         
         var outputKeys = blockOutputKeys(block);
-        function uniformOutput(value) {
+        function uniformOutput(state, value) {
           outputKeys.forEach(function (k) {
-            cState[k] = value;
+            state[k] = value;
           });
         }
         
@@ -200,78 +224,87 @@ var Circuit = (function () {
             var inputEvals = [];
             UNIT_AXES.forEach(function (direction) {
               direction = Array.prototype.slice.call(direction);
-              inputEvals.push(netEvaluator(cGraph[block][direction]))
+              var net = cGraph[block][direction];
+              if (net)
+                inputEvals.push(netEvaluator(net));
             });
-            var outstate = false;
-            uniformOutput(null);
-            evaluator = function () {
+            evaluator = function (state) {
               var flag = false;
               inputEvals.forEach(function (f) {
-                flag = flag || f();
+                flag = flag || f(state);
               });
-              if (flag != outstate) {
-                outstate = flag;
+              var cur = world.gSub(block[0],block[1],block[2]);
+              if (!flag != !cur && state.allowWorldEdit) {
+                world.sSub(block[0],block[1],block[2], flag ? 1 : 0);
                 player.render.getWorldRenderer().renderCreateBlock(block); // TODO global variable/wrong world
                 scheduleDraw();
               }
             };
             break;
           case Circuit.B_INPUT:
-            uniformOutput(false);
-            evaluator = function () {
-              // externally set
+            evaluator = function (state) {
+              uniformOutput(state, world.gSub(block[0],block[1],block[2]));
             }
             break;
           case Circuit.B_NOR:
             var inputEvals = [];
             [UNIT_PX,UNIT_NX].forEach(function (direction) {
               direction = Array.prototype.slice.call(direction);
-              inputEvals.push(netEvaluator(cGraph[block][direction]))
+              var net = cGraph[block][direction];
+              if (net)
+                inputEvals.push(netEvaluator(net));
             });
-            evaluator = function () {
+            evaluator = function (state) {
               var flag = false;
               inputEvals.forEach(function (f) {
-                flag = flag || f();
+                flag = flag || f(state);
               });
-              cState[block + "/0,0,1"] = !flag;
-              cState[block + "/0,0,-1"] = !flag;
-              cState[block + "/0,1,0"] = !flag;
-              cState[block + "/0,-1,0"] = !flag;
+              state[block + "/0,0,1"] = !flag;
+              state[block + "/0,0,-1"] = !flag;
+              state[block + "/0,1,0"] = !flag;
+              state[block + "/0,-1,0"] = !flag;
             };
             break;
           default:
-            evaluator = function () {
-              uniformOutput(null);
+            evaluator = function (state) {
             }
         }
         evaluators.push(evaluator);
       }
       outputs.forEach(compile);
       
-      evaluate = function () {
-        evaluators.forEach(function (f) { f(); });
-      }
+      evaluate = function (state) {
+        if (!state) state = {};
+        evaluators.forEach(function (f) { f(state); });
+      };
+      
+      //refreshLocal(); // TODO: do later, in case of inf update loops
     };
     this.getEdges = function () {
       return cEdges;
     };
     this.getNetValue = function (net) {
-      return cState[net.serial];
+      return localState[net.serial];
     };
     this.describeBlock = function (block) {
-      // TODO: make this actually useful.
-      return   cState[block + "/1,0,0"]
-       + " " + cState[block + "/0,1,0"]
-       + " " + cState[block + "/0,0,1"]
-       + " " + cState[block + "/-1,0,0"]
-       + " " + cState[block + "/0,-1,0"]
-       + " " + cState[block + "/0,0,-1"];
+      var graph = cGraph[block];
+      if (!graph) return "Wire";
+      var s = "";
+      UNIT_AXES.forEach(function (direction) {
+        direction = Array.prototype.slice.call(direction);
+        var net = graph[direction];
+        if (net)
+          s += "\n" + direction + " " + net + " ← " + localState[block+"/"+direction]
+      });
+      return s;
     }
     
     this.setStandingOn = function (cube,value) {
       if (getBehavior(cube) === Circuit.B_INPUT) {
-        blockOutputKeys(cube).forEach(function (k) { cState[k] = value; });
-        evaluate();
+        if (!world.gSub(cube[0],cube[1],cube[2]) != !value) {
+          world.sSub(cube[0],cube[1],cube[2],value);
+          refreshLocal();
+        }
       }
     }
     

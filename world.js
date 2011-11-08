@@ -134,6 +134,10 @@ function World(sizes, blockSet) {
       return;
     
     var index = x*wy*wz + y*wz + z
+
+    if (blocks[index] === val && subData[index] === +subdatum)
+      return;
+
     blocks[index] = val;
     subData[index] = subdatum;
     
@@ -153,6 +157,9 @@ function World(sizes, blockSet) {
         if (isCircuitPart(g(neighbor[0],neighbor[1],neighbor[2]))) becomeCircuit(neighbor);
       })
     }
+  }
+  function sSub(x,y,z,subdatum) {
+    s(x,y,z,g(x,y,z),subdatum);
   }
   function solid(x,y,z) {
     return g(x,y,z) != 0;
@@ -331,6 +338,7 @@ function World(sizes, blockSet) {
   this.gRot = gRot;
   this.gSub = gSub;
   this.s = s;
+  this.sSub = sSub;
   this.solid = solid;
   this.opaque = opaque;
   this.raw = blocks;
