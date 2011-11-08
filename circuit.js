@@ -40,7 +40,7 @@ var Circuit = (function () {
     function behaviorFaceIsOutput(beh, direction) {
       var evaluator;
       switch (beh) {
-        case Circuit.B_OUTPUT:
+        case Circuit.B_INDICATOR:
           return false;
         case Circuit.B_INPUT:
           return true;
@@ -89,7 +89,7 @@ var Circuit = (function () {
           
           // Build indexes
           nodes.push(block);
-          if (beh == Circuit.B_OUTPUT) {
+          if (beh == Circuit.B_INDICATOR) {
             outputs.push(block);
           }
         }
@@ -219,7 +219,7 @@ var Circuit = (function () {
         var beh = getBehavior(block);
         var evaluator;
         switch (beh) {
-          case Circuit.B_OUTPUT:
+          case Circuit.B_INDICATOR:
             
             var inputEvals = [];
             UNIT_AXES.forEach(function (direction) {
@@ -236,8 +236,6 @@ var Circuit = (function () {
               var cur = world.gSub(block[0],block[1],block[2]);
               if (!flag != !cur && state.allowWorldEdit) {
                 world.sSub(block[0],block[1],block[2], flag ? 1 : 0);
-                player.render.getWorldRenderer().renderCreateBlock(block); // TODO global variable/wrong world
-                scheduleDraw();
               }
             };
             break;
@@ -314,7 +312,7 @@ var Circuit = (function () {
   // block behavior enums
   Circuit.B_WIRE = "W";
   Circuit.B_INPUT = "I";
-  Circuit.B_OUTPUT = "O";
+  Circuit.B_INDICATOR = "O";
   Circuit.B_JUNCTION = "*";
   Circuit.B_NOR = "NOR";
 

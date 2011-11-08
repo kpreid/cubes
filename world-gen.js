@@ -165,12 +165,13 @@ var WorldGen = (function () {
       })));
       type.behavior = Circuit.B_INPUT;
 
-      // output block
-      ids.output = blockSet.length;
+      // indicator block
+      ids.indicator = blockSet.length;
       blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
-        return f.rad(b) < 6 ? colorKit.colorToID(1,0,0) : 0;
+        return f.rad([b[0],b[1],b[2]]) > 6 ? 0 :
+               b[1] < 8 ? colorKit.colorToID(1,1,1) : colorKit.colorToID(0,0,0);
       })));
-      type.behavior = Circuit.B_OUTPUT;
+      type.behavior = Circuit.B_INDICATOR;
 
       // nor block
       ids.nor = blockSet.length;
@@ -299,7 +300,7 @@ function generateWorlds() {
   topWorld.s(200,72,203,l.input);
   topWorld.s(201,72,203,l.wire);
   topWorld.s(202,72,203,l.wire);
-  topWorld.s(203,72,203,l.output);
+  topWorld.s(203,72,203,l.indicator);
   topWorld.s(204,72,203,l.wire);
   topWorld.s(205,72,203,l.junction);
   topWorld.s(205,72,202,l.wire);
