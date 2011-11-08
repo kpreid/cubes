@@ -3,7 +3,8 @@
 
 var Player = (function () {
   // physics constants
-  var PLAYER_SPEED = 5; // cubes/s
+  var WALKING_SPEED = 5; // cubes/s
+  var FLYING_SPEED = 10; // cubes/s
   var GRAVITY = 20; // cubes/s^2
   var JUMP_SPEED = 10; // cubes/s
   
@@ -21,6 +22,7 @@ var Player = (function () {
     this.pos = vec3.create([0,0,0]);
     this.vel = vec3.create([0,0,0]);
     this.yaw = Math.PI/4 * 5;
+    this.flying = false;
     this.onGround = false;
 
     // Selection
@@ -136,15 +138,20 @@ var Player = (function () {
       var controlOrientation = mat4.rotateY(mat4.identity(mat4.create()), currentPlace.yaw);
       var movAdj = vec3.create();
       mat4.multiplyVec3(controlOrientation, movement, movAdj);
-      vec3.scale(movAdj, PLAYER_SPEED);
+      vec3.scale(movAdj, currentPlace.flying ? FLYING_SPEED : WALKING_SPEED);
       //console.log(vec3.str(movAdj));
       currentPlace.vel[0] += (movAdj[0] - currentPlace.vel[0]) * 0.4;
-      if (movAdj[1] != 0)
-      currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * 0.4 + TIMESTEP * GRAVITY;
+      if (currentPlace.flying) {
+        currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * 0.4;
+      } else {
+        if (movAdj[1] != 0)
+          currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * 0.4 + TIMESTEP * GRAVITY;
+      }
       currentPlace.vel[2] += (movAdj[2] - currentPlace.vel[2]) * 0.4;
       
       // gravity
-      currentPlace.vel[1] -= TIMESTEP * GRAVITY;
+      if (!currentPlace.flying)
+        currentPlace.vel[1] -= TIMESTEP * GRAVITY;
       
       // early exit
       if (vec3.length(currentPlace.vel) <= 0) return;
@@ -195,6 +202,7 @@ var Player = (function () {
           curVel[dim] = 0;
           if (dim == 1 && dir == 0) {
             currentPlace.onGround = true;
+            currentPlace.flying = false;
           }
         } else {
           nextPosIncr[dim] = nextPos[dim];
@@ -290,7 +298,10 @@ var Player = (function () {
         }
       },
       get blockSet () { return currentPlace.world.blockSet; },
-      set movement (vec) { vec3.set(vec, movement); },
+      set movement (vec) { 
+        vec3.set(vec, movement);
+        if (movement[1] > 0) currentPlace.flying = true;
+      },
       get pitch () { return pitch; },
       set pitch (angle) { pitch = angle; aimChanged(); },
       get yaw () { return currentPlace.yaw; },
