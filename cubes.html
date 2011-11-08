@@ -290,6 +290,9 @@
     
     var DEBUG = false;
     var TIMESTEP = 1/30;
+    var MAX_CATCHUP_MS = 500;
+    
+    var TIMESTEP_MS = TIMESTEP*1000;
     
     // Settable using the options sidebar
     var configRenderDistance = 100;
@@ -736,10 +739,24 @@
     
     var fpsDesc = "", stepCount = 0, renderCount = 0, chunkRenders = 0, totalVertices = 0;
     
-    function doStep() {
+    var lastStepTime = null;
+    function doOneStep() {
       player.stepYourselfAndWorld();
       input.step();
       stepCount++;
+    }
+    function doStep() {
+      // perform limited catch-up
+      var now = Date.now();
+      if (lastStepTime === null)
+        lastStepTime = now;
+      if ((now - lastStepTime) > MAX_CATCHUP_MS)
+        lastStepTime = now - MAX_CATCHUP_MS;
+      
+      while ((now - lastStepTime) > TIMESTEP_MS) {
+        doOneStep();
+        lastStepTime += TIMESTEP_MS;
+      }
     }
     
     var animFrameWasRequested = false;
@@ -872,8 +889,7 @@
           input = new Input(theCanvas, player.input, document.getElementById("menu"));
           theCanvas.focus();
 
-          // TODO: use webgl utils to avoid wasting time rendering frames if invisible
-          setInterval(doStep, 1000*TIMESTEP);
+          setInterval(doStep, TIMESTEP_MS);
         },
         "Ready!"
       ], function (exception) {
