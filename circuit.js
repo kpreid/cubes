@@ -214,13 +214,30 @@ var Circuit = (function () {
                 player.render.getWorldRenderer().renderCreateBlock(block); // TODO global variable/wrong world
                 scheduleDraw();
               }
-            }
+            };
             break;
           case Circuit.B_INPUT:
             uniformOutput(false);
             evaluator = function () {
               // externally set
             }
+            break;
+          case Circuit.B_NOR:
+            var inputEvals = [];
+            [UNIT_PX,UNIT_NX].forEach(function (direction) {
+              direction = Array.prototype.slice.call(direction);
+              inputEvals.push(netEvaluator(cGraph[block][direction]))
+            });
+            evaluator = function () {
+              var flag = false;
+              inputEvals.forEach(function (f) {
+                flag = flag || f();
+              });
+              cState[block + "/0,0,1"] = !flag;
+              cState[block + "/0,0,-1"] = !flag;
+              cState[block + "/0,1,0"] = !flag;
+              cState[block + "/0,-1,0"] = !flag;
+            };
             break;
           default:
             evaluator = function () {
@@ -266,6 +283,7 @@ var Circuit = (function () {
   Circuit.B_INPUT = "I";
   Circuit.B_OUTPUT = "O";
   Circuit.B_JUNCTION = "*";
+  Circuit.B_NOR = "NOR";
 
   return Object.freeze(Circuit);
 })();

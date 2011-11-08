@@ -172,6 +172,13 @@ var WorldGen = (function () {
       })));
       type.behavior = Circuit.B_OUTPUT;
 
+      // nor block
+      ids.nor = blockSet.length;
+      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
+        return (f.rad([b[0]-3,b[1],b[2]]) < 3.5 || f.rad([b[0]+3,b[1],b[2]]) < 3.5) ? colorKit.colorToID(0.5,0.5,0.5) : 0;
+      })));
+      type.behavior = Circuit.B_NOR;
+
       return ids;
     }
   };
@@ -297,6 +304,13 @@ function generateWorlds() {
   topWorld.s(205,72,203,l.junction);
   topWorld.s(205,72,202,l.wire);
   topWorld.s(205,72,201,l.input);
+
+  topWorld.s(205,72,204,l.wire);
+  topWorld.s(205,72,205,l.nor);
+  topWorld.s(204,72,205,l.wire);
+  topWorld.s(203,72,205,l.input);
+  topWorld.s(206,72,205,l.wire);
+  topWorld.s(207,72,205,l.input);
 
   topWorld.rebuildCircuits();
   
