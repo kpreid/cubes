@@ -130,7 +130,50 @@ var WorldGen = (function () {
         flat: flat,
         speckle: speckle
       });
-    })()
+    })(),
+    
+    addLogicBlocks: function (blockSet, colorKit) {
+      var ids = {};
+      var type;
+      var f = WorldGen.blockFunctions;
+      
+      var boxColor = colorKit.colorToID(0,1,1);
+      function boxed(insidePat) {
+        return function (b) {
+          return (f.e(b) && (b[0]+b[1]+b[2])%2) ? boxColor : insidePat(b);
+        };
+      }
+      
+      // wire
+      ids.wire = blockSet.length;
+      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(f.flat(0))));
+      type.behavior = Circuit.B_WIRE;
+
+      // junction block
+      ids.junction = blockSet.length;
+      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
+        return f.rad(b) < 3 ? colorKit.colorToID(0.5,0.5,0.5) : 0;
+      })));
+      type.behavior = Circuit.B_JUNCTION;
+
+      // input block
+      ids.input = blockSet.length;
+      var specklePat = f.speckle(f.flat(colorKit.colorToID(0.5,0.5,0.5)),
+                                 f.flat(colorKit.colorToID(0.75,0.75,0.75)));
+      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
+        return f.rad([b[0],b[1]-8,b[2]]) < 8 ? specklePat(b) : 0;
+      })));
+      type.behavior = Circuit.B_INPUT;
+
+      // output block
+      ids.output = blockSet.length;
+      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
+        return f.rad(b) < 6 ? colorKit.colorToID(1,0,0) : 0;
+      })));
+      type.behavior = Circuit.B_OUTPUT;
+
+      return ids;
+    }
   };
   
   return Object.freeze(WorldGen);
@@ -205,18 +248,7 @@ function generateWorlds() {
     return Math.max(Math.abs(b[0] - 8), Math.abs(b[2] - 8)) <= 4 ? brgb(.5,.5,0) : 0;
   }));
   
-  // wire
-  blockset.add(type = genedit(function (b) {
-    return (f.e(b) && (b[0]+b[1]+b[2])%2) ? brgb(0,1,1) : 0;
-  }));
-  
-  // or/bend block
-  blockset.add(type = genedit(function (b) {
-    return (f.e(b) && (b[0]+b[1]+b[2])%2) ? brgb(0,1,1) :
-           f.rad(b) < 3 ? brgb(0.5,0.5,0.5) : 0;
-  }));
-  
-  // input and output have block appearances for now
+  var l = WorldGen.addLogicBlocks(blockset, colors);
   
   for (var i = 0; i < 4; i++) {
     var c = f.pickCond(f.flat(pickColor()),
@@ -224,12 +256,6 @@ function generateWorlds() {
                 f.speckle(f.flat(pickColor()), f.flat(pickColor()))));
     blockset.add(genedit(c));
   }
-  
-  var CW,CI,CO,COR;
-  blockset.get(CW=7 ).behavior = Circuit.B_WIRE;
-  blockset.get(COR=8).behavior = Circuit.B_JUNCTION;
-  blockset.get(CI=9 ).behavior = Circuit.B_INPUT;
-  blockset.get(CO=10).behavior = Circuit.B_OUTPUT;
   
   // --- big world ---
 
@@ -263,14 +289,14 @@ function generateWorlds() {
   }    
   
   // circuit test
-  topWorld.s(200,72,203,CI);
-  topWorld.s(201,72,203,CW);
-  topWorld.s(202,72,203,CW);
-  topWorld.s(203,72,203,CO);
-  topWorld.s(204,72,203,CW);
-  topWorld.s(205,72,203,COR);
-  topWorld.s(205,72,202,CW);
-  topWorld.s(205,72,201,CI);
+  topWorld.s(200,72,203,l.input);
+  topWorld.s(201,72,203,l.wire);
+  topWorld.s(202,72,203,l.wire);
+  topWorld.s(203,72,203,l.output);
+  topWorld.s(204,72,203,l.wire);
+  topWorld.s(205,72,203,l.junction);
+  topWorld.s(205,72,202,l.wire);
+  topWorld.s(205,72,201,l.input);
 
   topWorld.rebuildCircuits();
   
