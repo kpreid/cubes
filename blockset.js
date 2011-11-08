@@ -30,8 +30,8 @@ var BlockType = (function () {
       json.automaticRotations = this.automaticRotations;
     if (this.spontaneousConversion)
       json.spontaneousConversion = this.spontaneousConversion;
-    if (this.behavior)
-      json.behavior = this.behavior;
+    if (this.behavior && this.behavior.name)
+      json.behavior = this.behavior.name;
     return json;
   }
   
@@ -132,7 +132,7 @@ var BlockType = (function () {
       throw new Error("unknown BlockType serialization type");
     }
     
-    self.behavior = json.behavior || null;
+    self.behavior = Circuit.behaviors.hasOwnProperty(json.behavior) ? Circuit.behaviors[json.behavior] : null;
     self.automaticRotations = json.automaticRotations || [0];
     self.spontaneousConversion = json.spontaneousConversion || null;
     

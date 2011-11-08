@@ -147,23 +147,23 @@ var WorldGen = (function () {
       // wire
       ids.wire = blockSet.length;
       blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(f.flat(0))));
-      type.behavior = Circuit.B_WIRE;
+      type.behavior = Circuit.behaviors.wire;
 
       // junction block
       ids.junction = blockSet.length;
       blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
         return f.rad(b) < 3 ? colorKit.colorToID(0.5,0.5,0.5) : 0;
       })));
-      type.behavior = Circuit.B_JUNCTION;
+      type.behavior = Circuit.behaviors.junction;
 
-      // input block
-      ids.input = blockSet.length;
+      // step pad block
+      ids.pad = blockSet.length;
       var specklePat = f.speckle(f.flat(colorKit.colorToID(0.5,0.5,0.5)),
                                  f.flat(colorKit.colorToID(0.75,0.75,0.75)));
       blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
         return f.rad([b[0],b[1]-8,b[2]]) < 8 ? specklePat(b) : 0;
       })));
-      type.behavior = Circuit.B_INPUT;
+      type.behavior = Circuit.behaviors.pad;
 
       // indicator block
       ids.indicator = blockSet.length;
@@ -171,14 +171,14 @@ var WorldGen = (function () {
         return f.rad([b[0],b[1],b[2]]) > 6 ? 0 :
                b[1] < 8 ? colorKit.colorToID(1,1,1) : colorKit.colorToID(0,0,0);
       })));
-      type.behavior = Circuit.B_INDICATOR;
+      type.behavior = Circuit.behaviors.indicator;
 
       // nor block
       ids.nor = blockSet.length;
       blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
         return (f.rad([b[0]-3,b[1],b[2]]) < 3.5 || f.rad([b[0]+3,b[1],b[2]]) < 3.5) ? colorKit.colorToID(0.5,0.5,0.5) : 0;
       })));
-      type.behavior = Circuit.B_NOR;
+      type.behavior = Circuit.behaviors.nor;
 
       return ids;
     }
@@ -297,21 +297,21 @@ function generateWorlds() {
   }    
   
   // circuit test
-  topWorld.s(200,72,203,l.input);
+  topWorld.s(200,72,203,l.pad);
   topWorld.s(201,72,203,l.wire);
   topWorld.s(202,72,203,l.wire);
   topWorld.s(203,72,203,l.indicator);
   topWorld.s(204,72,203,l.wire);
   topWorld.s(205,72,203,l.junction);
   topWorld.s(205,72,202,l.wire);
-  topWorld.s(205,72,201,l.input);
+  topWorld.s(205,72,201,l.pad);
 
   topWorld.s(205,72,204,l.wire);
   topWorld.s(205,72,205,l.nor);
   topWorld.s(204,72,205,l.wire);
-  topWorld.s(203,72,205,l.input);
+  topWorld.s(203,72,205,l.pad);
   topWorld.s(206,72,205,l.wire);
-  topWorld.s(207,72,205,l.input);
+  topWorld.s(207,72,205,l.pad);
 
   topWorld.rebuildCircuits();
   

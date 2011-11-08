@@ -662,7 +662,7 @@
 
             var circuit = world.getCircuit(cube);
             if (circuit !== null) {
-              text += "\nCircuit: " + type.behavior + " " + circuit.describeBlock(cube);
+              text += "\nCircuit: " + type.behavior.name + " " + circuit.describeBlock(cube);
             }
             cursorInfo.data = text;
           }

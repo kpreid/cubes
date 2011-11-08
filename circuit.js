@@ -12,6 +12,19 @@ var Circuit = (function () {
     });
   }
   
+  function dirKeys(value) {
+    var o = {};
+    UNIT_AXES.forEach(function (direction) {
+      direction = Array.prototype.slice.call(direction);
+      o[direction] = value;
+    });
+    return o;
+  }
+  
+  var IN = "IN";
+  var OUT = "OUT";
+  var NONE = "NONE";
+  
   function Circuit(world) {
     var blockSet = world.blockSet;
     function getBehavior(block) {
@@ -38,17 +51,7 @@ var Circuit = (function () {
     }
     
     function behaviorFaceIsOutput(beh, direction) {
-      var evaluator;
-      switch (beh) {
-        case Circuit.B_INDICATOR:
-          return false;
-        case Circuit.B_INPUT:
-          return true;
-        case Circuit.B_NOR:
-          return !direction[0];
-        default:
-          return false;
-      }
+      return beh.faces[Array.prototype.slice.call(direction)] == OUT;
     }
     
     // --- Methods ---
@@ -83,13 +86,13 @@ var Circuit = (function () {
       cEdges = [];
       blocks.forEach(function (block) {
         var beh = getBehavior(block);
-        if (beh && beh != Circuit.B_WIRE) {
+        if (beh && beh != Circuit.behaviors.wire) {
           // Initialize state
           cGraph[block] = {};
           
           // Build indexes
           nodes.push(block);
-          if (beh == Circuit.B_INDICATOR) {
+          if (beh.hasEffect) {
             outputs.push(block);
           }
         }
@@ -107,7 +110,7 @@ var Circuit = (function () {
           var comingFrom = vec3.negate(direction, []);
           if (!bnBeh) {
             return false; // not a circuit element
-          } else if (bnBeh == Circuit.B_WIRE) {
+          } else if (bnBeh == Circuit.behaviors.wire) {
             continue; // pass-through
           } else if (cGraph[bn][comingFrom] && cGraph[bn][comingFrom] !== net) {
             throw new Error("met different net!");
@@ -139,7 +142,7 @@ var Circuit = (function () {
           }
           
           // non-junctions get separate nets, junctions extend nets
-          if (getBehavior(block) !== Circuit.B_JUNCTION) {
+          if (getBehavior(block) !== Circuit.behaviors.junction) {
             net = [];
             net.serial = netSerial++;
             net.toString = function () { return "net" + net.serial; };
@@ -158,7 +161,7 @@ var Circuit = (function () {
       }
       nodes.forEach(function (block) {
         if (DEBUG_WIRE) console.group("root " + block + ":" + getBehavior(block));
-        if (getBehavior(block) == Circuit.B_JUNCTION) {
+        if (getBehavior(block) == Circuit.behaviors.junction) {
           // do not trace from junctions (not implemented yet)
           if (DEBUG_WIRE) console.groupEnd();
           return;
@@ -209,65 +212,17 @@ var Circuit = (function () {
         if (seen[blockKey]) return;
         seen[blockKey] = true;
         
-        var outputKeys = blockOutputKeys(block);
-        function uniformOutput(state, value) {
-          outputKeys.forEach(function (k) {
-            state[k] = value;
-          });
-        }
-        
         var beh = getBehavior(block);
-        var evaluator;
-        switch (beh) {
-          case Circuit.B_INDICATOR:
-            
-            var inputEvals = [];
-            UNIT_AXES.forEach(function (direction) {
-              direction = Array.prototype.slice.call(direction);
-              var net = cGraph[block][direction];
-              if (net)
-                inputEvals.push(netEvaluator(net));
-            });
-            evaluator = function (state) {
-              var flag = false;
-              inputEvals.forEach(function (f) {
-                flag = flag || f(state);
-              });
-              var cur = world.gSub(block[0],block[1],block[2]);
-              if (!flag != !cur && state.allowWorldEdit) {
-                world.sSub(block[0],block[1],block[2], flag ? 1 : 0);
-              }
-            };
-            break;
-          case Circuit.B_INPUT:
-            evaluator = function (state) {
-              uniformOutput(state, world.gSub(block[0],block[1],block[2]));
-            }
-            break;
-          case Circuit.B_NOR:
-            var inputEvals = [];
-            [UNIT_PX,UNIT_NX].forEach(function (direction) {
-              direction = Array.prototype.slice.call(direction);
-              var net = cGraph[block][direction];
-              if (net)
-                inputEvals.push(netEvaluator(net));
-            });
-            evaluator = function (state) {
-              var flag = false;
-              inputEvals.forEach(function (f) {
-                flag = flag || f(state);
-              });
-              state[block + "/0,0,1"] = !flag;
-              state[block + "/0,0,-1"] = !flag;
-              state[block + "/0,1,0"] = !flag;
-              state[block + "/0,-1,0"] = !flag;
-            };
-            break;
-          default:
-            evaluator = function (state) {
-            }
-        }
-        evaluators.push(evaluator);
+        var faces = beh.faces;
+        var inputGetters = {};
+        UNIT_AXES.forEach(function (direction) {
+          direction = Array.prototype.slice.call(direction);
+          var net = cGraph[block][direction];
+          if (net)
+            inputGetters[direction] = netEvaluator(net);
+        });
+        
+        evaluators.push(beh.compile(world, block, inputGetters));
       }
       outputs.forEach(compile);
       
@@ -277,6 +232,12 @@ var Circuit = (function () {
       };
       
       //refreshLocal(); // TODO: do later, in case of inf update loops
+    };
+    this.refreshLocal = function () {
+      localState = {
+        allowWorldEdit: true
+      };
+      evaluate(localState);
     };
     this.getEdges = function () {
       return cEdges;
@@ -297,24 +258,102 @@ var Circuit = (function () {
       return s;
     }
     
-    this.setStandingOn = function (cube,value) {
-      if (getBehavior(cube) === Circuit.B_INPUT) {
-        if (!world.gSub(cube[0],cube[1],cube[2]) != !value) {
-          world.sSub(cube[0],cube[1],cube[2],value);
-          refreshLocal();
-        }
-      }
+    this.setStandingOn = function (cube, value) {
+      getBehavior(cube).standingOn(this, cube, value);
     }
     
     Object.freeze(this);
   }
   
-  // block behavior enums
-  Circuit.B_WIRE = "W";
-  Circuit.B_INPUT = "I";
-  Circuit.B_INDICATOR = "O";
-  Circuit.B_JUNCTION = "*";
-  Circuit.B_NOR = "NOR";
-
+  var behaviors = Circuit.behaviors = {};
+  
+  (function () {
+    function nb(name, proto) {
+      var beh = Object.create(proto);
+      beh.name = name;
+      behaviors[name] = beh;
+      return beh;
+    }
+    function uniformOutput(block, state, value) {
+      blockOutputKeys(block).forEach(function (k) {
+        state[k] = value;
+      });
+    }
+    function combineInputs(inputs, faces) {
+      // TODO: combine more cleverly than 'or'
+      var inputEvals = [];
+      UNIT_AXES.forEach(function (direction) {
+        direction = Array.prototype.slice.call(direction);
+        if (inputs[direction])
+          inputEvals.push(inputs[direction]);
+      });
+      return function (state) {
+        var flag = false;
+        inputEvals.forEach(function (f) {
+          flag = flag || f(state);
+        });
+        return flag;
+      }
+    }
+    
+    var protobehavior = {};
+    protobehavior.faces = dirKeys(NONE);
+    protobehavior.hasEffect = false;
+    protobehavior.standingOn = function (circuit, cube, value) {};
+  
+    nb("wire", protobehavior);
+    
+    var inputOnlyBeh = Object.create(protobehavior);
+    inputOnlyBeh.faces = dirKeys(IN);
+    
+    var outputOnlyBeh = Object.create(protobehavior);
+    outputOnlyBeh.faces = dirKeys(OUT);
+    
+    var pad = nb("pad", outputOnlyBeh);
+    pad.compile = function (world, block, inputs) {
+      return function (state) {
+        uniformOutput(block, state, world.gSub(block[0],block[1],block[2]));
+      };
+    };
+    pad.standingOn = function (circuit, cube, value) {
+      if (!circuit.world.gSub(cube[0],cube[1],cube[2]) != !value) {
+        circuit.world.sSub(cube[0],cube[1],cube[2],value);
+        circuit.refreshLocal();
+      }
+    };
+    
+    var indicator = nb("indicator", inputOnlyBeh);
+    indicator.hasEffect = true;
+    indicator.compile = function (world, block, inputs) {
+      var input = combineInputs(inputs, UNIT_AXES);
+      return function (state) {
+        var flag = input(state);
+        var cur = world.gSub(block[0],block[1],block[2]);
+        if (!flag != !cur && state.allowWorldEdit) {
+          world.sSub(block[0],block[1],block[2], flag ? 1 : 0);
+        }
+      };
+    };
+    
+    var junction = nb("junction", protobehavior);
+    
+    var nor = nb("nor", protobehavior);
+    nor.faces = dirKeys(OUT);
+    nor.faces["1,0,0"] = nor.faces["-1,0,0"] = IN;
+    nor.compile = function (world, block, inputs) {
+      var input = combineInputs(inputs, [UNIT_PX,UNIT_NX]);
+      return function (state) {
+        var flag = input(state);
+        state[block + "/0,0,1"] = !flag;
+        state[block + "/0,0,-1"] = !flag;
+        state[block + "/0,1,0"] = !flag;
+        state[block + "/0,-1,0"] = !flag;
+      };
+    };
+    
+    
+    Object.freeze(behaviors);
+  })();
+  
   return Object.freeze(Circuit);
 })();
