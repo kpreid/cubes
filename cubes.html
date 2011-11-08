@@ -102,7 +102,33 @@
     color: white;
     background: black;
     background: rgba(80,80,80,0.7);
-    padding: 0 0.8em;
+    margin: 0;
+    padding: 0;
+  }
+  .sidebar > * {
+    margin-left: 0.8em;
+    margin-right: 0.8em;
+  }
+  .sidebar h2 {
+    font-size: 1.2em;
+    margin: .66em 0;
+    padding: 0 .66em;
+    background: gray;
+    background: rgba(255,255,255,0.3);
+  }
+  .sidebar table {
+    font-size: 0.92em;
+    border-collapse: collapse;
+  }
+  .sidebar th {
+    background: gray;
+    background: rgba(255,255,255,0.1);
+  }
+  .sidebar tr {
+    border-color gray;
+    border-color rgba(255,255,255,0.1);
+    border-width: 1px 0;
+    border-style: solid;
   }
 </style>
 
@@ -1007,17 +1033,31 @@
       
       <h3>Controls</h3>
       
-      <p>Standard W A S D keys or arrow keys to move horizontally. Turn by moving the cursor close to the edges of the window. (Sorry, can't capture the mouse in a web browser.) Spacebar to jump or E and C to move vertically (there is no separate flight mode).</p>
-      
-      <p>Blocks are selected using the mouse. The left button adds or removes blocks at the location of the white rectangle cursor; the right button brings up a menu for choosing block types (the empty square at the top left is the removal tool). The number keys can be used instead of the menu.</p>
+      <table>
+        <tr><th colspan=2>Movement
+        <tr><td><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd><br> or arrows<td>move horizontally
+        <tr><td><kbd>Space</kbd><td>jump
+        <tr><td><kbd>E</kbd><td>fly, move up
+        <tr><td><kbd>C</kbd><td>land, move down
+        <tr><td>Mouse motion<td>look/target block
+        <tr><td>Mouseover<br>left/right edge<td>turn
+        <tr><th colspan=2>Blocks
+        <tr><td>Left button<td> Place/remove block
+        <tr><td>Right button<td> Choose tool from menu
+        <tr><td><kbd>R</kbd><td> Edit targeted block
+        <tr><td><kbd>F</kbd><td> Exit editing
+        <tr><td><kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd><td>Choose tool
+      </table>
+            
+      <p>In the menu of blocks, the empty square at the top left is the removal tool.</p>
 
-      <p>The R key enters the world of the selected block; the F key exits out to the previous world. While you can edit any block to any shape, note that making the first block type, which makes up the underground volume, a non-cubical shape will likely be fatal to your frame rate. The terrain surface is also somewhat dangerous in this way.</p>
+      <p>While you can edit any block to any shape, note that making the first block type (which makes up the underground volume in the default world) a non-cubical shape will likely be fatal to your frame rate.</p>
 
       <h3>Compatibility &amp; Bugs</h3>
       
       <p>Player movement does not work on Safari 5.1. Right mouse button does not work on Firefox 6.0.2.</p>
       
-      <p>The physics is still glitchy, and you can get permanently stuck simply by placing a block where you are.</p>
+      <p>You can get stuck by placing a block that intersects yourself.</p>
 
     </div>
 </body>
