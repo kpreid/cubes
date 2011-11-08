@@ -11,6 +11,14 @@ var WorldGen = (function () {
        return new BlockType.World(new World(blockWorldSize, blockSet));
     },
     
+    newProceduralBlockType: function (blockSet, patfunc) {
+      var type = WorldGen.newWorldBlockType(blockSet);
+      type.world.edit(function (x,y,z,value) {
+        return patfunc([x,y,z]);
+      });
+      return type;
+    },
+
     // Generate a blockset containing RGB colors with the specified number of
     // levels in each channel, and a function from (r,g,b) to block ID.
     colorBlocks: function (reds, greens, blues) {
@@ -52,7 +60,77 @@ var WorldGen = (function () {
         colorToID: colorToID,
         idToColor: idToColor
       };
-    }
+    },
+    
+    blockFunctions: (function () {
+      // condition functions for procedural block generation
+      // Each takes a coordinate vector and returns a boolean.
+      // TODO: Parameterize fully on TILE_SIZE.
+      var TILE_SIZE = World.TILE_SIZE;
+      function vx(b) { return b[0]; }
+      function vy(b) { return b[1]; }
+      function vz(b) { return b[2]; }
+      function te(b) { return b[1] == 15 ?1:0; }
+      function tp(b) { return b[1] == 14 ?1:0; }
+      function be(b) { return b[1] == 0 ?1:0; }
+      function bp(b) { return b[1] == 1 ?1:0; }
+      function se(b) { return (b[2] == 0 || b[2] == 15 || b[0] == 0 || b[0] == 15) ?1:0; }
+      function sp(b) { return (b[2] == 1 || b[2] == 14 || b[0] == 1 || b[0] == 14) ?1:0; }
+      function xe(b) { return (b[0] == 0 || b[0] == 15) ?1:0; }
+      function ze(b) { return (b[2] == 0 || b[2] == 15) ?1:0; }
+      function s(b) { return te(b) + be(b) + xe(b) + ze(b); }
+      function e(b) { return s(b) > 1 ?1:0; }
+      function c(b) { return s(b) > 2 ?1:0; }
+      function rad(b) { 
+        return Math.sqrt(
+          Math.pow(b[0]-TILE_SIZE/2+0.5, 2) +
+          Math.pow(b[1]-TILE_SIZE/2+0.5, 2) +
+          Math.pow(b[2]-TILE_SIZE/2+0.5, 2)
+        );
+      }
+
+      // Pattern functions: each returns a function from a coordinate vector to a block id.
+      function pick(a) {
+        return a[Math.floor(Math.random() * a.length)];
+      }
+      function pickColor() {
+        return Math.floor(Math.random() * colorSet.length);
+      }
+      function pickCond(p1, p2) {
+        var cond = pick([te,tp,be,bp,se,sp,s,e,c]);
+        return function (b) { return cond(b) ? p1(b) : p2(b); }
+      }
+      function flat(id) {
+        return function (b) { return id; }
+      }
+      function speckle(p1, p2) {
+        return function (b) {
+          return (Math.floor(b[0]/4) + b[1] + Math.floor(b[2]/2)) % 4 ? p1(b) : p2(b);
+        };
+      }
+
+      return Object.freeze({
+        vx: vx,
+        vy: vy,
+        vz: vz,
+        te: te,
+        tp: tp,
+        be: be,
+        bp: bp,
+        se: se,
+        sp: sp,
+        xe: xe,
+        ze: ze,
+        s: s,
+        e: e,
+        c: c,
+        rad: rad,
+        pick: pick,
+        pickCond: pickCond,
+        flat: flat,
+        speckle: speckle
+      });
+    })()
   };
   
   return Object.freeze(WorldGen);
@@ -73,62 +151,16 @@ function generateWorlds() {
 
   // --- block world generation utilities ---
   
-  // condition functions for procedural block generation
-  // Takes a coordinate vector and returns a boolean.
-  // TODO: Parameterize fully on TILE_SIZE.
-  var TILE_SIZE = World.TILE_SIZE;
-  function vx(b) { return b[0]; }
-  function vy(b) { return b[1]; }
-  function vy(b) { return b[2]; }
-  function vz(b) { return b[1]; }
-  function te(b) { return b[1] == 15 ?1:0; }
-  function tp(b) { return b[1] == 14 ?1:0; }
-  function be(b) { return b[1] == 0 ?1:0; }
-  function bp(b) { return b[1] == 1 ?1:0; }
-  function se(b) { return (b[2] == 0 || b[2] == 15 || b[0] == 0 || b[0] == 15) ?1:0; }
-  function sp(b) { return (b[2] == 1 || b[2] == 14 || b[0] == 1 || b[0] == 14) ?1:0; }
-  function xe(b) { return (b[0] == 0 || b[0] == 15) ?1:0; }
-  function ze(b) { return (b[2] == 0 || b[2] == 15) ?1:0; }
-  function s(b) { return te(b) + be(b) + xe(b) + ze(b); }
-  function e(b) { return s(b) > 1 ?1:0; }
-  function c(b) { return s(b) > 2 ?1:0; }
-  function rad(b) { 
-    return Math.sqrt(
-      Math.pow(b[0]-TILE_SIZE/2+0.5, 2) +
-      Math.pow(b[1]-TILE_SIZE/2+0.5, 2) +
-      Math.pow(b[2]-TILE_SIZE/2+0.5, 2)
-    );
+  function genedit(patfunc) {
+    return WorldGen.newProceduralBlockType(colorSet, patfunc);
   }
-  
-  function pick(a) {
-    return a[Math.floor(Math.random() * a.length)];
-  }
+  var f = WorldGen.blockFunctions;
+
   function pickColor() {
     return Math.floor(Math.random() * colorSet.length);
   }
-  function pickCond(p1, p2) {
-    var cond = pick([te,tp,be,bp,se,sp,s,e,c]);
-    return function (b) { return cond(b) ? p1(b) : p2(b); }
-  }
-  
-  function flat(color) {
-    return function (b) { return color; }
-  }
   function rgbPat(b) { return brgb(b[0]/15,b[1]/15,b[2]/15); }
-  function speckle(p1, p2) {
-    return function (b) {
-      return (Math.floor(b[0]/4) + b[1] + Math.floor(b[2]/2)) % 4 ? p1(b) : p2(b);
-    };
-  }
   
-  function genedit(patfunc) {
-    var type = WorldGen.newWorldBlockType(colorSet);
-    type.world.edit(function (x,y,z,value) {
-      return patfunc([x,y,z]);
-    });
-    return type;
-  }
-
   // --- default block worlds and block set ---
 
   var type;
@@ -141,17 +173,17 @@ function generateWorlds() {
   
   // ground block
   blockset.add(type = genedit(function (b) {
-    return (te(b) ? speckle(flat(brgb(.67,.34,.34)), flat(brgb(.67,0,0))) :
-            tp(b) ? flat(brgb(1,.34,.34)) :
-            speckle(flat(brgb(.34,0,0)), flat(brgb(0,0,0))))(b);
+    return (f.te(b) ? f.speckle(f.flat(brgb(.67,.34,.34)), f.flat(brgb(.67,0,0))) :
+            f.tp(b) ? f.flat(brgb(1,.34,.34)) :
+            f.speckle(f.flat(brgb(.34,0,0)), f.flat(brgb(0,0,0))))(b);
   }));
   type.spontaneousConversion = 3;
   
   // ground block #2
   blockset.add(type = genedit(function (b) {
-    return (te(b) ? speckle(flat(brgb(.34,.67,.34)), flat(brgb(0,.34,0))) :
-            tp(b) ? flat(brgb(.34,1,.34)) :
-            speckle(flat(brgb(0,.34,0)), flat(brgb(0,1,1))))(b);
+    return (f.te(b) ? f.speckle(f.flat(brgb(.34,.67,.34)), f.flat(brgb(0,.34,0))) :
+            f.tp(b) ? f.flat(brgb(.34,1,.34)) :
+            f.speckle(f.flat(brgb(0,.34,0)), f.flat(brgb(0,1,1))))(b);
   }));
   type.spontaneousConversion = 2;
   
@@ -165,7 +197,7 @@ function generateWorlds() {
   
   // "leaf block" transparency test
   blockset.add(type = genedit(function (b) {
-    return s(b) ? speckle(flat(0), flat(brgb(0,1,0)))(b) : 0;
+    return f.s(b) ? f.speckle(f.flat(0), f.flat(brgb(0,1,0)))(b) : 0;
   }));
 
   // pillar thing
@@ -175,21 +207,21 @@ function generateWorlds() {
   
   // wire
   blockset.add(type = genedit(function (b) {
-    return (e(b) && (b[0]+b[1]+b[2])%2) ? brgb(0,1,1) : 0;
+    return (f.e(b) && (b[0]+b[1]+b[2])%2) ? brgb(0,1,1) : 0;
   }));
   
   // or/bend block
   blockset.add(type = genedit(function (b) {
-    return (e(b) && (b[0]+b[1]+b[2])%2) ? brgb(0,1,1) :
-           rad(b) < 3 ? brgb(0.5,0.5,0.5) : 0;
+    return (f.e(b) && (b[0]+b[1]+b[2])%2) ? brgb(0,1,1) :
+           f.rad(b) < 3 ? brgb(0.5,0.5,0.5) : 0;
   }));
   
   // input and output have block appearances for now
   
   for (var i = 0; i < 4; i++) {
-    var c = pickCond(flat(pickColor()),
-              pickCond(flat(pickColor()),
-                speckle(flat(pickColor()), flat(pickColor()))));
+    var c = f.pickCond(f.flat(pickColor()),
+              f.pickCond(f.flat(pickColor()),
+                f.speckle(f.flat(pickColor()), f.flat(pickColor()))));
     blockset.add(genedit(c));
   }
   
