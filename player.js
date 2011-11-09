@@ -3,7 +3,8 @@
 
 var Player = (function () {
   // physics constants
-  var PLAYER_SPEED = 5; // cubes/s
+  var WALKING_SPEED = 5; // cubes/s
+  var FLYING_SPEED = 10; // cubes/s
   var GRAVITY = 20; // cubes/s^2
   var JUMP_SPEED = 10; // cubes/s
   
@@ -21,6 +22,7 @@ var Player = (function () {
     this.pos = vec3.create([0,0,0]);
     this.vel = vec3.create([0,0,0]);
     this.yaw = Math.PI/4 * 5;
+    this.flying = false;
     this.onGround = false;
 
     // Selection
@@ -136,15 +138,20 @@ var Player = (function () {
       var controlOrientation = mat4.rotateY(mat4.identity(mat4.create()), currentPlace.yaw);
       var movAdj = vec3.create();
       mat4.multiplyVec3(controlOrientation, movement, movAdj);
-      vec3.scale(movAdj, PLAYER_SPEED);
+      vec3.scale(movAdj, currentPlace.flying ? FLYING_SPEED : WALKING_SPEED);
       //console.log(vec3.str(movAdj));
       currentPlace.vel[0] += (movAdj[0] - currentPlace.vel[0]) * 0.4;
-      if (movAdj[1] != 0)
-      currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * 0.4 + TIMESTEP * GRAVITY;
+      if (currentPlace.flying) {
+        currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * 0.4;
+      } else {
+        if (movAdj[1] != 0)
+          currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * 0.4 + TIMESTEP * GRAVITY;
+      }
       currentPlace.vel[2] += (movAdj[2] - currentPlace.vel[2]) * 0.4;
       
       // gravity
-      currentPlace.vel[1] -= TIMESTEP * GRAVITY;
+      if (!currentPlace.flying)
+        currentPlace.vel[1] -= TIMESTEP * GRAVITY;
       
       // early exit
       if (vec3.length(currentPlace.vel) <= 0) return;
@@ -195,6 +202,7 @@ var Player = (function () {
           curVel[dim] = 0;
           if (dim == 1 && dir == 0) {
             currentPlace.onGround = true;
+            currentPlace.flying = false;
           }
         } else {
           nextPosIncr[dim] = nextPos[dim];
@@ -248,7 +256,7 @@ var Player = (function () {
       while (placeStack.length) placeStack.pop().wrend.deleteResources();
       currentPlace = new Place(world);
       // TODO: move this position downward to free space rather than just imparting velocity
-      this.setPosition([world.wx/2, world.wy + playerAABB[1][0], world.wz/2]);
+      this.setPosition([world.wx/2, world.wy - playerAABB[1][0] + EPSILON, world.wz/2]);
       vec3.set([0,-120,0], currentPlace.vel);
     };
     
@@ -290,7 +298,10 @@ var Player = (function () {
         }
       },
       get blockSet () { return currentPlace.world.blockSet; },
-      set movement (vec) { vec3.set(vec, movement); },
+      set movement (vec) { 
+        vec3.set(vec, movement);
+        if (movement[1] > 0) currentPlace.flying = true;
+      },
       get pitch () { return pitch; },
       set pitch (angle) { pitch = angle; aimChanged(); },
       get yaw () { return currentPlace.yaw; },
@@ -323,8 +334,24 @@ var Player = (function () {
             if (world == null) return; // TODO: UI message about this
             
             currentPlace = new Place(world);
-            currentPlace.forBlock = blockID;
-            vec3.set([World.TILE_SIZE/2, World.TILE_SIZE - playerAABB[1][0] + EPSILON, World.TILE_SIZE/2], currentPlace.pos);
+            
+            // Initial adjustments:
+            // Make new position same relative to cube
+            vec3.subtract(oldPlace.pos, cube, currentPlace.pos);
+            vec3.scale(currentPlace.pos, World.TILE_SIZE);
+            // ... but not uselessly far away.
+            vec3.scale(currentPlace.pos, Math.min(1.0, (World.TILE_SIZE+40)/vec3.length(currentPlace.pos))); // TODO make relative to center of world, not origin
+            // Same velocity, scaled
+            vec3.set(oldPlace.vel, currentPlace.vel);
+            vec3.scale(currentPlace.vel, World.TILE_SIZE);
+            // Same view direction
+            currentPlace.yaw = oldPlace.yaw;
+            // They'll probably end up in the air...
+            currentPlace.flying = true;
+            // but in the ground would be bad.
+            if (currentPlace.pos[1] + playerAABB[1][0] < 0)
+              currentPlace.pos[1] = -playerAABB[1][0] + EPSILON;
+            
             placeStack.push(oldPlace);
             aimChanged();
             
@@ -332,9 +359,7 @@ var Player = (function () {
           case -1:
             if (placeStack.length <= 0) break;
             currentPlace.wrend.deleteResources();
-            var blockID = currentPlace.forBlock;
             currentPlace = placeStack.pop();
-            if (blockID) currentPlace.wrend.rebuildBlock(blockID);
             aimChanged();
             break;
         }

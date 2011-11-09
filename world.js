@@ -15,7 +15,7 @@ function World(sizes, blockSet) {
   var spontaneousBaseRate = 0.00003; // probability of block spontaneous effect call per block per second
   var numToDisturb = wx*wy*wz * TIMESTEP * spontaneousBaseRate;
   
-  var changeListener = null;
+  var notifier = new Notifier("World");
   
   // --- Internal functions ---
   
@@ -63,7 +63,7 @@ function World(sizes, blockSet) {
     subData[index] = subdatum;
     
     var vec = [x,y,z];
-    if (changeListener) changeListener.dirtyBlock(vec);
+    notifier.notify("dirtyBlock", vec);
   }
   function solid(x,y,z) {
     return g(x,y,z) != 0;
@@ -151,6 +151,12 @@ function World(sizes, blockSet) {
         }
       }
     }
+    notifier.notify("dirtyAll");
+  }
+  
+  // Called by clients which modify the raw state arrays
+  function notifyRawEdit() {
+    notifier.notify("dirtyAll");
   }
   
   function step() {
@@ -164,13 +170,6 @@ function World(sizes, blockSet) {
       
       gt(x,y,z).doSpontaneousEffect(self, [x,y,z], spontaneousBaseRate);
     }
-  }
-  
-  function setChangeListener(l) {
-    if (changeListener !== l && changeListener !== null && l !== null) {
-      throw new Error("conflicting change listeners");
-    }
-    changeListener = l;
   }
   
   var RLE_BASE = 0xA1;
@@ -196,12 +195,12 @@ function World(sizes, blockSet) {
     return ser.join("");
   }
   
-  function serialize() {
+  function serialize(subSerialize) {
     return {
       wx: wx,
       wy: wy,
       wz: wz,
-      blockSet: blockSet.serialize(),
+      blockSet: subSerialize(blockSet),
       blockCodeBase: RLE_BASE,
       blocks: rleBytes(blocks),
       subData: rleBytes(subData)
@@ -220,10 +219,11 @@ function World(sizes, blockSet) {
   this.raw = blocks;
   // TODO: Defining the rotations as being identical to the subdata is a placeholder until we have circuits.
   this.rawRotations = this.rawSubData = subData;
+  this.notifyRawEdit = notifyRawEdit;
   this.raycast = raycast;
   this.edit = edit;
   this.step = step;
-  this.setChangeListener = setChangeListener;
+  this.listen = notifier.listen;
   this.serialize = serialize;
   
   this.wx = wx;
@@ -236,7 +236,7 @@ function World(sizes, blockSet) {
 // The size of a texture tile, and therefore the size of a block-defining-block
 World.TILE_SIZE = 16;
 
-World.unserialize = function (json) {
+World.unserialize = function (json, unserialize) {
   var base = json.blockCodeBase;
   
   function unrleBytes(str, array) {
@@ -252,7 +252,7 @@ World.unserialize = function (json) {
     }
   }
   
-  var world = new World([json.wx, json.wy, json.wz], BlockSet.unserialize(json.blockSet));
+  var world = new World([json.wx, json.wy, json.wz], unserialize(json.blockSet, BlockSet));
   var str = json.blocks;
   unrleBytes(json.blocks, world.raw);
   unrleBytes(json.subData, world.rawSubData);
