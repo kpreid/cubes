@@ -322,7 +322,24 @@ var Player = (function () {
             if (world == null) return; // TODO: UI message about this
             
             currentPlace = new Place(world);
-            vec3.set([World.TILE_SIZE/8, World.TILE_SIZE - playerAABB[1][0] + EPSILON, World.TILE_SIZE/8], currentPlace.pos);
+            
+            // Initial adjustments:
+            // Make new position same relative to cube
+            vec3.subtract(oldPlace.pos, cube, currentPlace.pos);
+            vec3.scale(currentPlace.pos, World.TILE_SIZE);
+            // ... but not uselessly far away.
+            vec3.scale(currentPlace.pos, Math.min(1.0, (World.TILE_SIZE+40)/vec3.length(currentPlace.pos))); // TODO make relative to center of world, not origin
+            // Same velocity, scaled
+            vec3.set(oldPlace.vel, currentPlace.vel);
+            vec3.scale(currentPlace.vel, World.TILE_SIZE);
+            // Same view direction
+            currentPlace.yaw = oldPlace.yaw;
+            // They'll probably end up in the air...
+            currentPlace.flying = true;
+            // but in the ground would be bad.
+            if (currentPlace.pos[1] + playerAABB[1][0] < 0)
+              currentPlace.pos[1] = -playerAABB[1][0] + EPSILON;
+            
             placeStack.push(oldPlace);
             aimChanged();
             
