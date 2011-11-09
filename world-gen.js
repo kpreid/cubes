@@ -242,6 +242,7 @@ function generateWorlds() {
       }
     }
   }
+  topWorld.notifyRawEdit();
   
   return topWorld;
 }

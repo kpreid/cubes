@@ -12,6 +12,10 @@ var BlockType = (function () {
     if (!(this instanceof BlockType))
       throw new Error("bad constructor call");
     
+    var n = new Notifier("BlockType");
+    this._notify = n.notify; // should be private
+    this.listen = n.listen;
+    
     // TODO: Both of these properties are to be replaced by circuits.
     this.automaticRotations = [0];
     this.spontaneousConversion = null;
@@ -38,6 +42,21 @@ var BlockType = (function () {
     this.world = world;
     this.opaque = undefined;
     
+    // TODO: update listener if world is set, or reject world setting
+    // note there is no opportunity here to remove listener, but it is unlikely to be needed.
+    var self = this;
+    function rebuild() {
+      _recomputeOpacity.call(self);
+      self._notify("appearanceChanged");
+      return true;
+    }
+    world.listen({
+      dirtyBlock: rebuild,
+      dirtyAll: rebuild
+    });
+
+    _recomputeOpacity.call(this);
+    
     Object.seal(this);
   };
   BlockType.World.prototype = Object.create(BlockType.prototype);
@@ -57,7 +76,7 @@ var BlockType = (function () {
     target[offset+3] = scale;
   };
   
-  BlockType.World.prototype._recomputeOpacity = function () {
+  function _recomputeOpacity() {
     var TILE_SIZE = this.world.wx; // assumed cubical
     var TILE_LASTINDEX = TILE_SIZE - 1;
     var opaque = true;
@@ -86,6 +105,7 @@ var BlockType = (function () {
     _BlockTypeSuper.call(this);
     
     this.color = rgba;
+    // TODO set up notification
 
     Object.seal(this);
   };
@@ -268,11 +288,8 @@ var BlockSet = (function () {
     var TILE_LASTINDEX = TILE_SIZE - 1;
 
     // All block sets unconditionally have the standard empty block at ID 0.
-    var types = Array.prototype.slice.call(initialTypes);
-    types.unshift(BlockType.air);
-
+    var types = [BlockType.air];
     var tilings = [EMPTY_TILING];
-    for (var i = 1; i < types.length; i++) tilings.push({});
     
     var texgen = null;
     var typesToRerender = [];
@@ -320,7 +337,6 @@ var BlockSet = (function () {
       } else if (blockType.world) {
         (function () {
           var world = blockType.world;
-          blockType._recomputeOpacity(); // TODO kludge
           
           // To support non-cubical objects, we slice the entire volume of the block and generate as many tiles as needed. sliceWorld generates one such slice.
           
@@ -431,6 +447,8 @@ var BlockSet = (function () {
       }
     }
     
+    var notifier = new Notifier("BlockSet");
+    
     var self = Object.freeze({
       get length () { return types.length; },
       
@@ -438,12 +456,22 @@ var BlockSet = (function () {
         var newID = types.length;
         types.push(newBlockType);
         tilings.push({});
-        this.rebuildBlockTexture(newID);
+        typesToRerender.push(newID);
+        newBlockType.listen({
+          appearanceChanged: function () {
+            // TODO: notify applicable world renderers promptly
+            typesToRerender.push(newID);
+            notifier.notify("texturingChanged", newID);
+            return true;
+          }
+        })
       },
       
       get: function (blockID) {
         return types[blockID] || types[BlockSet.ID_BOGUS] || types[BlockSet.ID_EMPTY];
       },
+      
+      listen: notifier.listen,
       
       // TODO: bundle texture/tilings into a facet
       get texture () {
@@ -456,11 +484,6 @@ var BlockSet = (function () {
         tilings.bogus = tilings[BlockSet.ID_BOGUS] || EMPTY_TILING;
         return tilings;
       },
-      rebuildBlockTexture: function (blockID) {
-        blockID = +blockID;
-        if (blockID < 0 || blockID >= types.length) return;
-        typesToRerender.push(blockID);
-      },
       worldFor: function (blockID) {
         return types[blockID] ? types[blockID].world : null;
       },
@@ -471,6 +494,8 @@ var BlockSet = (function () {
         }
       }
     });
+    
+    initialTypes.forEach(self.add);
     
     return self;
   }

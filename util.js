@@ -201,3 +201,59 @@ function nearestCubeSymmetry(direction, cubeVec, symmetries) {
   }
   return best;
 }
+
+// Utility for change/event listeners.
+// Each listener function must return true/false indicating whether it wants further events.
+// TODO: Add prompt removal
+function Notifier(label) {
+  "use strict";
+  if (!(this instanceof Notifier))
+    throw new Error("bad constructor call");
+
+  var listeners = [];
+  this.notify = function (method) {
+    //console.log("notify",label,method,Array.prototype.slice.call(arguments, 1));
+    for (var i = 0; i < listeners.length; i++) {
+      var listener = listeners[i];
+      var res;
+      try {
+        res = listener[method].apply(listener, Array.prototype.slice.call(arguments, 1));
+      } catch (e) {
+        if (!(method in listener)) {
+          throw new Error("Listener(" + label + ") is missing method " + method);
+        } else {
+          throw e;
+        }
+      }
+      if (res !== true) {
+        if (res !== true && typeof console !== "undefined") {
+          console.warn("Listener", listener, " did not return boolean.");
+        }
+        if (i < listeners.length - 1) {
+          listeners[i] = listeners.pop();
+        } else {
+          listeners.pop();
+        }
+      }
+    }
+  };
+  this.listen = function (f) {
+    listeners.push(f);
+    if (listeners.length > 50 && typeof console !== "undefined") {
+      console.warn("Notifier", this, "has over 50 listeners. Leak?");
+    }
+  };
+  this.listen.cancel = function (f) {
+    for (var i = 0; i < listeners.length; i++) {
+      if (listeners[i] === f) {
+        if (i < listeners.length - 1) {
+          listeners[i] = listeners.pop();
+        } else {
+          listeners.pop();
+        }
+      }
+        
+    }
+  }
+  return Object.freeze(this);
+}

@@ -322,7 +322,6 @@ var Player = (function () {
             if (world == null) return; // TODO: UI message about this
             
             currentPlace = new Place(world);
-            currentPlace.forBlock = blockID;
             vec3.set([World.TILE_SIZE/8, World.TILE_SIZE - playerAABB[1][0] + EPSILON, World.TILE_SIZE/8], currentPlace.pos);
             placeStack.push(oldPlace);
             aimChanged();
@@ -331,9 +330,7 @@ var Player = (function () {
           case -1:
             if (placeStack.length <= 0) break;
             currentPlace.wrend.deleteResources();
-            var blockID = currentPlace.forBlock;
             currentPlace = placeStack.pop();
-            if (blockID) currentPlace.wrend.rebuildBlock(blockID);
             aimChanged();
             break;
         }
