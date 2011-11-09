@@ -500,7 +500,7 @@ var WorldRenderer = (function () {
     
     function makeCircuitRenderer(circuit) {
       var dyns;
-      var chunkDynamic = new RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {
+      var circuitRenderer = new RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {
         dyns = [];
         function pushVertex(vec) {
           vertices.push(vec[0], vec[1], vec[2]);
@@ -528,7 +528,7 @@ var WorldRenderer = (function () {
           colors.push(1,1,1,1); pushVertex(v3);
           colors.push(1,1,1,1); pushVertex(v0);
           dyns.push(function () {
-            var carr = chunkDynamic.getColorsA();
+            var carr = circuitRenderer.colors.array;
             for (var i = 0, p = cbase; i < 6; i++) { // 6 vertices for the square
               carr[p++] = 0;
               carr[p++] = circuit.getNetValue(net);
@@ -537,21 +537,15 @@ var WorldRenderer = (function () {
             }
           });
         });
+      }, {
+        aroundDraw: function (baseDraw) {
+          dyns.forEach(function (f) { f(); });
+          circuitRenderer.colors.send(gl.DYNAMIC_DRAW);
+          baseDraw();
+        }
       });
       
-      function updateDynamic() {
-        dyns.forEach(function (f) { f(); });
-        gl.bindBuffer(gl.ARRAY_BUFFER, chunkDynamic.colorsB);
-        gl.bufferData(gl.ARRAY_BUFFER, chunkDynamic.getColorsA(), gl.DYNAMIC_DRAW);
-      }
-      
-      var bareDraw = chunkDynamic.draw;
-      chunkDynamic.draw = function () {
-        updateDynamic();
-        bareDraw.call(chunkDynamic);
-      }
-      
-      return chunkDynamic;
+      return circuitRenderer;
     }
 
     function debugText() {
