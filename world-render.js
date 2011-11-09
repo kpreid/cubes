@@ -4,6 +4,8 @@
 // TODO: global variable 'gl'
 
 var WorldRenderer = (function () {
+  "use strict";
+  
   // The side length of the chunks the world is broken into for rendering.
   // Smaller chunks are faster to update when the world changes, but have a higher per-frame cost.
   var CHUNKSIZE = 10;
@@ -54,8 +56,6 @@ var WorldRenderer = (function () {
   }
   
   function WorldRenderer(world, place) {
-    world.setChangeListener(this);
-    
     // Object holding all world rendering chunks which have RenderBundles created, indexed by "<x>,<z>" where x and z are the low coordinates (i.e. divisible by CHUNKSIZE).
     var chunks = {};
 
@@ -71,11 +71,12 @@ var WorldRenderer = (function () {
     // Like chunks, but for circuits. Indexed by the circuit origin block.
     var circuitRenderers = {};
 
-    var blockTexture = world.blockSet.texture;
+    var blockSet = world.blockSet;
+    var blockTexture = blockSet.texture;
     
     var particles = [];
 
-    var textureDebugR = new RenderBundle(gl.TRIANGLE_STRIP, world.blockSet.texture, function (vertices, normals, texcoords) {
+    var textureDebugR = new RenderBundle(gl.TRIANGLE_STRIP, blockTexture, function (vertices, normals, texcoords) {
       var x = 2;
       var y = 2;
       var z = -5;
@@ -97,10 +98,12 @@ var WorldRenderer = (function () {
       aroundDraw: function (draw) {
         var mvsave = mvMatrix;
         mvMatrix = mat4.identity(mat4.create());
+        sendViewUniforms();
         gl.disable(gl.DEPTH_TEST);
         draw();
         mvMatrix = mvsave;
         gl.enable(gl.DEPTH_TEST);
+        sendViewUniforms();
       },
     });
     
@@ -137,18 +140,23 @@ var WorldRenderer = (function () {
       }
     }
     
-    function rebuildBlock(blockID) {
-      world.blockSet.rebuildBlockTexture(blockID);
-      // TODO: we don't need to flush the chunks if the texture tiling has not changed at all.
-      rerenderChunks();
+    var listenerB = {
+      // TODO: Optimize by rerendering only if *tiling* changed, and only
+      // chunks containing the changed block ID?
+      texturingChanged: dirtyAll
     }
-    this.rebuildBlock = rebuildBlock;
 
     function deleteResources() {
       deleteChunks();
       textureDebugR.deleteResources();
-      world.setChangeListener(null);
+      world.listen.cancel(listenerW);
+      blockSet.listen.cancel(listenerB);
+      world = blockSet = chunks = dirtyChunks = addChunks = textureDebugR = null;
     };
+    function isAlive() {
+      // Are we still interested in notifications etc?
+      return !!world;
+    }
     this.deleteResources = deleteResources;
 
     function changedRenderDistance() {
@@ -177,7 +185,10 @@ var WorldRenderer = (function () {
       }
     }
 
+    // entry points for change listeners
     function dirtyBlock(vec) {
+      if (!isAlive()) return false;
+      
       var x = vec[0];
       var z = vec[2];
       
@@ -194,22 +205,36 @@ var WorldRenderer = (function () {
 
       // TODO: This is actually "Schedule updateSomeChunks()" and shouldn't actually require a frame redraw
       scheduleDraw();
+      
+      return true;
     }
-    this.dirtyBlock = dirtyBlock;
 
-    var enough = 0;
+    function dirtyAll() {
+      if (!isAlive()) return false;
+      rerenderChunks();
+      return true;
+    }
 
     function dirtyCircuit(circuit) {
+      if (!isAlive()) return false;
       var o = circuit.getOrigin();
       var r = circuitRenderers[o];
       if (r) r.recompute();
+      return true;
     }
-    this.dirtyCircuit = dirtyCircuit;
     
     function deletedCircuit(circuit) {
+      if (!isAlive()) return false;
       delete circuitRenderers[circuit.getOrigin()];
+      return true;
     }
-    this.deletedCircuit = deletedCircuit;
+
+    var listenerW = {
+      dirtyBlock: dirtyBlock,
+      dirtyAll: dirtyAll,
+      dirtyCircuit: dirtyCircuit,
+      deletedCircuit: deletedCircuit,
+    };
 
     function updateSomeChunks() {
       // Determine if chunks' visibility to the player has changed
@@ -275,7 +300,7 @@ var WorldRenderer = (function () {
     this.updateSomeChunks = updateSomeChunks;
 
     function renderDestroyBlock(block) {
-      var blockWorld = world.blockSet.worldFor(world.g(block[0],block[1],block[2]));
+      var blockWorld = blockSet.worldFor(world.g(block[0],block[1],block[2]));
       // TODO: add particles for color blocks
       if (blockWorld)
         particles.push(new BlockParticles(world, block, blockWorld, world.gRot(block[0],block[1],block[2])));
@@ -290,7 +315,9 @@ var WorldRenderer = (function () {
     function draw() {
       for (var index in chunks) {
         if (!chunks.hasOwnProperty(index)) continue;
-        chunks[index].draw();
+        var chunk = chunks[index];
+        if (aabbInView(chunk.aabb))
+          chunk.draw();
       }
       for (var index in circuitRenderers) {
         if (!circuitRenderers.hasOwnProperty(index)) continue;
@@ -324,6 +351,8 @@ var WorldRenderer = (function () {
     }
     this.draw = draw;
 
+    var enough = 0;
+
     // returns whether no work was done
     function calcChunk(xzkey) {
       // This would call scheduleDraw() to render the revised chunks, except that calcChunk is only called within a draw. Therefore, the calls are commented out (to be reenabled if the architecture changes).
@@ -347,7 +376,6 @@ var WorldRenderer = (function () {
         var chunkOriginZ = xzkey[1];
         var chunkLimitX = Math.min(wx, xzkey[0] + CHUNKSIZE);
         var chunkLimitZ = Math.min(wz, xzkey[1] + CHUNKSIZE);
-        var blockSet = world.blockSet;
         var TILE_SIZE = World.TILE_SIZE;
         var PIXEL_SIZE = 1/TILE_SIZE;
         var ID_EMPTY = BlockSet.ID_EMPTY;
@@ -459,7 +487,13 @@ var WorldRenderer = (function () {
             }
           }
         });
-        //scheduleDraw();
+        
+        chunks[xzkey].aabb = [
+          [chunkOriginX, chunkLimitX],
+          [0, world.wy],
+          [chunkOriginZ, chunkLimitZ]
+        ];
+        
         return false;
       }
     }
@@ -531,6 +565,8 @@ var WorldRenderer = (function () {
 
     // --- init ---
 
+    world.listen(listenerW);
+    blockSet.listen(listenerB);
     Object.freeze(this);
   }
 

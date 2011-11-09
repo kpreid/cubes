@@ -329,7 +329,8 @@ function generateWorlds() {
         if (raw[index] == 4) topWorld.forceReeval([x,y,z]);
       }
     }
-  }    
+  }
+  topWorld.notifyRawEdit();
   
   // circuit test
   topWorld.s(200,72,203,l.pad);
@@ -347,8 +348,6 @@ function generateWorlds() {
   topWorld.s(203,72,205,l.pad);
   topWorld.s(206,72,205,l.wire);
   topWorld.s(207,72,205,l.pad);
-
-  topWorld.rebuildCircuits();
   
   return topWorld;
 }

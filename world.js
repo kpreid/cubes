@@ -24,7 +24,7 @@ function World(sizes, blockSet) {
   var spontaneousBaseRate = 0.00003; // probability of block spontaneous effect call per block per second
   var numToDisturb = wx*wy*wz * TIMESTEP * spontaneousBaseRate;
   
-  var changeListener = null;
+  var notifier = new Notifier("World");
   
   // --- Internal functions ---
   
@@ -49,7 +49,7 @@ function World(sizes, blockSet) {
       delete blockCircuits[block];
     });
 
-    if (changeListener) changeListener.deletedCircuit(circuit);
+    notifier.notify("deletedCircuit", circuit);
   }
   
   // Flood-fill additional circuit parts adjacent to 'start'
@@ -82,7 +82,7 @@ function World(sizes, blockSet) {
     }
     
     circuit.compile();
-    if (changeListener) changeListener.dirtyCircuit(circuit);
+    notifier.notify("dirtyCircuit", circuit);
   }
   
   function becomeCircuit(block) {
@@ -147,7 +147,6 @@ function World(sizes, blockSet) {
     
     var vec = [x,y,z];
     reeval(vec);
-    if (changeListener) changeListener.dirtyBlock(vec);
 
     // Update circuits
     var vec = [x,y,z];
@@ -162,6 +161,8 @@ function World(sizes, blockSet) {
         if (isCircuitPart(g(neighbor[0],neighbor[1],neighbor[2]))) becomeCircuit(neighbor);
       })
     }
+
+    notifier.notify("dirtyBlock", vec);
   }
   function sSub(x,y,z,subdatum) {
     s(x,y,z,g(x,y,z),subdatum);
@@ -253,20 +254,8 @@ function World(sizes, blockSet) {
         }
       }
     }
+    notifier.notify("dirtyAll");
   }
-  
-  // Perform actions related to block circuits immediately after a change
-  function reeval(cube) {
-    var x = cube[0];
-    var y = cube[1];
-    var z = cube[2];
-    var index = x*wy*wz + y*wz + z;
-    var subWorld = blockSet.get(blocks[index]).world;
-    // TODO: optimize this path so we don't need to look up circuits
-    if (subWorld)
-      Circuit.executeCircuitInChangedBlock(subWorld, self, cube, subData[index]);
-  }
-  this.forceReeval = reeval; // Exposed only for the sake of raw editing
   
   function rebuildCircuits() {
     blockCircuits = {};
@@ -288,6 +277,25 @@ function World(sizes, blockSet) {
     }
   }
   
+  // Perform actions related to block circuits immediately after a change
+  function reeval(cube) {
+    var x = cube[0];
+    var y = cube[1];
+    var z = cube[2];
+    var index = x*wy*wz + y*wz + z;
+    var subWorld = blockSet.get(blocks[index]).world;
+    // TODO: optimize this path so we don't need to look up circuits
+    if (subWorld)
+      Circuit.executeCircuitInChangedBlock(subWorld, self, cube, subData[index]);
+  }
+  this.forceReeval = reeval; // Exposed only for the sake of raw editing
+  
+  // Called by clients which modify the raw state arrays
+  function notifyRawEdit() {
+    notifier.notify("dirtyAll");
+    rebuildCircuits();
+  }
+  
   function step() {
     // turn fractional part of number of iterations into randomness - 1.25 = 1 3/4 and 2 1/4 of the time
     var roundedNum = Math.floor(numToDisturb) + (Math.random() < (numToDisturb % 1) ? 1 : 0);
@@ -306,13 +314,6 @@ function World(sizes, blockSet) {
     if (circuit) {
       circuit.setStandingOn(cube, value);
     }
-  }
-  
-  function setChangeListener(l) {
-    if (changeListener !== l && changeListener !== null && l !== null) {
-      throw new Error("conflicting change listeners");
-    }
-    changeListener = l;
   }
   
   var RLE_BASE = 0xA1;
@@ -365,13 +366,14 @@ function World(sizes, blockSet) {
   // TODO: Defining the rotations as being identical to the subdata is a placeholder until we have circuits.
   this.rawSubData = subData;
   this.rawRotations = rotations;
+  this.notifyRawEdit = notifyRawEdit;
   this.raycast = raycast;
   this.getCircuits = function () { return circuits; }; // TODO should be read-only interface
   this.getCircuit = function (block) { return blockCircuits[block] || null; }
   this.edit = edit;
   this.step = step;
   this.setStandingOn = setStandingOn;
-  this.setChangeListener = setChangeListener;
+  this.listen = notifier.listen;
   this.serialize = serialize;
   
   this.wx = wx;
@@ -404,7 +406,7 @@ World.unserialize = function (json, unserialize) {
   var str = json.blocks;
   unrleBytes(json.blocks, world.raw);
   unrleBytes(json.subData, world.rawSubData);
-  world.rebuildCircuits();
+  world.notifyRawEdit();
   return world;
 };
 
