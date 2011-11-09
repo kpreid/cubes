@@ -12,6 +12,7 @@ function World(sizes, blockSet) {
   var wy = sizes[1];
   var wz = sizes[2];
   var blocks = new Uint8Array(wx*wy*wz);
+  var rotations = new Uint8Array(wx*wy*wz);
   var subData = new Uint8Array(wx*wy*wz);
   
   // Maps from "x,y,z" to circuit object
@@ -89,10 +90,10 @@ function World(sizes, blockSet) {
     var y = block[1];
     var z = block[2];
 
-    var circuits = [blockCircuits[[x-1,y,z]], blockCircuits[[x,y-1,z]], blockCircuits[[x,y,z-1]],
-                    blockCircuits[[x+1,y,z]], blockCircuits[[x,y+1,z]], blockCircuits[[x,y,z+1]]];
+    var adjCircuits = [blockCircuits[[x-1,y,z]], blockCircuits[[x,y-1,z]], blockCircuits[[x,y,z-1]],
+                       blockCircuits[[x+1,y,z]], blockCircuits[[x,y+1,z]], blockCircuits[[x,y,z+1]]];
     var circuit = null;
-    circuits.forEach(function (c) {
+    adjCircuits.forEach(function (c) {
       if (c == null) return;
       if (circuit == null) {
         circuit = c;
@@ -127,7 +128,10 @@ function World(sizes, blockSet) {
   }
   // Return the block rotation at the given coordinates
   function gRot(x,y,z) {
-    return gSub(x,y,z);
+    if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
+      return 0;
+    else
+      return rotations[x*wy*wz + y*wz + z];
   }
   function s(x,y,z,val,subdatum) { // TODO revisit making this not take a vec
     if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
@@ -142,6 +146,7 @@ function World(sizes, blockSet) {
     subData[index] = subdatum;
     
     var vec = [x,y,z];
+    reeval(vec);
     if (changeListener) changeListener.dirtyBlock(vec);
 
     // Update circuits
@@ -244,10 +249,24 @@ function World(sizes, blockSet) {
           var index = ybase + z;
           blocks[index] = func(x,y,z,blocks[index]);
           subData[index] = 0;
+          reeval([x,y,z]);
         }
       }
     }
   }
+  
+  // Perform actions related to block circuits immediately after a change
+  function reeval(cube) {
+    var x = cube[0];
+    var y = cube[1];
+    var z = cube[2];
+    var index = x*wy*wz + y*wz + z;
+    var subWorld = blockSet.get(blocks[index]).world;
+    // TODO: optimize this path so we don't need to look up circuits
+    if (subWorld)
+      Circuit.executeCircuitInChangedBlock(subWorld, self, cube, subData[index]);
+  }
+  this.forceReeval = reeval; // Exposed only for the sake of raw editing
   
   function rebuildCircuits() {
     blockCircuits = {};
@@ -344,7 +363,8 @@ function World(sizes, blockSet) {
   this.raw = blocks;
   this.rebuildCircuits = rebuildCircuits;
   // TODO: Defining the rotations as being identical to the subdata is a placeholder until we have circuits.
-  this.rawRotations = this.rawSubData = subData;
+  this.rawSubData = subData;
+  this.rawRotations = rotations;
   this.raycast = raycast;
   this.getCircuits = function () { return circuits; }; // TODO should be read-only interface
   this.getCircuit = function (block) { return blockCircuits[block] || null; }

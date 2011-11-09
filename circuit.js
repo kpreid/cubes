@@ -233,6 +233,9 @@ var Circuit = (function () {
       
       //refreshLocal(); // TODO: do later, in case of inf update loops
     };
+    this.evaluate = function (state) {
+      evaluate(state);
+    };
     this.refreshLocal = function () {
       localState = {
         allowWorldEdit: true
@@ -300,10 +303,12 @@ var Circuit = (function () {
     protobehavior.faces = dirKeys(NONE);
     protobehavior.hasEffect = false;
     protobehavior.standingOn = function (circuit, cube, value) {};
-  
+    protobehavior.executeForBlock = function (world, cube, subDatum) {};
+
     nb("wire", protobehavior);
     
     var inputOnlyBeh = Object.create(protobehavior);
+    inputOnlyBeh.hasEffect = true;
     inputOnlyBeh.faces = dirKeys(IN);
     
     var outputOnlyBeh = Object.create(protobehavior);
@@ -323,7 +328,6 @@ var Circuit = (function () {
     };
     
     var indicator = nb("indicator", inputOnlyBeh);
-    indicator.hasEffect = true;
     indicator.compile = function (world, block, inputs) {
       var input = combineInputs(inputs, UNIT_AXES);
       return function (state) {
@@ -351,9 +355,37 @@ var Circuit = (function () {
       };
     };
     
+    var getSubDatum = nb("getSubDatum", outputOnlyBeh);
+    getSubDatum.compile = function (world, block, inputs) {
+      return function (state) {
+        uniformOutput(block, state, state.blockIn_subDatum);
+      };
+    };
+    
+    var setrotation = nb("setrotation", inputOnlyBeh);
+    setrotation.compile = function (world, block, inputs) {
+      var input = combineInputs(inputs, UNIT_AXES);
+      return function (state) {
+        state.blockout_rotation = input(state);
+      };
+    };
     
     Object.freeze(behaviors);
   })();
+  
+  Circuit.executeCircuitInChangedBlock = function (blockWorld, outerWorld, cube, subDatum) {
+    var circuits = blockWorld.getCircuits();
+    for (var ck in circuits) {
+      if (!circuits.hasOwnProperty(ck)) continue;
+      var state = {blockIn_subDatum: subDatum};
+      //debugger;
+      circuits[ck].evaluate(state);
+      if ("blockout_rotation" in state) {
+        outerWorld.rawRotations[cube[0]*outerWorld.wy*outerWorld.wz+cube[1]*outerWorld.wz+cube[2]] // TODO KLUDGE
+          = state.blockout_rotation;
+      }
+    }
+  };
   
   return Object.freeze(Circuit);
 })();
