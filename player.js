@@ -43,7 +43,7 @@ var Player = (function () {
       this.tool = 2; // first non-bogus block id
 
       // must happen late
-      this.wrend = new WorldRenderer(world, this /* TODO: facet */, renderer, scheduleDraw);
+      this.wrend = new WorldRenderer(world, this /* TODO: facet */, renderer, scheduleDraw, true);
 
     }
 

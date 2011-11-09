@@ -15,7 +15,7 @@ function BlockRenderer(blockSet, renderer) {
   
   var singleBlockWorld = new World([1,1,1], blockSet);
   singleBlockWorld.s(0,0,0,1);
-  singleBlockR = new WorldRenderer(singleBlockWorld, {pos: [0,0,0]}, renderer, function (){});
+  singleBlockR = new WorldRenderer(singleBlockWorld, {pos: [0,0,0]}, renderer, function (){}, false);
   
   var rttFramebuffer = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, rttFramebuffer);

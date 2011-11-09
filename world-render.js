@@ -56,7 +56,7 @@ var WorldRenderer = (function () {
     return distanceInfoCache;
   }
   
-  function WorldRenderer(world, place, renderer, scheduleDraw) {
+  function WorldRenderer(world, place, renderer, scheduleDraw, showBoundaries) {
     var gl = renderer.context;
     
     // Object holding all world rendering chunks which have RenderBundles created, indexed by "<x>,<z>" where x and z are the low coordinates (i.e. divisible by CHUNKSIZE).
@@ -82,6 +82,32 @@ var WorldRenderer = (function () {
     var blockSet = world.blockSet;
     
     var particles = [];
+    
+    var boundaryR = new renderer.RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
+      function common() {
+        normals.push(0, 0, 0);
+        normals.push(0, 0, 0);
+        colors.push(0.5,0.5,0.5, 1);
+        colors.push(0.5,0.5,0.5, 1);
+      }
+      var extent = 20;
+      
+      var vec = [];
+      for (var dim = 0; dim < 3; dim++) {
+        var ud = mod(dim+1,3);
+        var vd = mod(dim+2,3);
+        for (var u = 0; u < 2; u++)
+        for (var v = 0; v < 2; v++) {
+          vec[ud] = [world.wx, world.wy, world.wz][ud]*u;
+          vec[vd] = [world.wx, world.wy, world.wz][vd]*v;
+          vec[dim] = -extent;
+          vertices.push(vec[0],vec[1],vec[2]);
+          vec[dim] = [world.wx, world.wy, world.wz][dim] + extent;
+          vertices.push(vec[0],vec[1],vec[2]);
+          common();
+        }
+      }
+    });
 
     var textureDebugR = new renderer.RenderBundle(gl.TRIANGLE_STRIP,
                                                   function () { return blockSet.texture; },
@@ -375,6 +401,10 @@ var WorldRenderer = (function () {
         scheduleDraw();
       }
       
+      if (showBoundaries) {
+        boundaryR.draw();
+      }
+
       // Draw texture debug.
       if (config.debugTextureAllocation.get()) {
         textureDebugR.draw();
