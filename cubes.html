@@ -74,13 +74,15 @@
     background: gray;
   }
   
-  .error-notice {
+  #error-notices {
     position: absolute;
     top: 5em;
     right: 50%;
     margin-right: -17em;
-    
+
     z-index: 1;
+  }
+  .error-notice {
     border-radius: 2em;
     text-align: center;
     max-width: 30em;
@@ -108,7 +110,33 @@
     color: white;
     background: black;
     background: rgba(80,80,80,0.7);
-    padding: 0 0.8em;
+    margin: 0;
+    padding: 0;
+  }
+  .sidebar > * {
+    margin-left: 0.8em;
+    margin-right: 0.8em;
+  }
+  .sidebar h2 {
+    font-size: 1.2em;
+    margin: .66em 0;
+    padding: 0 .66em;
+    background: gray;
+    background: rgba(255,255,255,0.3);
+  }
+  .sidebar table {
+    font-size: 0.92em;
+    border-collapse: collapse;
+  }
+  .sidebar th {
+    background: gray;
+    background: rgba(255,255,255,0.1);
+  }
+  .sidebar tr {
+    border-color gray;
+    border-color rgba(255,255,255,0.1);
+    border-width: 1px 0;
+    border-style: solid;
   }
 </style>
 
@@ -296,6 +324,9 @@
     
     var DEBUG = false;
     var TIMESTEP = 1/30;
+    var MAX_CATCHUP_MS = 500;
+    
+    var TIMESTEP_MS = TIMESTEP*1000;
     
     // Settable using the options sidebar
     var configRenderDistance = 100;
@@ -340,10 +371,67 @@
     var pMatrix = mat4.create();
     var mvMatrix = mat4.create();
     var viewPosition = vec3.create();
+    var viewFrustum; // computed
 
+    function calculateFrustum() {
+      var matrix = mat4.multiply(pMatrix, mvMatrix, mat4.create());
+      mat4.inverse(matrix);
+      // matrix is now a clip-space-to-model-space conversion
+      
+      function dehomog(v4) {
+        return [v4[0]/v4[3], v4[1]/v4[3], v4[2]/v4[3]];
+      }
+      // Return a function which tests whether the point is in the half-space bounded by the plane containing origin, pt1, and pt2, and pointed toward by pt1 cross pt2.
+      function makeHalfSpaceTest(origin, pt1, pt2) {
+        var normal = vec3.cross(
+          vec3.subtract(pt1, origin, vec3.create()),
+          vec3.subtract(pt2, origin, vec3.create()),
+          vec3.create());
+        var vecbuf = vec3.create();
+        return function (point) {
+          vec3.subtract(point, origin, vecbuf);
+          return vec3.dot(vecbuf, normal) > 0;
+        }
+      }
+      var lbn = dehomog(mat4.multiplyVec4(matrix, [-1,-1,-1,1]));
+      var lbf = dehomog(mat4.multiplyVec4(matrix, [-1,-1, 1,1]));
+      var ltn = dehomog(mat4.multiplyVec4(matrix, [-1, 1,-1,1]));
+      var ltf = dehomog(mat4.multiplyVec4(matrix, [-1, 1, 1,1]));
+      var rbn = dehomog(mat4.multiplyVec4(matrix, [ 1,-1,-1,1]));
+      var rbf = dehomog(mat4.multiplyVec4(matrix, [ 1,-1, 1,1]));
+      var rtn = dehomog(mat4.multiplyVec4(matrix, [ 1, 1,-1,1]));
+      var rtf = dehomog(mat4.multiplyVec4(matrix, [ 1, 1, 1,1]));
+      
+      viewFrustum = [
+        makeHalfSpaceTest(lbn, lbf, ltf), // left
+        makeHalfSpaceTest(rtn, rtf, rbf), // right
+        makeHalfSpaceTest(ltn, ltf, rtf), // top
+        makeHalfSpaceTest(rbn, rbf, lbf), // bottom
+        makeHalfSpaceTest(lbn, ltn, rtn), // near
+        makeHalfSpaceTest(lbf, rbf, ltf), // far
+      ];
+    }
+
+    function aabbInView(aabb) {
+      for (var i = 0; i < viewFrustum.length; i++) {
+        var outside = true;
+        for (var xb = 0; xb < 2; xb++)
+        for (var yb = 0; yb < 2; yb++)
+        for (var zb = 0; zb < 2; zb++) {
+          var vec = [aabb[0][xb], aabb[1][yb], aabb[2][zb]];
+          if (viewFrustum[i](vec))
+            outside = false;
+        }
+        if (outside)
+          return false;
+      }
+      return true;
+    }
+    
     function sendViewUniforms() {
         gl.uniformMatrix4fv(uniforms.uMVMatrix, false, mvMatrix);
         gl.uniform3fv(uniforms.uViewPosition, viewPosition);
+        calculateFrustum();
     }
 
     function updateViewport() {
@@ -479,7 +567,6 @@
           gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
           gl.vertexAttribPointer(attribs.aVertexColor, 4, gl.FLOAT, false, 0, 0);
         }
-        sendViewUniforms();
         totalVertices += numVertices;
         gl.drawArrays(primitive, 0, numVertices);
       };
@@ -598,6 +685,7 @@
         mat4.identity(mvMatrix);
         playerRender.applyViewRot(mvMatrix);
         viewPosition = [0,0,0];
+        sendViewUniforms();
         gl.uniform1f(uniforms.uFogDistance, 1); // 0 would be div-by-0
         gl.disable(gl.DEPTH_TEST);
         
@@ -614,6 +702,7 @@
 
         viewPosition = playerRender.getPosition();
         playerRender.applyViewTranslation(mvMatrix);
+        sendViewUniforms();
 
         wrend.draw();
         debugR.draw();
@@ -684,10 +773,24 @@
     
     var fpsDesc = "", stepCount = 0, renderCount = 0, chunkRenders = 0, totalVertices = 0;
     
-    function doStep() {
+    var lastStepTime = null;
+    function doOneStep() {
       player.stepYourselfAndWorld();
       input.step();
       stepCount++;
+    }
+    function doStep() {
+      // perform limited catch-up
+      var now = Date.now();
+      if (lastStepTime === null)
+        lastStepTime = now;
+      if ((now - lastStepTime) > MAX_CATCHUP_MS)
+        lastStepTime = now - MAX_CATCHUP_MS;
+      
+      while ((now - lastStepTime) > TIMESTEP_MS) {
+        doOneStep();
+        lastStepTime += TIMESTEP_MS;
+      }
     }
     
     var animFrameWasRequested = false;
@@ -747,6 +850,12 @@
       cursorInfo = dynamicText(cursorInfoElem);
 
       sequence([
+        function () {
+          if (typeof testGettersWork === 'undefined' || !testGettersWork()) {
+            document.getElementById("feature-error-notice").style.removeProperty("display");
+            document.getElementById("feature-error-text").appendChild(document.createTextNode("ECMAScript 5 property accessors on frozen objects"));
+          }
+        },
         "Getting WebGL...",
         function () {
           theCanvas = document.getElementById('view-canvas');
@@ -790,7 +899,7 @@
             var worldData = localStorage.getItem("world");
             if (worldData !== null) {
               try {
-                worldH = World.unserialize(JSON.parse(worldData));
+                worldH = cyclicUnserialize(JSON.parse(worldData), World);
               } catch (e) {
                 if (typeof console !== 'undefined')
                   console.error(e);
@@ -818,8 +927,7 @@
             document.getElementById("menu-blocks"));
           theCanvas.focus();
 
-          // TODO: use webgl utils to avoid wasting time rendering frames if invisible
-          setInterval(doStep, 1000*TIMESTEP);
+          setInterval(doStep, TIMESTEP_MS);
         },
         "Ready!"
       ], function (exception) {
@@ -852,12 +960,19 @@
       </div>
       <button onclick="generateBlock(); return false;">Add New Block</button>
     </div>
-    <div id="webgl-error-notice" class="error-notice" style="display: none;">
-      <p>Sorry, the web browser you are using does not appear to support WebGL.</p>
-    </div>
+    <div id="error-notices">
     <div id="load-error-notice" class="error-notice" style="display: none;">
       <p>Sorry, but there was an unexpected error while loading the game.</p>
       <p><pre id="load-error-text" style="white-space: pre-wrap;"></pre></p>
+    </div>
+    <div id="feature-error-notice" class="error-notice" style="display: none;">
+      <p>Sorry, the browser you are using does not support some required features. These problems were detected:</p>
+      <p><pre id="feature-error-text" style="white-space: pre-wrap;"></pre></p>
+      <p>If you are looking for a compatible browser, I recommend Google Chrome.</p>
+    </div>
+    <div id="webgl-error-notice" class="error-notice" style="display: none;">
+      <p>Sorry, the web browser you are using does not appear to support WebGL.</p>
+    </div>
     </div>
 
     <div id="toggles">
@@ -873,10 +988,10 @@
       <form onsubmit="return false;" action=""  style="text-align: center">
         <p id="local-save-controls">
           <button onclick="
-            localStorage.setItem('world', JSON.stringify(worldH.serialize())); return false;
+            localStorage.setItem('world', JSON.stringify(cyclicSerialize(worldH))); return false;
           ">Save</button>
           <button onclick="
-            worldH = World.unserialize( JSON.parse( localStorage.getItem('world')));
+            worldH = cyclicUnserialize(JSON.parse(localStorage.getItem('world')), World);
             player.setWorld(worldH);
             return false;
           ">Revert to saved</button>
@@ -893,14 +1008,14 @@
           <textarea id="loadfield" width="20" height="3" style="width: 80%;"></textarea>
           <br>
           <button onclick="
-            document.getElementById('loadfield').value = JSON.stringify(worldH.serialize()); return false;
+            document.getElementById('loadfield').value = JSON.stringify(cyclicSerialize(worldH)); return false;
           ">Text Export</button>
           <button onclick="
             while (document.getElementById('load-error').firstChild)
               document.getElementById('load-error').removeChild(
                 document.getElementById('load-error').firstChild);
             try {
-              worldH = World.unserialize( JSON.parse( document.getElementById('loadfield').value))
+              worldH = cyclicUnserialize(JSON.parse(document.getElementById('loadfield').value), World)
               player.setWorld(worldH);
             } catch (e) {
               console.log(e);
@@ -933,17 +1048,31 @@
       
       <h3>Controls</h3>
       
-      <p>Standard W A S D keys or arrow keys to move horizontally. Turn by moving the cursor close to the edges of the window. (Sorry, can't capture the mouse in a web browser.) Spacebar to jump or E and C to move vertically (there is no separate flight mode).</p>
-      
-      <p>Blocks are selected using the mouse. The left button adds or removes blocks at the location of the white rectangle cursor; the right button brings up a menu for choosing block types (the empty square at the top left is the removal tool). The number keys can be used instead of the menu.</p>
+      <table>
+        <tr><th colspan=2>Movement
+        <tr><td><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd><br> or arrows<td>move horizontally
+        <tr><td><kbd>Space</kbd><td>jump
+        <tr><td><kbd>E</kbd><td>fly, move up
+        <tr><td><kbd>C</kbd><td>land, move down
+        <tr><td>Mouse motion<td>look/target block
+        <tr><td>Mouseover<br>left/right edge<td>turn
+        <tr><th colspan=2>Blocks
+        <tr><td>Left button<td> Place/remove block
+        <tr><td>Right button<td> Choose tool from menu
+        <tr><td><kbd>R</kbd><td> Edit targeted block
+        <tr><td><kbd>F</kbd><td> Exit editing
+        <tr><td><kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd><td>Choose tool
+      </table>
+            
+      <p>In the menu of blocks, the empty square at the top left is the removal tool.</p>
 
-      <p>The R key enters the world of the selected block; the F key exits out to the previous world. While you can edit any block to any shape, note that making the first block type, which makes up the underground volume, a non-cubical shape will likely be fatal to your frame rate. The terrain surface is also somewhat dangerous in this way.</p>
+      <p>While you can edit any block to any shape, note that making the first block type (which makes up the underground volume in the default world) a non-cubical shape will likely be fatal to your frame rate.</p>
 
       <h3>Compatibility &amp; Bugs</h3>
       
       <p>Player movement does not work on Safari 5.1. Right mouse button does not work on Firefox 6.0.2.</p>
       
-      <p>The physics is still glitchy, and you can get permanently stuck simply by placing a block where you are.</p>
+      <p>You can get stuck by placing a block that intersects yourself.</p>
 
     </div>
 </body>

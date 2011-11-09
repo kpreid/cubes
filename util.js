@@ -8,6 +8,48 @@
 // believe that it is obviously the authors' intent to make this code free to
 // use.
 
+function testGettersWork() {
+  "use strict";
+  var y = 0;
+  var o = Object.freeze({
+    set x(v) { y = v; }
+  });
+  o.x = 43;
+  return y === 43;
+}
+
+function cyclicSerialize(root) {
+  "use strict";
+  var seen = [];
+  function serialize(obj) {
+    var i;
+    for (i = 0; i < seen.length; i++) {
+      if (seen[i] === obj) // TODO use WeakMap if available
+        return i;
+    }
+    seen.push(obj);
+    var json = obj.serialize(serialize);
+    json["#"] = i;
+    return json;
+  }
+  return serialize(root);
+}
+
+function cyclicUnserialize(json, constructor) {
+  "use strict";
+  var seen = [];
+  function unserialize(json, constructor) {
+    if (typeof json === "number" && json >= 0) {
+      return seen[json];
+    } else if (typeof json === "object") {
+      return seen[+(json["#"])] = constructor.unserialize(json, unserialize);
+    } else {
+      throw new Error("Don't know how to unserialize from a " + typeof json);
+    }
+  }
+  return unserialize(json, constructor);
+}
+
 function mod(value, modulus) {
   "use strict";
   return (value % modulus + modulus) % modulus;
@@ -158,4 +200,60 @@ function nearestCubeSymmetry(direction, cubeVec, symmetries) {
     }
   }
   return best;
+}
+
+// Utility for change/event listeners.
+// Each listener function must return true/false indicating whether it wants further events.
+// TODO: Add prompt removal
+function Notifier(label) {
+  "use strict";
+  if (!(this instanceof Notifier))
+    throw new Error("bad constructor call");
+
+  var listeners = [];
+  this.notify = function (method) {
+    //console.log("notify",label,method,Array.prototype.slice.call(arguments, 1));
+    for (var i = 0; i < listeners.length; i++) {
+      var listener = listeners[i];
+      var res;
+      try {
+        res = listener[method].apply(listener, Array.prototype.slice.call(arguments, 1));
+      } catch (e) {
+        if (!(method in listener)) {
+          throw new Error("Listener(" + label + ") is missing method " + method);
+        } else {
+          throw e;
+        }
+      }
+      if (res !== true) {
+        if (res !== true && typeof console !== "undefined") {
+          console.warn("Listener", listener, " did not return boolean.");
+        }
+        if (i < listeners.length - 1) {
+          listeners[i] = listeners.pop();
+        } else {
+          listeners.pop();
+        }
+      }
+    }
+  };
+  this.listen = function (f) {
+    listeners.push(f);
+    if (listeners.length > 50 && typeof console !== "undefined") {
+      console.warn("Notifier", this, "has over 50 listeners. Leak?");
+    }
+  };
+  this.listen.cancel = function (f) {
+    for (var i = 0; i < listeners.length; i++) {
+      if (listeners[i] === f) {
+        if (i < listeners.length - 1) {
+          listeners[i] = listeners.pop();
+        } else {
+          listeners.pop();
+        }
+      }
+        
+    }
+  }
+  return Object.freeze(this);
 }

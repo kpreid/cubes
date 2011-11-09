@@ -4,6 +4,8 @@
 // TODO: global variable 'gl'
 
 var WorldRenderer = (function () {
+  "use strict";
+  
   // The side length of the chunks the world is broken into for rendering.
   // Smaller chunks are faster to update when the world changes, but have a higher per-frame cost.
   var CHUNKSIZE = 10;
@@ -54,8 +56,6 @@ var WorldRenderer = (function () {
   }
   
   function WorldRenderer(world, place) {
-    world.setChangeListener(this);
-    
     // Object holding all world rendering chunks which have RenderBundles created, indexed by "<x>,<z>" where x and z are the low coordinates (i.e. divisible by CHUNKSIZE).
     var chunks = {};
 
@@ -68,11 +68,12 @@ var WorldRenderer = (function () {
     // The origin of the chunk which the player is currently in. Changes to this are used to decide to recompute chunk visibility.
     var playerChunk = null;
     
-    var blockTexture = world.blockSet.texture;
+    var blockSet = world.blockSet;
+    var blockTexture = blockSet.texture;
     
     var particles = [];
 
-    var textureDebugR = new RenderBundle(gl.TRIANGLE_STRIP, world.blockSet.texture, function (vertices, normals, texcoords) {
+    var textureDebugR = new RenderBundle(gl.TRIANGLE_STRIP, blockTexture, function (vertices, normals, texcoords) {
       var x = 2;
       var y = 2;
       var z = -5;
@@ -94,10 +95,12 @@ var WorldRenderer = (function () {
       aroundDraw: function (draw) {
         var mvsave = mvMatrix;
         mvMatrix = mat4.identity(mat4.create());
+        sendViewUniforms();
         gl.disable(gl.DEPTH_TEST);
         draw();
         mvMatrix = mvsave;
         gl.enable(gl.DEPTH_TEST);
+        sendViewUniforms();
       },
     });
     
@@ -126,18 +129,23 @@ var WorldRenderer = (function () {
       }
     }
     
-    function rebuildBlock(blockID) {
-      world.blockSet.rebuildBlockTexture(blockID);
-      // TODO: we don't need to flush the chunks if the texture tiling has not changed at all.
-      rerenderChunks();
+    var listenerB = {
+      // TODO: Optimize by rerendering only if *tiling* changed, and only
+      // chunks containing the changed block ID?
+      texturingChanged: dirtyAll
     }
-    this.rebuildBlock = rebuildBlock;
 
     function deleteResources() {
       deleteChunks();
       textureDebugR.deleteResources();
-      world.setChangeListener(null);
+      world.listen.cancel(listenerW);
+      blockSet.listen.cancel(listenerB);
+      world = blockSet = chunks = dirtyChunks = addChunks = textureDebugR = null;
     };
+    function isAlive() {
+      // Are we still interested in notifications etc?
+      return !!world;
+    }
     this.deleteResources = deleteResources;
 
     function changedRenderDistance() {
@@ -166,7 +174,10 @@ var WorldRenderer = (function () {
       }
     }
 
+    // entry points for change listeners
     function dirtyBlock(vec) {
+      if (!isAlive()) return false;
+      
       var x = vec[0];
       var z = vec[2];
       
@@ -183,8 +194,18 @@ var WorldRenderer = (function () {
 
       // TODO: This is actually "Schedule updateSomeChunks()" and shouldn't actually require a frame redraw
       scheduleDraw();
+      
+      return true;
     }
-    this.dirtyBlock = dirtyBlock;
+    function dirtyAll() {
+      if (!isAlive()) return false;
+      rerenderChunks();
+      return true;
+    }
+    var listenerW = {
+      dirtyBlock: dirtyBlock,
+      dirtyAll: dirtyAll
+    };
 
     function updateSomeChunks() {
       // Determine if chunks' visibility to the player has changed
@@ -218,7 +239,7 @@ var WorldRenderer = (function () {
       }
 
       var chunkQueue = dirtyChunks.length > 0 ? dirtyChunks : addChunks;
-      var toCompute = chunkQueue.length > 30 ? 3 : 1;
+      var toCompute = chunkQueue.length > 30 ? 6 : 1;
       for (var i = 0; i < toCompute && chunkQueue.length > 0; i++) {
         if (calcChunk(chunkQueue.pop())) {
           // Chunk wasn't actually dirty; take another chunk
@@ -236,7 +257,7 @@ var WorldRenderer = (function () {
     this.updateSomeChunks = updateSomeChunks;
 
     function renderDestroyBlock(block) {
-      var blockWorld = world.blockSet.worldFor(world.g(block[0],block[1],block[2]));
+      var blockWorld = blockSet.worldFor(world.g(block[0],block[1],block[2]));
       // TODO: add particles for color blocks
       if (blockWorld)
         particles.push(new BlockParticles(world, block, blockWorld, world.gRot(block[0],block[1],block[2])));
@@ -251,7 +272,9 @@ var WorldRenderer = (function () {
     function draw() {
       for (var index in chunks) {
         if (!chunks.hasOwnProperty(index)) continue;
-        chunks[index].draw();
+        var chunk = chunks[index];
+        if (aabbInView(chunk.aabb))
+          chunk.draw();
       }
       
       for (var i = 0; i < particles.length; i++) {
@@ -302,9 +325,8 @@ var WorldRenderer = (function () {
         var rawRotations = world.rawRotations;
         var chunkOriginX = xzkey[0];
         var chunkOriginZ = xzkey[1];
-        var chunkLimitX = xzkey[0] + CHUNKSIZE;
-        var chunkLimitZ = xzkey[1] + CHUNKSIZE;
-        var blockSet = world.blockSet;
+        var chunkLimitX = Math.min(wx, xzkey[0] + CHUNKSIZE);
+        var chunkLimitZ = Math.min(wz, xzkey[1] + CHUNKSIZE);
         var TILE_SIZE = World.TILE_SIZE;
         var PIXEL_SIZE = 1/TILE_SIZE;
         var ID_EMPTY = BlockSet.ID_EMPTY;
@@ -313,7 +335,7 @@ var WorldRenderer = (function () {
                                          function (vertices, normals, texcoords) {
                                            
           var tilings = blockSet.tilings; // has side effect of updating tiling if needed
-          var BOGUS_TILING = tilings[BlockSet.ID_BOGUS];
+          var BOGUS_TILING = tilings.bogus;
 
           var TILE_SIZE_UV = blockSet.getTexTileSize();
 
@@ -357,7 +379,11 @@ var WorldRenderer = (function () {
             pushNormal(normal);
             pushNormal(normal);
           }
+          
+          var c1 = vec3.create();
+          var c2 = vec3.create();
           var depthOriginBuf = vec3.create();
+          var thiso; // used by squares, assigned by loop
           function squares(origin, v1, v2, vDepth, vFacing, tileLayers, texO, texD) {
             if (thiso && world.opaque(x+vFacing[0],y+vFacing[1],z+vFacing[2])) {
               // this face is invisible
@@ -379,26 +405,37 @@ var WorldRenderer = (function () {
           for (var y = 0;            y < wy         ; y++)
           for (var z = chunkOriginZ; z < chunkLimitZ; z++) {
             // raw array access inlined and simplified for efficiency
-            var inBounds = x < wx && z < wz;
             var rawIndex = (x*wy+y)*wz+z;
-            var value = inBounds ? rawBlocks[rawIndex] : ID_EMPTY;
-            var rot = inBounds ? ROT_DATA[rawRotations[rawIndex]] : ROT_DATA[0];
+            var value = rawBlocks[rawIndex];
+
+            if (value === ID_EMPTY) continue;
+
+            var rot = ROT_DATA[rawRotations[rawIndex]];
+            var rzero = rot.zero;
+            var rpos = rot.pos;
+            c1[0] = x+rzero[0]; c2[0] = x+rpos[0];
+            c1[1] = y+rzero[1]; c2[1] = y+rpos[1];
+            c1[2] = z+rzero[2]; c2[2] = z+rpos[2];
+
             var btype = blockSet.get(value);
-            var thiso = btype.opaque; // If this and its neighbor are opaque, then hide surfaces
-            if (value != ID_EMPTY) {
-              var tiling = tilings[value] || BOGUS_TILING;
-              var c1 = vec3.add([x,y,z], rot.zero);
-              var c2 = vec3.add([x,y,z], rot.pos);
-              squares(c1, rot.pz, rot.py, rot.px, rot.nx, tiling.lx, 0, TILE_SIZE_UV);
-              squares(c1, rot.px, rot.pz, rot.py, rot.ny, tiling.ly, 0, TILE_SIZE_UV);
-              squares(c1, rot.py, rot.px, rot.pz, rot.nz, tiling.lz, 0, TILE_SIZE_UV);
-              squares(c2, rot.ny, rot.nz, rot.nx, rot.px, tiling.hx, TILE_SIZE_UV, 0);
-              squares(c2, rot.nz, rot.nx, rot.ny, rot.py, tiling.hy, TILE_SIZE_UV, 0);
-              squares(c2, rot.nx, rot.ny, rot.nz, rot.pz, tiling.hz, TILE_SIZE_UV, 0);
-            }
+            var tiling = tilings[value] || BOGUS_TILING;
+            thiso = btype.opaque; // -- Note used by squares()
+
+            squares(c1, rot.pz, rot.py, rot.px, rot.nx, tiling.lx, 0, TILE_SIZE_UV);
+            squares(c1, rot.px, rot.pz, rot.py, rot.ny, tiling.ly, 0, TILE_SIZE_UV);
+            squares(c1, rot.py, rot.px, rot.pz, rot.nz, tiling.lz, 0, TILE_SIZE_UV);
+            squares(c2, rot.ny, rot.nz, rot.nx, rot.px, tiling.hx, TILE_SIZE_UV, 0);
+            squares(c2, rot.nz, rot.nx, rot.ny, rot.py, tiling.hy, TILE_SIZE_UV, 0);
+            squares(c2, rot.nx, rot.ny, rot.nz, rot.pz, tiling.hz, TILE_SIZE_UV, 0);
           }
         });
-        //scheduleDraw();
+        
+        chunks[xzkey].aabb = [
+          [chunkOriginX, chunkLimitX],
+          [0, world.wy],
+          [chunkOriginZ, chunkLimitZ]
+        ];
+        
         return false;
       }
     }
@@ -414,6 +451,8 @@ var WorldRenderer = (function () {
 
     // --- init ---
 
+    world.listen(listenerW);
+    blockSet.listen(listenerB);
     Object.freeze(this);
   }
 
