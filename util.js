@@ -88,14 +88,6 @@ var UNIT_PZ = vec3.create([0,0,1]);
 var UNIT_NX = vec3.create([-1,0,0]);
 var UNIT_NY = vec3.create([0,-1,0]);
 var UNIT_NZ = vec3.create([0,0,-1]);
-var UNIT_AXES = Object.freeze([
-  UNIT_PX,
-  UNIT_PY,
-  UNIT_PZ,
-  UNIT_NX,
-  UNIT_NY,
-  UNIT_NZ,
-]);
 
 function prepareShader(gl, id) {
   // See note in license statement at the top of this file.  

@@ -5,17 +5,25 @@ var Circuit = (function () {
   "use strict";
   var DEBUG_WIRE = false;
   
+  // These are slice'd because the circuit code does foo[aDirection] a lot, so we want the toString() behavior of real JS arrays. TODO: Review whether it would be better to use symbol strings (e.g. "px", "py", ...) or numbers for directions.
+  var DIRECTIONS = Object.freeze([
+    Array.prototype.slice.call(UNIT_PX),
+    Array.prototype.slice.call(UNIT_PY),
+    Array.prototype.slice.call(UNIT_PZ),
+    Array.prototype.slice.call(UNIT_NX),
+    Array.prototype.slice.call(UNIT_NY),
+    Array.prototype.slice.call(UNIT_NZ),
+  ]);
+  
   function blockOutputKeys(block) {
-    return UNIT_AXES.map(function (direction) {
-      direction = Array.prototype.slice.call(direction);
+    return DIRECTIONS.map(function (direction) {
       return block + "/" + direction;
     });
   }
   
   function dirKeys(value) {
     var o = {};
-    UNIT_AXES.forEach(function (direction) {
-      direction = Array.prototype.slice.call(direction);
+    DIRECTIONS.forEach(function (direction) {
       o[direction] = value;
     });
     return o;
@@ -129,8 +137,7 @@ var Circuit = (function () {
       }
       function traceIntoNode(net, block, comingFrom) {
         if (DEBUG_WIRE) console.group("traceIntoNode " + net + " " + block + ":" + getBehavior(block) + " " + comingFrom);
-        UNIT_AXES.forEach(function (direction) {
-          direction = Array.prototype.slice.call(direction);
+        DIRECTIONS.forEach(function (direction) {
           if (""+direction === ""+comingFrom) {
             // don't look backward
             return;
@@ -215,8 +222,7 @@ var Circuit = (function () {
         var beh = getBehavior(block);
         var faces = beh.faces;
         var inputGetters = {};
-        UNIT_AXES.forEach(function (direction) {
-          direction = Array.prototype.slice.call(direction);
+        DIRECTIONS.forEach(function (direction) {
           var net = cGraph[block][direction];
           if (net)
             inputGetters[direction] = netEvaluator(net);
@@ -252,8 +258,7 @@ var Circuit = (function () {
       var graph = cGraph[block];
       if (!graph) return "Wire";
       var s = "";
-      UNIT_AXES.forEach(function (direction) {
-        direction = Array.prototype.slice.call(direction);
+      DIRECTIONS.forEach(function (direction) {
         var net = graph[direction];
         if (net)
           s += "\n" + direction + " " + net + " ← " + localState[block+"/"+direction]
@@ -285,8 +290,7 @@ var Circuit = (function () {
     function combineInputs(inputs, faces) {
       // TODO: combine more cleverly than 'or'
       var inputEvals = [];
-      UNIT_AXES.forEach(function (direction) {
-        direction = Array.prototype.slice.call(direction);
+      faces.forEach(function (direction) {
         if (inputs[direction])
           inputEvals.push(inputs[direction]);
       });
@@ -329,7 +333,7 @@ var Circuit = (function () {
     
     var indicator = nb("indicator", inputOnlyBeh);
     indicator.compile = function (world, block, inputs) {
-      var input = combineInputs(inputs, UNIT_AXES);
+      var input = combineInputs(inputs, DIRECTIONS);
       return function (state) {
         var flag = input(state);
         var cur = world.gSub(block[0],block[1],block[2]);
@@ -345,7 +349,7 @@ var Circuit = (function () {
     nor.faces = dirKeys(OUT);
     nor.faces["1,0,0"] = nor.faces["-1,0,0"] = IN;
     nor.compile = function (world, block, inputs) {
-      var input = combineInputs(inputs, [UNIT_PX,UNIT_NX]);
+      var input = combineInputs(inputs, [[-1,0,0],[1,0,0]]);
       return function (state) {
         var flag = input(state);
         state[block + "/0,0,1"] = !flag;
@@ -364,7 +368,7 @@ var Circuit = (function () {
     
     var setrotation = nb("setrotation", inputOnlyBeh);
     setrotation.compile = function (world, block, inputs) {
-      var input = combineInputs(inputs, UNIT_AXES);
+      var input = combineInputs(inputs, DIRECTIONS);
       return function (state) {
         state.blockout_rotation = input(state);
       };
