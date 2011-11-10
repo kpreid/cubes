@@ -62,7 +62,6 @@ function World(sizes, blockSet) {
         if (existing === circuit) {
           continue; // don't add and don't traverse
         } else if (existing !== circuit && existing !== undefined) {
-          console.log("floodCircuit met a different circuit!");
           deleteCircuit(existing);
         }
         circuit.add(block);
@@ -158,7 +157,6 @@ function World(sizes, blockSet) {
       becomeCircuit(vec);
     } else if (!cp && blockCircuits[vec]) {
       // No longer a circuit part.
-      console.log("deleting dead circuit");
       deleteCircuit(blockCircuits[vec]);
       [[x-1,y,z], [x,y-1,z], [x,y,z-1], [x+1,y,z], [x,y+1,z], [x,y,z+1]].forEach(function (neighbor) {
         if (isCircuitPart(gt(neighbor[0],neighbor[1],neighbor[2]))) becomeCircuit(neighbor);

@@ -389,7 +389,8 @@ var Circuit = (function () {
     ic.compile = function (world, block, inputs) {
       var type = world.gt(block[0],block[1],block[2]);
       if (!type.world) {
-        console.warn("IC behavior applied to non-world block type!");
+        if (typeof console !== 'undefined')
+          console.warn("IC behavior applied to non-world block type!");
         return;
       }
       var circuits = type.world.getCircuits();
