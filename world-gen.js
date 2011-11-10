@@ -4,7 +4,9 @@
 var WorldGen = (function () {
   "use strict";
 
-  var blockWorldSize = [World.TILE_SIZE,World.TILE_SIZE,World.TILE_SIZE];
+  var TS = World.TILE_SIZE;
+  var TL = TS - 1;
+  var blockWorldSize = [TS,TS,TS];
   
   var WorldGen = {
     newWorldBlockType: function (blockSet) {
@@ -65,27 +67,25 @@ var WorldGen = (function () {
     blockFunctions: (function () {
       // condition functions for procedural block generation
       // Each takes a coordinate vector and returns a boolean.
-      // TODO: Parameterize fully on TILE_SIZE.
-      var TILE_SIZE = World.TILE_SIZE;
       function vx(b) { return b[0]; }
       function vy(b) { return b[1]; }
       function vz(b) { return b[2]; }
-      function te(b) { return b[1] == 15 ?1:0; }
-      function tp(b) { return b[1] == 14 ?1:0; }
+      function te(b) { return b[1] == TL ?1:0; }
+      function tp(b) { return b[1] == TL-1 ?1:0; }
       function be(b) { return b[1] == 0 ?1:0; }
       function bp(b) { return b[1] == 1 ?1:0; }
-      function se(b) { return (b[2] == 0 || b[2] == 15 || b[0] == 0 || b[0] == 15) ?1:0; }
-      function sp(b) { return (b[2] == 1 || b[2] == 14 || b[0] == 1 || b[0] == 14) ?1:0; }
-      function xe(b) { return (b[0] == 0 || b[0] == 15) ?1:0; }
-      function ze(b) { return (b[2] == 0 || b[2] == 15) ?1:0; }
+      function se(b) { return (b[2] == 0 || b[2] == TL   || b[0] == 0 || b[0] == TL  ) ?1:0; }
+      function sp(b) { return (b[2] == 1 || b[2] == TL-1 || b[0] == 1 || b[0] == TL-1) ?1:0; }
+      function xe(b) { return (b[0] == 0 || b[0] == TL) ?1:0; }
+      function ze(b) { return (b[2] == 0 || b[2] == TL) ?1:0; }
       function s(b) { return te(b) + be(b) + xe(b) + ze(b); }
       function e(b) { return s(b) > 1 ?1:0; }
       function c(b) { return s(b) > 2 ?1:0; }
       function rad(b) { 
         return Math.sqrt(
-          Math.pow(b[0]-TILE_SIZE/2+0.5, 2) +
-          Math.pow(b[1]-TILE_SIZE/2+0.5, 2) +
-          Math.pow(b[2]-TILE_SIZE/2+0.5, 2)
+          Math.pow(b[0]-TL/2, 2) +
+          Math.pow(b[1]-TL/2, 2) +
+          Math.pow(b[2]-TL/2, 2)
         );
       }
 
@@ -193,8 +193,8 @@ var WorldGen = (function () {
       // Add a rotate-based-on-subdata circuit
       function selfRotating(y) {
         if (optLogicSetHere) {
-          type.world.s(7,y,7, optLogicSetHere.getSubDatum);
-          type.world.s(7,y,8, optLogicSetHere.setRotation);
+          type.world.s(TS/2,y,TS/2, optLogicSetHere.getSubDatum);
+          type.world.s(TS/2,y,TS/2-1, optLogicSetHere.setRotation);
         }
       }
       
@@ -205,36 +205,36 @@ var WorldGen = (function () {
 
       // junction block
       ids.junction = blockSet.length;
-      type = genedit(f.sphere(8,8,8, 3, f.flat(functionShapeColor)));
+      type = genedit(f.sphere(TS/2,TS/2,TS/2, TS*3/16, f.flat(functionShapeColor)));
       type.behavior = Circuit.behaviors.junction;
 
       // step pad block
       ids.pad = blockSet.length;
       var specklePat = f.speckle(f.flat(functionShapeColor),
                                  f.flat(colorKit.colorToID(0.75,0.75,0.75)));
-      type = genedit(f.sphere(8,15.5,8,8,specklePat));
-      selfRotating(14);
+      type = genedit(f.sphere(TS/2,TS-0.5,TS/2,TS/2,specklePat));
+      selfRotating(TL-1);
       type.behavior = Circuit.behaviors.pad;
 
       // indicator block
       ids.indicator = blockSet.length;
       type = genedit(function (b) {
-        return f.rad([b[0],b[1],b[2]]) > 6 ? 0 :
-               b[1] < 8 ? colorKit.colorToID(1,1,1) : colorKit.colorToID(0,0,0);
+        return f.rad([b[0],b[1],b[2]]) > TS*6/16 ? 0 :
+               b[1] < TS/2 ? colorKit.colorToID(1,1,1) : colorKit.colorToID(0,0,0);
       });
-      selfRotating(7);
+      selfRotating(TS/2-1);
       type.behavior = Circuit.behaviors.indicator;
 
       // nor block
       ids.nor = blockSet.length;
-      type = genedit(f.union(f.sphere(5,8,8, 3, f.flat(functionShapeColor)),
-                             f.sphere(11,8,8, 3, f.flat(functionShapeColor))));
+      type = genedit(f.union(f.sphere(TS/2-TS*.2,TS/2,TS/2, TS*3/16, f.flat(functionShapeColor)),
+                             f.sphere(TS/2+TS*.2,TS/2,TS/2, TS*3/16, f.flat(functionShapeColor))));
       type.behavior = Circuit.behaviors.nor;
 
       // get-subdata block
       ids.getSubDatum = blockSet.length;
       type = genedit(function (b) {
-        return Math.abs(Math.sqrt(Math.pow(b[0]-7.5,2)+Math.pow(b[2]-7.5,2))*4 - b[1]) <= 1 ? functionShapeColor : 0;
+        return Math.abs(Math.sqrt(Math.pow(b[0]-TL/2,2)+Math.pow(b[2]-TL/2,2))*4 - b[1]) <= 1 ? functionShapeColor : 0;
       });
       type.behavior = Circuit.behaviors.getSubDatum;
 
@@ -242,19 +242,19 @@ var WorldGen = (function () {
       ids.setRotation = blockSet.length;
       type = genedit(f.intersection(
         f.subtract(
-          f.sphere(8,8,8, 8, functionShapePat),
-          f.sphere(8,8,8, 7, functionShapePat)),
+          f.sphere(TS/2,TS/2,TS/2, TS/2, functionShapePat),
+          f.sphere(TS/2,TS/2,TS/2, TS/2-2, functionShapePat)),
         f.union(
-          f.plane(0, 7, 9, functionShapePat),
+          f.plane(0, TS/2-1, TS/2+1, functionShapePat),
           f.union(
-            f.plane(1, 7, 9, functionShapePat),
-            f.plane(2, 7, 9, functionShapePat)))))
+            f.plane(1, TS/2-1, TS/2+1, functionShapePat),
+            f.plane(2, TS/2-1, TS/2+1, functionShapePat)))))
       type.behavior = Circuit.behaviors.setRotation;
 
       // emit-value block
       ids.emitUniform = blockSet.length;
       type = genedit(function (b) {
-        return Math.abs(b[0]-7.5)+Math.abs(b[1]-7.5)+Math.abs(b[2]-7.5) < 8.5 ? functionShapeColor : 0;
+        return Math.abs(b[0]-TL/2)+Math.abs(b[1]-TL/2)+Math.abs(b[2]-TL/2) < TS/2+0.5 ? functionShapeColor : 0;
       });
       type.behavior = Circuit.behaviors.emitUniform;
 
@@ -263,7 +263,7 @@ var WorldGen = (function () {
         ids.emitConstant = blockSet.length;
         type = genedit(function (b) {
           var r = f.rad(b);
-          return r < 8 && r > 7 && b[0] >= 7 && b[0] <= 8 && Math.abs(b[1]-7.5) > (b[2]-7.5) ? functionShapeColor : 0;
+          return r < TS/2 && r > TL/2 && f.plane(0, TS/2-1, TS/2+1, function(){return true;})(b) && Math.abs(b[1]-TL/2) > (b[2]-TL/2) ? functionShapeColor : 0;
         });
         type.world.s(1,1,1, optLogicSetHere.getSubDatum);
         type.world.s(1,1,2, optLogicSetHere.emitUniform);
@@ -285,6 +285,9 @@ function generateWorlds() {
   // Given an object facing the +z direction, these will rotate that face to...
   var sixFaceRotations = [0/*+z*/, 2/*-z*/, 4/*+y*/, 4+2/*-y*/, 16+8/*-x*/, 16+11/*+x*/];
 
+  var TS = World.TILE_SIZE;
+  var TL = TS - 1;
+
   // --- base blockset ---
   
   var pureColors = WorldGen.colorBlocks(7,7,5);
@@ -304,7 +307,7 @@ function generateWorlds() {
   function pickColor() {
     return Math.floor(Math.random() * colorSet.length);
   }
-  function rgbPat(b) { return brgb(b[0]/15,b[1]/15,b[2]/15); }
+  function rgbPat(b) { return brgb(b[0]/TL,b[1]/TL,b[2]/TL); }
   
   // --- default block worlds and block set ---
 
@@ -334,13 +337,13 @@ function generateWorlds() {
   
   // pyramid thing
   blockset.add(type = genedit(function (b) {
-    if (Math.abs(b[0] - 7.5) + Math.abs(b[1] - 7.5) > 15.5-b[2])
+    if (Math.abs(b[0] - TL/2) + Math.abs(b[1] - TL/2) > (TS-0.5)-b[2])
       return 0;
-    return brgb(mod((b[2]+2)/8, 1), Math.floor((b[2]+2)/8)*0.5, 0);
+    return brgb(mod((b[2]+2)/(TS/2), 1), Math.floor((b[2]+2)/(TS/2))*0.5, 0);
   }));
   // rotate-based-on-subdatum circuit
-  type.world.s(1,7,0, ls.getSubDatum);
-  type.world.s(1,8,0, ls.setRotation);
+  type.world.s(1,1,0, ls.getSubDatum);
+  type.world.s(1,2,0, ls.setRotation);
   type.automaticRotations = sixFaceRotations;
   
   // "leaf block" transparency test
@@ -350,7 +353,7 @@ function generateWorlds() {
 
   // pillar thing
   blockset.add(type = genedit(function (b) {
-    return Math.max(Math.abs(b[0] - 8), Math.abs(b[2] - 8)) <= 4 ? brgb(.5,.5,0) : 0;
+    return Math.max(Math.abs(b[0] - TS/2), Math.abs(b[2] - TS/2)) <= TS/4 ? brgb(.5,.5,0) : 0;
   }));
   
   var l = WorldGen.addLogicBlocks(blockset, logicAndColors, ls);
