@@ -322,7 +322,7 @@
     var TIMESTEP_MS = TIMESTEP*1000;
     
     // Settable using the options sidebar
-    var configRenderDistance = 60;
+    var configRenderDistance = 100;
     var configLighting = true;
     var configBumpMapping = true;
     var configDebugTextureAllocation = false;
@@ -855,11 +855,11 @@
                 console.log(t0 ? "(+"+(t1-t0)+" ms)" : "        ", a);
               t0 = t1;
             } else {
-              //try {
+              try {
                 if (actions[i]() === ABORT) return;
-              //} catch (e) {
-              //  catcher(e);
-              //}
+              } catch (e) {
+                catcher(e);
+              }
             }
             sub(i+1);
           }, 1);
@@ -922,13 +922,13 @@
           if (hasLocalStorage) {
             var worldData = localStorage.getItem("world");
             if (worldData !== null) {
-              //try {
+              try {
                 worldH = cyclicUnserialize(JSON.parse(worldData), World);
-              //} catch (e) {
-              //  if (typeof console !== 'undefined')
-              //    console.error(e);
-              //  alert("Failed to load saved world!");
-              //}
+              } catch (e) {
+                if (typeof console !== 'undefined')
+                  console.error(e);
+                alert("Failed to load saved world!");
+              }
             }
           } else {
             console.warn("localStorage not available; world will not be saved.");
@@ -1031,13 +1031,13 @@
             while (document.getElementById('load-error').firstChild)
               document.getElementById('load-error').removeChild(
                 document.getElementById('load-error').firstChild);
-            //try {
+            try {
               worldH = cyclicUnserialize(JSON.parse(document.getElementById('loadfield').value), World)
               player.setWorld(worldH);
-            //} catch (e) {
-            //  console.log(e);
-            //  document.getElementById('load-error').appendChild(document.createTextNode(e));
-            //}
+            } catch (e) {
+              console.log(e);
+              document.getElementById('load-error').appendChild(document.createTextNode(e));
+            }
             return false;
           ">Text Import</button>
           <br>
@@ -1048,7 +1048,7 @@
       <h2>Options</h2>
 
       <form onsubmit="return false;" action="">
-        <div class="optionline">Render distance: <input type="range" min="10" max="500" value="60" maxlength="4" size="4" onchange="configRenderDistance = parseFloat(this.value); changedRenderDistance(); return true;" style="vertical-align: middle;"></div>
+        <div class="optionline">Render distance: <input type="range" min="10" max="500" value="100" maxlength="4" size="4" onchange="configRenderDistance = parseFloat(this.value); changedRenderDistance(); return true;" style="vertical-align: middle;"></div>
         <div class="optionline"><label><input type="checkbox" checked onchange="configLighting = this.checked; changedRenderOptions(); return true;"> Lighting</label></div>
         <div class="optionline"><label><input type="checkbox" checked onchange="configBumpMapping = this.checked; changedRenderOptions(); return true;"> Bump mapping</label></div>
         
