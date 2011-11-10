@@ -533,11 +533,28 @@ var WorldRenderer = (function () {
           colors.push(1,1,1,1); pushVertex(v0);
           dyns.push(function () {
             var carr = circuitRenderer.colors.array;
+            var value = circuit.getNetValue(net);
+            var color;
+            if (value === null || value === undefined) {
+              color = [0,0,0,1];
+            } else if (value === false) {
+              color = [0,0,0.2,1];
+            } else if (value === true) {
+              color = [0.2,0.2,1,1];
+            } else if (typeof value === 'number') {
+              // TODO: represent negatives too
+              if (value <= 1)
+                color = [value, 0, 0,1];
+              else
+                color = [1, 1 - (1/value), 0,1];
+            } else {
+              color = [1,1,1,1];
+            }
             for (var i = 0, p = cbase; i < 6; i++) { // 6 vertices for the square
-              carr[p++] = 0;
-              carr[p++] = circuit.getNetValue(net);
-              carr[p++] = 0;
-              carr[p++] = 1;
+              carr[p++] = color[0];
+              carr[p++] = color[1];
+              carr[p++] = color[2];
+              carr[p++] = color[3];
             }
           });
         });

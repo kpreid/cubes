@@ -150,7 +150,7 @@ var WorldGen = (function () {
       function selfRotating(y) {
         if (optLogicSetHere) {
           type.world.s(7,y,7, optLogicSetHere.getSubDatum);
-          type.world.s(7,y,8, optLogicSetHere.setrotation);
+          type.world.s(7,y,8, optLogicSetHere.setRotation);
         }
       }
       
@@ -200,13 +200,35 @@ var WorldGen = (function () {
       type.behavior = Circuit.behaviors.getSubDatum;
 
       // set-rotation block
-      ids.setrotation = blockSet.length;
+      ids.setRotation = blockSet.length;
       blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
         var r = f.rad(b);
         function plane(x) { return x >= 7 && x <= 8; }
         return r < 8 && r > 7 && (plane(b[0]) || plane(b[1]) || plane(b[2])) ? colorKit.colorToID(0.5,0.5,0.5) : 0;
       })));
-      type.behavior = Circuit.behaviors.setrotation;
+      type.behavior = Circuit.behaviors.setRotation;
+
+      // emit-value block
+      ids.emitUniform = blockSet.length;
+      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
+        var r = f.rad(b);
+        function plane(x) { return x >= 7 && x <= 8; }
+        return Math.abs(b[0]-7.5)+Math.abs(b[1]-7.5)+Math.abs(b[2]-7.5) < 8.5 ? colorKit.colorToID(0.5,0.5,0.5) : 0;
+      })));
+      type.behavior = Circuit.behaviors.emitUniform;
+
+      // IC blocks (require logic blocks on the next level down)
+      if (optLogicSetHere) {
+        ids.emitConstant = blockSet.length;
+        blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
+          var r = f.rad(b);
+          return r < 8 && r > 7 && b[0] >= 7 && b[0] <= 8 && Math.abs(b[1]-7.5) > (b[2]-7.5) ? colorKit.colorToID(0.5,0.5,0.5) : 0;
+        })));
+        type.world.s(1,1,1, optLogicSetHere.getSubDatum);
+        type.world.s(1,1,2, optLogicSetHere.emitUniform);
+        type.automaticRotations = [0,1,2,3,4,5,6,7]; // TODO kludge
+        type.behavior = Circuit.behaviors.ic;
+      }
 
       return ids;
     }
@@ -277,7 +299,7 @@ function generateWorlds() {
   }));
   // rotate-based-on-subdatum circuit
   type.world.s(1,7,0, ls.getSubDatum);
-  type.world.s(1,8,0, ls.setrotation);
+  type.world.s(1,8,0, ls.setRotation);
   type.automaticRotations = sixFaceRotations;
   
   // "leaf block" transparency test

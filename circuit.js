@@ -366,13 +366,49 @@ var Circuit = (function () {
       };
     };
     
-    var setrotation = nb("setrotation", inputOnlyBeh);
-    setrotation.compile = function (world, block, inputs) {
+    var setRotation = nb("setRotation", inputOnlyBeh);
+    setRotation.compile = function (world, block, inputs) {
       var input = combineInputs(inputs, DIRECTIONS);
       return function (state) {
-        state.blockout_rotation = input(state);
+        state.blockOut_rotation = input(state);
       };
     };
+    
+    var emitUniform = nb("emitUniform", inputOnlyBeh);
+    emitUniform.compile = function (world, block, inputs) {
+      var input = combineInputs(inputs, DIRECTIONS);
+      return function (state) {
+        state.blockOut_output = input(state);
+      };
+    }
+  
+    // This behavior evaluates a block's inner circuit.
+    // TODO: Add input and non-uniform support
+    var ic = nb("ic", protobehavior);
+    ic.faces = dirKeys(OUT);
+    ic.compile = function (world, block, inputs) {
+      var type = world.gt(block[0],block[1],block[2]);
+      if (!type.world) {
+        console.warn("IC behavior applied to non-world block type!");
+        return;
+      }
+      var circuits = type.world.getCircuits();
+      var circuitsArr = [];
+      for (var ck in circuits) {
+        if (!circuits.hasOwnProperty(ck)) continue;
+        circuitsArr.push(circuits[ck]);
+      }
+      return function (state) {
+        circuitsArr.forEach(function (circuit) {
+          var subState = {blockIn_subDatum: world.gSub(block[0],block[1],block[2])};
+          circuit.evaluate(subState);
+          if ("blockOut_output" in subState) {
+            // TODO: detect conflicts among multiple outputs
+            uniformOutput(block, state, subState.blockOut_output);
+          }
+        });
+      };
+    }
     
     Object.freeze(behaviors);
   })();
@@ -384,9 +420,9 @@ var Circuit = (function () {
       var state = {blockIn_subDatum: subDatum};
       //debugger;
       circuits[ck].evaluate(state);
-      if ("blockout_rotation" in state) {
+      if ("blockOut_rotation" in state) {
         outerWorld.rawRotations[cube[0]*outerWorld.wy*outerWorld.wz+cube[1]*outerWorld.wz+cube[2]] // TODO KLUDGE
-          = state.blockout_rotation;
+          = state.blockOut_rotation;
       }
     }
   };
