@@ -139,6 +139,7 @@
 <script type="text/javascript" src="blockset.js"></script>
 <script type="text/javascript" src="world.js"></script>
 <script type="text/javascript" src="world-gen.js"></script>
+<script type="text/javascript" src="circuit.js"></script>
 <script type="text/javascript" src="world-render.js"></script>
 <script type="text/javascript" src="block-render.js"></script>
 <script type="text/javascript" src="player.js"></script>
@@ -746,12 +747,21 @@
           if (isFinite(sx) && isFinite(sy)) {
             cursorInfoElem.style.left = (sx + 1) / 2 * theCanvas.width + "px";
             cursorInfoElem.style.bottom = (sy + 1) / 2 * theCanvas.height + "px";
+            
             var world = player.getWorld();
+            var value = world.g(cube[0],cube[1],cube[2]);
             var sub = world.gSub(cube[0],cube[1],cube[2]);
-            cursorInfo.data = 
-              world.g(cube[0],cube[1],cube[2])
+            var type = world.gt(cube[0],cube[1],cube[2]);
+            var text = 
+              value
               + (sub ? ":" + sub : "")
               + " at " + sel.cube;
+
+            var circuit = world.getCircuit(cube);
+            if (circuit !== null) {
+              text += "\nCircuit: " + type.behavior.name + " " + circuit.describeBlock(cube);
+            }
+            cursorInfo.data = text;
           }
         }
         
