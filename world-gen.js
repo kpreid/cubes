@@ -332,21 +332,24 @@ function generateWorlds() {
   topWorld.notifyRawEdit();
   
   // circuit test
-  topWorld.s(200,72,203,l.pad);
-  topWorld.s(201,72,203,l.wire);
-  topWorld.s(202,72,203,l.wire);
-  topWorld.s(203,72,203,l.indicator);
-  topWorld.s(204,72,203,l.wire);
-  topWorld.s(205,72,203,l.junction);
-  topWorld.s(205,72,202,l.wire);
-  topWorld.s(205,72,201,l.pad);
+  (function () {
+    var x = 182, y = Math.floor(wy/2)+3, z = 191;
+    topWorld.s(x+0,y,z+1,l.pad);
+    topWorld.s(x+0,y,z+2,l.wire);
+    topWorld.s(x+0,y,z+3,l.indicator);                    
+    topWorld.s(x+0,y,z+4,l.wire);
+    topWorld.s(x+0,y,z+5,l.nor);
+    
+    topWorld.s(x-1,y,z+5,l.wire);
+    topWorld.s(x-2,y,z+5,l.pad);
 
-  topWorld.s(205,72,204,l.wire);
-  topWorld.s(205,72,205,l.nor);
-  topWorld.s(204,72,205,l.wire);
-  topWorld.s(203,72,205,l.pad);
-  topWorld.s(206,72,205,l.wire);
-  topWorld.s(207,72,205,l.pad);
+    topWorld.s(x+1,y,z+5,l.wire);
+    topWorld.s(x+2,y,z+5,l.junction);
+    topWorld.s(x+2,y,z+4,l.wire);
+    topWorld.s(x+2,y,z+3,l.nor);
+    topWorld.s(x+3,y,z+3,l.wire);
+    topWorld.s(x+4,y,z+3,l.pad);
+  })();
   
   return topWorld;
 }
