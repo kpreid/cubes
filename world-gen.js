@@ -110,6 +110,36 @@ var WorldGen = (function () {
           return (Math.floor(b[0]/4) + b[1] + Math.floor(b[2]/2)) % 4 ? p1(b) : p2(b);
         };
       }
+      function sphere(x,y,z,r,fill) {
+        return function (b) {
+          return Math.pow(b[0]-x+0.5, 2) +
+                 Math.pow(b[1]-y+0.5, 2) +
+                 Math.pow(b[2]-z+0.5, 2)
+                 < r*r
+                 ? fill(b) : 0;
+        }
+      }
+      function plane(dim, low, high, fill) {
+        return function (b) {
+          var v = b[dim] + 0.5;
+          return v > low && v < high ? fill(b) : 0;
+        }
+      }
+      function union(p1, p2) { // p2 wherever p1 is empty, else p1
+        return function (b) {
+          return p1(b) || p2(b);
+        }
+      }
+      function intersection(p1, p2) { // p1 wherever p2 is nonempty, else empty
+        return function (b) {
+          return p2(b) ? p1(b) : 0;
+        }
+      }
+      function subtract(p1, p2) { // p1 wherever p2 is empty, else empty
+        return function (b) {
+          return p2(b) ? 0 : p1(b);
+        }
+      }
 
       return Object.freeze({
         vx: vx,
@@ -131,7 +161,12 @@ var WorldGen = (function () {
         pickCond: pickCond,
         cond: cond,
         flat: flat,
-        speckle: speckle
+        speckle: speckle,
+        sphere: sphere,
+        plane: plane,
+        union: union,
+        intersection: intersection,
+        subtract: subtract
       });
     })(),
     
@@ -140,13 +175,22 @@ var WorldGen = (function () {
       var type;
       var f = WorldGen.blockFunctions;
       
+      // appearance utilities
       var boxColor = colorKit.colorToID(0,1,1);
+      var functionShapeColor = colorKit.colorToID(0.5,0.5,0.5);
+      var functionShapePat = f.flat(functionShapeColor);
       function boxed(insidePat) {
         return function (b) {
           return (f.e(b) && (b[0]+b[1]+b[2])%2) ? boxColor : insidePat(b);
         };
       }
-      
+      function genedit(pattern) {
+        var type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(pattern));
+        blockSet.add(type);
+        return type;
+      }
+
+      // Add a rotate-based-on-subdata circuit
       function selfRotating(y) {
         if (optLogicSetHere) {
           type.world.s(7,y,7, optLogicSetHere.getSubDatum);
@@ -156,74 +200,71 @@ var WorldGen = (function () {
       
       // wire
       ids.wire = blockSet.length;
-      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(f.flat(0))));
+      type = genedit(f.flat(0));
       type.behavior = Circuit.behaviors.wire;
 
       // junction block
       ids.junction = blockSet.length;
-      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
-        return f.rad(b) < 3 ? colorKit.colorToID(0.5,0.5,0.5) : 0;
-      })));
+      type = genedit(f.sphere(8,8,8, 3, f.flat(functionShapeColor)));
       type.behavior = Circuit.behaviors.junction;
 
       // step pad block
       ids.pad = blockSet.length;
-      var specklePat = f.speckle(f.flat(colorKit.colorToID(0.5,0.5,0.5)),
+      var specklePat = f.speckle(f.flat(functionShapeColor),
                                  f.flat(colorKit.colorToID(0.75,0.75,0.75)));
-      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
-        return f.rad([b[0],b[1]-8,b[2]]) < 8 ? specklePat(b) : 0;
-      })));
+      type = genedit(f.sphere(8,15.5,8,8,specklePat));
       selfRotating(14);
       type.behavior = Circuit.behaviors.pad;
 
       // indicator block
       ids.indicator = blockSet.length;
-      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
+      type = genedit(function (b) {
         return f.rad([b[0],b[1],b[2]]) > 6 ? 0 :
                b[1] < 8 ? colorKit.colorToID(1,1,1) : colorKit.colorToID(0,0,0);
-      })));
+      });
       selfRotating(7);
       type.behavior = Circuit.behaviors.indicator;
 
       // nor block
       ids.nor = blockSet.length;
-      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
-        return (f.rad([b[0]-3,b[1],b[2]]) < 3.5 || f.rad([b[0]+3,b[1],b[2]]) < 3.5) ? colorKit.colorToID(0.5,0.5,0.5) : 0;
-      })));
+      type = genedit(f.union(f.sphere(5,8,8, 3, f.flat(functionShapeColor)),
+                             f.sphere(11,8,8, 3, f.flat(functionShapeColor))));
       type.behavior = Circuit.behaviors.nor;
 
       // get-subdata block
       ids.getSubDatum = blockSet.length;
-      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
-        return Math.abs(Math.sqrt(Math.pow(b[0]-7.5,2)+Math.pow(b[2]-7.5,2))*4 - b[1]) <= 1 ? colorKit.colorToID(0.5,0.5,0.5) : 0;
-      })));
+      type = genedit(function (b) {
+        return Math.abs(Math.sqrt(Math.pow(b[0]-7.5,2)+Math.pow(b[2]-7.5,2))*4 - b[1]) <= 1 ? functionShapeColor : 0;
+      });
       type.behavior = Circuit.behaviors.getSubDatum;
 
       // set-rotation block
       ids.setRotation = blockSet.length;
-      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
-        var r = f.rad(b);
-        function plane(x) { return x >= 7 && x <= 8; }
-        return r < 8 && r > 7 && (plane(b[0]) || plane(b[1]) || plane(b[2])) ? colorKit.colorToID(0.5,0.5,0.5) : 0;
-      })));
+      type = genedit(f.intersection(
+        f.subtract(
+          f.sphere(8,8,8, 8, functionShapePat),
+          f.sphere(8,8,8, 7, functionShapePat)),
+        f.union(
+          f.plane(0, 7, 9, functionShapePat),
+          f.union(
+            f.plane(1, 7, 9, functionShapePat),
+            f.plane(2, 7, 9, functionShapePat)))))
       type.behavior = Circuit.behaviors.setRotation;
 
       // emit-value block
       ids.emitUniform = blockSet.length;
-      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
-        var r = f.rad(b);
-        function plane(x) { return x >= 7 && x <= 8; }
-        return Math.abs(b[0]-7.5)+Math.abs(b[1]-7.5)+Math.abs(b[2]-7.5) < 8.5 ? colorKit.colorToID(0.5,0.5,0.5) : 0;
-      })));
+      type = genedit(function (b) {
+        return Math.abs(b[0]-7.5)+Math.abs(b[1]-7.5)+Math.abs(b[2]-7.5) < 8.5 ? functionShapeColor : 0;
+      });
       type.behavior = Circuit.behaviors.emitUniform;
 
       // IC blocks (require logic blocks on the next level down)
       if (optLogicSetHere) {
         ids.emitConstant = blockSet.length;
-        blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
+        type = genedit(function (b) {
           var r = f.rad(b);
-          return r < 8 && r > 7 && b[0] >= 7 && b[0] <= 8 && Math.abs(b[1]-7.5) > (b[2]-7.5) ? colorKit.colorToID(0.5,0.5,0.5) : 0;
-        })));
+          return r < 8 && r > 7 && b[0] >= 7 && b[0] <= 8 && Math.abs(b[1]-7.5) > (b[2]-7.5) ? functionShapeColor : 0;
+        });
         type.world.s(1,1,1, optLogicSetHere.getSubDatum);
         type.world.s(1,1,2, optLogicSetHere.emitUniform);
         type.automaticRotations = [0,1,2,3,4,5,6,7]; // TODO kludge
