@@ -15,6 +15,15 @@ var Circuit = (function () {
     Array.prototype.slice.call(UNIT_NZ),
   ]);
   
+  var directionsPretty = Object.freeze({
+    "1,0,0": "+X",
+    "0,1,0": "+Y",
+    "0,0,1": "+Z",
+    "-1,0,0": "-X",
+    "0,-1,0": "-Y",
+    "0,0,-1": "-Z"
+  });
+  
   function blockOutputKeys(block) {
     return DIRECTIONS.map(function (direction) {
       return block + "/" + direction;
@@ -31,6 +40,7 @@ var Circuit = (function () {
   
   var IN = "IN";
   var OUT = "OUT";
+  var INOUT = "INOUT";
   var NONE = "NONE";
   
   function Circuit(world) {
@@ -56,10 +66,6 @@ var Circuit = (function () {
         allowWorldEdit: true
       };
       evaluate(localState);
-    }
-    
-    function behaviorFaceIsOutput(beh, direction) {
-      return beh.faces[Array.prototype.slice.call(direction)] == OUT;
     }
     
     // --- Methods ---
@@ -160,8 +166,6 @@ var Circuit = (function () {
             net.serial = netSerial++;
             net.toString = function () { return "net" + this.serial; };
             nets.push(net);
-          } else {
-            net.hasJunction = true;
           }
           
           cGraph[block][direction] = net;
@@ -186,7 +190,7 @@ var Circuit = (function () {
       // A net is useful if has both an input and an output, or if it has a junction.
       // Useless nets are either straight line o/o or i/i connections, or are when traceNet didn't find something.
       nets.forEach(function (net) {
-        if (!(net.hasIN && net.hasOUT || net.hasJunction)) {
+        if (!(net.hasIN && net.hasOUT || net.hasINOUT)) {
           net.forEach(function (record) {
             delete cGraph[record[0]][record[1]];
           });
@@ -229,7 +233,7 @@ var Circuit = (function () {
         net.forEach(function (record) {
           var block = record[0];
           var faceDirection = record[1];
-          if (behaviorFaceIsOutput(getBehavior(block), faceDirection)) {
+          if (getBehavior(block).faces[faceDirection] === OUT) {
             //console.log("doing connected output face", net.toString(), block, faceDirection);
             getters.push(blockEvaluator(block, faceDirection));
           }
@@ -300,19 +304,28 @@ var Circuit = (function () {
       var graph = cGraph[block];
       if (!graph) return "Wire";
       var s = "";
-      DIRECTIONS.forEach(function (direction) {
-        var net = graph[direction];
+      if (getBehavior(block) == Circuit.behaviors.junction) {
+        // junctions are symmetric, so don't be redundant
+        var net = graph["1,0,0"];
         if (net) {
-          switch (getBehavior(block).faces[direction]) {
-            case OUT: 
-              s += "\n" + direction + " " + net + " ← " + localState[block+"/"+direction];
-              break;
-            case IN: 
-              s += "\n" + direction + " " + net + " = " + localState[net.serial];
-              break;
-          }
+          s = "\n(" + net.serial + ") = " + localState[net.serial];
         }
-      });
+      } else {
+        DIRECTIONS.forEach(function (direction) {
+          var net = graph[direction];
+          if (net) {
+            s += "\n" + directionsPretty[direction] + " (" + net.serial + ")";
+            switch (getBehavior(block).faces[direction]) {
+              case OUT: 
+                s += " ← " + localState[block+"/"+direction];
+                break;
+              case IN:
+                s += " = " + localState[net.serial];
+                break;
+            }
+          }
+        });
+      }
       return s;
     }
     
@@ -395,6 +408,7 @@ var Circuit = (function () {
     };
     
     var junction = nb("junction", protobehavior);
+    junction.faces = dirKeys(INOUT);
     
     var nor = nb("nor", protobehavior);
     nor.faces = dirKeys(OUT);
