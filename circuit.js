@@ -87,6 +87,7 @@ var Circuit = (function () {
       if (DEBUG_WIRE) console.info("Recompiling a circuit");
       var outputs = [];
       var nodes = [];
+      var nets = [];
       var netSerial = 0;
       
       // Clear and initialize; find active nodes and outputs
@@ -117,21 +118,22 @@ var Circuit = (function () {
           var bnBeh = getBehavior(bn);
           var comingFrom = vec3.negate(direction, []);
           if (!bnBeh) {
-            return false; // not a circuit element
+            return; // not a circuit element
           } else if (bnBeh == Circuit.behaviors.wire) {
             continue; // pass-through
           } else if (cGraph[bn][comingFrom] && cGraph[bn][comingFrom] !== net) {
             throw new Error("met different net!");
           } else if (cGraph[bn][comingFrom] && cGraph[bn][comingFrom] === net) {
-            return true; // already traced -- TODO: this case unnecessary/can'thappen?
+            return; // already traced -- TODO: this case unnecessary/can'thappen?
           } else {
             // found new unclaimed node
             // Note: bn was being mutated, but we exit now so saving it is safe.
             cGraph[bn][comingFrom] = net;
             net.push([bn,comingFrom]);
+            net.edges.push([net,block,bn]);
+            net["has" + bnBeh.faces[comingFrom]] = true;
             traceIntoNode(net, bn, comingFrom);
-            cEdges.push([net,block,bn]);
-            return true;
+            return;
           }
         }
         if (DEBUG_WIRE) console.groupEnd();
@@ -149,21 +151,23 @@ var Circuit = (function () {
             return;
           }
           
+          var beh = getBehavior(block);
+          
           // non-junctions get separate nets, junctions extend nets
-          if (getBehavior(block) !== Circuit.behaviors.junction) {
+          if (beh !== Circuit.behaviors.junction) {
             net = [];
+            net.edges = [];
             net.serial = netSerial++;
             net.toString = function () { return "net" + this.serial; };
+            nets.push(net);
+          } else {
+            net.hasJunction = true;
           }
           
           cGraph[block][direction] = net;
           net.push([block,direction]);
-          var found = traceNet(net, block, direction);
-          
-          if (!found) {
-            // nothing found, useless net. (Note net will still have entries)
-            cGraph[block][direction] = null;
-          }
+          net["has" + beh.faces[direction]] = true;
+          traceNet(net, block, direction);
         });
         if (DEBUG_WIRE) console.groupEnd();
       }
@@ -177,6 +181,20 @@ var Circuit = (function () {
         traceIntoNode(null, block, null);
         if (DEBUG_WIRE) console.groupEnd();
       });
+      
+      // Delete useless nets and record useful ones.
+      // A net is useful if has both an input and an output, or if it has a junction.
+      // Useless nets are either straight line o/o or i/i connections, or are when traceNet didn't find something.
+      nets.forEach(function (net) {
+        if (!(net.hasIN && net.hasOUT || net.hasJunction)) {
+          net.forEach(function (record) {
+            delete cGraph[record[0]][record[1]];
+          });
+        } else {
+          cEdges = cEdges.concat(net.edges); // TODO: kludgy
+        }
+      });
+      
       
       var evaluators = [];
       var seen = {};
