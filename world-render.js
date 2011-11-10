@@ -351,8 +351,6 @@ var WorldRenderer = (function () {
     }
     this.draw = draw;
 
-    var enough = 0;
-
     // returns whether no work was done
     function calcChunk(xzkey) {
       // This would call scheduleDraw() to render the revised chunks, except that calcChunk is only called within a draw. Therefore, the calls are commented out (to be reenabled if the architecture changes).
@@ -382,11 +380,12 @@ var WorldRenderer = (function () {
         chunks[xzkey] = new RenderBundle(gl.TRIANGLES,
                                          blockTexture,
                                          function (vertices, normals, texcoords) {
-                                           
+          // These statements are inside the function because they need to
+          // retrieve the most up-to-date values.
           var tilings = blockSet.tilings; // has side effect of updating tiling if needed
           var BOGUS_TILING = tilings.bogus;
-
           var TILE_SIZE_UV = blockSet.getTexTileSize();
+          var rawCircuits = world.getCircuitsByBlock();
 
           var vecbuf = vec3.create();
 
@@ -476,12 +475,11 @@ var WorldRenderer = (function () {
             squares(c2, rot.ny, rot.nz, rot.nx, rot.px, tiling.hx, TILE_SIZE_UV, 0);
             squares(c2, rot.nz, rot.nx, rot.ny, rot.py, tiling.hy, TILE_SIZE_UV, 0);
             squares(c2, rot.nx, rot.ny, rot.nz, rot.pz, tiling.hz, TILE_SIZE_UV, 0);
-            var circuit = world.getCircuit(Array.prototype.slice.call(c1)); // TODO: replace this with some other spatial indexing scheme so we don't have to check per-every-block
+            var circuit = rawCircuits[x+","+y+","+z]; // TODO: replace this with some other spatial indexing scheme so we don't have to check per-every-block
             if (circuit) {
               var o = circuit.getOrigin();
               var r = circuitRenderers[o];
               if (!r) {
-                //if (enough++ < 100) console.log("new circuit " + o);
                 circuitRenderers[o] = makeCircuitRenderer(circuit);
               }
             }
