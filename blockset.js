@@ -44,6 +44,7 @@ var BlockType = (function () {
     
     this.world = world;
     this.opaque = undefined;
+    this.hasCircuits = false;
     
     // TODO: update listener if world is set, or reject world setting
     // note there is no opportunity here to remove listener, but it is unlikely to be needed.
@@ -53,14 +54,26 @@ var BlockType = (function () {
       self._notify("appearanceChanged");
       return true;
     }
+    function checkCircuits() {
+      self.hasCircuits = false;
+      var c = self.world.getCircuits();
+      for (var k in c) {
+        if (c.hasOwnProperty(k)) {
+          self.hasCircuits = true;
+          return true;
+        }
+      }
+      return true;
+    }
     world.listen({
       dirtyBlock: rebuild,
       dirtyAll: rebuild,
-      dirtyCircuit: function () {return true;},
-      deletedCircuit: function () {return true;}
+      dirtyCircuit: checkCircuits,
+      deletedCircuit: checkCircuits
     });
 
     _recomputeOpacity.call(this);
+    checkCircuits();
     
     Object.seal(this);
   };
@@ -126,6 +139,10 @@ var BlockType = (function () {
   Object.defineProperty(BlockType.Color.prototype, "world", {
     enumerable: true,
     value: null
+  });
+  Object.defineProperty(BlockType.Color.prototype, "hasCircuits", {
+    enumerable: true,
+    value: false
   });
   
   BlockType.Color.prototype.writeColor =
@@ -479,6 +496,16 @@ var BlockSet = (function () {
         return types[blockID] || types[BlockSet.ID_BOGUS] || types[BlockSet.ID_EMPTY];
       },
       
+      // Return an ID_LIMIT-element array snapshotting the results of get().
+      getAll: function () {
+        var array = types.slice();
+        var bogus = types[BlockSet.ID_BOGUS] || types[BlockSet.ID_EMPTY];
+        for (var i = array.length; i < BlockSet.ID_LIMIT; i++) {
+          array[i] = bogus;
+        }
+        return array;
+      },
+      
       listen: notifier.listen,
       
       // TODO: bundle texture/tilings into a facet
@@ -513,6 +540,10 @@ var BlockSet = (function () {
   
   // This block ID is used when an invalid block ID is met
   BlockSet.ID_BOGUS = 1;
+  
+  // The maximum number of possible block types.
+  // This value arises because worlds store blocks as bytes.
+  BlockSet.ID_LIMIT = 256;
   
   BlockSet.unserialize = function (json, unserialize) {
     if (json.type === "colors") {

@@ -386,6 +386,7 @@ var WorldRenderer = (function () {
           var BOGUS_TILING = tilings.bogus;
           var TILE_SIZE_UV = blockSet.getTexTileSize();
           var rawCircuits = world.getCircuitsByBlock();
+          var types = blockSet.getAll();
 
           var vecbuf = vec3.create();
 
@@ -465,7 +466,7 @@ var WorldRenderer = (function () {
             c1[1] = y+rzero[1]; c2[1] = y+rpos[1];
             c1[2] = z+rzero[2]; c2[2] = z+rpos[2];
 
-            var btype = blockSet.get(value);
+            var btype = types[value];
             var tiling = tilings[value] || BOGUS_TILING;
             thiso = btype.opaque; // -- Note used by squares()
 

@@ -326,7 +326,6 @@ function generateWorlds() {
                      altitude < 0 ? 1 :
                      altitude == 0 ? 2 :
                      /* altitude == 1 */ Math.random() > 0.99 ? (rawSubData[index] = 4, 4) : 0;
-        if (raw[index] == 4) topWorld.forceReeval([x,y,z]);
       }
     }
   }
