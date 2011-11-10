@@ -147,6 +147,7 @@
 <script type="text/javascript" src="blockset.js"></script>
 <script type="text/javascript" src="world.js"></script>
 <script type="text/javascript" src="world-gen.js"></script>
+<script type="text/javascript" src="circuit.js"></script>
 <script type="text/javascript" src="world-render.js"></script>
 <script type="text/javascript" src="block-render.js"></script>
 <script type="text/javascript" src="player.js"></script>
@@ -501,52 +502,78 @@
       return player.getWorld().raycast(pts[0], pts[1], radius, callback);
     }
     
+    function BufferAndArray(numComponents) {
+      this.numComponents = numComponents;
+      this.buffer = gl.createBuffer();
+      this.array = null;
+    }
+    BufferAndArray.prototype.countVertices = function () {
+      return this.array.length / this.numComponents;
+    };
+    BufferAndArray.prototype.load = function (jsArray, checkAgainst) {
+      this.array = new Float32Array(jsArray);
+      if (checkAgainst && this.countVertices() !== checkAgainst.countVertices()) {
+        throw new Error("Inconsistent number of vertices.");
+      }
+    };
+    BufferAndArray.prototype.send = function (mode) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, this.array, mode);
+    };
+    BufferAndArray.prototype.attrib = function (attrib) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+      gl.vertexAttribPointer(attrib, this.numComponents, gl.FLOAT, false, 0, 0);
+    };
+    BufferAndArray.prototype.deleteResources = function () {
+      gl.deleteBuffer(this.buffer);
+      this.buffer = this.array = null;
+    };
+    
+    // Manages a set of attribute arrays for some geometry to render.
+    // The calcFunc is called and given a set of JS arrays to fill, immediately as well as whenever this.recompute() is called.
+    // If calcFunc is null, then the client is expected to fill the arrays manually.
     function RenderBundle(primitive, optTexture, calcFunc, options) {
       options = options || {};
       
-      var vbuf = gl.createBuffer();
-      var nbuf = gl.createBuffer();
-      if (!optTexture) var cbuf = gl.createBuffer();
-      if (optTexture) var tbuf = gl.createBuffer();
-      var numVertices;
+      var v = new BufferAndArray(3);
+      var n = new BufferAndArray(3);
+      if (!optTexture) var c = new BufferAndArray(4);
+      if (optTexture) var t = new BufferAndArray(2);
       
-      this.recompute = function () {
-        var vertices = [];
-        var normals = [];
-        var colors = optTexture ? null : [];
-        var texcoords = optTexture ? [] : null;
-        calcFunc(vertices, normals, optTexture ? texcoords : colors);
-        numVertices = Math.floor(vertices.length / 3);
+      if (calcFunc != null) {
+        this.recompute = function () {
+          var vertices = [];
+          var normals = [];
+          var colors = optTexture ? null : [];
+          var texcoords = optTexture ? [] : null;
+          calcFunc(vertices, normals, optTexture ? texcoords : colors);
 
-        if (vertices.length !== normals.length) {
-          throw new Error("wrong number of normals");
-        }
+          v.load(vertices);
+          v.send(gl.STATIC_DRAW);
+          n.load(normals, v);
+          n.send(gl.STATIC_DRAW);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ARRAY_BUFFER, nbuf);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
-
-        if (optTexture) {
-          if (texcoords.length !== numVertices * 2) {
-            throw new Error("wrong number of texture coordinates");
+          if (optTexture) {
+            t.load(texcoords, v);
+            t.send(gl.STATIC_DRAW);
+          } else {
+            c.load(colors, v);
+            c.send(gl.STATIC_DRAW);
           }
-          gl.bindBuffer(gl.ARRAY_BUFFER, tbuf);
-          gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texcoords), gl.STATIC_DRAW);
-        } else {
-          if (colors.length !== numVertices * 4) {
-            throw new Error("wrong number of colors");
-          }
-          gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
-          gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-        }
-      };
+        };
+
+        this.recompute();
+      }
+
+      // made available for partial updates
+      this.vertices = v;
+      this.normals = n;
+      this.colors = c;
+      this.texcoords = t;
       
       function draw() {
-        gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
-        gl.vertexAttribPointer(attribs.aVertexPosition, 3, gl.FLOAT, false, 0, 0);
-        gl.bindBuffer(gl.ARRAY_BUFFER, nbuf);
-        gl.vertexAttribPointer(attribs.aVertexNormal, 3, gl.FLOAT, false, 0, 0);
+        v.attrib(attribs.aVertexPosition);
+        n.attrib(attribs.aVertexNormal);
         
         gl.uniform1i(uniforms.uTextureEnabled, optTexture ? 1 : 0);
 
@@ -554,8 +581,7 @@
           gl.enableVertexAttribArray(attribs.aTextureCoord);
           gl.disableVertexAttribArray(attribs.aVertexColor);
           
-          gl.bindBuffer(gl.ARRAY_BUFFER, tbuf);
-          gl.vertexAttribPointer(attribs.aTextureCoord, 2, gl.FLOAT, false, 0, 0);
+          t.attrib(attribs.aTextureCoord);
   
           gl.activeTexture(gl.TEXTURE0);
           gl.bindTexture(gl.TEXTURE_2D, optTexture);
@@ -564,23 +590,20 @@
           gl.disableVertexAttribArray(attribs.aTextureCoord);
           gl.enableVertexAttribArray(attribs.aVertexColor);
 
-          gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
-          gl.vertexAttribPointer(attribs.aVertexColor, 4, gl.FLOAT, false, 0, 0);
+          c.attrib(attribs.aVertexColor);
         }
-        totalVertices += numVertices;
-        gl.drawArrays(primitive, 0, numVertices);
+        var count = v.countVertices();
+        totalVertices += count;
+        gl.drawArrays(primitive, 0, count);
       };
       this.draw = options.aroundDraw ? function () { options.aroundDraw(draw); } : draw;
       
       this.deleteResources = function () {
-        gl.deleteBuffer(vbuf);
-        gl.deleteBuffer(nbuf);
-        if (cbuf) gl.deleteBuffer(cbuf);
-        if (tbuf) gl.deleteBuffer(tbuf);
-        vbuf = nbuf = cbuf = tbuf = numVertices = null;
+        v.deleteResources();        this.vertices  = v = null;
+        n.deleteResources();        this.normals   = n = null;
+        if (c) c.deleteResources(); this.colors    = c = null;
+        if (t) t.deleteResources(); this.texcoords = t = null;
       }
-      
-      this.recompute();
     }
     
     // TODO: the interface for this is lousy. blockWorld==null means we're creating a block, nonnull destroying
@@ -732,12 +755,21 @@
           if (isFinite(sx) && isFinite(sy)) {
             cursorInfoElem.style.left = (sx + 1) / 2 * theCanvas.width + "px";
             cursorInfoElem.style.bottom = (sy + 1) / 2 * theCanvas.height + "px";
+            
             var world = player.getWorld();
+            var value = world.g(cube[0],cube[1],cube[2]);
             var sub = world.gSub(cube[0],cube[1],cube[2]);
-            cursorInfo.data = 
-              world.g(cube[0],cube[1],cube[2])
+            var type = world.gt(cube[0],cube[1],cube[2]);
+            var text = 
+              value
               + (sub ? ":" + sub : "")
               + " at " + sel.cube;
+
+            var circuit = world.getCircuit(cube);
+            if (circuit !== null) {
+              text += "\nCircuit: " + type.behavior.name + " " + circuit.describeBlock(cube);
+            }
+            cursorInfo.data = text;
           }
         }
         

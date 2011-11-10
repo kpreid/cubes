@@ -141,6 +141,13 @@ function prepareProgram(gl, vertexShader, fragmentShader, attribs, uniforms) {
   }
 }
 
+function intersectAABB(a1, a2) {
+  for (var dim = 0; dim < 3; dim++)
+    if (a1[dim][1] < a2[dim][0] || a2[dim][1] < a1[dim][0])
+      return false;
+  return true;
+}
+
 // Given an element, replace its contents with a text node and return that, so that the element's text can be updated by setting the .data property of the result.
 function dynamicText(elem) {
   "use strict";

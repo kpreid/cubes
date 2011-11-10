@@ -97,7 +97,9 @@ var WorldGen = (function () {
         return Math.floor(Math.random() * colorSet.length);
       }
       function pickCond(p1, p2) {
-        var cond = pick([te,tp,be,bp,se,sp,s,e,c]);
+        return cond(pick([te,tp,be,bp,se,sp,s,e,c]), p1, p2);
+      }
+      function cond(cond, p1, p2) {
         return function (b) { return cond(b) ? p1(b) : p2(b); }
       }
       function flat(id) {
@@ -127,10 +129,87 @@ var WorldGen = (function () {
         rad: rad,
         pick: pick,
         pickCond: pickCond,
+        cond: cond,
         flat: flat,
         speckle: speckle
       });
-    })()
+    })(),
+    
+    addLogicBlocks: function (blockSet, colorKit, optLogicSetHere) {
+      var ids = {};
+      var type;
+      var f = WorldGen.blockFunctions;
+      
+      var boxColor = colorKit.colorToID(0,1,1);
+      function boxed(insidePat) {
+        return function (b) {
+          return (f.e(b) && (b[0]+b[1]+b[2])%2) ? boxColor : insidePat(b);
+        };
+      }
+      
+      function selfRotating(y) {
+        if (optLogicSetHere) {
+          type.world.s(7,y,7, optLogicSetHere.getSubDatum);
+          type.world.s(7,y,8, optLogicSetHere.setrotation);
+        }
+      }
+      
+      // wire
+      ids.wire = blockSet.length;
+      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(f.flat(0))));
+      type.behavior = Circuit.behaviors.wire;
+
+      // junction block
+      ids.junction = blockSet.length;
+      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
+        return f.rad(b) < 3 ? colorKit.colorToID(0.5,0.5,0.5) : 0;
+      })));
+      type.behavior = Circuit.behaviors.junction;
+
+      // step pad block
+      ids.pad = blockSet.length;
+      var specklePat = f.speckle(f.flat(colorKit.colorToID(0.5,0.5,0.5)),
+                                 f.flat(colorKit.colorToID(0.75,0.75,0.75)));
+      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
+        return f.rad([b[0],b[1]-8,b[2]]) < 8 ? specklePat(b) : 0;
+      })));
+      selfRotating(14);
+      type.behavior = Circuit.behaviors.pad;
+
+      // indicator block
+      ids.indicator = blockSet.length;
+      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
+        return f.rad([b[0],b[1],b[2]]) > 6 ? 0 :
+               b[1] < 8 ? colorKit.colorToID(1,1,1) : colorKit.colorToID(0,0,0);
+      })));
+      selfRotating(7);
+      type.behavior = Circuit.behaviors.indicator;
+
+      // nor block
+      ids.nor = blockSet.length;
+      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
+        return (f.rad([b[0]-3,b[1],b[2]]) < 3.5 || f.rad([b[0]+3,b[1],b[2]]) < 3.5) ? colorKit.colorToID(0.5,0.5,0.5) : 0;
+      })));
+      type.behavior = Circuit.behaviors.nor;
+
+      // get-subdata block
+      ids.getSubDatum = blockSet.length;
+      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
+        return Math.abs(Math.sqrt(Math.pow(b[0]-7.5,2)+Math.pow(b[2]-7.5,2))*4 - b[1]) <= 1 ? colorKit.colorToID(0.5,0.5,0.5) : 0;
+      })));
+      type.behavior = Circuit.behaviors.getSubDatum;
+
+      // set-rotation block
+      ids.setrotation = blockSet.length;
+      blockSet.add(type = WorldGen.newProceduralBlockType(colorKit.blockset, boxed(function (b) {
+        var r = f.rad(b);
+        function plane(x) { return x >= 7 && x <= 8; }
+        return r < 8 && r > 7 && (plane(b[0]) || plane(b[1]) || plane(b[2])) ? colorKit.colorToID(0.5,0.5,0.5) : 0;
+      })));
+      type.behavior = Circuit.behaviors.setrotation;
+
+      return ids;
+    }
   };
   
   return Object.freeze(WorldGen);
@@ -143,11 +222,14 @@ function generateWorlds() {
   // Given an object facing the +z direction, these will rotate that face to...
   var sixFaceRotations = [0/*+z*/, 2/*-z*/, 4/*+y*/, 4+2/*-y*/, 16+8/*-x*/, 16+11/*+x*/];
 
-  // --- color worlds ---
+  // --- base blockset ---
   
-  var colors = WorldGen.colorBlocks(7,7,5);
-  var colorSet = colors.blockset;
-  var brgb = colors.colorToID;
+  var pureColors = WorldGen.colorBlocks(7,7,5);
+
+  var logicAndColors = WorldGen.colorBlocks(7, 6, 5);
+  var colorSet = logicAndColors.blockset;
+  var brgb = logicAndColors.colorToID;
+  var ls = WorldGen.addLogicBlocks(logicAndColors.blockset, pureColors);
 
   // --- block world generation utilities ---
   
@@ -193,6 +275,9 @@ function generateWorlds() {
       return 0;
     return brgb(mod((b[2]+2)/8, 1), Math.floor((b[2]+2)/8)*0.5, 0);
   }));
+  // rotate-based-on-subdatum circuit
+  type.world.s(1,7,0, ls.getSubDatum);
+  type.world.s(1,8,0, ls.setrotation);
   type.automaticRotations = sixFaceRotations;
   
   // "leaf block" transparency test
@@ -204,6 +289,8 @@ function generateWorlds() {
   blockset.add(type = genedit(function (b) {
     return Math.max(Math.abs(b[0] - 8), Math.abs(b[2] - 8)) <= 4 ? brgb(.5,.5,0) : 0;
   }));
+  
+  var l = WorldGen.addLogicBlocks(blockset, logicAndColors, ls);
   
   for (var i = 0; i < 4; i++) {
     var c = f.pickCond(f.flat(pickColor()),
@@ -244,6 +331,26 @@ function generateWorlds() {
   }
   topWorld.notifyRawEdit();
   
+  // circuit test
+  (function () {
+    var x = 182, y = Math.floor(wy/2)+3, z = 191;
+    topWorld.s(x+0,y,z+1,l.pad);
+    topWorld.s(x+0,y,z+2,l.wire);
+    topWorld.s(x+0,y,z+3,l.indicator);                    
+    topWorld.s(x+0,y,z+4,l.wire);
+    topWorld.s(x+0,y,z+5,l.nor);
+    
+    topWorld.s(x-1,y,z+5,l.wire);
+    topWorld.s(x-2,y,z+5,l.pad);
+
+    topWorld.s(x+1,y,z+5,l.wire);
+    topWorld.s(x+2,y,z+5,l.junction);
+    topWorld.s(x+2,y,z+4,l.wire);
+    topWorld.s(x+2,y,z+3,l.nor);
+    topWorld.s(x+3,y,z+3,l.wire);
+    topWorld.s(x+4,y,z+3,l.pad);
+  })();
+
   window.generateBlock = function () {
     var s = player.getWorld().blockSet;
     var w = new World(blockWorldSize, colorSet);
