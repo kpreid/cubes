@@ -264,3 +264,50 @@ function Notifier(label) {
   }
   return Object.freeze(this);
 }
+
+// Data structure which
+//    contains a set of elements at most once,
+//    has efficient insertion and remove-one operations,
+//    and returns the items in FIFO order or approximately sorted order.
+// The elements must be strings or consistently and uniquely stringify.
+// The comparison function need not be consistent between calls to DirtyQueue.
+function DirtyQueue(optCompareFunc) {
+  var index = {};
+  var queueNear = [];
+  var queueFar = [];
+  var hop = Object.prototype.hasOwnProperty;
+  return Object.freeze({
+    size: function () {
+      return queueNear.length + queueFar.length;
+    },
+    clear: function () {
+      index = {};
+      queueNear = [];
+      queueFar = [];
+    },
+    enqueue: function (key) {
+      if (hop.call(index, key)) return;
+      index[key] = true;
+      queueFar.push(key);
+    },
+    // Return a value if available or null.
+    dequeue: function () {
+      if (!queueNear.length) {
+        queueNear = queueFar;
+        queueFar = [];
+        if (optCompareFunc) {
+          // Reversed because the *last* elements of queueNear dequeue first
+          queueNear.sort(function (a,b) { return optCompareFunc(b,a); });
+        } else {
+          queueNear.reverse(); // use insertion order
+        }
+        if (!queueNear.length) {
+          return null;
+        }
+      }
+      var key = queueNear.pop();
+      delete index[key];
+      return key;
+    }
+  });
+}

@@ -48,7 +48,7 @@ var WorldRenderer = (function () {
         }
       }
       nearChunkOrder.sort(function (a,b) {
-        return dist2sq(b) - dist2sq(a);
+        return dist2sq(a) - dist2sq(b);
       });
       distanceInfoCache.nearChunkOrder = Object.freeze(nearChunkOrder);
     }
@@ -59,11 +59,16 @@ var WorldRenderer = (function () {
     // Object holding all world rendering chunks which have RenderBundles created, indexed by "<x>,<z>" where x and z are the low coordinates (i.e. divisible by CHUNKSIZE).
     var chunks = {};
 
+    function compareByPlayerDistance(a,b) {
+      return dist2sq([a[0]-playerChunk[0], a[1]-playerChunk[1]]) 
+           - dist2sq([b[0]-playerChunk[0], b[1]-playerChunk[1]]);
+    }
+
     // Queue of chunks to rerender. Array (first-to-do at the end); each element is [x,z] where x and z are the low coordinates of the chunk.
-    var dirtyChunks = [];
+    var dirtyChunks = new DirtyQueue(compareByPlayerDistance);
 
     // Queue of chunks to render for the first time. Distinguished from dirtyChunks in that it can be flushed if the view changes.
-    var addChunks = [];
+    var addChunks = new DirtyQueue(compareByPlayerDistance);
     
     // The origin of the chunk which the player is currently in. Changes to this are used to decide to recompute chunk visibility.
     var playerChunk = null;
@@ -124,19 +129,19 @@ var WorldRenderer = (function () {
       
       chunks = {};
       circuitRenderers = {};
-      dirtyChunks = [];
-      addChunks = [];
+      dirtyChunks.clear();
+      addChunks.clear();
     }
     
     function rerenderChunks() {
-      // TODO: not in near-to-far order.
-      dirtyChunks = [];
+      dirtyChunks.clear();
       for (var index in chunks) {
         if (!chunks.hasOwnProperty(index)) continue;
         chunks[index].dirtyChunk = true;
         var indexparts = index.split(",");
-        dirtyChunks.push([parseInt(indexparts[0],10),
-                          parseInt(indexparts[1],10)]);
+        dirtyChunks.enqueue([parseInt(indexparts[0],10),
+                             parseInt(indexparts[1],10)],
+                            chunks[index]);
       }
     }
     
@@ -181,7 +186,7 @@ var WorldRenderer = (function () {
         // This routine is used only for "this block changed", so if there is
         // not already a chunk, we don't create it.
         c.dirtyChunk = true;
-        dirtyChunks.push(k);
+        dirtyChunks.enqueue(k, chunks[k]);
       }
     }
 
@@ -249,7 +254,7 @@ var WorldRenderer = (function () {
         renderDistanceInfo().nearChunkOrder.forEach(function (offset) {
           var chunkKey = [playerChunk[0] + offset[0], playerChunk[1] + offset[1]];
           if (!chunks[chunkKey] && chunkIntersectsWorld(chunkKey)) {
-            addChunks.push(chunkKey);
+            addChunks.enqueue(chunkKey, chunks[chunkKey]);
           }
         });
 
@@ -281,16 +286,16 @@ var WorldRenderer = (function () {
         
       }
 
-      var chunkQueue = dirtyChunks.length > 0 ? dirtyChunks : addChunks;
-      var toCompute = chunkQueue.length > 30 ? 6 : 1;
-      for (var i = 0; i < toCompute && chunkQueue.length > 0; i++) {
-        if (calcChunk(chunkQueue.pop())) {
+      var chunkQueue = dirtyChunks.size() > 0 ? dirtyChunks : addChunks;
+      var toCompute = chunkQueue.size() > 30 ? 6 : 1;
+      for (var i = 0; i < toCompute && chunkQueue.size() > 0; i++) {
+        if (calcChunk(chunkQueue.dequeue())) {
           // Chunk wasn't actually dirty; take another chunk
           i--;
         }
       }
       
-      if (chunkQueue.length > 0) {
+      if (chunkQueue.size() > 0) {
         // Schedule rendering more chunks
         scheduleDraw();
       }
@@ -549,8 +554,8 @@ var WorldRenderer = (function () {
 
     function debugText() {
       var text = "";
-      if (dirtyChunks.length > 0 || addChunks.length > 0) {
-        text += "Chunk Q: " + dirtyChunks.length + " dirty, " + addChunks.length + " new\n";
+      if (dirtyChunks.size() > 0 || addChunks.size() > 0) {
+        text += "Chunk Q: " + dirtyChunks.size() + " dirty, " + addChunks.size() + " new\n";
       }
       return text;
     }

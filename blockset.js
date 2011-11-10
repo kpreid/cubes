@@ -317,7 +317,7 @@ var BlockSet = (function () {
     var tilings = [EMPTY_TILING];
     
     var texgen = null;
-    var typesToRerender = [];
+    var typesToRerender = new DirtyQueue();
     
     function rebuildOne(blockID) {
       var blockType = types[blockID];
@@ -461,8 +461,8 @@ var BlockSet = (function () {
           rebuildOne(id);
         upload = true;
       }
-      while (typesToRerender.length) {
-        rebuildOne(typesToRerender.pop());
+      while (typesToRerender.size()) {
+        rebuildOne(typesToRerender.dequeue());
         upload = true;
       }
       if (upload) {
@@ -481,11 +481,11 @@ var BlockSet = (function () {
         var newID = types.length;
         types.push(newBlockType);
         tilings.push({});
-        typesToRerender.push(newID);
+        typesToRerender.enqueue(newID);
         newBlockType.listen({
           appearanceChanged: function () {
             // TODO: notify applicable world renderers promptly
-            typesToRerender.push(newID);
+            typesToRerender.enqueue(newID);
             notifier.notify("texturingChanged", newID);
             return true;
           }
