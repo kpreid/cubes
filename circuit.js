@@ -126,6 +126,7 @@ var Circuit = (function () {
             return true; // already traced -- TODO: this case unnecessary/can'thappen?
           } else {
             // found new unclaimed node
+            // Note: bn was being mutated, but we exit now so saving it is safe.
             cGraph[bn][comingFrom] = net;
             net.push([bn,comingFrom]);
             traceIntoNode(net, bn, comingFrom);
@@ -152,7 +153,7 @@ var Circuit = (function () {
           if (getBehavior(block) !== Circuit.behaviors.junction) {
             net = [];
             net.serial = netSerial++;
-            net.toString = function () { return "net" + net.serial; };
+            net.toString = function () { return "net" + this.serial; };
           }
           
           cGraph[block][direction] = net;
@@ -180,6 +181,13 @@ var Circuit = (function () {
       var evaluators = [];
       var seen = {};
       
+      //var opush = evaluators.push;
+      //evaluators.push = function (f) {
+      //  if (player && world == player.getWorld()) 
+      //    console.log("adding evaluator: " + f);
+      //  opush.call(this, f);
+      //}
+      
       function blockEvaluator(block, faceDirection) {
         compile(block);
         var key = ""+block+"/"+faceDirection;
@@ -194,41 +202,57 @@ var Circuit = (function () {
       
       function compileNet(net) {
         var key = net.serial;
-
         if (seen[key]) return;
         seen[key] = true;
+        
+        //console.group("compiling net " + net);
         
         var getters = [];
         net.forEach(function (record) {
           var block = record[0];
           var faceDirection = record[1];
-          if (behaviorFaceIsOutput(getBehavior(block), faceDirection))
+          if (behaviorFaceIsOutput(getBehavior(block), faceDirection)) {
+            //console.log("doing connected output face", net.toString(), block, faceDirection);
             getters.push(blockEvaluator(block, faceDirection));
+          }
         });
-        evaluators.push(function (state) {
+        function evalnet(state) {
+          //if (player && world == player.getWorld()) console.log("neteval", key, state[key]);
           var flag = false;
           getters.forEach(function (f) {
             flag = flag || f(state);
           });
           state[key] = flag;
-        });
+        }
+        //evalnet.toString = function () { return ""+key; };
+        evaluators.push(evalnet);
+        
+        //console.groupEnd();
       }
       
       function compile(block, caller) {
         var blockKey = ""+block;
         if (seen[blockKey]) return;
         seen[blockKey] = true;
+
+        //console.group("compiling block " + block);
         
         var beh = getBehavior(block);
         var faces = beh.faces;
         var inputGetters = {};
         DIRECTIONS.forEach(function (direction) {
-          var net = cGraph[block][direction];
-          if (net)
-            inputGetters[direction] = netEvaluator(net);
+          if (faces[direction] === IN) {
+            var net = cGraph[block][direction];
+            if (net)
+              inputGetters[direction] = netEvaluator(net);
+          }
         });
+
+        var f = beh.compile(world, block, inputGetters);
+        //f.toString = function () { return ""+block; };
+        evaluators.push(f);
         
-        evaluators.push(beh.compile(world, block, inputGetters));
+        //console.groupEnd();
       }
       outputs.forEach(compile);
       
@@ -260,8 +284,16 @@ var Circuit = (function () {
       var s = "";
       DIRECTIONS.forEach(function (direction) {
         var net = graph[direction];
-        if (net)
-          s += "\n" + direction + " " + net + " ← " + localState[block+"/"+direction]
+        if (net) {
+          switch (getBehavior(block).faces[direction]) {
+            case OUT: 
+              s += "\n" + direction + " " + net + " ← " + localState[block+"/"+direction];
+              break;
+            case IN: 
+              s += "\n" + direction + " " + net + " = " + localState[net.serial];
+              break;
+          }
+        }
       });
       return s;
     }
@@ -336,6 +368,7 @@ var Circuit = (function () {
       var input = combineInputs(inputs, DIRECTIONS);
       return function (state) {
         var flag = input(state);
+        //if (player && world == player.getWorld()) console.log("evaluating indicator", block, inputs, "got", flag);
         var cur = world.gSub(block[0],block[1],block[2]);
         if (!flag != !cur && state.allowWorldEdit) {
           world.sSub(block[0],block[1],block[2], flag ? 1 : 0);
