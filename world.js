@@ -82,6 +82,7 @@ function World(sizes, blockSet) {
     }
     
     circuit.compile();
+    circuit.refreshLocal();
     notifier.notify("dirtyCircuit", circuit);
   }
   
