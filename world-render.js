@@ -318,17 +318,23 @@ var WorldRenderer = (function () {
     this.renderCreateBlock = renderCreateBlock;
 
     function draw() {
+      // Draw chunks.
       for (var index in chunks) {
         if (!chunks.hasOwnProperty(index)) continue;
         var chunk = chunks[index];
         if (aabbInView(chunk.aabb))
           chunk.draw();
       }
+      
+      // Draw circuits.
+      gl.uniform1i(uniforms.uStipple, 1);
       for (var index in circuitRenderers) {
         if (!circuitRenderers.hasOwnProperty(index)) continue;
         circuitRenderers[index].draw();
       }
+      gl.uniform1i(uniforms.uStipple, 0);
       
+      // Draw particles.
       for (var i = 0; i < particles.length; i++) {
         var particleSystem = particles[i];
         if (particleSystem.expired()) {
@@ -347,6 +353,7 @@ var WorldRenderer = (function () {
         scheduleDraw();
       }
       
+      // Draw texture debug.
       if (configDebugTextureAllocation) {
         var mvsave = mvMatrix;
         mvMatrix = mat4.identity(mat4.create());
@@ -502,35 +509,72 @@ var WorldRenderer = (function () {
       }
     }
     
+    var CYL_RESOLUTION = 9;
+    function calcCylinder(pt1, pt2, radius, vertices, normals) {
+      function pushVertex(vec) {
+        vertices.push(vec[0], vec[1], vec[2]);
+        normals.push(0,0,0);
+      }
+      //function pushNormal(vec) {
+      //  normals.push(vec[0], vec[1], vec[2]);
+      //}
+      
+      var length = vec3.subtract(pt2, pt1, vec3.create());
+      var perp1 = vec3.cross(length, length[1] ? UNIT_PX : UNIT_PY, vec3.create());
+      var perp2 = vec3.cross(perp1, length, vec3.create());
+      vec3.normalize(perp1);
+      vec3.normalize(perp2);
+      function incr(i, r) {
+        return vec3.add(
+          vec3.scale(perp1, Math.sin(i/10*Math.PI*2), vec3.create()),
+          vec3.scale(perp2, Math.cos(i/10*Math.PI*2), vec3.create()));
+      }
+      for (var i = 0; i < CYL_RESOLUTION; i++) {
+        var p1 = incr(i);
+        var p2 = incr(mod(i+1, CYL_RESOLUTION));
+        //pushNormal(p2);
+        //pushNormal(p2);
+        //pushNormal(p1);
+        //pushNormal(p1);
+        //pushNormal(p1);
+        //pushNormal(p2);
+        vec3.scale(p1, radius);
+        vec3.scale(p2, radius);
+        var v0 = vec3.add(pt1, p2, vec3.create());
+        var v1 = vec3.add(pt2, p2, vec3.create());
+        var v2 = vec3.add(pt2, p1, vec3.create());
+        var v3 = vec3.add(pt1, p1, vec3.create());
+        pushVertex(v0);
+        pushVertex(v1);
+        pushVertex(v2);
+        pushVertex(v2);
+        pushVertex(v3);
+        pushVertex(v0);
+      }
+      return 6*CYL_RESOLUTION;
+    }
+    
+    var CENTER = [.5,.5,.5];
+    var CYL_RADIUS = Math.round(.08 * World.TILE_SIZE) / World.TILE_SIZE;
     function makeCircuitRenderer(circuit) {
       var dyns;
       var circuitRenderer = new RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {
         dyns = [];
-        function pushVertex(vec) {
-          vertices.push(vec[0], vec[1], vec[2]);
-          normals.push(0,0,0);
-        }
         circuit.getEdges().forEach(function (record) {
           var net = record[0];
           var fromBlock = record[1];
           var block = record[2];
 
-          var delta = vec3.subtract(block, fromBlock, vec3.create());
-          var perp = vec3.cross(delta, delta[1] ? UNIT_PX : UNIT_PY, vec3.create());
-          vec3.normalize(perp);
-          vec3.scale(perp, .1);
-          var v0 = vec3.add     (vec3.add(fromBlock, [.5, .6, .5], vec3.create()), perp);
-          var v1 = vec3.add     (vec3.add(block,     [.5, .6, .5], vec3.create()), perp);
-          var v2 = vec3.subtract(vec3.add(block,     [.5, .6, .5], vec3.create()), perp);
-          var v3 = vec3.subtract(vec3.add(fromBlock, [.5, .6, .5], vec3.create()), perp);
           var vbase = vertices.length;
           var cbase = colors.length;
-          colors.push(1,1,1,1); pushVertex(v0);
-          colors.push(1,1,1,1); pushVertex(v1);
-          colors.push(1,1,1,1); pushVertex(v2);
-          colors.push(1,1,1,1); pushVertex(v2);
-          colors.push(1,1,1,1); pushVertex(v3);
-          colors.push(1,1,1,1); pushVertex(v0);
+          var numVertices = calcCylinder(
+            vec3.add(record[1], CENTER, vec3.create()),
+            vec3.add(record[2], CENTER, vec3.create()),
+            .1,
+            vertices, normals);
+          for (var i = 0; i < numVertices; i++)
+            colors.push(1,1,1,1); 
+            
           dyns.push(function () {
             var carr = circuitRenderer.colors.array;
             var value = circuit.getNetValue(net);
@@ -550,7 +594,7 @@ var WorldRenderer = (function () {
             } else {
               color = [1,1,1,1];
             }
-            for (var i = 0, p = cbase; i < 6; i++) { // 6 vertices for the square
+            for (var i = 0, p = cbase; i < numVertices; i++) {
               carr[p++] = color[0];
               carr[p++] = color[1];
               carr[p++] = color[2];

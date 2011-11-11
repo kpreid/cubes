@@ -164,6 +164,7 @@
     uniform sampler2D uSampler;
     uniform bool uLighting;
     uniform bool uBumpMapping;
+    uniform bool uStipple;
     
     const vec4 cSky = vec4(0.1,0.3,0.5,1.0);   
     const vec4 cHorizon = vec4(0.7,0.8,1.0,1.0);  
@@ -206,17 +207,18 @@
     }
     
     void main(void) {
-        vec4 color;
-
+        if (uStipple && mod(gl_FragCoord.x - gl_FragCoord.y, 2.0) < 1.0)
+          discard;
+        
         // color/lighting calculation
         // if the vertex normal is zero, then that means "do not use lighting"
-        color = vec4(vec3(vColor) * 
+        vec4 color = vec4(vec3(vColor) * 
             (!uLighting || vNormal == vec3(0,0,0)
               ? 1.0 
               : lighting()), vColor.a);
 
         if (uTextureEnabled) {
-          color = color * texture2D(uSampler, vTextureCoord);
+          color *= texture2D(uSampler, vTextureCoord);
 
           // alpha test
           if (color.a <= 0.0)
