@@ -217,7 +217,7 @@
               : lighting()), vColor.a);
 
         if (uTextureEnabled) {
-          color = color * texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+          color = color * texture2D(uSampler, vTextureCoord);
 
           // alpha test
           if (color.a <= 0.0)
