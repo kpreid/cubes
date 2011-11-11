@@ -112,7 +112,7 @@ function Input(eventReceiver, playerInput, menuElement) {
     var direct = -Math.PI/2 * swingX;
     playerInput.yaw += (direct - prevx);
     prevx = direct;
-    dx = -0.5 * deadzone(swingX, 0.4);
+    dx = -15.0 * deadzone(swingX, 0.4);
   }, false);
   eventReceiver.addEventListener("mouseout", function (event) {
     mousePos = [event.clientX, event.clientY];
@@ -151,7 +151,7 @@ function Input(eventReceiver, playerInput, menuElement) {
   
   function step() {
     if (dx != 0) {
-      playerInput.yaw += dx;
+      playerInput.yaw += dx*TIMESTEP;
     }
   }
   
