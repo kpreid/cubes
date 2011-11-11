@@ -168,7 +168,6 @@
     const vec4 cSky = vec4(0.1,0.3,0.5,1.0);   
     const vec4 cHorizon = vec4(0.7,0.8,1.0,1.0);  
     const vec4 cGround = vec4(0.5,0.4,0.4,1.0);
-    const float cTileSize = 16.0; // TODO: duplicate hardcoded value
     const float cModEpsilon = 1e-20;
     const float cTileCurvature = 0.2;
     const float cTileBumpDistance = 7.0;
@@ -198,7 +197,7 @@
       // offset from the center of its sub-cube
       vec3 normal;
       if (uBumpMapping) {
-        vec3 cell = (mod(vGridPosition * cTileSize + cModEpsilon, 1.0) - vec3(0.5)) * 2.0;
+        vec3 cell = (mod(vGridPosition * float(TILE_SIZE) + cModEpsilon, 1.0) - vec3(0.5)) * 2.0;
         normal = normalize(vNormal + cTileCurvature / max(1.0, vDistanceFromEye / cTileBumpDistance) * pow7vec3(cell));
       } else {
         normal = vNormal;
@@ -292,7 +291,7 @@
         if (uParticleMode) {
           // Compute particle size
           vec4 testPosition = relativePosition;
-          testPosition.x = uPixelsPerClipUnit.x / 16.0/* TODO: should be TILE_SIZE */ * 1.2/*appearance fudge factor*/;
+          testPosition.x = uPixelsPerClipUnit.x / float(TILE_SIZE) * 1.2/*appearance fudge factor*/;
           testPosition.y = 0.0;
           testPosition = uPMatrix * testPosition;
           gl_PointSize = testPosition.x / testPosition.w * pointScale;
@@ -891,9 +890,12 @@
         },
         "Setting up WebGL...",
         function () {
+          var decls = {
+            TILE_SIZE: World.TILE_SIZE
+          };
           prepareProgram(gl,
-                         prepareShader(gl, "shader-vs"),
-                         prepareShader(gl, "shader-fs"),
+                         prepareShader(gl, "shader-vs", decls),
+                         prepareShader(gl, "shader-fs", decls),
                          attribs, uniforms);          
           
           // Set up viewport and projection matters

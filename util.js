@@ -89,7 +89,7 @@ var UNIT_NX = vec3.create([-1,0,0]);
 var UNIT_NY = vec3.create([0,-1,0]);
 var UNIT_NZ = vec3.create([0,0,-1]);
 
-function prepareShader(gl, id) {
+function prepareShader(gl, id, declarations) {
   // See note in license statement at the top of this file.  
   "use strict";
   var scriptElement = document.getElementById(id);
@@ -97,6 +97,15 @@ function prepareShader(gl, id) {
   for (var k = scriptElement.firstChild; k !== null; k = k.nextSibling)
     if (k.nodeType == 3)
       text += k.textContent;
+   
+  var prelude = "";
+  for (var prop in declarations) {
+    var value = declarations[prop];
+    prelude += "#define " + prop + " (" + value + ")\n";
+  }
+  if (prelude !== "") {
+    text = prelude + "#line 1\n" + text;
+  }
   
   var shader;
   if (scriptElement.type == "x-shader/x-fragment") {
@@ -111,6 +120,7 @@ function prepareShader(gl, id) {
   gl.compileShader(shader);
   
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    if (typeof console !== "undefined") console.log("Shader text:\n" + text);
     throw new Error(gl.getShaderInfoLog(shader));
   }
   
