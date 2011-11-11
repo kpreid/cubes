@@ -448,11 +448,32 @@ var Circuit = (function () {
       };
     };
     
+    // Normally null; occasionally emits a numeric value.
+    // The value emitted is 1 divided by the (probabilistic) rate of events per second.
+    var spontaneous = nb("spontaneous", outputOnlyBeh);
+    spontaneous.compile = function (world, block, inputs) {
+      return function (state) {
+        uniformOutput(block, state, state.blockIn_spontaneous || null);
+      };
+    };
+    
     var setRotation = nb("setRotation", inputOnlyBeh);
     setRotation.compile = function (world, block, inputs) {
       var input = combineInputs(inputs, DIRECTIONS);
       return function (state) {
         state.blockOut_rotation = input(state);
+      };
+    };
+    
+    // Become another block, by numeric ID.
+    // TODO: Become effects should be bunched and deferred, to prevent infinite loops and to allow CA-style interactions.
+    var become = nb("become", inputOnlyBeh);
+    become.compile = function (world, block, inputs) {
+      var input = combineInputs(inputs, DIRECTIONS);
+      return function (state) {
+        var i = input(state);
+        if (typeof i === 'number')
+          state.blockOut_become = Math.floor(mod(i, 256));
       };
     };
     
@@ -496,16 +517,23 @@ var Circuit = (function () {
     Object.freeze(behaviors);
   })();
   
-  Circuit.executeCircuitInChangedBlock = function (blockWorld, outerWorld, cube, subDatum) {
+  Circuit.executeCircuitInBlock = function (blockWorld, outerWorld, cube, subDatum, extraState) {
     var circuits = blockWorld.getCircuits();
     for (var ck in circuits) {
       if (!circuits.hasOwnProperty(ck)) continue;
-      var state = {blockIn_subDatum: subDatum};
-      //debugger;
+      
+      var state = Object.create(extraState);
+      state.blockIn_subDatum = subDatum;
+      
       circuits[ck].evaluate(state);
-      if ("blockOut_rotation" in state) {
-        outerWorld.rawRotations[cube[0]*outerWorld.wy*outerWorld.wz+cube[1]*outerWorld.wz+cube[2]] // TODO KLUDGE
-          = state.blockOut_rotation;
+      
+      if ("blockOut_become" in state) {
+        outerWorld.s(cube[0],cube[1],cube[2],state.blockOut_become)
+      } else {
+        if ("blockOut_rotation" in state) {
+          outerWorld.rawRotations[cube[0]*outerWorld.wy*outerWorld.wz+cube[1]*outerWorld.wz+cube[2]] // TODO KLUDGE
+            = state.blockOut_rotation;
+        }
       }
     }
   };

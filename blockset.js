@@ -16,24 +16,16 @@ var BlockType = (function () {
     this._notify = n.notify; // should be private
     this.listen = n.listen;
     
-    // TODO: Both of these properties are to be replaced by circuits.
+    // TODO: This property is to be replaced by circuits.
     this.automaticRotations = [0];
-    this.spontaneousConversion = null;
+    
     this.behavior = null;
   }
   
-  // Called randomly by the world, at an average rate of 'baseRate' calls per second for each cube.
-  BlockType.prototype.doSpontaneousEffect = function (world, cube, baseRate) {
-    // TODO: Either remove this or give it a proper setter and a rate parameter and make it serialized
-    if (this.spontaneousConversion)
-      world.s(cube[0],cube[1],cube[2], this.spontaneousConversion);
-  };
   BlockType.prototype.serialize = function (serialize) {
     var json = {};
     if (this.automaticRotations.length !== 1 || this.automaticRotations[0] !== 0)
       json.automaticRotations = this.automaticRotations;
-    if (this.spontaneousConversion)
-      json.spontaneousConversion = this.spontaneousConversion;
     if (this.behavior && this.behavior.name)
       json.behavior = this.behavior.name;
     return json;
@@ -173,7 +165,6 @@ var BlockType = (function () {
     
     self.behavior = Circuit.behaviors.hasOwnProperty(json.behavior) ? Circuit.behaviors[json.behavior] : null;
     self.automaticRotations = json.automaticRotations || [0];
-    self.spontaneousConversion = json.spontaneousConversion || null;
     
     return self;
   };
