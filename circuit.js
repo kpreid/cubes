@@ -415,12 +415,29 @@ var Circuit = (function () {
     nor.faces["1,0,0"] = nor.faces["-1,0,0"] = IN;
     nor.compile = function (world, block, inputs) {
       var input = combineInputs(inputs, [[-1,0,0],[1,0,0]]);
+      var o1 = block + "/0,0,1";
+      var o2 = block + "/0,0,-1";
+      var o3 = block + "/0,1,0";
+      var o4 = block + "/0,-1,0";
+      
       return function (state) {
-        var flag = input(state);
-        state[block + "/0,0,1"] = !flag;
-        state[block + "/0,0,-1"] = !flag;
-        state[block + "/0,1,0"] = !flag;
-        state[block + "/0,-1,0"] = !flag;
+        state[o1] =
+        state[o2] =
+        state[o3] =
+        state[o4] = !input(state);
+      };
+    };
+    
+    // "Gate" gate - Emits -X value on +X if a surrounding input is true
+    var gate = nb("gate", protobehavior);
+    gate.faces = dirKeys(IN);
+    gate.faces["1,0,0"] = OUT;
+    gate.compile = function (world, block, inputs) {
+      var gateInput = combineInputs(inputs, [[0,-1,0],[0,1,0],[0,0,-1],[0,0,1]]);
+      var valueInput = inputs[[-1,0,0]];
+      var outputKey = block + "/1,0,0";
+      return function (state) {
+        state[outputKey] = gateInput(state) ? valueInput(state) : null;
       };
     };
     

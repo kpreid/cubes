@@ -205,12 +205,12 @@ var WorldGen = (function () {
 
       // junction block
       ids.junction = blockSet.length;
-      type = genedit(f.sphere(TS/2,TS/2,TS/2, TS*3/16, f.flat(functionShapeColor)));
+      type = genedit(f.sphere(TS/2,TS/2,TS/2, TS*3/16, functionShapePat));
       type.behavior = Circuit.behaviors.junction;
 
       // step pad block
       ids.pad = blockSet.length;
-      var specklePat = f.speckle(f.flat(functionShapeColor),
+      var specklePat = f.speckle(functionShapePat,
                                  f.flat(colorKit.colorToID(0.75,0.75,0.75)));
       type = genedit(f.sphere(TS/2,TS-0.5,TS/2,TS/2,specklePat));
       selfRotating(TL-1);
@@ -227,9 +227,16 @@ var WorldGen = (function () {
 
       // nor block
       ids.nor = blockSet.length;
-      type = genedit(f.union(f.sphere(TS/2-TS*.2,TS/2,TS/2, TS*3/16, f.flat(functionShapeColor)),
-                             f.sphere(TS/2+TS*.2,TS/2,TS/2, TS*3/16, f.flat(functionShapeColor))));
+      type = genedit(f.union(f.sphere(TS/2-TS*.2,TS/2,TS/2, TS*3/16, functionShapePat),
+                             f.sphere(TS/2+TS*.2,TS/2,TS/2, TS*3/16, functionShapePat)));
       type.behavior = Circuit.behaviors.nor;
+
+      // gate block
+      ids.gate = blockSet.length;
+      type = genedit(f.subtract(f.plane(0, TS/2-1, TS/2+1,
+                                        f.sphere(TS/2,TS/2,TS/2, TS/2, functionShapePat)),
+                                f.sphere(TS/2,TS/2,TS/2, TS*3/16, functionShapePat)));
+      type.behavior = Circuit.behaviors.gate;
 
       // get-subdata block
       ids.getSubDatum = blockSet.length;
@@ -407,7 +414,9 @@ function generateWorlds() {
     topWorld.s(x+0,y,z+5,l.nor);
     
     topWorld.s(x-1,y,z+5,l.wire);
-    topWorld.s(x-2,y,z+5,l.pad);
+    topWorld.s(x-2,y,z+5,l.gate);
+    topWorld.s(x-3,y,z+5,l.emitConstant,42);
+    topWorld.s(x-2,y,z+4,l.pad);
 
     topWorld.s(x+1,y,z+5,l.wire);
     topWorld.s(x+2,y,z+5,l.junction);
