@@ -345,10 +345,11 @@ var Circuit = (function () {
       behaviors[name] = beh;
       return beh;
     }
-    function uniformOutput(block, state, value) {
-      blockOutputKeys(block).forEach(function (k) {
-        state[k] = value;
-      });
+    function compileOutput(block, faces) {
+      var keys = faces.map(function (face) { return block + "/" + face; });
+      return function (state, value) {
+        keys.forEach(function (key) { state[key] = value; });
+      }
     }
     function combineInputs(inputs, faces) {
       // TODO: combine more cleverly than 'or'
@@ -383,8 +384,9 @@ var Circuit = (function () {
     
     var pad = nb("pad", outputOnlyBeh);
     pad.compile = function (world, block, inputs) {
+      var out = compileOutput(block, DIRECTIONS);
       return function (state) {
-        uniformOutput(block, state, world.gSub(block[0],block[1],block[2]));
+        out(state, world.gSub(block[0],block[1],block[2]));
       };
     };
     pad.standingOn = function (circuit, cube, value) {
@@ -415,16 +417,14 @@ var Circuit = (function () {
     nor.faces["1,0,0"] = nor.faces["-1,0,0"] = IN;
     nor.compile = function (world, block, inputs) {
       var input = combineInputs(inputs, [[-1,0,0],[1,0,0]]);
-      var o1 = block + "/0,0,1";
-      var o2 = block + "/0,0,-1";
-      var o3 = block + "/0,1,0";
-      var o4 = block + "/0,-1,0";
-      
+      var out = compileOutput(block, [
+        [0,0,1],
+        [0,0,-1],
+        [0,1,0],
+        [0,-1,0]
+      ]);
       return function (state) {
-        state[o1] =
-        state[o2] =
-        state[o3] =
-        state[o4] = !input(state);
+        out(state, !input(state));
       };
     };
     
@@ -435,16 +435,17 @@ var Circuit = (function () {
     gate.compile = function (world, block, inputs) {
       var gateInput = combineInputs(inputs, [[0,-1,0],[0,1,0],[0,0,-1],[0,0,1]]);
       var valueInput = inputs[[-1,0,0]];
-      var outputKey = block + "/1,0,0";
+      var out = compileOutput(block, [[1,0,0]]);
       return function (state) {
-        state[outputKey] = gateInput(state) ? valueInput(state) : null;
+        out(state, gateInput(state) ? valueInput(state) : null);
       };
     };
     
     var getSubDatum = nb("getSubDatum", outputOnlyBeh);
     getSubDatum.compile = function (world, block, inputs) {
+      var out = compileOutput(block, DIRECTIONS);
       return function (state) {
-        uniformOutput(block, state, state.blockIn_subDatum);
+        out(state, state.blockIn_subDatum);
       };
     };
     
@@ -452,8 +453,9 @@ var Circuit = (function () {
     // The value emitted is 1 divided by the (probabilistic) rate of events per second.
     var spontaneous = nb("spontaneous", outputOnlyBeh);
     spontaneous.compile = function (world, block, inputs) {
+      var out = compileOutput(block, DIRECTIONS);
       return function (state) {
-        uniformOutput(block, state, state.blockIn_spontaneous || null);
+        out(state, state.blockIn_spontaneous || null);
       };
     };
     
@@ -502,13 +504,14 @@ var Circuit = (function () {
         if (!circuits.hasOwnProperty(ck)) continue;
         circuitsArr.push(circuits[ck]);
       }
+      var out = compileOutput(block, DIRECTIONS);
       return function (state) {
         circuitsArr.forEach(function (circuit) {
           var subState = {blockIn_subDatum: world.gSub(block[0],block[1],block[2])};
           circuit.evaluate(subState);
           if ("blockOut_output" in subState) {
             // TODO: detect conflicts among multiple outputs
-            uniformOutput(block, state, subState.blockOut_output);
+            out(state, subState.blockOut_output);
           }
         });
       };
