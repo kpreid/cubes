@@ -323,10 +323,14 @@
     var TIMESTEP_MS = TIMESTEP*1000;
     
     // Settable using the options sidebar
-    var configRenderDistance = 100;
-    var configLighting = true;
-    var configBumpMapping = true;
-    var configDebugTextureAllocation = false;
+    var config = {};
+    function definePreference(name, type, value) {
+      config[name] = new PersistentCell("cubes.option." + name, type, value);
+    }
+    definePreference("renderDistance", "number", 100);
+    definePreference("lighting", "boolean", true);
+    definePreference("bumpMapping", "boolean", true);
+    definePreference("debugTextureAllocation", "boolean", false);
 
     // GL objects
     var gl;
@@ -340,6 +344,8 @@
     var player;
     var worldH;
     var input;
+    
+    var readyToDraw = false;
     
     function initGL(canvas) {
         gl = canvas.getContext("experimental-webgl", {
@@ -455,22 +461,12 @@
       mat4.perspective(60, // vertical FOV
                        gl.drawingBufferWidth / gl.drawingBufferHeight, // aspect ratio
                        0.1, // near clip
-                       configRenderDistance, // far clip
+                       config.renderDistance.get(), // far clip
                        pMatrix);
       
       gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
       
       // uFogDistance is handled by drawScene.
-    }
-    
-    function changedRenderDistance() {
-      updateProjection();
-      player.render.getWorldRenderer().changedRenderDistance();
-    }
-    
-    function changedRenderOptions() {
-      gl.uniform1i(uniforms.uLighting, configLighting ? 1 : 0);
-      gl.uniform1i(uniforms.uBumpMapping, configBumpMapping ? 1 : 0);
     }
     
     // Returns a pair of points along the line of aim of the screen cursor.
@@ -714,7 +710,7 @@
         // Rendering settings for normal geometry
         gl.enable(gl.DEPTH_TEST);
         gl.clear(gl.DEPTH_BUFFER_BIT); // Backdrop depth is irrelevant
-        gl.uniform1f(uniforms.uFogDistance, configRenderDistance);
+        gl.uniform1f(uniforms.uFogDistance, config.renderDistance.get());
 
         viewPosition = playerRender.getPosition();
         playerRender.applyViewTranslation(mvMatrix);
@@ -820,7 +816,7 @@
     
     var animFrameWasRequested = false;
     function scheduleDraw() {
-      if (!animFrameWasRequested) {
+      if (!animFrameWasRequested && readyToDraw) {
         window.requestAnimFrame(function () {
           animFrameWasRequested = false;
 
@@ -907,8 +903,22 @@
             return true;
           }, false);
           
-          // Send rendering options
-          changedRenderOptions();
+          // Bind and send rendering options
+          config.lighting.nowAndWhenChanged(function (v) {
+            gl.uniform1i(uniforms.uLighting, v ? 1 : 0);
+            scheduleDraw();
+            return true;
+          });
+          config.bumpMapping.nowAndWhenChanged(function (v) {
+            gl.uniform1i(uniforms.uBumpMapping, v ? 1 : 0);
+            scheduleDraw();
+            return true;
+          });
+          config.renderDistance.listen({changed: function (v) {
+            updateProjection();
+            scheduleDraw();
+            return true;
+          }});
 
           // Initial GL state
           gl.enableVertexAttribArray(attribs.aVertexPosition);
@@ -950,6 +960,7 @@
         function () {
           input = new Input(theCanvas, player.input, document.getElementById("menu"));
           theCanvas.focus();
+          readyToDraw = true;
 
           setInterval(doStep, TIMESTEP_MS);
         },
@@ -1052,13 +1063,17 @@
       <h2>Options</h2>
 
       <form onsubmit="return false;" action="">
-        <div class="optionline">Render distance: <input type="range" min="10" max="500" value="100" maxlength="4" size="4" onchange="configRenderDistance = parseFloat(this.value); changedRenderDistance(); return true;" style="vertical-align: middle;"></div>
-        <div class="optionline"><label><input type="checkbox" checked onchange="configLighting = this.checked; changedRenderOptions(); return true;"> Lighting</label></div>
-        <div class="optionline"><label><input type="checkbox" checked onchange="configBumpMapping = this.checked; changedRenderOptions(); return true;"> Bump mapping</label></div>
+        <div class="optionline">Render distance: <input type="range" min="10" max="500" value="100" maxlength="4" size="4" id="renderDistance" style="vertical-align: middle;"></div>
+        <script>config.renderDistance.bindControl("renderDistance");</script>
+        <div class="optionline"><label><input type="checkbox" id="lighting"> Lighting</label></div>
+        <script>config.lighting.bindControl("lighting");</script>
+        <div class="optionline"><label><input type="checkbox" id="bumpMapping"> Bump mapping</label></div>
+        <script>config.bumpMapping.bindControl("bumpMapping");</script>
         
         <h3>Debug</h3>
         
-        <p><label><input type="checkbox" onchange="configDebugTextureAllocation = this.checked; return true;"> Display block texture</label></p>
+        <p><label><input type="checkbox" id="debugTextureAllocation"> Display block texture</label></p>
+        <script>config.debugTextureAllocation.bindControl("debugTextureAllocation");</script>
       </form>
     </div>
 

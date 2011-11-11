@@ -32,14 +32,15 @@ var WorldRenderer = (function () {
 
   var distanceInfoCache = {}, lastSeenRenderDistance = null;
   function renderDistanceInfo() {
-    if (configRenderDistance !== lastSeenRenderDistance) {
+    var newRenderDistance = config.renderDistance.get();
+    if (newRenderDistance !== lastSeenRenderDistance) {
       // The distance at which invisible chunks are dropped from memory. Semi-arbitrary figure...
-      distanceInfoCache.dropChunkDistanceSquared = Math.pow(configRenderDistance + 2*CHUNKSIZE, 2);
+      distanceInfoCache.dropChunkDistanceSquared = Math.pow(newRenderDistance + 2*CHUNKSIZE, 2);
 
       // A static table of the offsets of the chunks visible from the player location
       var nearChunkOrder = [];
-      var chunkDistance = Math.ceil(configRenderDistance/CHUNKSIZE);
-      var boundSquared = Math.pow(configRenderDistance + CHUNKSIZE, 2);
+      var chunkDistance = Math.ceil(newRenderDistance/CHUNKSIZE);
+      var boundSquared = Math.pow(newRenderDistance + CHUNKSIZE, 2);
       for (var x = -chunkDistance-1; x <= chunkDistance; x++)
       for (var z = -chunkDistance-1; z <= chunkDistance; z++) {
         var v = [x*CHUNKSIZE,z*CHUNKSIZE];
@@ -163,12 +164,30 @@ var WorldRenderer = (function () {
       // chunks containing the changed block ID?
       texturingChanged: dirtyAll
     }
+    
+    var listenerRenderDistance = {
+      changed: function (v) {
+        if (!isAlive()) return false;
+        playerChunk = null; // TODO kludge. The effect of this is to reevaluate which chunks are visible
+        addChunks.clear();
+        scheduleDraw();
+        return true;
+      }
+    };
+
+    var listenerRedraw = {
+      changed: function (v) {
+        scheduleDraw();
+        return isAlive();
+      }
+    }
 
     function deleteResources() {
       deleteChunks();
       textureDebugR.deleteResources();
       world.listen.cancel(listenerW);
       blockSet.listen.cancel(listenerB);
+      config.renderDistance.listen.cancel(listenerRenderDistance);
       world = blockSet = chunks = dirtyChunks = addChunks = textureDebugR = null;
     };
     function isAlive() {
@@ -176,12 +195,6 @@ var WorldRenderer = (function () {
       return !!world;
     }
     this.deleteResources = deleteResources;
-
-    function changedRenderDistance() {
-      playerChunk = null; // TODO kludge. The effect of this is to reevaluate which chunks are visible
-      addChunks = [];
-    }
-    this.changedRenderDistance = changedRenderDistance;
 
     function chunkIntersectsWorld(chunkOrigin) {
       var x = chunkOrigin[0];
@@ -253,7 +266,7 @@ var WorldRenderer = (function () {
       dirtyCircuit: dirtyCircuit,
       deletedCircuit: deletedCircuit,
     };
-
+    
     function updateSomeChunks() {
       // Determine if chunks' visibility to the player has changed
       var newPlayerChunk = [place.pos[0] - mod(place.pos[0], CHUNKSIZE),
@@ -367,7 +380,7 @@ var WorldRenderer = (function () {
       }
       
       // Draw texture debug.
-      if (configDebugTextureAllocation) {
+      if (config.debugTextureAllocation.get()) {
         textureDebugR.draw();
       }
     }
@@ -636,6 +649,8 @@ var WorldRenderer = (function () {
 
     world.listen(listenerW);
     blockSet.listen(listenerB);
+    config.renderDistance.listen(listenerRenderDistance);
+    config.debugTextureAllocation.listen(listenerRedraw);
     Object.freeze(this);
   }
 

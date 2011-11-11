@@ -50,6 +50,81 @@ function cyclicUnserialize(json, constructor) {
   return unserialize(json, constructor);
 }
 
+function PersistentCell(storageName, type, defaultValue) {
+  "use strict";
+  
+  var value = defaultValue;
+
+  var notifier = new Notifier(storageName);
+  var notify = notifier.notify;
+  
+  function get() {
+    return value;
+  }
+  function set(newV) {
+    value = newV;
+    localStorage.setItem(storageName, JSON.stringify(newV));
+    notify("changed", newV);
+  }
+  this.get = get;
+  this.set = set;
+  this.listen = notifier.listen;
+  
+  var valueString = localStorage.getItem(storageName);
+  if (valueString !== null) {
+    try {
+      value = JSON.parse(valueString);
+    } catch (e) {
+      if (typeof console !== "undefined")
+        console.error("Failed to parse stored value " + storageName + ":", e);
+    }
+    if (typeof value !== type) {
+      if (typeof console !== "undefined")
+        console.error("Stored value " + storageName + " not a " + type + ":", value);
+    }
+    set(value); // canonicalize/overwrite
+  }
+}
+PersistentCell.prototype.bindControl = function (id) {
+  var elem = document.getElementById(id);
+  var self = this;
+  
+  var listener;
+  switch (elem.type) {
+    case "checkbox":
+      listener = function(value) {
+        elem.checked = value;
+        return true;
+      }
+      elem.onchange = function () {
+        self.set(elem.checked);
+        return true;
+      };
+      break;
+    case "range":
+      listener = function(value) {
+        elem.value = value;
+        return true;
+      }
+      elem.onchange = function () {
+        self.set(parseFloat(elem.value));
+        return true;
+      };
+      break;
+  }
+
+  this.listen({
+    changed: listener
+  });
+  listener(this.get());
+};
+PersistentCell.prototype.nowAndWhenChanged = function (func) {
+  this.listen({
+    changed: func,
+  });
+  func(this.get());
+};
+
 function mod(value, modulus) {
   "use strict";
   return (value % modulus + modulus) % modulus;
