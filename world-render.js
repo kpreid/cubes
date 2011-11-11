@@ -82,9 +82,9 @@ var WorldRenderer = (function () {
     var particles = [];
 
     var textureDebugR = new RenderBundle(gl.TRIANGLE_STRIP, blockTexture, function (vertices, normals, texcoords) {
-      var x = 2;
-      var y = 2;
-      var z = -5;
+      var x = 1;
+      var y = 1;
+      var z = 0;
       vertices.push(-x, -y, z);
       vertices.push(x, -y, z);
       vertices.push(-x, y, z);
@@ -101,13 +101,26 @@ var WorldRenderer = (function () {
       texcoords.push(1, 1);
     }, {
       aroundDraw: function (draw) {
+        var aspect = theCanvas.width / theCanvas.height;
+        var w, h;
+        if (aspect > 1) {
+          w = aspect;
+          h = 1;
+        } else {
+          w = 1;
+          h = 1/aspect;
+        }
         var mvsave = mvMatrix;
         mvMatrix = mat4.identity(mat4.create());
+        gl.uniformMatrix4fv(uniforms.uPMatrix, false, mat4.ortho(-w, w, -h, h, -1, 1, mat4.create()));
         sendViewUniforms();
         gl.disable(gl.DEPTH_TEST);
+        gl.depthMask(false);
         draw();
         mvMatrix = mvsave;
         gl.enable(gl.DEPTH_TEST);
+        gl.depthMask(true);
+        gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
         sendViewUniforms();
       },
     });
@@ -355,10 +368,7 @@ var WorldRenderer = (function () {
       
       // Draw texture debug.
       if (configDebugTextureAllocation) {
-        var mvsave = mvMatrix;
-        mvMatrix = mat4.identity(mat4.create());
         textureDebugR.draw();
-        mvMatrix = mvsave;
       }
     }
     this.draw = draw;
