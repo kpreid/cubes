@@ -222,7 +222,7 @@ var BlockSet = (function () {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.bindTexture(gl.TEXTURE_2D, null);
     
-    var tileCountSqrt = 8; // initial allocation; gets multiplied by 2
+    var tileCountSqrt = 16; // initial allocation; gets multiplied by 2
     var blockTextureData;
     var tileAllocMap;
     var freePointer;
