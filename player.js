@@ -3,15 +3,15 @@
 
 var Player = (function () {
   // physics constants
-  var WALKING_SPEED = 5; // cubes/s
+  var WALKING_SPEED = 4; // cubes/s
   var FLYING_SPEED = 10; // cubes/s
   var GRAVITY = 20; // cubes/s^2
-  var JUMP_SPEED = 10; // cubes/s
+  var JUMP_SPEED = 8; // cubes/s
   
   var playerAABB = [
-    [-.7, .7], // x
-    [-3.4, .45], // y
-    [-.7, .7], // z
+    [-.35, .35], // x
+    [-1.75, .15], // y
+    [-.35, .35], // z
   ];
 
   var PLACEHOLDER_ROTATIONS = [];
