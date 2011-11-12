@@ -167,7 +167,7 @@ function Input(eventReceiver, playerInput, menuElement) {
 
     // TODO: Need to rebuild menu if blocks in the set have changed appearance
     if (playerInput.blockSet !== blockSetInMenu) {
-      while (menu.firstChild) menu.removeChild(menuElement.firstChild);
+      while (menuElement.firstChild) menuElement.removeChild(menuElement.firstChild);
 
       blockSetInMenu = playerInput.blockSet;
       var blockRenderer = new BlockRenderer(blockSetInMenu);
