@@ -108,11 +108,20 @@ html {
   background: gray;
   background: rgba(255,255,255,0.1);
 }
-.sidebar table.fancy > tbody > tr {
+
+.sidebar table.fancy, .sidebar table.fancy > tbody > tr {
   border-color gray;
   border-color rgba(255,255,255,0.1);
-  border-width: 1px 0;
   border-style: solid;
+}
+.sidebar table.fancy {
+  border-width: 1px 0;
+}
+.sidebar table.fancy > tbody > tr {
+  border-width: 1px 0 0 0;
+}
+.sidebar table.fancy > tbody > tr.spanned {
+  border-width: 0 0 0 0;
 }
 
 .optionline input[type="range"] {
