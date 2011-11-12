@@ -130,6 +130,10 @@
     border-width: 1px 0;
     border-style: solid;
   }
+  
+  .optionline input[type="range"] {
+    vertical-align: middle;
+  }
 </style>
 
 <script type="text/javascript" src="webgl-debug.js"></script>
@@ -327,6 +331,7 @@
     function definePreference(name, type, value) {
       config[name] = new PersistentCell("cubes.option." + name, type, value);
     }
+    definePreference("fov", "number", 60);
     definePreference("renderDistance", "number", 100);
     definePreference("lighting", "boolean", true);
     definePreference("bumpMapping", "boolean", true);
@@ -458,15 +463,25 @@
     }
     
     function updateProjection() {
-      mat4.perspective(60, // vertical FOV
-                       gl.drawingBufferWidth / gl.drawingBufferHeight, // aspect ratio
-                       0.1, // near clip
-                       config.renderDistance.get(), // far clip
+      var fov = config.fov.get();
+      var aspectRatio = gl.drawingBufferWidth / gl.drawingBufferHeight;
+      
+      var nearestApproachToPlayer = Math.min(
+        -Player.aabb[0][0], Player.aabb[0][1],
+        -Player.aabb[1][0], Player.aabb[1][1],
+        -Player.aabb[2][0], Player.aabb[2][1]);
+      var nearPlane = nearestApproachToPlayer 
+                      / Math.sqrt(1 + Math.pow(Math.tan(fov/180*Math.PI/2), 2)
+                                      * (Math.pow(aspectRatio, 2) + 1));
+      
+      mat4.perspective(fov,
+                       aspectRatio,
+                       nearPlane,
+                       config.renderDistance.get(),
                        pMatrix);
       
       gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
-      
-      // uFogDistance is handled by drawScene.
+      // uFogDistance is handled by drawScene because it is changed.
     }
     
     // Returns a pair of points along the line of aim of the screen cursor.
@@ -685,7 +700,7 @@
         
         // While rendering this, the fog distance is adjusted so that anything
         // farther than 1 unit is fully fogged.
-        cube(vertices, colors, 10, false);
+        cube(vertices, colors, 1, false);
       });
     }
     
@@ -914,11 +929,13 @@
             scheduleDraw();
             return true;
           });
-          config.renderDistance.listen({changed: function (v) {
+          var projectionL = {changed: function (v) {
             updateProjection();
             scheduleDraw();
             return true;
-          }});
+          }};
+          config.fov.listen(projectionL);
+          config.renderDistance.listen(projectionL);
 
           // Initial GL state
           gl.enableVertexAttribArray(attribs.aVertexPosition);
@@ -1063,7 +1080,9 @@
       <h2>Options</h2>
 
       <form onsubmit="return false;" action="">
-        <div class="optionline">Render distance: <input type="range" min="10" max="500" value="100" maxlength="4" size="4" id="renderDistance" style="vertical-align: middle;"></div>
+        <div class="optionline">Field of view: <input type="range" min="45" max="140" value="60" maxlength="4" size="4" id="fov" style="vertical-align: middle;"></div>
+        <script>config.fov.bindControl("fov");</script>
+        <div class="optionline">Draw distance: <input type="range" min="10" max="500" value="100" maxlength="4" size="4" id="renderDistance"></div>
         <script>config.renderDistance.bindControl("renderDistance");</script>
         <div class="optionline"><label><input type="checkbox" id="lighting"> Lighting</label></div>
         <script>config.lighting.bindControl("lighting");</script>

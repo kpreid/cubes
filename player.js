@@ -8,6 +8,12 @@ var Player = (function () {
   var GRAVITY = 20; // cubes/s^2
   var JUMP_SPEED = 10; // cubes/s
   
+  var playerAABB = [
+    [-.7, .7], // x
+    [-3.4, .45], // y
+    [-.7, .7], // z
+  ];
+
   var PLACEHOLDER_ROTATIONS = [];
   for (var i = 0; i < applyCubeSymmetry.NO_REFLECT_COUNT; i++) {
     PLACEHOLDER_ROTATIONS.push(i);
@@ -107,12 +113,6 @@ var Player = (function () {
       }
     }
     
-    var playerAABB = [
-      [-.7, .7], // x
-      [-3.4, .45], // y
-      [-.7, .7], // z
-    ];
-
     this.renderDebug = function (vertices, normals, colors) {
       [[0,1,2], [1,2,0], [2,0,1]].forEach(function (dims) {
         for (var du = 0; du < 2; du++)
@@ -374,6 +374,8 @@ var Player = (function () {
     
     this.setWorld(initialWorld);
   }
+  
+  Player.aabb = playerAABB;
   
   return Player;
 })();
