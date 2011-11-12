@@ -120,6 +120,17 @@ PersistentCell.prototype.bindControl = function (id) {
         return true;
       };
       break;
+    case "Tstring":
+    case "Eselect-one":
+      listener = function(value) {
+        elem.value = value;
+        return true;
+      };
+      elem.onchange = function () {
+        self.set(elem.value);
+        return true;
+      };
+      break;
     case "Enumber":
     case "Tnumber":
       listener = function(value) {

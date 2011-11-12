@@ -434,6 +434,7 @@ function generateWorlds() {
   
   
   // --- big world ---
+  
 
   var topWorld = new World([
     config.generate_wx.get(),
@@ -443,27 +444,53 @@ function generateWorlds() {
   var wx = topWorld.wx;
   var wy = topWorld.wy;
   var wz = topWorld.wz;
+  
   var mid = wy / 2;
   var sin = Math.sin;
   var round = Math.round;
-  // Using raw array access because it lets us cache the altitude computation, not because the overhead of .edit() is especially high.
+  var sqrt = Math.sqrt;
+  var random = Math.random;
+  
+  var bottomFunc;
+  switch (config.generate_shape.get()) {
+    case "fill":
+    default:
+      bottomFunc = function () { return 0; };
+      break;
+    case "island":
+      bottomFunc = function (x,z,terrain) {
+        var nx = x/wx*2 - 1;
+        var nz = z/wz*2 - 1;
+        var negr = 1 - (nx*nx+nz*nz);
+        var dome = (negr >= 0 ? sqrt(negr) : -1);
+        return mid - (mid-10)*dome + terrain * 2.0;
+      };
+      break;
+  }
+  
+  // The constant is the maximum slope of the 'terrain' function; therefore generate_slope is the maximum slope of the returned terrain.
+  var slopeScaled = config.generate_slope.get() / 0.904087;
+
+  // Using raw array access because it lets us cache the altitude computation by iterating over y last, not because the overhead of .edit() is especially high.
   var raw = topWorld.raw;
   var rawSubData = topWorld.rawSubData;
   for (var x = 0; x < wx; x++) {
     var xbase = x*wy*wz;
     for (var z = 0; z < wz; z++) {
-      var terrain = mid + round(
+      var terrain = slopeScaled * (
         (sin(x/8) + sin(z/8))*1
         + (sin(x/14) + sin(z/14))*3
-        + (sin(x/2) + sin(z/2))*0.6
-      );
+        + (sin(x/2) + sin(z/2))*0.6);
+      var top = mid - round(terrain);
+      var bottom = bottomFunc(x,z,terrain);
       for (var y = 0; y < wy; y++) {
         var index = xbase + y*wz + z;
-        var altitude = y - terrain;
-        raw[index] = altitude > 1 ? 0 :
+        var altitude = y - top;
+        raw[index] = y < bottom ? 0 :
+                     altitude > 1 ? 0 :
                      altitude < 0 ? 1 :
                      altitude == 0 ? 2 :
-                     /* altitude == 1 */ Math.random() > 0.99 ? (rawSubData[index] = 4, 4) : 0;
+                     /* altitude == 1 */ random() > 0.99 ? (rawSubData[index] = 4, 4) : 0;
       }
     }
   }
