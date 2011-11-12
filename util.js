@@ -67,6 +67,7 @@ function PersistentCell(storageName, type, defaultValue) {
     notify("changed", newV);
   }
   
+  this.type = type;
   this.get = get;
   this.set = set;
   this.setToDefault = function () { set(defaultValue); };
@@ -86,14 +87,16 @@ function PersistentCell(storageName, type, defaultValue) {
     }
     set(value); // canonicalize/overwrite
   }
+  
+  Object.freeze(this);
 }
 PersistentCell.prototype.bindControl = function (id) {
   var elem = document.getElementById(id);
   var self = this;
   
   var listener;
-  switch (elem.type) {
-    case "checkbox":
+  switch (elem.type == "text" ? "T"+self.type : "E"+elem.type) {
+    case "Echeckbox":
       listener = function(value) {
         elem.checked = value;
         return true;
@@ -103,27 +106,35 @@ PersistentCell.prototype.bindControl = function (id) {
         return true;
       };
       break;
-    case "range":
+    case "Erange":
       listener = function(value) {
         elem.value = value;
         return true;
-      }
+      };
       elem.onchange = function () {
         self.set(parseFloat(elem.value));
         return true;
       };
       break;
-    case "number":
+    case "Enumber":
+    case "Tnumber":
       listener = function(value) {
         elem.value = value;
         return true;
-      }
+      };
       elem.onchange = function () {
         // TODO: Should be parseFloat iff the step is not an integer
         self.set(parseInt(elem.value, 10));
         return true;
       };
       break;
+    default:
+      console.warn("Insufficient information to bind control", id, "(input type ", elem.type, ", value type", self.type, ")");
+      listener = function(value) {
+        elem.value = value;
+        return true;
+      };
+      elem.disabled = true;
   }
 
   this.listen({
