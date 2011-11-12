@@ -65,11 +65,20 @@ var WorldGen = (function () {
     },
     
     blockFunctions: (function () {
-      // condition functions for procedural block generation
-      // Each takes a coordinate vector and returns a boolean.
+      // non-boolean property functions
       function vx(b) { return b[0]; }
       function vy(b) { return b[1]; }
       function vz(b) { return b[2]; }
+      function s(b) { return te(b) + be(b) + xe(b) + ze(b); }
+      function rad(b) { 
+        return Math.sqrt(
+          Math.pow(b[0]-TL/2, 2) +
+          Math.pow(b[1]-TL/2, 2) +
+          Math.pow(b[2]-TL/2, 2)
+        );
+      }
+      
+      // condition functions
       function te(b) { return b[1] == TL ?1:0; }
       function tp(b) { return b[1] == TL-1 ?1:0; }
       function be(b) { return b[1] == 0 ?1:0; }
@@ -78,37 +87,26 @@ var WorldGen = (function () {
       function sp(b) { return (b[2] == 1 || b[2] == TL-1 || b[0] == 1 || b[0] == TL-1) ?1:0; }
       function xe(b) { return (b[0] == 0 || b[0] == TL) ?1:0; }
       function ze(b) { return (b[2] == 0 || b[2] == TL) ?1:0; }
-      function s(b) { return te(b) + be(b) + xe(b) + ze(b); }
       function e(b) { return s(b) > 1 ?1:0; }
       function c(b) { return s(b) > 2 ?1:0; }
-      function rad(b) { 
-        return Math.sqrt(
-          Math.pow(b[0]-TL/2, 2) +
-          Math.pow(b[1]-TL/2, 2) +
-          Math.pow(b[2]-TL/2, 2)
-        );
-      }
+      function speckle(b) { return (Math.floor(b[0]/4) + b[1] + Math.floor(b[2]/2)) % 4; }
+      function layers(b) { return b[1] % 2; }
 
       // Pattern functions: each returns a function from a coordinate vector to a block id.
       function pick(a) {
         return a[Math.floor(Math.random() * a.length)];
       }
-      function pickColor() {
-        return Math.floor(Math.random() * colorSet.length);
+      function pickEdgeCond(p1, p2) {
+        return cond(pick([te,tp,be,bp,se,sp,xe,ze,s,e,c]), p1, p2);
       }
-      function pickCond(p1, p2) {
-        return cond(pick([te,tp,be,bp,se,sp,s,e,c]), p1, p2);
+      function pickFillCond(p1, p2) {
+        return cond(pick([speckle,layers]), p1, p2);
       }
       function cond(cond, p1, p2) {
         return function (b) { return cond(b) ? p1(b) : p2(b); }
       }
       function flat(id) {
         return function (b) { return id; }
-      }
-      function speckle(p1, p2) {
-        return function (b) {
-          return (Math.floor(b[0]/4) + b[1] + Math.floor(b[2]/2)) % 4 ? p1(b) : p2(b);
-        };
       }
       function sphere(x,y,z,r,fill) {
         return function (b) {
@@ -153,6 +151,9 @@ var WorldGen = (function () {
         vx: vx,
         vy: vy,
         vz: vz,
+        s: s,
+        rad: rad,
+
         te: te,
         tp: tp,
         be: be,
@@ -161,18 +162,22 @@ var WorldGen = (function () {
         sp: sp,
         xe: xe,
         ze: ze,
-        s: s,
         e: e,
         c: c,
-        rad: rad,
-        pick: pick,
-        pickCond: pickCond,
-        cond: cond,
-        flat: flat,
         speckle: speckle,
+        layers: layers,
+
+        pick: pick,
+        pickEdgeCond: pickEdgeCond,
+        pickFillCond: pickFillCond,
+        cond: cond,
+        
+        flat: flat,
+        
         sphere: sphere,
         cube: cube,
         plane: plane,
+
         union: union,
         intersection: intersection,
         subtract: subtract
@@ -220,8 +225,9 @@ var WorldGen = (function () {
 
       // step pad block
       ids.pad = targetSet.length;
-      var specklePat = f.speckle(functionShapePat,
-                                 f.flat(baseKit.colorToID(0.75,0.75,0.75)));
+      var specklePat = f.cond(f.speckle,
+                              functionShapePat,
+                              f.flat(baseKit.colorToID(0.75,0.75,0.75)));
       type = genedit(f.sphere(TS/2,TS-0.5,TS/2,TS/2,specklePat));
       selfRotating(TL-1);
       type.behavior = Circuit.behaviors.pad;
@@ -330,6 +336,7 @@ function generateWorlds() {
   
   // layer 3
   var fullLogicAndColors = WorldGen.colorBlocks(7, 6, 5);
+  var onlyColorCount = fullLogicAndColors.blockset.length; // before logic added
   WorldGen.addLogicBlocks(fullLogicAndColors, baseLogicAndColors);
   var colorSet = fullLogicAndColors.blockset;
   var brgb = fullLogicAndColors.colorToID;
@@ -343,7 +350,7 @@ function generateWorlds() {
   var f = WorldGen.blockFunctions;
 
   function pickColor() {
-    return Math.floor(Math.random() * colorSet.length);
+    return Math.random() < 0.2 ? 0 : Math.floor(Math.random() * onlyColorCount);
   }
   function rgbPat(b) { return brgb(b[0]/TL,b[1]/TL,b[2]/TL); }
   
@@ -366,17 +373,17 @@ function generateWorlds() {
   
   // ground block (id 2)
   blockset.add(type = genedit(function (b) {
-    return (f.te(b) ? f.speckle(f.flat(brgb(.67,.34,.34)), f.flat(brgb(.67,0,0))) :
+    return (f.te(b) ? f.cond(f.speckle, f.flat(brgb(.67,.34,.34)), f.flat(brgb(.67,0,0))) :
             f.tp(b) ? f.flat(brgb(1,.34,.34)) :
-            f.speckle(f.flat(brgb(.34,0,0)), f.flat(brgb(0,0,0))))(b);
+            f.cond(f.speckle, f.flat(brgb(.34,0,0)), f.flat(brgb(0,0,0))))(b);
   }));
   addSpontaneousConversionCircuit(type, 3);
   
   // ground block #2 (id 3)
   blockset.add(type = genedit(function (b) {
-    return (f.te(b) ? f.speckle(f.flat(brgb(.34,.67,.34)), f.flat(brgb(0,.34,0))) :
+    return (f.te(b) ? f.cond(f.speckle, f.flat(brgb(.34,.67,.34)), f.flat(brgb(0,.34,0))) :
             f.tp(b) ? f.flat(brgb(.34,1,.34)) :
-            f.speckle(f.flat(brgb(0,.34,0)), f.flat(brgb(0,1,1))))(b);
+            f.cond(f.speckle, f.flat(brgb(0,.34,0)), f.flat(brgb(0,1,1))))(b);
   }));
   addSpontaneousConversionCircuit(type, 2);
   
@@ -393,22 +400,25 @@ function generateWorlds() {
   
   // "leaf block" transparency test
   blockset.add(type = genedit(function (b) {
-    return f.s(b) ? f.speckle(f.flat(0), f.flat(brgb(0,1,0)))(b) : 0;
+    return f.s(b) ? f.cond(f.speckle, f.flat(0), f.flat(brgb(0,1,0)))(b) : 0;
   }));
 
   // pillar thing
   blockset.add(type = genedit(function (b) {
     return Math.max(Math.abs(b[0] - TS/2), Math.abs(b[2] - TS/2)) <= TS/4 ? brgb(.5,.5,0) : 0;
   }));
-  
-  var l = WorldGen.addLogicBlocks({blockset: blockset}, fullLogicAndColors);
-  
+
+  // random block types
   for (var i = 0; i < 4; i++) {
-    var c = f.pickCond(f.flat(pickColor()),
-              f.pickCond(f.flat(pickColor()),
-                f.speckle(f.flat(pickColor()), f.flat(pickColor()))));
+    // TODO: make this more interesting
+    var c = f.pickEdgeCond(f.flat(pickColor()),
+              f.pickEdgeCond(f.flat(pickColor()),
+                f.pickFillCond(f.flat(pickColor()), f.flat(pickColor()))));
     blockset.add(genedit(c));
   }
+
+  var l = WorldGen.addLogicBlocks({blockset: blockset}, fullLogicAndColors);
+  
   
   // --- big world ---
 
