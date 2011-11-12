@@ -894,7 +894,7 @@
 
       sequence([
         function () {
-          if (typeof testGettersWork === 'undefined' || !testGettersWork()) {
+          if (typeof testSettersWork === 'undefined' || !testSettersWork()) {
             document.getElementById("feature-error-notice").style.removeProperty("display");
             document.getElementById("feature-error-text").appendChild(document.createTextNode("ECMAScript 5 property accessors on frozen objects"));
           }

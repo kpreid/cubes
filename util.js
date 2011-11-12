@@ -8,14 +8,18 @@
 // believe that it is obviously the authors' intent to make this code free to
 // use.
 
-function testGettersWork() {
+function testSettersWork() {
   "use strict";
-  var y = 0;
-  var o = Object.freeze({
-    set x(v) { y = v; }
-  });
-  o.x = 43;
-  return y === 43;
+  try {
+    var y = 0;
+    var o = Object.freeze({
+      set x(v) { y = v; }
+    });
+    o.x = 43;
+    return y === 43;
+  } catch (e) {
+    return false;
+  }
 }
 
 function cyclicSerialize(root) {
