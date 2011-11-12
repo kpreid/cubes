@@ -213,7 +213,7 @@ var Player = (function () {
         partial[dim] = nextPos[dim]; // TODO: Sample multiple times if velocity exceeds 1 block/step
         //console.log(dir, dim, playerAABB[dim][dir], front, partial);
         var hit;
-        if ((hit = sclamp(partial, alreadyColliding)) || (dim == 1 && front < 0)) {
+        if ((hit = sclamp(partial, alreadyColliding))) {
           //console.log("clamped", dim);
           nextPosIncr[dim] = dir 
             ? Math.ceil(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 - EPSILON
@@ -226,6 +226,11 @@ var Player = (function () {
         } else {
           nextPosIncr[dim] = nextPos[dim];          
         }
+      }
+      
+      if (nextPosIncr[1] < 0) {
+        // Prevent falling downward indefinitely, without preventing flying under the world (e.g. for editing the bottom of a block).
+        currentPlace.flying = true;
       }
       
       if (vec3.length(vec3.subtract(nextPosIncr, currentPlace.pos, vec3.create())) >= EPSILON) {
