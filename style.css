@@ -1,0 +1,120 @@
+/* ensure that our viewport canvas fills the window */
+html, body, .viewport { margin: 0; border: 0; width: 100%; height: 100%; }
+
+html {
+  background: gray; /* ordinarily invisible, but makes initial loading better */
+}
+
+.viewport {
+  display: block; /* avoid invoking CSS line layout. */
+  cursor: crosshair;
+}
+
+@media screen {
+  .overlay-bounds {
+    display: block;
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+#info {
+  left: 1px;
+  top: 1px;
+}
+.text-overlay {
+  position: absolute;
+  font-family: monospace;
+  color: white;
+  text-shadow: 0 0 .3em #000;
+  margin: 0 0;
+  display: table;
+}
+
+#menu {
+  position: fixed;
+  background: gray;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 5px;
+  display: table;
+}
+#menu canvas {
+  margin: 1px 1px;
+}
+#menu .selectedTool {
+  border-radius: 5px;
+  margin: -1px -1px; /* outlines don't have radius */
+  border: 2px solid white;
+  background: gray;
+}
+
+#error-notices {
+  position: absolute;
+  top: 5em;
+  right: 50%;
+  margin-right: -17em;
+
+  z-index: 1;
+}
+.error-notice {
+  border-radius: 2em;
+  text-align: center;
+  max-width: 30em;
+  padding: 1em 2em;
+  border: .2em solid red;
+  
+  background: white;
+  color: black;
+  font-family: 'Lucida Grande', sans-serif;
+}
+
+#toggles {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  text-align: right;
+}
+.sidebar {
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  width: 16em;
+  max-height: 100%;
+  overflow: auto;
+  color: white;
+  background: black;
+  background: rgba(80,80,80,0.7);
+  margin: 0;
+  padding: 0;
+}
+.sidebar > * {
+  margin-left: 0.8em;
+  margin-right: 0.8em;
+}
+.sidebar h2 {
+  font-size: 1.2em;
+  margin: .66em 0;
+  padding: 0 .66em;
+  background: gray;
+  background: rgba(255,255,255,0.3);
+}
+.sidebar table {
+  font-size: 0.92em;
+  border-collapse: collapse;
+}
+.sidebar table.fancy > tbody > tr > th {
+  background: gray;
+  background: rgba(255,255,255,0.1);
+}
+.sidebar table.fancy > tbody > tr {
+  border-color gray;
+  border-color rgba(255,255,255,0.1);
+  border-width: 1px 0;
+  border-style: solid;
+}
+
+.optionline input[type="range"] {
+  vertical-align: middle;
+}
