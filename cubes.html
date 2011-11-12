@@ -240,20 +240,6 @@
     
     var readyToDraw = false;
     
-    function initGL(canvas) {
-        gl = canvas.getContext("experimental-webgl", {
-          antialias: false // MORE FILLRATE!!!
-        });
-        if (DEBUG) {
-          gl = WebGLDebugUtils.makeDebugContext(gl);
-        } else {
-          WebGLDebugUtils.init(gl);
-        }
-        if (!gl) {
-            if (typeof console !== 'undefined') console.log("failed to get context: ", gl);
-        }
-    }
-    
     // prepareProgram fills in these with the locations of the shader program variables
     var attribs = {};
     var uniforms = {};
@@ -786,7 +772,16 @@
         "Getting WebGL...",
         function () {
           theCanvas = document.getElementById('view-canvas');
-          initGL(theCanvas);
+
+          gl = theCanvas.getContext("experimental-webgl", {
+            antialias: false // MORE FILLRATE!!!
+          });
+          if (DEBUG) {
+            gl = WebGLDebugUtils.makeDebugContext(gl);
+          } else {
+            WebGLDebugUtils.init(gl);
+          }
+
           if (!gl) {
             document.getElementById("webgl-error-notice").style.removeProperty("display");
             return ABORT;
