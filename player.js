@@ -162,11 +162,22 @@ var Player = (function () {
       vec3.add(nextPos, curPos);
       
       // collision
-      function sclamp(vec) {
-        var hit = [];
+      function sclamp(vec, ignore) {
         // TODO: Clean up and optimize this mess
-        function nd(dim2,dir2) {return playerAABB[dim2][dir2]; }
+        ignore = ignore || {};
+        var hit = {};
+        var str;
         var buf = vec3.create();
+
+        function nd(dim2,dir2) {
+          return playerAABB[dim2][dir2];
+        }
+        function doHitTest() {
+          if (world.solid(buf[0],buf[1],buf[2]) && !ignore[str = buf[0]+","+buf[1]+","+buf[2]]) {
+            hit[str] = vec3.create(buf);
+          }
+        }
+
         for (var fixed = 0; fixed < 3; fixed++) {
           for (var fdir = 0; fdir < 2; fdir++) {
             var fplane = vec[fixed] + nd(fixed, fdir);
@@ -177,17 +188,19 @@ var Player = (function () {
               for (var bi = vec[b]+nd(b,0); bi < vec[b]+nd(b,1); bi++) {
                 buf[a] = Math.floor(ai);
                 buf[b] = Math.floor(bi);
-                if (world.solid(buf[0],buf[1],buf[2])) hit.push([buf[0],buf[1],buf[2]]);
+                doHitTest();
               }
               buf[b] = Math.floor(vec[b]+nd(b,1));
-              if (world.solid(buf[0],buf[1],buf[2])) hit.push([buf[0],buf[1],buf[2]]);
+              doHitTest();
             }
             buf[a] = Math.floor(vec[a]+nd(a,1));
-            if (world.solid(buf[0],buf[1],buf[2])) hit.push([buf[0],buf[1],buf[2]]);
+            doHitTest();
           }
         }
-        return hit.length > 0 ? hit : null;
+        return Object.keys(hit).length > 0 ? hit : null; // TODO inefficient
       }
+      
+      var alreadyColliding = sclamp(curPos);
       
       // To resolve diagonal movement, we treat it as 3 orthogonal moves, updating nextPosIncr.
       var previousStandingOn = currentPlace.standingOn;
@@ -200,20 +213,18 @@ var Player = (function () {
         partial[dim] = nextPos[dim]; // TODO: Sample multiple times if velocity exceeds 1 block/step
         //console.log(dir, dim, playerAABB[dim][dir], front, partial);
         var hit;
-        if ((hit = sclamp(partial)) || (dim == 1 && front < 0)) {
+        if ((hit = sclamp(partial, alreadyColliding)) || (dim == 1 && front < 0)) {
           //console.log("clamped", dim);
-          nextPosIncr[dim] = dir ? Math.ceil(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 - EPSILON : Math.floor(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 + EPSILON;
+          nextPosIncr[dim] = dir 
+            ? Math.ceil(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 - EPSILON
+            : Math.floor(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 + EPSILON;
           curVel[dim] = 0;
           if (dim == 1 && dir == 0) {
             currentPlace.standingOn = hit || [];
             currentPlace.flying = false;
           }
         } else {
-          nextPosIncr[dim] = nextPos[dim];
-        }
-        if (sclamp(nextPosIncr)) {
-          // Player got stuck.
-          //debugger;
+          nextPosIncr[dim] = nextPos[dim];          
         }
       }
       
@@ -224,15 +235,19 @@ var Player = (function () {
       debugR.recompute();
       
       var seen = {};
-      (currentPlace.standingOn || []).forEach(function (cube) {
+      for (var k in currentPlace.standingOn || {}) {
+        if (!currentPlace.standingOn.hasOwnProperty(k)) continue;
+        var cube = currentPlace.standingOn[k];
         seen[cube] = true;
         world.setStandingOn(cube, true);
-      });
-      (previousStandingOn || []).forEach(function (cube) {
+      }
+      for (var k in previousStandingOn || {}) {
+        if (!previousStandingOn.hasOwnProperty(k)) continue;
+        var cube = previousStandingOn[k];
         if (!seen[cube]) {
           world.setStandingOn(cube, false);
         }
-      });
+      }
     };
     
     this.stepYourselfAndWorld = function () {
