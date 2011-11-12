@@ -538,11 +538,15 @@ var BlockSet = (function () {
   
   BlockSet.unserialize = function (json, unserialize) {
     if (json.type === "colors") {
-      throw new Error("BlockSet.colors no longer available");
+      // obsolete serialization type
+      var colors = WorldGen.colorBlocks(4,4,4).blockset;
+      var list = colors.getAll().slice(1, colors.length);
+      list.push(list.shift());
+      return new BlockSet(list);
     } else if (json.type === "textured") {
       // obsolete serialization type
       var blockTypes = json.worlds.map(function (world) {
-        return BlockType.world(unserialize(world, World));
+        return new BlockType.World(unserialize(world, World));
       });
       return new BlockSet(blockTypes);
     } else if (json.type === "types") {
