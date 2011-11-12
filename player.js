@@ -297,21 +297,9 @@ var Player = (function () {
     
     // The facet for user input
     this.input = Object.freeze({
-      click: function (button /* currently defunct */) {
-        var changed = false;
-        if (currentPlace.tool == BlockSet.ID_EMPTY) {
-          // delete block
-          // TODO: global variables
-          if (currentPlace.selection !== null) {
-            var cube = currentPlace.selection.cube;
-            var x = cube[0], y = cube[1], z = cube[2];
-            if (currentPlace.world.solid(x,y,z)) {
-              var value = currentPlace.world.g(x,y,z);
-              currentPlace.wrend.renderDestroyBlock(cube);
-              currentPlace.world.s(x, y, z, 0);
-              changed = true;
-            }
-          }
+      useTool: function () {
+        if (currentPlace.tool === BlockSet.ID_EMPTY) {
+          this.deleteBlock();
         } else {
           // create block
           if (currentPlace.selection !== null) {
@@ -320,16 +308,27 @@ var Player = (function () {
             var x = cube[0]+face[0], y = cube[1]+face[1], z = cube[2]+face[2];
             var type = currentPlace.world.blockSet.get(currentPlace.tool);
             if (!currentPlace.world.solid(x,y,z)) {
+              // TODO: rotation on create should be more programmable.
               var raypts = getAimRay();
               var symm = nearestCubeSymmetry(vec3.subtract(raypts[0], raypts[1]), [0,0,1], type.automaticRotations);
               currentPlace.world.s(x,y,z, currentPlace.tool, symm);
+              
               currentPlace.wrend.renderCreateBlock([x,y,z]);
-              changed = true;
+              aimChanged();
             }
           }
         }
-        if (changed) {
-          aimChanged(); // block aimed at moved...
+      },
+      deleteBlock: function () {
+        if (currentPlace.selection !== null) {
+          var cube = currentPlace.selection.cube;
+          var x = cube[0], y = cube[1], z = cube[2];
+          if (currentPlace.world.solid(x,y,z)) {
+            var value = currentPlace.world.g(x,y,z);
+            currentPlace.wrend.renderDestroyBlock(cube);
+            currentPlace.world.s(x, y, z, 0);
+            aimChanged();
+          }
         }
       },
       get blockSet () { return currentPlace.world.blockSet; },

@@ -131,7 +131,7 @@ function Input(eventReceiver, playerInput, menuElement) {
       hideMenu();
     } else {
       eventReceiver.focus();
-      playerInput.click(0);
+      playerInput.useTool();
     }
     return false;
   }, false);
