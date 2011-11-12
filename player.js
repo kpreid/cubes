@@ -338,6 +338,9 @@ var Player = (function () {
             
             currentPlace = new Place(world);
             
+            // This is needed because the routine in aimChanged assumes currentPlace knows the old state of the selection. TODO: Kludgy.
+            selectionR.recompute();
+            
             // Initial adjustments:
             // Make new position same relative to cube
             vec3.subtract(oldPlace.pos, cube, currentPlace.pos);
@@ -366,6 +369,7 @@ var Player = (function () {
             aimChanged();
             break;
         }
+        debugR.recompute();
       },
       jump: function () {
         if (currentPlace.standingOn) currentPlace.vel[1] = JUMP_SPEED;
