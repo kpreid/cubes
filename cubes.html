@@ -339,6 +339,7 @@
     defineOption("lighting", "boolean", true);
     defineOption("bumpMapping", "boolean", true);
     defineOption("debugTextureAllocation", "boolean", false);
+    defineOption("debugForceRender", "boolean", false);
 
     defineOption("generate_wx", "number", 400);
     defineOption("generate_wy", "number", 128);
@@ -846,10 +847,13 @@
           chunkRenders += player.render.getWorldRenderer().updateSomeChunks();
 
           drawScene(player.render);
+
+          if (config.debugForceRender.get()) scheduleDraw();
         }, theCanvas);
         animFrameWasRequested = true;
       }
     }
+    config.debugForceRender.listen({changed: function () { scheduleDraw(); return true; }});
 
     // statistics are reset once per second
     setInterval(function () {
@@ -1115,8 +1119,10 @@
         
         <h3>Debug</h3>
         
-        <p><label><input type="checkbox" id="debugTextureAllocation"> Display block texture</label></p>
+        <div class="optionline"><label><input type="checkbox" id="debugTextureAllocation"> Display block texture</label></div>
         <script>config.debugTextureAllocation.bindControl("debugTextureAllocation");</script>
+        <div class="optionline"><label><input type="checkbox" id="debugForceRender"> Always render frames</label></div>
+        <script>config.debugForceRender.bindControl("debugForceRender");</script>
 
         <p><button onclick="resetAllOptions(); return false;">Reset to defaults</button></p>
       </form>
