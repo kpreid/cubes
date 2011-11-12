@@ -328,14 +328,17 @@
     
     // Settable using the options sidebar
     var config = {};
-    function definePreference(name, type, value) {
+    function defineOption(name, type, value) {
       config[name] = new PersistentCell("cubes.option." + name, type, value);
     }
-    definePreference("fov", "number", 60);
-    definePreference("renderDistance", "number", 100);
-    definePreference("lighting", "boolean", true);
-    definePreference("bumpMapping", "boolean", true);
-    definePreference("debugTextureAllocation", "boolean", false);
+    function resetAllOptions() {
+      Object.keys(config).forEach(function (k) { config[k].setToDefault(); });
+    }
+    defineOption("fov", "number", 60);
+    defineOption("renderDistance", "number", 100);
+    defineOption("lighting", "boolean", true);
+    defineOption("bumpMapping", "boolean", true);
+    defineOption("debugTextureAllocation", "boolean", false);
 
     // GL objects
     var gl;
@@ -1093,6 +1096,8 @@
         
         <p><label><input type="checkbox" id="debugTextureAllocation"> Display block texture</label></p>
         <script>config.debugTextureAllocation.bindControl("debugTextureAllocation");</script>
+
+        <p><button onclick="resetAllOptions(); return false;">Reset to defaults</button></p>
       </form>
     </div>
 

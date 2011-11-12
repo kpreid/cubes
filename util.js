@@ -66,8 +66,10 @@ function PersistentCell(storageName, type, defaultValue) {
     localStorage.setItem(storageName, JSON.stringify(newV));
     notify("changed", newV);
   }
+  
   this.get = get;
   this.set = set;
+  this.setToDefault = function () { set(defaultValue); };
   this.listen = notifier.listen;
   
   var valueString = localStorage.getItem(storageName);
