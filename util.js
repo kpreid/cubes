@@ -113,6 +113,17 @@ PersistentCell.prototype.bindControl = function (id) {
         return true;
       };
       break;
+    case "number":
+      listener = function(value) {
+        elem.value = value;
+        return true;
+      }
+      elem.onchange = function () {
+        // TODO: Should be parseFloat iff the step is not an integer
+        self.set(parseInt(elem.value, 10));
+        return true;
+      };
+      break;
   }
 
   this.listen({

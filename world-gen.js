@@ -412,7 +412,11 @@ function generateWorlds() {
   
   // --- big world ---
 
-  var topWorld = new World([400,128,400], blockset);
+  var topWorld = new World([
+    config.generate_wx.get(),
+    config.generate_wy.get(),
+    config.generate_wz.get(),
+  ], blockset);
   var wx = topWorld.wx;
   var wy = topWorld.wy;
   var wz = topWorld.wz;

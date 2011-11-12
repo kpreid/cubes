@@ -120,11 +120,11 @@
     font-size: 0.92em;
     border-collapse: collapse;
   }
-  .sidebar th {
+  .sidebar table.fancy > tbody > tr > th {
     background: gray;
     background: rgba(255,255,255,0.1);
   }
-  .sidebar tr {
+  .sidebar table.fancy > tbody > tr {
     border-color gray;
     border-color rgba(255,255,255,0.1);
     border-width: 1px 0;
@@ -339,6 +339,10 @@
     defineOption("lighting", "boolean", true);
     defineOption("bumpMapping", "boolean", true);
     defineOption("debugTextureAllocation", "boolean", false);
+
+    defineOption("generate_wx", "number", 400);
+    defineOption("generate_wy", "number", 128);
+    defineOption("generate_wz", "number", 400);
 
     // GL objects
     var gl;
@@ -1035,7 +1039,7 @@
     <div id="options" class="sidebar" onclick="if (event.target.tagName == 'INPUT' || event.target.tagName == 'LABEL' || event.target.tagName == 'BUTTON' || event.target.tagName == 'TEXTAREA') return true; this.style.display='none'; document.getElementById('optionsbtn').style.display='inline'; document.getElementById('view-canvas').focus();" style="display: none;">
       <p>Click to close.</p>
 
-      <h2>World</h2>
+      <h2>Save/Load</h2>
       
       <form onsubmit="return false;" action=""  style="text-align: center">
         <p id="local-save-controls">
@@ -1047,11 +1051,6 @@
             player.setWorld(worldH);
             return false;
           ">Revert to saved</button>
-          <button onclick="
-            worldH = generateWorlds();
-            player.setWorld(worldH);
-            return false;
-          ">Start over</button>
         </p>
         <p id="local-save-warning" style="display: none">
           Your browser does not appear to support local storage. This world will be lost when you close the page.
@@ -1080,10 +1079,32 @@
         </p>
       </form>
       
+      <h2>World</h2>
+
+      <form onsubmit="return false;" action=""  style="text-align: center">
+        <table class="optionline">
+          <tr><td>Size: 
+          <td><input type="number" min="1" max="9999" value="400" maxlength="4" size="4" id="generate_wx">
+          <td><input type="number" min="1" max="512" value="128" maxlength="3" size="3" id="generate_wy">
+          <td><input type="number" min="1" max="9999" value="400" maxlength="4" size="4" id="generate_wz">
+          <tr><th><th>W<th>H<th>L
+        </table>
+        <script>config.generate_wx.bindControl("generate_wx");</script>
+        <script>config.generate_wy.bindControl("generate_wy");</script>
+        <script>config.generate_wz.bindControl("generate_wz");</script>
+        <div style="text-align: center;">
+          <button onclick="
+            worldH = generateWorlds();
+            player.setWorld(worldH);
+            return false;
+          ">Generate new world</button>
+        </div>
+      </form>
+
       <h2>Options</h2>
 
       <form onsubmit="return false;" action="">
-        <div class="optionline">Field of view: <input type="range" min="45" max="140" value="60" maxlength="4" size="4" id="fov" style="vertical-align: middle;"></div>
+        <div class="optionline">Field of view: <input type="range" min="45" max="140" value="60" maxlength="4" size="4" id="fov"></div>
         <script>config.fov.bindControl("fov");</script>
         <div class="optionline">Draw distance: <input type="range" min="10" max="500" value="100" maxlength="4" size="4" id="renderDistance"></div>
         <script>config.renderDistance.bindControl("renderDistance");</script>
@@ -1108,7 +1129,7 @@
       
       <h3>Controls</h3>
       
-      <table>
+      <table class="fancy">
         <tr><th colspan=2>Movement
         <tr><td><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd><br> or arrows<td>move horizontally
         <tr><td><kbd>Space</kbd><td>jump
