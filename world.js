@@ -146,12 +146,9 @@ function World(sizes, blockSet) {
     var vec = [x,y,z];
 
     var newType = blockSet.get(val);
-    if (newType.hasCircuits) {
-      reeval(vec, newType);
-    }
+    reeval(vec, newType);
 
     // Update circuits
-    var vec = [x,y,z];
     var cp = isCircuitPart(newType);
     if (cp && !blockCircuits[vec]) {
       becomeCircuit(vec);
