@@ -174,7 +174,7 @@ var Player = (function () {
         }
         function doHitTest() {
           if (world.solid(buf[0],buf[1],buf[2]) && !ignore[str = buf[0]+","+buf[1]+","+buf[2]]) {
-            hit[str] = vec3.create(buf);
+            hit[str] = [buf[0],buf[1],buf[2]];
           }
         }
 
@@ -220,7 +220,7 @@ var Player = (function () {
             : Math.floor(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 + EPSILON;
           curVel[dim] = 0;
           if (dim == 1 && dir == 0) {
-            currentPlace.standingOn = hit || [];
+            currentPlace.standingOn = hit || {};
             currentPlace.flying = false;
           }
         } else {
