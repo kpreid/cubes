@@ -79,6 +79,25 @@ var Player = (function () {
         gl.enable(gl.DEPTH_TEST);
       }
     });
+    
+    var aabbR = new RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
+      // TODO: Would be more efficient to use the modelview matrix than recomputing this?
+      if (!currentPlace) return;
+      [[0,1,2], [1,2,0], [2,0,1]].forEach(function (dims) {
+        for (var du = 0; du < 2; du++)
+        for (var dv = 0; dv < 2; dv++)
+        for (var dw = 0; dw < 2; dw++) {
+          var p = vec3.create(currentPlace.pos);
+          p[dims[0]] += playerAABB[dims[0]][du];
+          p[dims[1]] += playerAABB[dims[1]][dv];
+          p[dims[2]] += playerAABB[dims[2]][dw];
+          
+          vertices.push(p[0],p[1],p[2]);
+          normals.push(0,0,0);
+          colors.push(0,0,1,1);
+        }
+      });
+    });
   
     function aimChanged() {
       scheduleDraw(); // because this routine is also 'view direction changed'
@@ -113,23 +132,6 @@ var Player = (function () {
       }
     }
     
-    this.renderDebug = function (vertices, normals, colors) {
-      [[0,1,2], [1,2,0], [2,0,1]].forEach(function (dims) {
-        for (var du = 0; du < 2; du++)
-        for (var dv = 0; dv < 2; dv++)
-        for (var dw = 0; dw < 2; dw++) {
-          var p = vec3.create(currentPlace.pos);
-          p[dims[0]] += playerAABB[dims[0]][du];
-          p[dims[1]] += playerAABB[dims[1]][dv];
-          p[dims[2]] += playerAABB[dims[2]][dw];
-          
-          vertices.push(p[0],p[1],p[2]);
-          normals.push(0,0,0);
-          colors.push(0,0,1,1);
-        }
-      });
-    }
-
     var EPSILON = 1e-3;
     function stepPlayer() {
       var world = currentPlace.world;
@@ -237,7 +239,7 @@ var Player = (function () {
         vec3.set(nextPosIncr, currentPlace.pos);
         aimChanged();
       }
-      debugR.recompute();
+      aabbR.recompute();
       
       var seen = {};
       for (var k in currentPlace.standingOn || {}) {
@@ -274,6 +276,11 @@ var Player = (function () {
         return vec3.create(currentPlace.pos);
       },
       selectionRender: selectionR,
+      characterRender: {
+        draw: function () {
+          if (config.debugPlayerCollision.get()) aabbR.draw();
+        }
+      },
       getWorldRenderer: function () {
         return currentPlace.wrend;
       }
@@ -388,10 +395,17 @@ var Player = (function () {
             aimChanged();
             break;
         }
-        debugR.recompute();
+        aabbR.recompute();
       },
       jump: function () {
         if (currentPlace.standingOn) currentPlace.vel[1] = JUMP_SPEED;
+      }
+    });
+    
+    config.debugPlayerCollision.listen({
+      changed: function (v) {
+        scheduleDraw();
+        return true;
       }
     });
     

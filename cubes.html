@@ -220,7 +220,8 @@
     defineOption("bumpMapping", "boolean", true);
     defineOption("debugTextureAllocation", "boolean", false);
     defineOption("debugForceRender", "boolean", false);
-
+    defineOption("debugPlayerCollision", "boolean", false);
+ 
     defineOption("generate_wx", "number", 400);
     defineOption("generate_wy", "number", 128);
     defineOption("generate_wz", "number", 400);
@@ -541,14 +542,9 @@
       return rb;
     }
 
-    var debugR;
     var skyboxR;
     
     function initBuffers() {
-      debugR = new RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
-        if (player) player.renderDebug(vertices, normals, colors);
-      });
-      
       skyboxR = new RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {
         // abstracted in case this is useful elsewhere ...
         function cube(vertices, colors, size, outward) {
@@ -609,7 +605,7 @@
         sendViewUniforms();
 
         wrend.draw();
-        debugR.draw();
+        player.render.characterRender.draw();
         player.render.selectionRender.draw();
         
         var e, errs = [];
@@ -997,10 +993,12 @@
         
         <h3>Debug</h3>
         
-        <div class="optionline"><label><input type="checkbox" id="debugTextureAllocation"> Display block texture</label></div>
-        <script>config.debugTextureAllocation.bindControl("debugTextureAllocation");</script>
         <div class="optionline"><label><input type="checkbox" id="debugForceRender"> Always render frames</label></div>
         <script>config.debugForceRender.bindControl("debugForceRender");</script>
+        <div class="optionline"><label><input type="checkbox" id="debugTextureAllocation"> Show block texture</label></div>
+        <script>config.debugTextureAllocation.bindControl("debugTextureAllocation");</script>
+        <div class="optionline"><label><input type="checkbox" id="debugPlayerCollision"> Show character volume</label></div>
+        <script>config.debugPlayerCollision.bindControl("debugPlayerCollision");</script>
 
         <p><button onclick="resetAllOptions(); return false;">Reset to defaults</button></p>
       </form>
