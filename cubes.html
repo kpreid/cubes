@@ -14,131 +14,7 @@
 <title>Cube Game</title>
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 <meta name="viewport" content="width=device-width">
-
-<style type="text/css" media="screen">
-  /* ensure that our viewport canvas fills the window */
-  html, body, .viewport { margin: 0; border: 0; width: 100%; height: 100%; }
-  
-  html {
-    background: gray; /* ordinarily invisible, but makes initial loading better */
-  }
-  
-  .viewport {
-    display: block; /* avoid invoking CSS line layout. */
-    cursor: crosshair;
-  }
-  
-  .overlay-bounds {
-    display: block;
-    position: relative;
-    overflow: hidden;
-    width: 100%;
-    height: 100%;
-  }
-  
-  #info {
-    left: 1px;
-    top: 1px;
-  }
-  .text-overlay {
-    position: absolute;
-    font-family: monospace;
-    color: white;
-    text-shadow: 0 0 .3em #000;
-    margin: 0 0;
-    display: table;
-  }
-  
-  #menu {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background: gray;
-    background: rgba(0, 0, 0, 0.5);
-    
-  }
-  #menu-blocks {
-    
-    display: table;
-    margin: auto;
-  }
-  #menu canvas {
-    margin: 1px 1px;
-  }
-  #menu .selectedTool {
-    border-radius: 5px;
-    margin: -1px -1px; /* outlines don't have radius */
-    border: 2px solid white;
-    background: gray;
-  }
-  
-  #error-notices {
-    position: absolute;
-    top: 5em;
-    right: 50%;
-    margin-right: -17em;
-
-    z-index: 1;
-  }
-  .error-notice {
-    border-radius: 2em;
-    text-align: center;
-    max-width: 30em;
-    padding: 1em 2em;
-    border: .2em solid red;
-    
-    background: white;
-    color: black;
-    font-family: 'Lucida Grande', sans-serif;
-  }
-  
-  #toggles {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    text-align: right;
-  }
-  .sidebar {
-    position: absolute;
-    top: 0px;
-    right: 0px;
-    width: 16em;
-    max-height: 100%;
-    overflow: auto;
-    color: white;
-    background: black;
-    background: rgba(80,80,80,0.7);
-    margin: 0;
-    padding: 0;
-  }
-  .sidebar > * {
-    margin-left: 0.8em;
-    margin-right: 0.8em;
-  }
-  .sidebar h2 {
-    font-size: 1.2em;
-    margin: .66em 0;
-    padding: 0 .66em;
-    background: gray;
-    background: rgba(255,255,255,0.3);
-  }
-  .sidebar table {
-    font-size: 0.92em;
-    border-collapse: collapse;
-  }
-  .sidebar th {
-    background: gray;
-    background: rgba(255,255,255,0.1);
-  }
-  .sidebar tr {
-    border-color gray;
-    border-color rgba(255,255,255,0.1);
-    border-width: 1px 0;
-    border-style: solid;
-  }
-</style>
+<link rel="stylesheet" href="style.css" type="text/css">
 
 <script type="text/javascript" src="webgl-debug.js"></script>
 <script type="text/javascript" src="webgl-utils.js"></script>
@@ -172,11 +48,11 @@
     uniform sampler2D uSampler;
     uniform bool uLighting;
     uniform bool uBumpMapping;
+    uniform bool uStipple;
     
     const vec4 cSky = vec4(0.1,0.3,0.5,1.0);   
     const vec4 cHorizon = vec4(0.7,0.8,1.0,1.0);  
     const vec4 cGround = vec4(0.5,0.4,0.4,1.0);
-    const float cTileSize = 16.0; // TODO: duplicate hardcoded value
     const float cModEpsilon = 1e-20;
     const float cTileCurvature = 0.2;
     const float cTileBumpDistance = 7.0;
@@ -206,7 +82,7 @@
       // offset from the center of its sub-cube
       vec3 normal;
       if (uBumpMapping) {
-        vec3 cell = (mod(vGridPosition * cTileSize + cModEpsilon, 1.0) - vec3(0.5)) * 2.0;
+        vec3 cell = (mod(vGridPosition * float(TILE_SIZE) + cModEpsilon, 1.0) - vec3(0.5)) * 2.0;
         normal = normalize(vNormal + cTileCurvature / max(1.0, vDistanceFromEye / cTileBumpDistance) * pow7vec3(cell));
       } else {
         normal = vNormal;
@@ -215,17 +91,18 @@
     }
     
     void main(void) {
-        vec4 color;
-
+        if (uStipple && mod(gl_FragCoord.x - gl_FragCoord.y, 2.0) < 1.0)
+          discard;
+        
         // color/lighting calculation
         // if the vertex normal is zero, then that means "do not use lighting"
-        color = vec4(vec3(vColor) * 
+        vec4 color = vec4(vec3(vColor) * 
             (!uLighting || vNormal == vec3(0,0,0)
               ? 1.0 
               : lighting()), vColor.a);
 
         if (uTextureEnabled) {
-          color = color * texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+          color *= texture2D(uSampler, vTextureCoord);
 
           // alpha test
           if (color.a <= 0.0)
@@ -300,7 +177,7 @@
         if (uParticleMode) {
           // Compute particle size
           vec4 testPosition = relativePosition;
-          testPosition.x = uPixelsPerClipUnit.x / 16.0/* TODO: should be TILE_SIZE */ * 1.2/*appearance fudge factor*/;
+          testPosition.x = uPixelsPerClipUnit.x / float(TILE_SIZE) * 1.2/*appearance fudge factor*/;
           testPosition.y = 0.0;
           testPosition = uPMatrix * testPosition;
           gl_PointSize = testPosition.x / testPosition.w * pointScale;
@@ -324,16 +201,30 @@
     "use strict";
     
     var DEBUG = false;
-    var TIMESTEP = 1/30;
+    var TIMESTEP = 1/60;
     var MAX_CATCHUP_MS = 500;
     
     var TIMESTEP_MS = TIMESTEP*1000;
     
     // Settable using the options sidebar
-    var configRenderDistance = 100;
-    var configLighting = true;
-    var configBumpMapping = true;
-    var configDebugTextureAllocation = false;
+    var config = {};
+    function defineOption(name, type, value) {
+      config[name] = new PersistentCell("cubes.option." + name, type, value);
+    }
+    function resetAllOptions() {
+      Object.keys(config).forEach(function (k) { config[k].setToDefault(); });
+    }
+    defineOption("fov", "number", 60);
+    defineOption("renderDistance", "number", 100);
+    defineOption("lighting", "boolean", true);
+    defineOption("bumpMapping", "boolean", true);
+    defineOption("debugTextureAllocation", "boolean", false);
+    defineOption("debugForceRender", "boolean", false);
+    defineOption("debugPlayerCollision", "boolean", false);
+ 
+    defineOption("generate_wx", "number", 400);
+    defineOption("generate_wy", "number", 128);
+    defineOption("generate_wz", "number", 400);
 
     // GL objects
     var gl;
@@ -348,19 +239,7 @@
     var worldH;
     var input;
     
-    function initGL(canvas) {
-        gl = canvas.getContext("experimental-webgl", {
-          antialias: false // MORE FILLRATE!!!
-        });
-        if (DEBUG) {
-          gl = WebGLDebugUtils.makeDebugContext(gl);
-        } else {
-          WebGLDebugUtils.init(gl);
-        }
-        if (!gl) {
-            if (typeof console !== 'undefined') console.log("failed to get context: ", gl);
-        }
-    }
+    var readyToDraw = false;
     
     // prepareProgram fills in these with the locations of the shader program variables
     var attribs = {};
@@ -459,25 +338,25 @@
     }
     
     function updateProjection() {
-      mat4.perspective(60, // vertical FOV
-                       gl.drawingBufferWidth / gl.drawingBufferHeight, // aspect ratio
-                       0.1, // near clip
-                       configRenderDistance, // far clip
+      var fov = config.fov.get();
+      var aspectRatio = gl.drawingBufferWidth / gl.drawingBufferHeight;
+      
+      var nearestApproachToPlayer = Math.min(
+        -Player.aabb[0][0], Player.aabb[0][1],
+        -Player.aabb[1][0], Player.aabb[1][1],
+        -Player.aabb[2][0], Player.aabb[2][1]);
+      var nearPlane = nearestApproachToPlayer 
+                      / Math.sqrt(1 + Math.pow(Math.tan(fov/180*Math.PI/2), 2)
+                                      * (Math.pow(aspectRatio, 2) + 1));
+      
+      mat4.perspective(fov,
+                       aspectRatio,
+                       nearPlane,
+                       config.renderDistance.get(),
                        pMatrix);
       
       gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
-      
-      // uFogDistance is handled by drawScene.
-    }
-    
-    function changedRenderDistance() {
-      updateProjection();
-      player.render.getWorldRenderer().changedRenderDistance();
-    }
-    
-    function changedRenderOptions() {
-      gl.uniform1i(uniforms.uLighting, configLighting ? 1 : 0);
-      gl.uniform1i(uniforms.uBumpMapping, configBumpMapping ? 1 : 0);
+      // uFogDistance is handled by drawScene because it is changed.
     }
     
     // Returns a pair of points along the line of aim of the screen cursor.
@@ -606,8 +485,8 @@
       }
     }
     
-    // TODO: the interface for this is lousy. blockWorld==null means we're creating a block, nonnull destroying
-    function BlockParticles(world, location, blockWorld, symm) {
+    function BlockParticles(location, blockType, destroyMode, symm) {
+      var blockWorld = blockType.world;
       var k = 2;
       var t0 = Date.now();
       var rb = new RenderBundle(gl.POINTS, null, function (vertices, normals, colors) {
@@ -615,18 +494,21 @@
         for (var x = 0; x < TILE_SIZE; x++) {
           for (var y = 0; y < TILE_SIZE; y++) {
             for (var z = 0; z < TILE_SIZE; z++) {
-              if (blockWorld == null) {
+              if (!destroyMode) {
                 if (!(x < k || x >= TILE_SIZE-k || y < k || y >= TILE_SIZE-k || z < k || z >= TILE_SIZE-k))
                   continue;
                 var c = 1.0 - Math.random() * 0.04;
                 colors.push(c,c,c,1);
-              } else {
+              } else if (blockWorld) {
                 blockWorld.gt(x,y,z).writeColor(1, colors, colors.length);
                 if (colors[colors.length - 1] <= 0.0) {
                   // transparent, skip
                   colors.length -= 4;
                   continue;
                 }
+              } else if (blockType.color) {
+                // destroy mode for color cubes
+                blockType.writeColor(1, colors, colors.length);
               }
               var v = applyCubeSymmetry(symm, 1, [
                 (x+0.5)/TILE_SIZE,
@@ -644,7 +526,7 @@
       }, {
         aroundDraw: function (draw) {
           gl.uniform1i(uniforms.uParticleMode, 1);
-          gl.uniform1i(uniforms.uParticleExplode, blockWorld ? 1 : 0);
+          gl.uniform1i(uniforms.uParticleExplode, destroyMode ? 1 : 0);
           gl.uniform1f(uniforms.uParticleInterp, t());
           draw();
           gl.uniform1i(uniforms.uParticleMode, 0);
@@ -660,14 +542,9 @@
       return rb;
     }
 
-    var debugR;
     var skyboxR;
     
     function initBuffers() {
-      debugR = new RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
-        if (player) player.renderDebug(vertices, normals, colors);
-      });
-      
       skyboxR = new RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {
         // abstracted in case this is useful elsewhere ...
         function cube(vertices, colors, size, outward) {
@@ -696,7 +573,7 @@
         
         // While rendering this, the fog distance is adjusted so that anything
         // farther than 1 unit is fully fogged.
-        cube(vertices, colors, 10, false);
+        cube(vertices, colors, 1, false);
       });
     }
     
@@ -721,14 +598,14 @@
         // Rendering settings for normal geometry
         gl.enable(gl.DEPTH_TEST);
         gl.clear(gl.DEPTH_BUFFER_BIT); // Backdrop depth is irrelevant
-        gl.uniform1f(uniforms.uFogDistance, configRenderDistance);
+        gl.uniform1f(uniforms.uFogDistance, config.renderDistance.get());
 
         viewPosition = playerRender.getPosition();
         playerRender.applyViewTranslation(mvMatrix);
         sendViewUniforms();
 
         wrend.draw();
-        debugR.draw();
+        player.render.characterRender.draw();
         player.render.selectionRender.draw();
         
         var e, errs = [];
@@ -827,7 +704,7 @@
     
     var animFrameWasRequested = false;
     function scheduleDraw() {
-      if (!animFrameWasRequested) {
+      if (!animFrameWasRequested && readyToDraw) {
         window.requestAnimFrame(function () {
           animFrameWasRequested = false;
 
@@ -835,10 +712,13 @@
           chunkRenders += player.render.getWorldRenderer().updateSomeChunks();
 
           drawScene(player.render);
+
+          if (config.debugForceRender.get()) scheduleDraw();
         }, theCanvas);
         animFrameWasRequested = true;
       }
     }
+    config.debugForceRender.listen({changed: function () { scheduleDraw(); return true; }});
 
     // statistics are reset once per second
     setInterval(function () {
@@ -883,7 +763,7 @@
 
       sequence([
         function () {
-          if (typeof testGettersWork === 'undefined' || !testGettersWork()) {
+          if (typeof testSettersWork === 'undefined' || !testSettersWork()) {
             document.getElementById("feature-error-notice").style.removeProperty("display");
             document.getElementById("feature-error-text").appendChild(document.createTextNode("ECMAScript 5 property accessors on frozen objects"));
           }
@@ -891,7 +771,16 @@
         "Getting WebGL...",
         function () {
           theCanvas = document.getElementById('view-canvas');
-          initGL(theCanvas);
+
+          gl = theCanvas.getContext("experimental-webgl", {
+            antialias: false // MORE FILLRATE!!!
+          });
+          if (DEBUG) {
+            gl = WebGLDebugUtils.makeDebugContext(gl);
+          } else {
+            WebGLDebugUtils.init(gl);
+          }
+
           if (!gl) {
             document.getElementById("webgl-error-notice").style.removeProperty("display");
             return ABORT;
@@ -899,9 +788,12 @@
         },
         "Setting up WebGL...",
         function () {
+          var decls = {
+            TILE_SIZE: World.TILE_SIZE
+          };
           prepareProgram(gl,
-                         prepareShader(gl, "shader-vs"),
-                         prepareShader(gl, "shader-fs"),
+                         prepareShader(gl, "shader-vs", decls),
+                         prepareShader(gl, "shader-fs", decls),
                          attribs, uniforms);          
           
           // Set up viewport and projection matters
@@ -911,8 +803,24 @@
             return true;
           }, false);
           
-          // Send rendering options
-          changedRenderOptions();
+          // Bind and send rendering options
+          config.lighting.nowAndWhenChanged(function (v) {
+            gl.uniform1i(uniforms.uLighting, v ? 1 : 0);
+            scheduleDraw();
+            return true;
+          });
+          config.bumpMapping.nowAndWhenChanged(function (v) {
+            gl.uniform1i(uniforms.uBumpMapping, v ? 1 : 0);
+            scheduleDraw();
+            return true;
+          });
+          var projectionL = {changed: function (v) {
+            updateProjection();
+            scheduleDraw();
+            return true;
+          }};
+          config.fov.listen(projectionL);
+          config.renderDistance.listen(projectionL);
 
           // Initial GL state
           gl.enableVertexAttribArray(attribs.aVertexPosition);
@@ -958,6 +866,7 @@
             document.getElementById("menu"),
             document.getElementById("menu-blocks"));
           theCanvas.focus();
+          readyToDraw = true;
 
           setInterval(doStep, TIMESTEP_MS);
         },
@@ -1015,7 +924,7 @@
     <div id="options" class="sidebar" onclick="if (event.target.tagName == 'INPUT' || event.target.tagName == 'LABEL' || event.target.tagName == 'BUTTON' || event.target.tagName == 'TEXTAREA') return true; this.style.display='none'; document.getElementById('optionsbtn').style.display='inline'; document.getElementById('view-canvas').focus();" style="display: none;">
       <p>Click to close.</p>
 
-      <h2>World</h2>
+      <h2>Save/Load</h2>
       
       <form onsubmit="return false;" action=""  style="text-align: center">
         <p id="local-save-controls">
@@ -1027,11 +936,6 @@
             player.setWorld(worldH);
             return false;
           ">Revert to saved</button>
-          <button onclick="
-            worldH = generateWorlds();
-            player.setWorld(worldH);
-            return false;
-          ">Start over</button>
         </p>
         <p id="local-save-warning" style="display: none">
           Your browser does not appear to support local storage. This world will be lost when you close the page.
@@ -1060,16 +964,50 @@
         </p>
       </form>
       
+      <h2>World</h2>
+
+      <form onsubmit="return false;" action=""  style="text-align: center">
+        <table class="optionline">
+          <tr><td>Size: 
+          <td><input type="number" min="1" max="9999" value="400" maxlength="4" size="4" id="generate_wx">
+          <td><input type="number" min="1" max="512" value="128" maxlength="3" size="3" id="generate_wy">
+          <td><input type="number" min="1" max="9999" value="400" maxlength="4" size="4" id="generate_wz">
+          <tr><th><th>W<th>H<th>L
+        </table>
+        <script>config.generate_wx.bindControl("generate_wx");</script>
+        <script>config.generate_wy.bindControl("generate_wy");</script>
+        <script>config.generate_wz.bindControl("generate_wz");</script>
+        <div style="text-align: center;">
+          <button onclick="
+            worldH = generateWorlds();
+            player.setWorld(worldH);
+            return false;
+          ">Generate new world</button>
+        </div>
+      </form>
+
       <h2>Options</h2>
 
       <form onsubmit="return false;" action="">
-        <div class="optionline">Render distance: <input type="range" min="10" max="500" value="100" maxlength="4" size="4" onchange="configRenderDistance = parseFloat(this.value); changedRenderDistance(); return true;" style="vertical-align: middle;"></div>
-        <div class="optionline"><label><input type="checkbox" checked onchange="configLighting = this.checked; changedRenderOptions(); return true;"> Lighting</label></div>
-        <div class="optionline"><label><input type="checkbox" checked onchange="configBumpMapping = this.checked; changedRenderOptions(); return true;"> Bump mapping</label></div>
+        <div class="optionline">Field of view: <input type="range" min="45" max="140" value="60" maxlength="4" size="4" id="fov"></div>
+        <script>config.fov.bindControl("fov");</script>
+        <div class="optionline">Draw distance: <input type="range" min="10" max="500" value="100" maxlength="4" size="4" id="renderDistance"></div>
+        <script>config.renderDistance.bindControl("renderDistance");</script>
+        <div class="optionline"><label><input type="checkbox" id="lighting"> Lighting</label></div>
+        <script>config.lighting.bindControl("lighting");</script>
+        <div class="optionline"><label><input type="checkbox" id="bumpMapping"> Bump mapping</label></div>
+        <script>config.bumpMapping.bindControl("bumpMapping");</script>
         
         <h3>Debug</h3>
         
-        <p><label><input type="checkbox" onchange="configDebugTextureAllocation = this.checked; return true;"> Display block texture</label></p>
+        <div class="optionline"><label><input type="checkbox" id="debugForceRender"> Always render frames</label></div>
+        <script>config.debugForceRender.bindControl("debugForceRender");</script>
+        <div class="optionline"><label><input type="checkbox" id="debugTextureAllocation"> Show block texture</label></div>
+        <script>config.debugTextureAllocation.bindControl("debugTextureAllocation");</script>
+        <div class="optionline"><label><input type="checkbox" id="debugPlayerCollision"> Show character volume</label></div>
+        <script>config.debugPlayerCollision.bindControl("debugPlayerCollision");</script>
+
+        <p><button onclick="resetAllOptions(); return false;">Reset to defaults</button></p>
       </form>
     </div>
 
@@ -1080,7 +1018,7 @@
       
       <h3>Controls</h3>
       
-      <table>
+      <table class="fancy">
         <tr><th colspan=2>Movement
         <tr><td><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd><br> or arrows<td>move horizontally
         <tr><td><kbd>Space</kbd><td>jump
@@ -1089,11 +1027,12 @@
         <tr><td>Mouse motion<td>look/target block
         <tr><td>Mouseover<br>left/right edge<td>turn
         <tr><th colspan=2>Blocks
-        <tr><td>Left button<td> Place/remove block
-        <tr><td>Right button<td> Choose tool from menu
+        <tr><td>Left button<td> Remove block
+        <tr><td>Right button<td> Place block
+        <tr><td><kbd>Q</kbd> (menu)<td rowspan=2> Choose block to place
+        <tr class="spanned"><td><kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd>
         <tr><td><kbd>R</kbd><td> Edit targeted block
         <tr><td><kbd>F</kbd><td> Exit editing
-        <tr><td><kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd><td>Choose tool
       </table>
             
       <p>In the menu of blocks, the empty square at the top left is the removal tool.</p>
@@ -1102,9 +1041,7 @@
 
       <h3>Compatibility &amp; Bugs</h3>
       
-      <p>Player movement does not work on Safari 5.1. Right mouse button does not work on Firefox 6.0.2.</p>
-      
-      <p>You can get stuck by placing a block that intersects yourself.</p>
+      <p>Player movement does not work on Safari 5.1.</p>
 
     </div>
 </body>

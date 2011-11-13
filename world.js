@@ -62,7 +62,6 @@ function World(sizes, blockSet) {
         if (existing === circuit) {
           continue; // don't add and don't traverse
         } else if (existing !== circuit && existing !== undefined) {
-          console.log("floodCircuit met a different circuit!");
           deleteCircuit(existing);
         }
         circuit.add(block);
@@ -147,18 +146,14 @@ function World(sizes, blockSet) {
     var vec = [x,y,z];
 
     var newType = blockSet.get(val);
-    if (newType.hasCircuits) {
-      reeval(vec, newType);
-    }
+    reeval(vec, newType);
 
     // Update circuits
-    var vec = [x,y,z];
     var cp = isCircuitPart(newType);
     if (cp && !blockCircuits[vec]) {
       becomeCircuit(vec);
     } else if (!cp && blockCircuits[vec]) {
       // No longer a circuit part.
-      console.log("deleting dead circuit");
       deleteCircuit(blockCircuits[vec]);
       [[x-1,y,z], [x,y-1,z], [x,y,z-1], [x+1,y,z], [x,y+1,z], [x,y,z+1]].forEach(function (neighbor) {
         if (isCircuitPart(gt(neighbor[0],neighbor[1],neighbor[2]))) becomeCircuit(neighbor);
@@ -273,7 +268,7 @@ function World(sizes, blockSet) {
     var z = cube[2];
     var index = x*wy*wz + y*wz + z;
     if (newType.hasCircuits) {
-      Circuit.executeCircuitInChangedBlock(newType.world, self, cube, subData[index]);
+      Circuit.executeCircuitInBlock(newType.world, self, cube, subData[index], {});
     } else {
       rotations[index] = 0;
     }
@@ -319,7 +314,16 @@ function World(sizes, blockSet) {
       var y = Math.floor(Math.random() * wy);
       var z = Math.floor(Math.random() * wz);
       
-      gt(x,y,z).doSpontaneousEffect(self, [x,y,z], spontaneousBaseRate);
+      // The input value given is chosen so that if you want a rate of k, you can
+      // multiply k*value to get the chance you should do your thing.
+      // TODO: Maybe k should be an input to the spontaneous-event-detector circuit block?
+      var type = gt(x,y,z);
+      if (type.hasCircuits) {
+        // TODO: this seems a bit overly coupled
+        Circuit.executeCircuitInBlock(type.world, self, [x,y,z], gSub(x,y,z), {
+          blockIn_spontaneous: 1/spontaneousBaseRate
+        });
+      }
     }
   }
   

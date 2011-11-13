@@ -32,14 +32,15 @@ var WorldRenderer = (function () {
 
   var distanceInfoCache = {}, lastSeenRenderDistance = null;
   function renderDistanceInfo() {
-    if (configRenderDistance !== lastSeenRenderDistance) {
+    var newRenderDistance = config.renderDistance.get();
+    if (newRenderDistance !== lastSeenRenderDistance) {
       // The distance at which invisible chunks are dropped from memory. Semi-arbitrary figure...
-      distanceInfoCache.dropChunkDistanceSquared = Math.pow(configRenderDistance + 2*CHUNKSIZE, 2);
+      distanceInfoCache.dropChunkDistanceSquared = Math.pow(newRenderDistance + 2*CHUNKSIZE, 2);
 
       // A static table of the offsets of the chunks visible from the player location
       var nearChunkOrder = [];
-      var chunkDistance = Math.ceil(configRenderDistance/CHUNKSIZE);
-      var boundSquared = Math.pow(configRenderDistance + CHUNKSIZE, 2);
+      var chunkDistance = Math.ceil(newRenderDistance/CHUNKSIZE);
+      var boundSquared = Math.pow(newRenderDistance + CHUNKSIZE, 2);
       for (var x = -chunkDistance-1; x <= chunkDistance; x++)
       for (var z = -chunkDistance-1; z <= chunkDistance; z++) {
         var v = [x*CHUNKSIZE,z*CHUNKSIZE];
@@ -48,7 +49,7 @@ var WorldRenderer = (function () {
         }
       }
       nearChunkOrder.sort(function (a,b) {
-        return dist2sq(b) - dist2sq(a);
+        return dist2sq(a) - dist2sq(b);
       });
       distanceInfoCache.nearChunkOrder = Object.freeze(nearChunkOrder);
     }
@@ -59,11 +60,16 @@ var WorldRenderer = (function () {
     // Object holding all world rendering chunks which have RenderBundles created, indexed by "<x>,<z>" where x and z are the low coordinates (i.e. divisible by CHUNKSIZE).
     var chunks = {};
 
+    function compareByPlayerDistance(a,b) {
+      return dist2sq([a[0]-playerChunk[0], a[1]-playerChunk[1]]) 
+           - dist2sq([b[0]-playerChunk[0], b[1]-playerChunk[1]]);
+    }
+
     // Queue of chunks to rerender. Array (first-to-do at the end); each element is [x,z] where x and z are the low coordinates of the chunk.
-    var dirtyChunks = [];
+    var dirtyChunks = new DirtyQueue(compareByPlayerDistance);
 
     // Queue of chunks to render for the first time. Distinguished from dirtyChunks in that it can be flushed if the view changes.
-    var addChunks = [];
+    var addChunks = new DirtyQueue(compareByPlayerDistance);
     
     // The origin of the chunk which the player is currently in. Changes to this are used to decide to recompute chunk visibility.
     var playerChunk = null;
@@ -77,9 +83,9 @@ var WorldRenderer = (function () {
     var particles = [];
 
     var textureDebugR = new RenderBundle(gl.TRIANGLE_STRIP, blockTexture, function (vertices, normals, texcoords) {
-      var x = 2;
-      var y = 2;
-      var z = -5;
+      var x = 1;
+      var y = 1;
+      var z = 0;
       vertices.push(-x, -y, z);
       vertices.push(x, -y, z);
       vertices.push(-x, y, z);
@@ -96,13 +102,26 @@ var WorldRenderer = (function () {
       texcoords.push(1, 1);
     }, {
       aroundDraw: function (draw) {
+        var aspect = theCanvas.width / theCanvas.height;
+        var w, h;
+        if (aspect > 1) {
+          w = aspect;
+          h = 1;
+        } else {
+          w = 1;
+          h = 1/aspect;
+        }
         var mvsave = mvMatrix;
         mvMatrix = mat4.identity(mat4.create());
+        gl.uniformMatrix4fv(uniforms.uPMatrix, false, mat4.ortho(-w, w, -h, h, -1, 1, mat4.create()));
         sendViewUniforms();
         gl.disable(gl.DEPTH_TEST);
+        gl.depthMask(false);
         draw();
         mvMatrix = mvsave;
         gl.enable(gl.DEPTH_TEST);
+        gl.depthMask(true);
+        gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
         sendViewUniforms();
       },
     });
@@ -124,19 +143,19 @@ var WorldRenderer = (function () {
       
       chunks = {};
       circuitRenderers = {};
-      dirtyChunks = [];
-      addChunks = [];
+      dirtyChunks.clear();
+      addChunks.clear();
     }
     
     function rerenderChunks() {
-      // TODO: not in near-to-far order.
-      dirtyChunks = [];
+      dirtyChunks.clear();
       for (var index in chunks) {
         if (!chunks.hasOwnProperty(index)) continue;
         chunks[index].dirtyChunk = true;
         var indexparts = index.split(",");
-        dirtyChunks.push([parseInt(indexparts[0],10),
-                          parseInt(indexparts[1],10)]);
+        dirtyChunks.enqueue([parseInt(indexparts[0],10),
+                             parseInt(indexparts[1],10)],
+                            chunks[index]);
       }
     }
     
@@ -145,12 +164,30 @@ var WorldRenderer = (function () {
       // chunks containing the changed block ID?
       texturingChanged: dirtyAll
     }
+    
+    var listenerRenderDistance = {
+      changed: function (v) {
+        if (!isAlive()) return false;
+        playerChunk = null; // TODO kludge. The effect of this is to reevaluate which chunks are visible
+        addChunks.clear();
+        scheduleDraw();
+        return true;
+      }
+    };
+
+    var listenerRedraw = {
+      changed: function (v) {
+        scheduleDraw();
+        return isAlive();
+      }
+    }
 
     function deleteResources() {
       deleteChunks();
       textureDebugR.deleteResources();
       world.listen.cancel(listenerW);
       blockSet.listen.cancel(listenerB);
+      config.renderDistance.listen.cancel(listenerRenderDistance);
       world = blockSet = chunks = dirtyChunks = addChunks = textureDebugR = null;
     };
     function isAlive() {
@@ -158,12 +195,6 @@ var WorldRenderer = (function () {
       return !!world;
     }
     this.deleteResources = deleteResources;
-
-    function changedRenderDistance() {
-      playerChunk = null; // TODO kludge. The effect of this is to reevaluate which chunks are visible
-      addChunks = [];
-    }
-    this.changedRenderDistance = changedRenderDistance;
 
     function chunkIntersectsWorld(chunkOrigin) {
       var x = chunkOrigin[0];
@@ -181,7 +212,7 @@ var WorldRenderer = (function () {
         // This routine is used only for "this block changed", so if there is
         // not already a chunk, we don't create it.
         c.dirtyChunk = true;
-        dirtyChunks.push(k);
+        dirtyChunks.enqueue(k, chunks[k]);
       }
     }
 
@@ -235,7 +266,7 @@ var WorldRenderer = (function () {
       dirtyCircuit: dirtyCircuit,
       deletedCircuit: deletedCircuit,
     };
-
+    
     function updateSomeChunks() {
       // Determine if chunks' visibility to the player has changed
       var newPlayerChunk = [place.pos[0] - mod(place.pos[0], CHUNKSIZE),
@@ -249,7 +280,7 @@ var WorldRenderer = (function () {
         renderDistanceInfo().nearChunkOrder.forEach(function (offset) {
           var chunkKey = [playerChunk[0] + offset[0], playerChunk[1] + offset[1]];
           if (!chunks[chunkKey] && chunkIntersectsWorld(chunkKey)) {
-            addChunks.push(chunkKey);
+            addChunks.enqueue(chunkKey, chunks[chunkKey]);
           }
         });
 
@@ -281,16 +312,16 @@ var WorldRenderer = (function () {
         
       }
 
-      var chunkQueue = dirtyChunks.length > 0 ? dirtyChunks : addChunks;
-      var toCompute = chunkQueue.length > 30 ? 6 : 1;
-      for (var i = 0; i < toCompute && chunkQueue.length > 0; i++) {
-        if (calcChunk(chunkQueue.pop())) {
+      var chunkQueue = dirtyChunks.size() > 0 ? dirtyChunks : addChunks;
+      var toCompute = chunkQueue.size() > 30 ? 6 : 1;
+      for (var i = 0; i < toCompute && chunkQueue.size() > 0; i++) {
+        if (calcChunk(chunkQueue.dequeue())) {
           // Chunk wasn't actually dirty; take another chunk
           i--;
         }
       }
       
-      if (chunkQueue.length > 0) {
+      if (chunkQueue.size() > 0) {
         // Schedule rendering more chunks
         scheduleDraw();
       }
@@ -300,30 +331,41 @@ var WorldRenderer = (function () {
     this.updateSomeChunks = updateSomeChunks;
 
     function renderDestroyBlock(block) {
-      var blockWorld = blockSet.worldFor(world.g(block[0],block[1],block[2]));
-      // TODO: add particles for color blocks
-      if (blockWorld)
-        particles.push(new BlockParticles(world, block, blockWorld, world.gRot(block[0],block[1],block[2])));
+      particles.push(new BlockParticles(
+        block,
+        world.gt(block[0],block[1],block[2]),
+        true,
+        world.gRot(block[0],block[1],block[2])));
     }
     this.renderDestroyBlock = renderDestroyBlock;
 
-    function renderCreateBlock(block, value) {
-      particles.push(new BlockParticles(world, block, null, 0));
+    function renderCreateBlock(block) {
+      particles.push(new BlockParticles(
+        block,
+        world.gt(block[0],block[1],block[2]),
+        false,
+        world.gRot(block[0],block[1],block[2])));
     }
     this.renderCreateBlock = renderCreateBlock;
 
     function draw() {
+      // Draw chunks.
       for (var index in chunks) {
         if (!chunks.hasOwnProperty(index)) continue;
         var chunk = chunks[index];
         if (aabbInView(chunk.aabb))
           chunk.draw();
       }
+      
+      // Draw circuits.
+      gl.uniform1i(uniforms.uStipple, 1);
       for (var index in circuitRenderers) {
         if (!circuitRenderers.hasOwnProperty(index)) continue;
         circuitRenderers[index].draw();
       }
+      gl.uniform1i(uniforms.uStipple, 0);
       
+      // Draw particles.
       for (var i = 0; i < particles.length; i++) {
         var particleSystem = particles[i];
         if (particleSystem.expired()) {
@@ -342,11 +384,9 @@ var WorldRenderer = (function () {
         scheduleDraw();
       }
       
-      if (configDebugTextureAllocation) {
-        var mvsave = mvMatrix;
-        mvMatrix = mat4.identity(mat4.create());
+      // Draw texture debug.
+      if (config.debugTextureAllocation.get()) {
         textureDebugR.draw();
-        mvMatrix = mvsave;
       }
     }
     this.draw = draw;
@@ -497,42 +537,96 @@ var WorldRenderer = (function () {
       }
     }
     
+    var CYL_RESOLUTION = 9;
+    function calcCylinder(pt1, pt2, radius, vertices, normals) {
+      function pushVertex(vec) {
+        vertices.push(vec[0], vec[1], vec[2]);
+        normals.push(0,0,0);
+      }
+      //function pushNormal(vec) {
+      //  normals.push(vec[0], vec[1], vec[2]);
+      //}
+      
+      var length = vec3.subtract(pt2, pt1, vec3.create());
+      var perp1 = vec3.cross(length, length[1] ? UNIT_PX : UNIT_PY, vec3.create());
+      var perp2 = vec3.cross(perp1, length, vec3.create());
+      vec3.normalize(perp1);
+      vec3.normalize(perp2);
+      function incr(i, r) {
+        return vec3.add(
+          vec3.scale(perp1, Math.sin(i/10*Math.PI*2), vec3.create()),
+          vec3.scale(perp2, Math.cos(i/10*Math.PI*2), vec3.create()));
+      }
+      for (var i = 0; i < CYL_RESOLUTION; i++) {
+        var p1 = incr(i);
+        var p2 = incr(mod(i+1, CYL_RESOLUTION));
+        //pushNormal(p2);
+        //pushNormal(p2);
+        //pushNormal(p1);
+        //pushNormal(p1);
+        //pushNormal(p1);
+        //pushNormal(p2);
+        vec3.scale(p1, radius);
+        vec3.scale(p2, radius);
+        var v0 = vec3.add(pt1, p2, vec3.create());
+        var v1 = vec3.add(pt2, p2, vec3.create());
+        var v2 = vec3.add(pt2, p1, vec3.create());
+        var v3 = vec3.add(pt1, p1, vec3.create());
+        pushVertex(v0);
+        pushVertex(v1);
+        pushVertex(v2);
+        pushVertex(v2);
+        pushVertex(v3);
+        pushVertex(v0);
+      }
+      return 6*CYL_RESOLUTION;
+    }
+    
+    var CENTER = [.5,.5,.5];
+    var CYL_RADIUS = Math.round(.08 * World.TILE_SIZE) / World.TILE_SIZE;
     function makeCircuitRenderer(circuit) {
       var dyns;
       var circuitRenderer = new RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {
         dyns = [];
-        function pushVertex(vec) {
-          vertices.push(vec[0], vec[1], vec[2]);
-          normals.push(0,0,0);
-        }
         circuit.getEdges().forEach(function (record) {
           var net = record[0];
           var fromBlock = record[1];
           var block = record[2];
 
-          var delta = vec3.subtract(block, fromBlock, vec3.create());
-          var perp = vec3.cross(delta, delta[1] ? UNIT_PX : UNIT_PY, vec3.create());
-          vec3.normalize(perp);
-          vec3.scale(perp, .1);
-          var v0 = vec3.add     (vec3.add(fromBlock, [.5, .6, .5], vec3.create()), perp);
-          var v1 = vec3.add     (vec3.add(block,     [.5, .6, .5], vec3.create()), perp);
-          var v2 = vec3.subtract(vec3.add(block,     [.5, .6, .5], vec3.create()), perp);
-          var v3 = vec3.subtract(vec3.add(fromBlock, [.5, .6, .5], vec3.create()), perp);
           var vbase = vertices.length;
           var cbase = colors.length;
-          colors.push(1,1,1,1); pushVertex(v0);
-          colors.push(1,1,1,1); pushVertex(v1);
-          colors.push(1,1,1,1); pushVertex(v2);
-          colors.push(1,1,1,1); pushVertex(v2);
-          colors.push(1,1,1,1); pushVertex(v3);
-          colors.push(1,1,1,1); pushVertex(v0);
+          var numVertices = calcCylinder(
+            vec3.add(record[1], CENTER, vec3.create()),
+            vec3.add(record[2], CENTER, vec3.create()),
+            .1,
+            vertices, normals);
+          for (var i = 0; i < numVertices; i++)
+            colors.push(1,1,1,1); 
+            
           dyns.push(function () {
             var carr = circuitRenderer.colors.array;
-            for (var i = 0, p = cbase; i < 6; i++) { // 6 vertices for the square
-              carr[p++] = 0;
-              carr[p++] = circuit.getNetValue(net);
-              carr[p++] = 0;
-              carr[p++] = 1;
+            var value = circuit.getNetValue(net);
+            var color;
+            if (value === null || value === undefined) {
+              color = [0,0,0,1];
+            } else if (value === false) {
+              color = [0,0,0.2,1];
+            } else if (value === true) {
+              color = [0.2,0.2,1,1];
+            } else if (typeof value === 'number') {
+              // TODO: represent negatives too
+              if (value <= 1)
+                color = [value, 0, 0,1];
+              else
+                color = [1, 1 - (1/value), 0,1];
+            } else {
+              color = [1,1,1,1];
+            }
+            for (var i = 0, p = cbase; i < numVertices; i++) {
+              carr[p++] = color[0];
+              carr[p++] = color[1];
+              carr[p++] = color[2];
+              carr[p++] = color[3];
             }
           });
         });
@@ -549,8 +643,8 @@ var WorldRenderer = (function () {
 
     function debugText() {
       var text = "";
-      if (dirtyChunks.length > 0 || addChunks.length > 0) {
-        text += "Chunk Q: " + dirtyChunks.length + " dirty, " + addChunks.length + " new\n";
+      if (dirtyChunks.size() > 0 || addChunks.size() > 0) {
+        text += "Chunk Q: " + dirtyChunks.size() + " dirty, " + addChunks.size() + " new\n";
       }
       return text;
     }
@@ -560,6 +654,8 @@ var WorldRenderer = (function () {
 
     world.listen(listenerW);
     blockSet.listen(listenerB);
+    config.renderDistance.listen(listenerRenderDistance);
+    config.debugTextureAllocation.listen(listenerRedraw);
     Object.freeze(this);
   }
 

@@ -53,19 +53,25 @@ function Input(eventReceiver, playerInput, menuOuter, menuInner) {
 
     // handlers for 'action' keys (immediate effects)
     switch (String.fromCharCode(code)) {
-      case "1": playerInput.tool = 0; return false;
-      case "2": playerInput.tool = 1; return false;
-      case "3": playerInput.tool = 2; return false;
-      case "4": playerInput.tool = 3; return false;
-      case "5": playerInput.tool = 4; return false;
-      case "6": playerInput.tool = 5; return false;
-      case "7": playerInput.tool = 6; return false;
-      case "8": playerInput.tool = 7; return false;
-      case "9": playerInput.tool = 8; return false;
-      case "0": playerInput.tool = 9; return false;
+      case "1": playerInput.tool = 1; return false;
+      case "2": playerInput.tool = 2; return false;
+      case "3": playerInput.tool = 3; return false;
+      case "4": playerInput.tool = 4; return false;
+      case "5": playerInput.tool = 5; return false;
+      case "6": playerInput.tool = 6; return false;
+      case "7": playerInput.tool = 7; return false;
+      case "8": playerInput.tool = 8; return false;
+      case "9": playerInput.tool = 9; return false;
+      case "0": playerInput.tool = 10; return false;
+      case "Q": if (menuVisible()) hideMenu(); else showMenu(); return false;
       case "\x1B"/*Esc*/:
-      case "R": if (menuVisible()) hideMenu(); else { playerInput.changeWorld(-1); showMenu(); } return false;
-      case "F": if (menuVisible()) hideMenu(); else { playerInput.changeWorld(-1); showMenu(); } return false;
+        if (menuVisible()) {
+          hideMenu(); 
+        } else {
+          if (playerInput.exitWorld())
+            showMenu();
+        } 
+        return false;
       case " ": playerInput.jump(); return false;
     }
 
@@ -113,7 +119,7 @@ function Input(eventReceiver, playerInput, menuOuter, menuInner) {
     var direct = -Math.PI/2 * swingX;
     playerInput.yaw += (direct - prevx);
     prevx = direct;
-    dx = -0.5 * deadzone(swingX, 0.4);
+    dx = -15.0 * deadzone(swingX, 0.4);
   }, false);
   eventReceiver.addEventListener("mouseout", function (event) {
     mousePos = [event.clientX, event.clientY];
@@ -132,15 +138,18 @@ function Input(eventReceiver, playerInput, menuOuter, menuInner) {
       hideMenu();
     } else {
       eventReceiver.focus();
-      playerInput.click(0);
+      playerInput.deleteBlock();
     }
     return false;
   }, false);
   eventReceiver.oncontextmenu = function (event) { // On Firefox 5.0.1 (most recent tested 2011-09-10), addEventListener does not suppress the builtin context menu, so this is an attribute rather than a listener.
     mousePos = [event.clientX, event.clientY];
-    
-    showMenu();
-
+    if (menuVisible()) {
+      hideMenu();
+    } else {
+      eventReceiver.focus();
+      playerInput.useTool();
+    }
     return false;
   };
   
@@ -149,7 +158,7 @@ function Input(eventReceiver, playerInput, menuOuter, menuInner) {
   
   function step() {
     if (dx != 0) {
-      playerInput.yaw += dx;
+      playerInput.yaw += dx*TIMESTEP;
     }
   }
   
@@ -173,7 +182,7 @@ function Input(eventReceiver, playerInput, menuOuter, menuInner) {
       var sidecount = Math.ceil(Math.sqrt(blockSetInMenu.length));
       var size = Math.min(64, 300 / sidecount);
     
-      for (var i = 0; i < blockSetInMenu.length; i++) {
+      for (var i = 1; i < blockSetInMenu.length; i++) {
         var item = document.createElement('div');
         var button = document.createElement('button');
         button.appendChild(document.createTextNode("Edit"));
@@ -208,7 +217,7 @@ function Input(eventReceiver, playerInput, menuOuter, menuInner) {
             return true;
           };
         })(canvas,i);
-        if ((i+1) % sidecount == 0) {
+        if (i % sidecount == 0) {
           menuInner.appendChild(document.createElement('br'));
         }
       }
@@ -216,7 +225,7 @@ function Input(eventReceiver, playerInput, menuOuter, menuInner) {
       blockRenderer.deleteResources();
     }
 
-    for (var i = 0; i < blockSetInMenu.length; i++) {
+    for (var i = 1; i < blockSetInMenu.length; i++) {
       menuCanvases[i].className = i == playerInput.tool ? "selectedTool" : "";
     }
     

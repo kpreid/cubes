@@ -10,7 +10,7 @@ Requirements and startup
 
 No compilation or server is required; simply open `cubes.html` in a WebGL-supporting browser.
 
-I have found the best performance to be with Google Chrome. Firefox is acceptable, but right-clicking does not work on Firefox 6.0.2. On Safari 5.1 the controls do not work except for block selection, at least because it does not fully support ECMAScript 5 accessors.
+I have found the best performance to be with Google Chrome; Firefox is acceptable. On Safari 5.1 the controls do not work except for block selection, at least because it does not have fully correct support for ECMAScript 5 accessors.
 
 For controls see the “Help” button in-game.
 

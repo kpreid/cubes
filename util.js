@@ -8,14 +8,18 @@
 // believe that it is obviously the authors' intent to make this code free to
 // use.
 
-function testGettersWork() {
+function testSettersWork() {
   "use strict";
-  var y = 0;
-  var o = Object.freeze({
-    set x(v) { y = v; }
-  });
-  o.x = 43;
-  return y === 43;
+  try {
+    var y = 0;
+    var o = Object.freeze({
+      set x(v) { y = v; }
+    });
+    o.x = 43;
+    return y === 43;
+  } catch (e) {
+    return false;
+  }
 }
 
 function cyclicSerialize(root) {
@@ -49,6 +53,105 @@ function cyclicUnserialize(json, constructor) {
   }
   return unserialize(json, constructor);
 }
+
+function PersistentCell(storageName, type, defaultValue) {
+  "use strict";
+  
+  var value = defaultValue;
+
+  var notifier = new Notifier(storageName);
+  var notify = notifier.notify;
+  
+  function get() {
+    return value;
+  }
+  function set(newV) {
+    value = newV;
+    localStorage.setItem(storageName, JSON.stringify(newV));
+    notify("changed", newV);
+  }
+  
+  this.type = type;
+  this.get = get;
+  this.set = set;
+  this.setToDefault = function () { set(defaultValue); };
+  this.listen = notifier.listen;
+  
+  var valueString = localStorage.getItem(storageName);
+  if (valueString !== null) {
+    try {
+      value = JSON.parse(valueString);
+    } catch (e) {
+      if (typeof console !== "undefined")
+        console.error("Failed to parse stored value " + storageName + ":", e);
+    }
+    if (typeof value !== type) {
+      if (typeof console !== "undefined")
+        console.error("Stored value " + storageName + " not a " + type + ":", value);
+    }
+    set(value); // canonicalize/overwrite
+  }
+  
+  Object.freeze(this);
+}
+PersistentCell.prototype.bindControl = function (id) {
+  var elem = document.getElementById(id);
+  var self = this;
+  
+  var listener;
+  switch (elem.type == "text" ? "T"+self.type : "E"+elem.type) {
+    case "Echeckbox":
+      listener = function(value) {
+        elem.checked = value;
+        return true;
+      }
+      elem.onchange = function () {
+        self.set(elem.checked);
+        return true;
+      };
+      break;
+    case "Erange":
+      listener = function(value) {
+        elem.value = value;
+        return true;
+      };
+      elem.onchange = function () {
+        self.set(parseFloat(elem.value));
+        return true;
+      };
+      break;
+    case "Enumber":
+    case "Tnumber":
+      listener = function(value) {
+        elem.value = value;
+        return true;
+      };
+      elem.onchange = function () {
+        // TODO: Should be parseFloat iff the step is not an integer
+        self.set(parseInt(elem.value, 10));
+        return true;
+      };
+      break;
+    default:
+      console.warn("Insufficient information to bind control", id, "(input type ", elem.type, ", value type", self.type, ")");
+      listener = function(value) {
+        elem.value = value;
+        return true;
+      };
+      elem.disabled = true;
+  }
+
+  this.listen({
+    changed: listener
+  });
+  listener(this.get());
+};
+PersistentCell.prototype.nowAndWhenChanged = function (func) {
+  this.listen({
+    changed: func,
+  });
+  func(this.get());
+};
 
 function mod(value, modulus) {
   "use strict";
@@ -89,7 +192,7 @@ var UNIT_NX = vec3.create([-1,0,0]);
 var UNIT_NY = vec3.create([0,-1,0]);
 var UNIT_NZ = vec3.create([0,0,-1]);
 
-function prepareShader(gl, id) {
+function prepareShader(gl, id, declarations) {
   // See note in license statement at the top of this file.  
   "use strict";
   var scriptElement = document.getElementById(id);
@@ -97,6 +200,15 @@ function prepareShader(gl, id) {
   for (var k = scriptElement.firstChild; k !== null; k = k.nextSibling)
     if (k.nodeType == 3)
       text += k.textContent;
+   
+  var prelude = "";
+  for (var prop in declarations) {
+    var value = declarations[prop];
+    prelude += "#define " + prop + " (" + value + ")\n";
+  }
+  if (prelude !== "") {
+    text = prelude + "#line 1\n" + text;
+  }
   
   var shader;
   if (scriptElement.type == "x-shader/x-fragment") {
@@ -111,6 +223,7 @@ function prepareShader(gl, id) {
   gl.compileShader(shader);
   
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    if (typeof console !== "undefined") console.log("Shader text:\n" + text);
     throw new Error(gl.getShaderInfoLog(shader));
   }
   
@@ -263,4 +376,51 @@ function Notifier(label) {
     }
   }
   return Object.freeze(this);
+}
+
+// Data structure which
+//    contains a set of elements at most once,
+//    has efficient insertion and remove-one operations,
+//    and returns the items in FIFO order or approximately sorted order.
+// The elements must be strings or consistently and uniquely stringify.
+// The comparison function need not be consistent between calls to DirtyQueue.
+function DirtyQueue(optCompareFunc) {
+  var index = {};
+  var queueNear = [];
+  var queueFar = [];
+  var hop = Object.prototype.hasOwnProperty;
+  return Object.freeze({
+    size: function () {
+      return queueNear.length + queueFar.length;
+    },
+    clear: function () {
+      index = {};
+      queueNear = [];
+      queueFar = [];
+    },
+    enqueue: function (key) {
+      if (hop.call(index, key)) return;
+      index[key] = true;
+      queueFar.push(key);
+    },
+    // Return a value if available or null.
+    dequeue: function () {
+      if (!queueNear.length) {
+        queueNear = queueFar;
+        queueFar = [];
+        if (optCompareFunc) {
+          // Reversed because the *last* elements of queueNear dequeue first
+          queueNear.sort(function (a,b) { return optCompareFunc(b,a); });
+        } else {
+          queueNear.reverse(); // use insertion order
+        }
+        if (!queueNear.length) {
+          return null;
+        }
+      }
+      var key = queueNear.pop();
+      delete index[key];
+      return key;
+    }
+  });
 }
