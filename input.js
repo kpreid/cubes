@@ -64,6 +64,7 @@ function Input(eventReceiver, playerInput, menuElement) {
       case "9": playerInput.tool = 9; updateMenu(); return false;
       case "0": playerInput.tool = 10;updateMenu(); return false;
       case "R": playerInput.changeWorld(1);  updateMenu(); return false;
+      case "\x1B"/*Esc*/:
       case "F": playerInput.changeWorld(-1); updateMenu(); return false;
       case " ": playerInput.jump(); return false;
     }
@@ -109,7 +110,7 @@ function Input(eventReceiver, playerInput, menuElement) {
     var direct = 0;
     playerInput.yaw += (direct - prevx);
     prevx = direct;
-    dx = -0.3 * deadzone(swingX, 0.4);
+    dx = -15.0 * deadzone(swingX, 0.4);
   }, false);
   eventReceiver.addEventListener("mouseout", function (event) {
     mousePos = [event.clientX, event.clientY];
@@ -125,14 +126,13 @@ function Input(eventReceiver, playerInput, menuElement) {
   eventReceiver.addEventListener("click", function (event) {
     mousePos = [event.clientX, event.clientY];
     eventReceiver.focus();
-    playerInput.click(0);
+    playerInput.deleteBlock();
     return false;
   }, false);
   eventReceiver.oncontextmenu = function (event) { // On Firefox 5.0.1 (most recent tested 2011-09-10), addEventListener does not suppress the builtin context menu, so this is an attribute rather than a listener.
     mousePos = [event.clientX, event.clientY];
-    
-    playerInput.click(1);
-    
+    eventReceiver.focus();
+    playerInput.useTool();
     return false;
   };
   
@@ -141,7 +141,7 @@ function Input(eventReceiver, playerInput, menuElement) {
   
   function step() {
     if (dx != 0) {
-      playerInput.yaw += dx;
+      playerInput.yaw += dx*TIMESTEP;
     }
   }
   
@@ -152,7 +152,7 @@ function Input(eventReceiver, playerInput, menuElement) {
   function updateMenu() {
     // TODO: Need to rebuild menu if blocks in the set have changed appearance
     if (playerInput.blockSet !== blockSetInMenu) {
-      while (menu.firstChild) menu.removeChild(menuElement.firstChild);
+      while (menuElement.firstChild) menuElement.removeChild(menuElement.firstChild);
 
       blockSetInMenu = playerInput.blockSet;
       var blockRenderer = new BlockRenderer(blockSetInMenu);

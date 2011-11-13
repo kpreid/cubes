@@ -16,24 +16,16 @@ var BlockType = (function () {
     this._notify = n.notify; // should be private
     this.listen = n.listen;
     
-    // TODO: Both of these properties are to be replaced by circuits.
+    // TODO: This property is to be replaced by circuits.
     this.automaticRotations = [0];
-    this.spontaneousConversion = null;
+    
     this.behavior = null;
   }
   
-  // Called randomly by the world, at an average rate of 'baseRate' calls per second for each cube.
-  BlockType.prototype.doSpontaneousEffect = function (world, cube, baseRate) {
-    // TODO: Either remove this or give it a proper setter and a rate parameter and make it serialized
-    if (this.spontaneousConversion)
-      world.s(cube[0],cube[1],cube[2], this.spontaneousConversion);
-  };
   BlockType.prototype.serialize = function (serialize) {
     var json = {};
     if (this.automaticRotations.length !== 1 || this.automaticRotations[0] !== 0)
       json.automaticRotations = this.automaticRotations;
-    if (this.spontaneousConversion)
-      json.spontaneousConversion = this.spontaneousConversion;
     if (this.behavior && this.behavior.name)
       json.behavior = this.behavior.name;
     return json;
@@ -173,7 +165,6 @@ var BlockType = (function () {
     
     self.behavior = Circuit.behaviors.hasOwnProperty(json.behavior) ? Circuit.behaviors[json.behavior] : null;
     self.automaticRotations = json.automaticRotations || [0];
-    self.spontaneousConversion = json.spontaneousConversion || null;
     
     return self;
   };
@@ -231,7 +222,7 @@ var BlockSet = (function () {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.bindTexture(gl.TEXTURE_2D, null);
     
-    var tileCountSqrt = 8; // initial allocation; gets multiplied by 2
+    var tileCountSqrt = 16; // initial allocation; gets multiplied by 2
     var blockTextureData;
     var tileAllocMap;
     var freePointer;
@@ -317,7 +308,7 @@ var BlockSet = (function () {
     var tilings = [EMPTY_TILING];
     
     var texgen = null;
-    var typesToRerender = [];
+    var typesToRerender = new DirtyQueue();
     
     function rebuildOne(blockID) {
       var blockType = types[blockID];
@@ -461,8 +452,8 @@ var BlockSet = (function () {
           rebuildOne(id);
         upload = true;
       }
-      while (typesToRerender.length) {
-        rebuildOne(typesToRerender.pop());
+      while (typesToRerender.size()) {
+        rebuildOne(typesToRerender.dequeue());
         upload = true;
       }
       if (upload) {
@@ -481,11 +472,11 @@ var BlockSet = (function () {
         var newID = types.length;
         types.push(newBlockType);
         tilings.push({});
-        typesToRerender.push(newID);
+        typesToRerender.enqueue(newID);
         newBlockType.listen({
           appearanceChanged: function () {
             // TODO: notify applicable world renderers promptly
-            typesToRerender.push(newID);
+            typesToRerender.enqueue(newID);
             notifier.notify("texturingChanged", newID);
             return true;
           }
@@ -547,11 +538,15 @@ var BlockSet = (function () {
   
   BlockSet.unserialize = function (json, unserialize) {
     if (json.type === "colors") {
-      throw new Error("BlockSet.colors no longer available");
+      // obsolete serialization type
+      var colors = WorldGen.colorBlocks(4,4,4).blockset;
+      var list = colors.getAll().slice(1, colors.length);
+      list.push(list.shift());
+      return new BlockSet(list);
     } else if (json.type === "textured") {
       // obsolete serialization type
       var blockTypes = json.worlds.map(function (world) {
-        return BlockType.world(unserialize(world, World));
+        return new BlockType.World(unserialize(world, World));
       });
       return new BlockSet(blockTypes);
     } else if (json.type === "types") {

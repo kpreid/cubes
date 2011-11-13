@@ -3,11 +3,17 @@
 
 var Player = (function () {
   // physics constants
-  var WALKING_SPEED = 5; // cubes/s
+  var WALKING_SPEED = 4; // cubes/s
   var FLYING_SPEED = 10; // cubes/s
   var GRAVITY = 20; // cubes/s^2
-  var JUMP_SPEED = 10; // cubes/s
+  var JUMP_SPEED = 8; // cubes/s
   
+  var playerAABB = [
+    [-.35, .35], // x
+    [-1.75, .15], // y
+    [-.35, .35], // z
+  ];
+
   var PLACEHOLDER_ROTATIONS = [];
   for (var i = 0; i < applyCubeSymmetry.NO_REFLECT_COUNT; i++) {
     PLACEHOLDER_ROTATIONS.push(i);
@@ -73,6 +79,25 @@ var Player = (function () {
         gl.enable(gl.DEPTH_TEST);
       }
     });
+    
+    var aabbR = new RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
+      // TODO: Would be more efficient to use the modelview matrix than recomputing this?
+      if (!currentPlace) return;
+      [[0,1,2], [1,2,0], [2,0,1]].forEach(function (dims) {
+        for (var du = 0; du < 2; du++)
+        for (var dv = 0; dv < 2; dv++)
+        for (var dw = 0; dw < 2; dw++) {
+          var p = vec3.create(currentPlace.pos);
+          p[dims[0]] += playerAABB[dims[0]][du];
+          p[dims[1]] += playerAABB[dims[1]][dv];
+          p[dims[2]] += playerAABB[dims[2]][dw];
+          
+          vertices.push(p[0],p[1],p[2]);
+          normals.push(0,0,0);
+          colors.push(0,0,1,1);
+        }
+      });
+    });
   
     function aimChanged() {
       scheduleDraw(); // because this routine is also 'view direction changed'
@@ -107,29 +132,6 @@ var Player = (function () {
       }
     }
     
-    var playerAABB = [
-      [-.7, .7], // x
-      [-3.4, .45], // y
-      [-.7, .7], // z
-    ];
-
-    this.renderDebug = function (vertices, normals, colors) {
-      [[0,1,2], [1,2,0], [2,0,1]].forEach(function (dims) {
-        for (var du = 0; du < 2; du++)
-        for (var dv = 0; dv < 2; dv++)
-        for (var dw = 0; dw < 2; dw++) {
-          var p = vec3.create(currentPlace.pos);
-          p[dims[0]] += playerAABB[dims[0]][du];
-          p[dims[1]] += playerAABB[dims[1]][dv];
-          p[dims[2]] += playerAABB[dims[2]][dw];
-          
-          vertices.push(p[0],p[1],p[2]);
-          normals.push(0,0,0);
-          colors.push(0,0,1,1);
-        }
-      });
-    }
-
     var EPSILON = 1e-3;
     function stepPlayer() {
       var world = currentPlace.world;
@@ -162,11 +164,22 @@ var Player = (function () {
       vec3.add(nextPos, curPos);
       
       // collision
-      function sclamp(vec) {
-        var hit = [];
+      function sclamp(vec, ignore) {
         // TODO: Clean up and optimize this mess
-        function nd(dim2,dir2) {return playerAABB[dim2][dir2]; }
+        ignore = ignore || {};
+        var hit = {};
+        var str;
         var buf = vec3.create();
+
+        function nd(dim2,dir2) {
+          return playerAABB[dim2][dir2];
+        }
+        function doHitTest() {
+          if (world.solid(buf[0],buf[1],buf[2]) && !ignore[str = buf[0]+","+buf[1]+","+buf[2]]) {
+            hit[str] = [buf[0],buf[1],buf[2]];
+          }
+        }
+
         for (var fixed = 0; fixed < 3; fixed++) {
           for (var fdir = 0; fdir < 2; fdir++) {
             var fplane = vec[fixed] + nd(fixed, fdir);
@@ -177,17 +190,19 @@ var Player = (function () {
               for (var bi = vec[b]+nd(b,0); bi < vec[b]+nd(b,1); bi++) {
                 buf[a] = Math.floor(ai);
                 buf[b] = Math.floor(bi);
-                if (world.solid(buf[0],buf[1],buf[2])) hit.push([buf[0],buf[1],buf[2]]);
+                doHitTest();
               }
               buf[b] = Math.floor(vec[b]+nd(b,1));
-              if (world.solid(buf[0],buf[1],buf[2])) hit.push([buf[0],buf[1],buf[2]]);
+              doHitTest();
             }
             buf[a] = Math.floor(vec[a]+nd(a,1));
-            if (world.solid(buf[0],buf[1],buf[2])) hit.push([buf[0],buf[1],buf[2]]);
+            doHitTest();
           }
         }
-        return hit.length > 0 ? hit : null;
+        return Object.keys(hit).length > 0 ? hit : null; // TODO inefficient
       }
+      
+      var alreadyColliding = sclamp(curPos);
       
       // To resolve diagonal movement, we treat it as 3 orthogonal moves, updating nextPosIncr.
       var previousStandingOn = currentPlace.standingOn;
@@ -200,39 +215,46 @@ var Player = (function () {
         partial[dim] = nextPos[dim]; // TODO: Sample multiple times if velocity exceeds 1 block/step
         //console.log(dir, dim, playerAABB[dim][dir], front, partial);
         var hit;
-        if ((hit = sclamp(partial)) || (dim == 1 && front < 0)) {
+        if ((hit = sclamp(partial, alreadyColliding))) {
           //console.log("clamped", dim);
-          nextPosIncr[dim] = dir ? Math.ceil(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 - EPSILON : Math.floor(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 + EPSILON;
+          nextPosIncr[dim] = dir 
+            ? Math.ceil(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 - EPSILON
+            : Math.floor(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 + EPSILON;
           curVel[dim] = 0;
           if (dim == 1 && dir == 0) {
-            currentPlace.standingOn = hit || [];
+            currentPlace.standingOn = hit || {};
             currentPlace.flying = false;
           }
         } else {
-          nextPosIncr[dim] = nextPos[dim];
+          nextPosIncr[dim] = nextPos[dim];          
         }
-        if (sclamp(nextPosIncr)) {
-          // Player got stuck.
-          //debugger;
-        }
+      }
+      
+      if (nextPosIncr[1] < 0) {
+        // Prevent falling downward indefinitely, without preventing flying under the world (e.g. for editing the bottom of a block).
+        currentPlace.flying = true;
       }
       
       if (vec3.length(vec3.subtract(nextPosIncr, currentPlace.pos, vec3.create())) >= EPSILON) {
         vec3.set(nextPosIncr, currentPlace.pos);
         aimChanged();
       }
-      debugR.recompute();
+      aabbR.recompute();
       
       var seen = {};
-      (currentPlace.standingOn || []).forEach(function (cube) {
+      for (var k in currentPlace.standingOn || {}) {
+        if (!currentPlace.standingOn.hasOwnProperty(k)) continue;
+        var cube = currentPlace.standingOn[k];
         seen[cube] = true;
         world.setStandingOn(cube, true);
-      });
-      (previousStandingOn || []).forEach(function (cube) {
+      }
+      for (var k in previousStandingOn || {}) {
+        if (!previousStandingOn.hasOwnProperty(k)) continue;
+        var cube = previousStandingOn[k];
         if (!seen[cube]) {
           world.setStandingOn(cube, false);
         }
-      });
+      }
     };
     
     this.stepYourselfAndWorld = function () {
@@ -254,6 +276,11 @@ var Player = (function () {
         return vec3.create(currentPlace.pos);
       },
       selectionRender: selectionR,
+      characterRender: {
+        draw: function () {
+          if (config.debugPlayerCollision.get()) aabbR.draw();
+        }
+      },
       getWorldRenderer: function () {
         return currentPlace.wrend;
       }
@@ -277,21 +304,9 @@ var Player = (function () {
     
     // The facet for user input
     this.input = Object.freeze({
-      click: function (button) {
-        var changed = false;
-        if (button == 0) {
-          // delete block
-          // TODO: global variables
-          if (currentPlace.selection !== null) {
-            var cube = currentPlace.selection.cube;
-            var x = cube[0], y = cube[1], z = cube[2];
-            if (currentPlace.world.solid(x,y,z)) {
-              var value = currentPlace.world.g(x,y,z);
-              currentPlace.wrend.renderDestroyBlock(cube);
-              currentPlace.world.s(x, y, z, 0);
-              changed = true;
-            }
-          }
+      useTool: function () {
+        if (currentPlace.tool === BlockSet.ID_EMPTY) {
+          this.deleteBlock();
         } else {
           // create block
           if (currentPlace.selection !== null) {
@@ -300,16 +315,27 @@ var Player = (function () {
             var x = cube[0]+face[0], y = cube[1]+face[1], z = cube[2]+face[2];
             var type = currentPlace.world.blockSet.get(currentPlace.tool);
             if (!currentPlace.world.solid(x,y,z)) {
+              // TODO: rotation on create should be more programmable.
               var raypts = getAimRay();
               var symm = nearestCubeSymmetry(vec3.subtract(raypts[0], raypts[1]), [0,0,1], type.automaticRotations);
               currentPlace.world.s(x,y,z, currentPlace.tool, symm);
-              currentPlace.wrend.renderCreateBlock([x,y,z], value);
-              changed = true;
+              
+              currentPlace.wrend.renderCreateBlock([x,y,z]);
+              aimChanged();
             }
           }
         }
-        if (changed) {
-          aimChanged(); // block aimed at moved...
+      },
+      deleteBlock: function () {
+        if (currentPlace.selection !== null) {
+          var cube = currentPlace.selection.cube;
+          var x = cube[0], y = cube[1], z = cube[2];
+          if (currentPlace.world.solid(x,y,z)) {
+            var value = currentPlace.world.g(x,y,z);
+            currentPlace.wrend.renderDestroyBlock(cube);
+            currentPlace.world.s(x, y, z, 0);
+            aimChanged();
+          }
         }
       },
       get blockSet () { return currentPlace.world.blockSet; },
@@ -350,6 +376,9 @@ var Player = (function () {
             
             currentPlace = new Place(world);
             
+            // This is needed because the routine in aimChanged assumes currentPlace knows the old state of the selection. TODO: Kludgy.
+            selectionR.recompute();
+            
             // Initial adjustments:
             // Make new position same relative to cube
             vec3.subtract(oldPlace.pos, cube, currentPlace.pos);
@@ -378,14 +407,24 @@ var Player = (function () {
             aimChanged();
             break;
         }
+        aabbR.recompute();
       },
       jump: function () {
         if (currentPlace.standingOn) currentPlace.vel[1] = JUMP_SPEED;
       }
     });
     
+    config.debugPlayerCollision.listen({
+      changed: function (v) {
+        scheduleDraw();
+        return true;
+      }
+    });
+    
     this.setWorld(initialWorld);
   }
+  
+  Player.aabb = playerAABB;
   
   return Player;
 })();
