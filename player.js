@@ -239,7 +239,7 @@ var Player = (function () {
         vec3.set(nextPosIncr, currentPlace.pos);
         CubesAudio.setListener(
           currentPlace.pos,
-          [Math.cos(currentPlace.yaw), 0, Math.sin(currentPlace.yaw)],
+          [-Math.sin(currentPlace.yaw), 0, -Math.cos(currentPlace.yaw)],
           currentPlace.vel);
         aimChanged();
       }

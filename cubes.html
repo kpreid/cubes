@@ -725,6 +725,12 @@
     setInterval(function () {
       fpsDesc = stepCount + " steps/s, " + renderCount + " frames/s, " + chunkRenders + " chunk rebuilds";
       stepCount = renderCount = chunkRenders = 0;
+      
+      // audio spatial test
+      //var world = player.getWorld();
+      //var b = [world.wx/2, world.wy/2+10, world.wz/2];
+      //CubesAudio.play(b, world.blockSet.get(2));
+      //player.render.getWorldRenderer().renderCreateBlock(b);
     }, 1000);
     
     // for making our loading more async
