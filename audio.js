@@ -30,7 +30,7 @@ var CubesAudio = (function () {
     synthBlock: !audioSupported ? function () {} : function (blockWorld) {
       console.log("synthBlock");
       // Find spans of material in the block
-      var spans = [];
+      var spans = {};
       for (var dim = 0; dim < 3; dim++) {
         var ud = mod(dim+1,3);
         var vd = mod(dim+2,3);
@@ -45,10 +45,16 @@ var CubesAudio = (function () {
 
             if (cur !== value) {
               if (count > 0) {
-                var span = [count];
-                blockWorld.blockSet.get(value).writeColor(1, span, 1);
-                // span is now [count, r, g, b, a]
-                spans.push(span);
+                var color = [];
+                blockWorld.blockSet.get(value).writeColor(1, color, 0);
+                var luminance = Math.floor((0.2126*color[0]+0.7152*color[1]+0.0722*color[2])*16);
+                var key = [count,luminance];
+                
+                if (color[3] > 0) {
+                  if (!spans[key])
+                    spans[key] = [0,key];
+                  spans[key][0]++;
+                }
               }
               
               count = 0;
@@ -63,22 +69,28 @@ var CubesAudio = (function () {
       var b = context.createBuffer(1, bsSamples, 44100);
       var a = b.getChannelData(0);
       
-      var basePitch = 80;
+      var basePitch = 10;
         
-      var compAmp = 3 / spans.length;
-      for (var p = 0; p < spans.length; p++) {
-        var span = spans[p];
-        var length = span[0];
-        var luminance = (0.2126*span[1]+0.7152*span[2]+0.0722*span[3]);
-        var pitch = basePitch / (length/16) * luminance * (1+Math.random()*0.1);
+      var spanskeys = Object.keys(spans);
+      var totalAmp = 0;
+      spanskeys.forEach(function (k) {
+        var record = spans[k];
+        var repetitions = record[0];
+        var length = record[1][0];
+        var lumval = record[1][1];
+        
+        var pitch = basePitch / (length/16) * lumval * (1+Math.random()*0.1);
         var pitchInSampleUnits = pitch / bsSampleRate;
+
         for (var i = 0; i < bsSamples; i++) {
-          a[i] += compAmp*square(i * pitchInSampleUnits);
+          a[i] += repetitions*square(i * pitchInSampleUnits);
         }
-      }
+        totalAmp += repetitions;
+      });
+      var normalize = totalAmp > 0 ? 1/totalAmp : 0;
       var decay = -5/bsSamples;
       for (var i = 0; i < bsSamples; i++) {
-        a[i] *= Math.exp(i*decay);
+        a[i] *= normalize * Math.exp(i*decay);
       }
       
       if (!isFinite(a[0])) {

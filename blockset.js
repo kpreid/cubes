@@ -109,6 +109,8 @@ var BlockType = (function () {
       }
     }
     this.opaque = opaque;
+    
+    this.sound = CubesAudio.synthBlock(this.world);
   }
   
   BlockType.World.prototype.serialize = function (serialize) {
