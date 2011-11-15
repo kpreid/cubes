@@ -326,7 +326,7 @@ var Player = (function () {
               
               currentPlace.wrend.renderCreateBlock([x,y,z]);
               aimChanged();
-              CubesAudio.play(vec3.add([0.5,0.5,0.5], cube), type);
+              CubesAudio.play(vec3.add([0.5,0.5,0.5], cube), type, "create");
             }
           }
         }
@@ -340,7 +340,7 @@ var Player = (function () {
             currentPlace.wrend.renderDestroyBlock(cube);
             currentPlace.world.s(x, y, z, 0);
             aimChanged();
-            CubesAudio.play(vec3.add([0.5,0.5,0.5], cube), currentPlace.world.blockSet.get(value));
+            CubesAudio.play(vec3.add([0.5,0.5,0.5], cube), currentPlace.world.blockSet.get(value), "destroy");
           }
         }
       },
