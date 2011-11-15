@@ -16,6 +16,8 @@ var BlockType = (function () {
     this._notify = n.notify; // should be private
     this.listen = n.listen;
     
+    this.sound = null; // computed, TODO should be readonly
+    
     // TODO: This property is to be replaced by circuits.
     this.automaticRotations = [0];
     
@@ -86,6 +88,11 @@ var BlockType = (function () {
     target[offset+3] = scale;
   };
   
+  BlockType.World.prototype.getSound = function () {
+    // TODO kludge
+    return this.sound || (this.sound = CubesAudio.synthBlock(this.world));
+  };
+  
   function _recomputeOpacity() {
     var TILE_SIZE = this.world.wx; // assumed cubical
     var TILE_LASTINDEX = TILE_SIZE - 1;
@@ -149,6 +156,11 @@ var BlockType = (function () {
     var json = BlockType.prototype.serialize.call(this);
     json.color = this.color;
     return json;
+  };
+  
+  BlockType.Color.prototype.getSound = function () {
+    // TODO should calc something simple
+    return null;
   };
   
   BlockType.air = new BlockType.Color([0,0,0,0]);
