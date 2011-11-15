@@ -4,6 +4,23 @@
 var BlockType = (function () {
   "use strict";
   
+  // TODO KLUDGE: This calls for something other than or beyond a DirtyQueue.
+  var soundRenderQueue = new DirtyQueue();
+  function renderSomeSound() {
+    setTimeout(function () {
+      //console.log("renderSomeSound");
+      var f = soundRenderQueue.dequeue();
+      if (f) {
+        //console.log("renderSomeSound loop");
+        f();
+        renderSomeSound();
+      } else {
+        console.info("Audio rendering queue empty.");
+      }
+    }, 100);
+  }
+  var nextSRK = 0;
+  
   function BlockType() {
     throw new Error("abstract");
   }
@@ -16,7 +33,8 @@ var BlockType = (function () {
     this._notify = n.notify; // should be private
     this.listen = n.listen;
     
-    this.sound = null; // computed, TODO should be readonly
+    this._srk = nextSRK++;
+    this.sound = {}; // computed, TODO should be readonly
     
     // TODO: This property is to be replaced by circuits.
     this.automaticRotations = [0];
@@ -88,11 +106,6 @@ var BlockType = (function () {
     target[offset+3] = scale;
   };
   
-  BlockType.World.prototype.getSound = function () {
-    // TODO kludge
-    return this.sound || (this.sound = CubesAudio.synthBlock(this.world));
-  };
-  
   function _recomputeOpacity() {
     var TILE_SIZE = this.world.wx; // assumed cubical
     var TILE_LASTINDEX = TILE_SIZE - 1;
@@ -110,7 +123,14 @@ var BlockType = (function () {
     }
     this.opaque = opaque;
     
-    this.sound = CubesAudio.synthBlock(this.world);
+    // audio recalc is done async to reduce initial load delay
+    var self = this;
+    function f() {
+      self.sound = CubesAudio.synthBlock(self.world);
+    }
+    f.toString = function () { return ""+self._srk; }; // TODO KLUDGE we should use something other than DirtyQueue, or extend it.
+    soundRenderQueue.enqueue(f);
+    if (soundRenderQueue.size() === 1) renderSomeSound();
   }
   
   BlockType.World.prototype.serialize = function (serialize) {
@@ -158,11 +178,6 @@ var BlockType = (function () {
     var json = BlockType.prototype.serialize.call(this);
     json.color = this.color;
     return json;
-  };
-  
-  BlockType.Color.prototype.getSound = function () {
-    // TODO should calc something simple
-    return null;
   };
   
   BlockType.air = new BlockType.Color([0,0,0,0]);

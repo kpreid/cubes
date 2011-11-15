@@ -26,7 +26,7 @@ var CubesAudio = (function () {
     },
     
     synthBlock: !audioSupported ? function () {} : function (blockWorld) {
-      console.log("synthBlock");
+      //console.log("synthBlock");
       // Find spans of material in the block
       var spans = {};
       for (var dim = 0; dim < 3; dim++) {
@@ -110,7 +110,7 @@ var CubesAudio = (function () {
     },
     
     play: !audioSupported ? function () {} : function (pos, blockType, kind) {
-      var buffer = blockType.getSound()[kind];
+      var buffer = blockType.sound[kind];
       
       if (!buffer) return;
       
