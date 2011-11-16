@@ -8,6 +8,7 @@ function Input(eventReceiver, playerInput, menuElement) {
 
   var keymap = {};
   var mousePos = [0,0];
+  var mouselookMode = false;
 
   // --- Utilities ---
 
@@ -63,6 +64,7 @@ function Input(eventReceiver, playerInput, menuElement) {
       case "8": playerInput.tool = 8; updateMenu(); return false;
       case "9": playerInput.tool = 9; updateMenu(); return false;
       case "0": playerInput.tool = 10;updateMenu(); return false;
+      case "Q": mouselookMode = !mouselookMode; mousePos = [event.clientX, event.clientY]; menuElement.style.visibility = mouselookMode ? 'hidden' : 'visible'; return false;
       case "R": playerInput.changeWorld(1);  updateMenu(); return false;
       case "\x1B"/*Esc*/:
       case "F": playerInput.changeWorld(-1); updateMenu(); return false;
@@ -98,6 +100,7 @@ function Input(eventReceiver, playerInput, menuElement) {
   
   eventReceiver.addEventListener("mousemove", function (event) {
     mousePos = [event.clientX, event.clientY];
+    playerInput.aimChanged(); // TODO kludge due to globals
 
     var cs = window.getComputedStyle(eventReceiver, null);
     var w = parseInt(cs.width);
@@ -106,11 +109,17 @@ function Input(eventReceiver, playerInput, menuElement) {
     var swingY = event.clientY / (h*0.5) - 1;
     var swingX = event.clientX / (w*0.5) - 1;
     
-    // x effect
-    var direct = 0;
-    playerInput.yaw += (direct - prevx);
-    prevx = direct;
-    dx = -15.0 * deadzone(swingX, 0.4);
+    var directY = -Math.PI/2 * swingY;
+    var directX = -Math.PI/2 * swingX;
+
+    if (mouselookMode) {
+      playerInput.pitch = directY;
+      playerInput.yaw += (directX - prevx);
+      dx = -15.0 * deadzone(swingX, 0.1);
+    } else {
+      dx = 0;
+    }
+    prevx = directX;
   }, false);
   eventReceiver.addEventListener("mouseout", function (event) {
     mousePos = [event.clientX, event.clientY];

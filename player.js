@@ -409,6 +409,7 @@ var Player = (function () {
         }
         aabbR.recompute();
       },
+      aimChanged: aimChanged, // TODO kludge due to globals
       jump: function () {
         if (currentPlace.standingOn) currentPlace.vel[1] = JUMP_SPEED;
       }
