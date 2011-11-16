@@ -1,0 +1,79 @@
+<!--
+<script type="text/javascript" src="glMatrix.js"></script>
+<script type="text/javascript" src="util.js"></script>
+<script type="text/javascript" src="blockset.js"></script>
+<script type="text/javascript" src="world.js"></script>
+<script type="text/javascript" src="world-gen.js"></script>
+<script type="text/javascript" src="circuit.js"></script>
+<script type="text/javascript" src="world-render.js"></script>
+<script type="text/javascript" src="block-render.js"></script>
+<script type="text/javascript" src="player.js"></script>
+<script type="text/javascript" src="input.js"></script>
+<script type="text/javascript" src="audio.js"></script>
+-->
+
+<script>
+
+var context;
+window.addEventListener('load', init, false);
+function init() {
+    context = new webkitAudioContext(); /* feature test point */
+    
+    var sampleRate = 22050;
+    var time = 0.25;
+    var samples = Math.round(sampleRate * time);
+    
+    var b, a;
+    function newBuffer() {
+      b = context.createBuffer(1, samples, sampleRate);
+      a = b.getChannelData(0);
+    }
+    
+    // argument is time in wavelengths
+    function square(t) {
+      return Math.floor(t % 1 * 2);
+    }
+    
+    function synth() {
+      var basePitch = 100;
+      var bits = [16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
+      var bits = [16, 16, 16, 16, 4, 4, 4, 4, 2, 2, 2, 2, 1, 1, 1, 1];
+      //var bits = [16];
+        
+      var compAmp = 1/bits.length;
+      for (var p = 0; p < bits.length; p++) {
+        var pitch = basePitch / (bits[p]/16) * (1+Math.random()*0.1);
+        for (var i = 0; i < samples; i++) {
+          var t = i / sampleRate;
+          var ang = t * 2*Math.PI;
+          //a[i] += 0.2*Math.sin(ang * pitch);
+          a[i] += compAmp*square(t * pitch);
+        }
+      }
+      for (var i = 0; i < samples; i++) {
+        a[i] *= Math.exp(i/samples * -5);
+      }
+    }
+    
+    
+     //source.noteOn(0);                          // play the source now
+     
+  play = function () {
+    newBuffer();
+    synth();
+    
+    var source = context.createBufferSource();
+     source.buffer = b;
+     //source.playbackRate.value = 0.9 + Math.random() * 0.2;
+     //var panner = context.createPanner();
+     //panner.connect(context.destination);
+     //panner.setPosition(Math.random()*2.0-1.0, 0, 0);
+     //source.connect(panner);
+     source.connect(context.destination);
+    source.noteOn(0);
+  }
+}
+
+</script>
+
+<button onmousedown="play(); return true;">Play</button>
