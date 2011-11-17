@@ -50,7 +50,7 @@ var Player = (function () {
     var currentPlace;
 
     // kludge: Since UI sets pitch absolutely, it's not a place variable
-    var pitch = -0.3;
+    var pitch = 0;
   
     var selectionR = new RenderBundle(gl.LINE_LOOP, null, function (vertices, normals, colors) {
       var sel = currentPlace ? currentPlace.selection : null;
