@@ -15,6 +15,10 @@ var Renderer = (function () {
     var viewPosition = vec3.create();
     var viewFrustum = {}; // computed
 
+    // prepareProgram fills in these with the locations of the shader program variables
+    var attribs = {};
+    var uniforms = {};
+    
     // --- Internals ---
     
     function getContext() {
@@ -88,12 +92,12 @@ var Renderer = (function () {
     }
     
     function updateViewport() {
-      var pagePixelWidth = parseInt(window.getComputedStyle(theCanvas,null).width);
-      var pagePixelHeight = parseInt(window.getComputedStyle(theCanvas,null).height);
+      var pagePixelWidth = parseInt(window.getComputedStyle(canvas,null).width);
+      var pagePixelHeight = parseInt(window.getComputedStyle(canvas,null).height);
       
       // Specify canvas resolution
-      theCanvas.width = pagePixelWidth;
-      theCanvas.height = pagePixelHeight;
+      canvas.width = pagePixelWidth;
+      canvas.height = pagePixelHeight;
       
       // WebGL is not guaranteed to give us that resolution; instead, what it
       // can supply is returned in .drawingBuffer{Width,Height}. However, those
@@ -219,6 +223,11 @@ var Renderer = (function () {
       }
     }
     this.saveView = saveView;
+    
+    function setStipple(val) {
+      gl.uniform1i(uniforms.uStipple, val ? 1 : 0);
+    }
+    this.setStipple = setStipple;
     
     function BufferAndArray(numComponents) {
       this.numComponents = numComponents;
@@ -387,7 +396,7 @@ var Renderer = (function () {
     // Returns a pair of points along the line of aim of the screen cursor.
     function getAimRay() {
       var pos = input.getMousePos();
-      var glxy = [pos[0] / theCanvas.width * 2 - 1, -(pos[1] / theCanvas.height * 2 - 1)];
+      var glxy = [pos[0] / canvas.width * 2 - 1, -(pos[1] / canvas.height * 2 - 1)];
       
       var unproject = mat4.identity(mat4.create());
       player.render.applyViewRot(unproject);

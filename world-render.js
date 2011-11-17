@@ -345,12 +345,13 @@ var WorldRenderer = (function () {
       }
       
       // Draw circuits.
-      gl.uniform1i(uniforms.uStipple, 1);
+      renderer.setStipple(true);
       for (var index in circuitRenderers) {
         if (!circuitRenderers.hasOwnProperty(index)) continue;
         circuitRenderers[index].draw();
       }
-      gl.uniform1i(uniforms.uStipple, 0);
+      renderer.setStipple(false);
+      
       
       // Draw particles.
       for (var i = 0; i < particles.length; i++) {

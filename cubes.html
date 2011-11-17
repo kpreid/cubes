@@ -243,10 +243,6 @@
     
     var readyToDraw = false;
     
-    // prepareProgram fills in these with the locations of the shader program variables
-    var attribs = {};
-    var uniforms = {};
-    
     function raycastFromScreen(radius, callback) {
       var pts = renderer.getAimRay();
       return player.getWorld().raycast(pts[0], pts[1], radius, callback);
