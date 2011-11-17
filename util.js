@@ -346,7 +346,7 @@ function Notifier(label) {
         }
       }
       if (res !== true) {
-        if (res !== true && typeof console !== "undefined") {
+        if (res !== false && typeof console !== "undefined") {
           console.warn("Listener", listener, " did not return boolean.");
         }
         if (i < listeners.length - 1) {
