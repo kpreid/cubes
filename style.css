@@ -50,8 +50,17 @@ html {
   display: table;
   text-align: center;
 }
-#menu canvas {
+.menu-item {
+  display: inline-block;
+  position: relative;
   margin: 1px 1px;
+}
+.menu-shortcut-key {
+  position: absolute;
+  bottom: -1px;
+  left: 1px;
+  color: white;
+  background: none;
 }
 #menu .selectedTool {
   border-radius: 5px;

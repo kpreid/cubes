@@ -164,7 +164,7 @@ function Input(eventReceiver, playerInput, menuElement) {
   
   // --- Block menu ---
   
-  var menuCanvases = [];
+  var menuItems = [];
   var blockSetInMenu;
   
   function updateMenuBlocks() {
@@ -177,20 +177,34 @@ function Input(eventReceiver, playerInput, menuElement) {
     var size = Math.min(64, 300 / sidecount);
   
     for (var i = 1; i < blockSetInMenu.length; i++) {
-      var canvas = document.createElement('canvas');
+      // element structure and style
+      var item = menuItems[i] = document.createElement("span");
+      item.className = "menu-item";
+      var canvas = document.createElement("canvas");
       canvas.width = canvas.height = 64; // TODO magic number
       canvas.style.width = canvas.style.height = size + "px";
-      menuCanvases[i] = canvas;
-      menuElement.appendChild(canvas);
+      if (i <= 10) {
+        // keyboard shortcut hint
+        var number = document.createElement("kbd");
+        number.appendChild(document.createTextNode((i % 10).toString()));
+        number.className = "menu-shortcut-key";
+        item.appendChild(number);
+      }
+      item.appendChild(canvas);
+      menuElement.appendChild(item);
+      
+      // render block
       var cctx = canvas.getContext('2d');
       cctx.putImageData(blockRenderer.blockToImageData(i, cctx), 0, 0);
-      (function (canvas,i) {
+
+      // event handlers
+      (function (item,canvas,i) {
         canvas.onclick = function () {
           playerInput.tool = i;
           return false;
         };
         canvas.onmousedown = canvas.onselectstart = function () {
-          canvas.className = "selectedTool";
+          item.className = "menu-item selectedTool";
           return false; // inhibit selection
         };
         canvas.oncontextmenu = function () {
@@ -198,10 +212,10 @@ function Input(eventReceiver, playerInput, menuElement) {
           return false;
         };
         canvas.onmouseout = function () {
-          canvas.className = i == playerInput.tool ? "selectedTool" : "";
+          item.className = "menu-item " + (i == playerInput.tool ? " selectedTool" : "");
           return true;
         };
-      })(canvas,i);
+      })(item,canvas,i);
     }
     
     blockRenderer.deleteResources();
@@ -210,7 +224,7 @@ function Input(eventReceiver, playerInput, menuElement) {
   function updateMenuSelection() {
     var tool = playerInput.tool;
     for (var i = 1; i < blockSetInMenu.length; i++) {
-      menuCanvases[i].className = i == tool ? "selectedTool" : "";
+      menuItems[i].className = i == tool ? "menu-item selectedTool" : "menu-item";
     }
   }
   
