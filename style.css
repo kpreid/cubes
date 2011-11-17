@@ -58,6 +58,7 @@ html {
   margin: -1px -1px; /* outlines don't have radius */
   border: 2px solid white;
   background: gray;
+  visibility: visible; /* show current tool even when menu is hidden */
 }
 
 #error-notices {
