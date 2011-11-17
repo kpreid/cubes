@@ -123,7 +123,7 @@ function Input(eventReceiver, playerInput, menuElement) {
     if (mouselookMode) {
       playerInput.pitch = directY;
       playerInput.yaw += (directX - prevx);
-      dx = -15.0 * deadzone(swingX, 0.1);
+      dx = -10.0 * deadzone(swingX, 0.1);
     } else {
       dx = 0;
     }
