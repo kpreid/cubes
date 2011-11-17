@@ -7,6 +7,7 @@ var Renderer = (function () {
   function Renderer(canvas) {
     //canvas = WebGLDebugUtils.makeLostContextSimulatingCanvas(canvas);
     //canvas.loseContextInNCalls(5000);
+    //canvas.setRestoreTimeout(2000);
     
     // --- State ---
     
@@ -22,22 +23,14 @@ var Renderer = (function () {
     var attribs = {};
     var uniforms = {};
     
+    var contextLost = false;
     // Incremented every time we lose context
     var contextSerial = 0;
     
     // --- Internals ---
     
-    function getContext() {
+    function initContext() {
       contextSerial++;
-      
-      gl = canvas.getContext("experimental-webgl", {
-        antialias: false // MORE FILLRATE!!!
-      });
-      if (DEBUG) { // TODO global variable
-        gl = WebGLDebugUtils.makeDebugContext(gl);
-      } else {
-        WebGLDebugUtils.init(gl);
-      }
       
       var decls = {
         TILE_SIZE: World.TILE_SIZE
@@ -153,18 +146,21 @@ var Renderer = (function () {
     }
 
     function handleContextLost(event) {
+      contextLost = true;
       event.preventDefault();
     }
     
     function handleContextRestored() {
-      getContext();
+      contextLost = false;
+      initContext();
+      scheduleDraw();
     }
 
     // --- Public components ---
     
-    Object.defineProperty(this, "context", {
+    Object.defineProperty(this, "contextLost", {
       enumerable: true,
-      get: function () { return gl; }
+      get: function () { return contextLost; }
     });
 
     // Return a function which returns true when the context currently in effect has been lost.
@@ -503,10 +499,20 @@ var Renderer = (function () {
 
     // --- Initialization ---
     
+    gl = canvas.getContext("experimental-webgl", {
+      antialias: false // MORE FILLRATE!!!
+    });
+    if (DEBUG) { // TODO global variable
+      gl = WebGLDebugUtils.makeDebugContext(gl);
+    } else {
+      WebGLDebugUtils.init(gl);
+    }
+    this.context = gl;
+    
     canvas.addEventListener("webglcontextlost", handleContextLost, false);
     canvas.addEventListener("webglcontextrestored", handleContextRestored, false);
     
-    getContext();
+    initContext();
     updateViewport();
     
     window.addEventListener("resize", function () { // TODO shouldn't be global

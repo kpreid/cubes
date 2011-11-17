@@ -297,9 +297,10 @@
         player.render.selectionRender.draw();
         
         var e, errs = [];
-        while (e = gl.getError()) {
+        while ((e = gl.getError()) && e != gl.CONTEXT_LOST_WEBGL) {
           errs.push(e);
         }
+        // Note: The above comparison is an != rather than !== because webgl-debug.js's wrapped context returns numeric strings (!) instead of numbers for error enums. TODO: File bug.
         
         // Selection info
         cursorInfo.data = "";
@@ -391,7 +392,7 @@
     
     var animFrameWasRequested = false;
     function scheduleDraw() {
-      if (!animFrameWasRequested && readyToDraw) {
+      if (!animFrameWasRequested && readyToDraw && !renderer.contextLost) {
         window.requestAnimFrame(function () {
           animFrameWasRequested = false;
 
