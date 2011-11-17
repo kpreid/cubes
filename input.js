@@ -54,20 +54,24 @@ function Input(eventReceiver, playerInput, menuElement) {
 
     // handlers for 'action' keys (immediate effects)
     switch (String.fromCharCode(code)) {
-      case "1": playerInput.tool = 1; updateMenu(); return false;
-      case "2": playerInput.tool = 2; updateMenu(); return false;
-      case "3": playerInput.tool = 3; updateMenu(); return false;
-      case "4": playerInput.tool = 4; updateMenu(); return false;
-      case "5": playerInput.tool = 5; updateMenu(); return false;
-      case "6": playerInput.tool = 6; updateMenu(); return false;
-      case "7": playerInput.tool = 7; updateMenu(); return false;
-      case "8": playerInput.tool = 8; updateMenu(); return false;
-      case "9": playerInput.tool = 9; updateMenu(); return false;
-      case "0": playerInput.tool = 10;updateMenu(); return false;
-      case "Q": mouselookMode = !mouselookMode; mousePos = [event.clientX, event.clientY]; menuElement.style.visibility = mouselookMode ? 'hidden' : 'visible'; return false;
-      case "R": playerInput.changeWorld(1);  updateMenu(); return false;
+      case "1": playerInput.tool = 1; return false;
+      case "2": playerInput.tool = 2; return false;
+      case "3": playerInput.tool = 3; return false;
+      case "4": playerInput.tool = 4; return false;
+      case "5": playerInput.tool = 5; return false;
+      case "6": playerInput.tool = 6; return false;
+      case "7": playerInput.tool = 7; return false;
+      case "8": playerInput.tool = 8; return false;
+      case "9": playerInput.tool = 9; return false;
+      case "0": playerInput.tool = 10; return false;
+      case "Q": 
+        mouselookMode = !mouselookMode;
+        mousePos = [event.clientX, event.clientY];
+        menuElement.style.visibility = mouselookMode ? 'hidden' : 'visible';
+        return false;
+      case "R": playerInput.changeWorld(1);  return false;
       case "\x1B"/*Esc*/:
-      case "F": playerInput.changeWorld(-1); updateMenu(); return false;
+      case "F": playerInput.changeWorld(-1); return false;
       case " ": playerInput.jump(); return false;
     }
 
@@ -156,68 +160,72 @@ function Input(eventReceiver, playerInput, menuElement) {
   
   // --- Block menu ---
   
-  var blockSetInMenu = null;
   var menuCanvases = [];
-  function updateMenu() {
-    // TODO: Need to rebuild menu if blocks in the set have changed appearance
-    if (playerInput.blockSet !== blockSetInMenu) {
-      while (menuElement.firstChild) menuElement.removeChild(menuElement.firstChild);
+  var blockSetInMenu;
+  
+  function updateMenuBlocks() {
+    while (menuElement.firstChild) menuElement.removeChild(menuElement.firstChild);
 
-      blockSetInMenu = playerInput.blockSet;
-      var blockRenderer = new BlockRenderer(blockSetInMenu);
-    
-      var sidecount = Math.ceil(Math.sqrt(blockSetInMenu.length));
-      var size = Math.min(64, 300 / sidecount);
-    
-      for (var i = 1; i < blockSetInMenu.length; i++) {
-        var canvas = document.createElement('canvas');
-        canvas.width = canvas.height = 64; // TODO magic number
-        canvas.style.width = canvas.style.height = size + "px";
-        menuCanvases[i] = canvas;
-        menuElement.appendChild(canvas);
-        var cctx = canvas.getContext('2d');
-        cctx.putImageData(blockRenderer.blockToImageData(i, cctx), 0, 0);
-        (function (canvas,i) {
-          canvas.onclick = function () {
-            playerInput.tool = i;
-            updateMenu();
-            return false;
-          };
-          canvas.onmousedown = canvas.onselectstart = function () {
-            canvas.className = "selectedTool";
-            return false; // inhibit selection
-          };
-          canvas.oncontextmenu = function () {
-            playerInput.enterWorld(i);
-            updateMenu();
-            return false;
-          };
-          canvas.onmouseout = function () {
-            canvas.className = i == playerInput.tool ? "selectedTool" : "";
-            return true;
-          };
-        })(canvas,i);
-      }
-      
-      blockRenderer.deleteResources();
-    }
-
+    blockSetInMenu = playerInput.blockSet;
+    var blockRenderer = new BlockRenderer(blockSetInMenu);
+  
+    var sidecount = Math.ceil(Math.sqrt(blockSetInMenu.length));
+    var size = Math.min(64, 300 / sidecount);
+  
     for (var i = 1; i < blockSetInMenu.length; i++) {
-      menuCanvases[i].className = i == playerInput.tool ? "selectedTool" : "";
+      var canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 64; // TODO magic number
+      canvas.style.width = canvas.style.height = size + "px";
+      menuCanvases[i] = canvas;
+      menuElement.appendChild(canvas);
+      var cctx = canvas.getContext('2d');
+      cctx.putImageData(blockRenderer.blockToImageData(i, cctx), 0, 0);
+      (function (canvas,i) {
+        canvas.onclick = function () {
+          playerInput.tool = i;
+          return false;
+        };
+        canvas.onmousedown = canvas.onselectstart = function () {
+          canvas.className = "selectedTool";
+          return false; // inhibit selection
+        };
+        canvas.oncontextmenu = function () {
+          playerInput.enterWorld(i);
+          return false;
+        };
+        canvas.onmouseout = function () {
+          canvas.className = i == playerInput.tool ? "selectedTool" : "";
+          return true;
+        };
+      })(canvas,i);
     }
     
-    menuElement.style.left = "0px";
-    var cs = window.getComputedStyle(menuElement, null);
-    var menuW = parseInt(cs.width);
-    menuElement.style.left = (theCanvas.width - menuW)/2 + "px";
+    blockRenderer.deleteResources();
   }
   
-  updateMenu();
-  // TODO: calling updateMenu everywhere is a kludge
+  function updateMenuSelection() {
+    var tool = playerInput.tool;
+    for (var i = 1; i < blockSetInMenu.length; i++) {
+      menuCanvases[i].className = i == tool ? "selectedTool" : "";
+    }
+  }
   
+  playerInput.listen({
+    changedWorld: function (v) {
+      updateMenuBlocks();
+      return true;
+    },
+    changedTool: function (v) {
+      updateMenuSelection();
+      return true;
+    }
+  });
+
+  updateMenuBlocks();
+  updateMenuSelection();
+    
   // --- Methods ---
   
   this.step = step;
   this.getMousePos = function () { return mousePos; };
-  this.updateMenu = updateMenu;
 }
