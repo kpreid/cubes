@@ -78,11 +78,12 @@ var WorldRenderer = (function () {
     var circuitRenderers = {};
 
     var blockSet = world.blockSet;
-    var blockTexture = blockSet.texture;
     
     var particles = [];
 
-    var textureDebugR = new renderer.RenderBundle(gl.TRIANGLE_STRIP, blockTexture, function (vertices, normals, texcoords) {
+    var textureDebugR = new renderer.RenderBundle(gl.TRIANGLE_STRIP,
+                                                  function () { return blockSet.texture; },
+                                                  function (vertices, normals, texcoords) {
       var x = 1;
       var y = 1;
       var z = 0;
@@ -406,7 +407,7 @@ var WorldRenderer = (function () {
         var PIXEL_SIZE = 1/TILE_SIZE;
         var ID_EMPTY = BlockSet.ID_EMPTY;
         chunks[xzkey] = new renderer.RenderBundle(gl.TRIANGLES,
-                                         blockTexture,
+                                         function () { return blockSet.texture; },
                                          function (vertices, normals, texcoords) {
           // These statements are inside the function because they need to
           // retrieve the most up-to-date values.

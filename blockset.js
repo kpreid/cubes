@@ -216,7 +216,9 @@ var BlockSet = (function () {
     
     // Texture holding tiles
     // TODO: Confirm that WebGL garbage collects these, or add a delete method to BlockSet for use as needed
+    // TODO: Arrange so that if mustRebuild, we only recreate the GL texture rather than repainting
     this.texture = gl.createTexture();
+    this.mustRebuild = renderer.currentContextTicket();
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -441,7 +443,7 @@ var BlockSet = (function () {
     
     function freshenTexture() {
       var upload = false;
-      if (!texgen) {
+      if (!texgen || texgen.mustRebuild()) {
         texgen = new Texgen();
       }
       while (texgen.textureLost) {

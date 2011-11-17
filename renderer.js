@@ -5,6 +5,9 @@ var Renderer = (function () {
   "use strict";
   
   function Renderer(canvas) {
+    //canvas = WebGLDebugUtils.makeLostContextSimulatingCanvas(canvas);
+    //canvas.loseContextInNCalls(5000);
+    
     // --- State ---
     
     var gl = null;
@@ -19,9 +22,14 @@ var Renderer = (function () {
     var attribs = {};
     var uniforms = {};
     
+    // Incremented every time we lose context
+    var contextSerial = 0;
+    
     // --- Internals ---
     
     function getContext() {
+      contextSerial++;
+      
       gl = canvas.getContext("experimental-webgl", {
         antialias: false // MORE FILLRATE!!!
       });
@@ -144,12 +152,27 @@ var Renderer = (function () {
       calculateFrustum();
     }
 
+    function handleContextLost(event) {
+      event.preventDefault();
+    }
+    
+    function handleContextRestored() {
+      getContext();
+    }
+
     // --- Public components ---
     
     Object.defineProperty(this, "context", {
       enumerable: true,
       get: function () { return gl; }
     });
+
+    // Return a function which returns true when the context currently in effect has been lost.
+    function currentContextTicket() {
+      var s = contextSerial;
+      return function () { return contextSerial !== s; };
+    }
+    this.currentContextTicket = currentContextTicket;
     
     // View-switching: Each of these produces a self-consistent state of variables and uniforms.
     // The state managed by these view routines is:
@@ -247,6 +270,9 @@ var Renderer = (function () {
       gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
       gl.bufferData(gl.ARRAY_BUFFER, this.array, mode);
     };
+    BufferAndArray.prototype.renew = function (mode) {
+      this.buffer = gl.createBuffer();
+    };
     BufferAndArray.prototype.attrib = function (attrib) {
       gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
       gl.vertexAttribPointer(attrib, this.numComponents, gl.FLOAT, false, 0, 0);
@@ -260,28 +286,37 @@ var Renderer = (function () {
     // Manages a set of attribute arrays for some geometry to render.
     // The calcFunc is called and given a set of JS arrays to fill, immediately as well as whenever this.recompute() is called.
     // If calcFunc is null, then the client is expected to fill the arrays manually.
-    function RenderBundle(primitive, optTexture, calcFunc, options) {
+    function RenderBundle(primitive, optGetTexture, calcFunc, options) {
       options = options || {};
       
       var v = new BufferAndArray(3);
       var n = new BufferAndArray(3);
-      if (!optTexture) var c = new BufferAndArray(4);
-      if (optTexture) var t = new BufferAndArray(2);
+      if (!optGetTexture) var c = new BufferAndArray(4);
+      if (optGetTexture) var t = new BufferAndArray(2);
+      var mustRebuild = currentContextTicket();
       
       if (calcFunc != null) {
         this.recompute = function () {
           var vertices = [];
           var normals = [];
-          var colors = optTexture ? null : [];
-          var texcoords = optTexture ? [] : null;
-          calcFunc(vertices, normals, optTexture ? texcoords : colors);
+          var colors = optGetTexture ? null : [];
+          var texcoords = optGetTexture ? [] : null;
+          calcFunc(vertices, normals, optGetTexture ? texcoords : colors);
+
+          if (mustRebuild()) {
+            v.renew();
+            n.renew();
+            if (t) t.renew();
+            if (c) c.renew();
+            mustRebuild = currentContextTicket();
+          }
 
           v.load(vertices);
           v.send(gl.STATIC_DRAW);
           n.load(normals, v);
           n.send(gl.STATIC_DRAW);
 
-          if (optTexture) {
+          if (optGetTexture) {
             t.load(texcoords, v);
             t.send(gl.STATIC_DRAW);
           } else {
@@ -300,19 +335,31 @@ var Renderer = (function () {
       this.texcoords = t;
       
       function draw() {
+        if (mustRebuild()) {
+          v.renew();
+          n.renew();
+          if (t) t.renew();
+          if (c) c.renew();
+          v.send(gl.STATIC_DRAW);
+          n.send(gl.STATIC_DRAW);
+          if (t) t.send(gl.STATIC_DRAW);
+          if (c) c.send(gl.STATIC_DRAW);
+          mustRebuild = currentContextTicket();
+        }
+        
         v.attrib(attribs.aVertexPosition);
         n.attrib(attribs.aVertexNormal);
         
-        gl.uniform1i(uniforms.uTextureEnabled, optTexture ? 1 : 0);
+        gl.uniform1i(uniforms.uTextureEnabled, optGetTexture ? 1 : 0);
 
-        if (optTexture) {
+        if (optGetTexture) {
           gl.enableVertexAttribArray(attribs.aTextureCoord);
           gl.disableVertexAttribArray(attribs.aVertexColor);
           
           t.attrib(attribs.aTextureCoord);
   
           gl.activeTexture(gl.TEXTURE0);
-          gl.bindTexture(gl.TEXTURE_2D, optTexture);
+          gl.bindTexture(gl.TEXTURE_2D, optGetTexture());
           gl.uniform1i(uniforms.uSampler, 0);
         } else {
           gl.disableVertexAttribArray(attribs.aTextureCoord);
@@ -455,6 +502,9 @@ var Renderer = (function () {
     config.renderDistance.listen(projectionL);
 
     // --- Initialization ---
+    
+    canvas.addEventListener("webglcontextlost", handleContextLost, false);
+    canvas.addEventListener("webglcontextrestored", handleContextRestored, false);
     
     getContext();
     updateViewport();
