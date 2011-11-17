@@ -36,11 +36,16 @@ var Renderer = (function () {
                      prepareShader(gl, "shader-fs", decls),
                      attribs, uniforms);          
       
-      // Initial GL state
+      // Mostly-constant GL state
       gl.enableVertexAttribArray(attribs.aVertexPosition);
       gl.enableVertexAttribArray(attribs.aVertexNormal);
       gl.enable(gl.DEPTH_TEST);
       gl.enable(gl.CULL_FACE);
+      
+      // Config-based GL state
+      sendLighting();
+      sendBumpMapping();
+      sendViewUniforms();
     }
     
     function calculateFrustum() {
@@ -420,25 +425,14 @@ var Renderer = (function () {
     }
     this.transformPoint = transformPoint;
     
-    // --- Initialization ---
+    // --- Config bindings ---
     
-    getContext();
-    
-    // Set up viewport and projection matters
-    updateViewport();
-    window.addEventListener("resize", function () { // TODO shouldn't be global
-      updateViewport();
-      scheduleDraw();
-      return true;
-    }, false);
-    
-    // Bind and send rendering options
-    config.lighting.nowAndWhenChanged(function (v) {
+    var sendLighting = config.lighting.whenChanged(function (v) {
       gl.uniform1i(uniforms.uLighting, v ? 1 : 0);
       scheduleDraw();
       return true;
     });
-    config.bumpMapping.nowAndWhenChanged(function (v) {
+    var sendBumpMapping = config.bumpMapping.whenChanged(function (v) {
       gl.uniform1i(uniforms.uBumpMapping, v ? 1 : 0);
       scheduleDraw();
       return true;
@@ -451,6 +445,17 @@ var Renderer = (function () {
     config.fov.listen(projectionL);
     config.renderDistance.listen(projectionL);
 
+    // --- Initialization ---
+    
+    getContext();
+    updateViewport();
+    
+    window.addEventListener("resize", function () { // TODO shouldn't be global
+      updateViewport();
+      scheduleDraw();
+      return true;
+    }, false);
+    
     Object.freeze(this);
   }
   

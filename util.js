@@ -146,11 +146,16 @@ PersistentCell.prototype.bindControl = function (id) {
   });
   listener(this.get());
 };
-PersistentCell.prototype.nowAndWhenChanged = function (func) {
+// Returns a function to trigger the function now.
+PersistentCell.prototype.whenChanged = function (func) {
   this.listen({
     changed: func,
   });
-  func(this.get());
+  var self = this;
+  return function () { func(self.get()); };
+};
+PersistentCell.prototype.nowAndWhenChanged = function (func) {
+  this.whenChanged(func)();
 };
 
 function mod(value, modulus) {
