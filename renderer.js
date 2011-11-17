@@ -33,7 +33,64 @@ var Renderer = (function () {
     Object.defineProperty(this, "context", {
       enumerable: true,
       get: function () { return context; }
-    })
+    });
+    
+    // View-switching: Each of these produces a self-consistent state of variables and uniforms.
+    // The state managed by these view routines is:
+    //   * Projection matrix
+    //   * Modelview matrix and viewPosition
+    //   * Fog distance
+    //   * Depth test
+    function setViewToSkybox(playerRender) {
+      // The skybox exceeeds the fog distance, so it is rendered fully fogged
+      // and only the fog-shading determines the sky color. This ensures that
+      // normal geometry fades smoothly into the sky rather than turning
+      // a possibly-different fog color.
+      gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
+      mat4.identity(mvMatrix);
+      playerRender.applyViewRot(mvMatrix);
+      viewPosition = [0,0,0];
+      sendViewUniforms();
+      gl.uniform1f(uniforms.uFogDistance, 1); // 0 would be div-by-0
+      gl.disable(gl.DEPTH_TEST);
+    }
+    this.setViewToSkybox = setViewToSkybox;
+    function setViewToEye(playerRender) {
+      gl.enable(gl.DEPTH_TEST);
+      viewPosition = playerRender.getPosition();
+      playerRender.applyViewTranslation(mvMatrix);
+
+      gl.uniform1f(uniforms.uFogDistance, config.renderDistance.get());
+      gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
+      sendViewUniforms();
+    }
+    this.setViewToEye = setViewToEye;
+    function setViewToBlock() { // Ortho view of block at 0,0,0
+      mat4.identity(mvMatrix);
+      mat4.rotate(mvMatrix, Math.PI/4 * 0.6, [1, 0, 0]);
+      mat4.rotate(mvMatrix, Math.PI/4 * 0.555, [0, 1, 0]);
+      mat4.translate(mvMatrix, [-0.5,-0.5,-0.5]);
+
+      gl.uniform1f(uniforms.uFogDistance, 100);
+      gl.uniformMatrix4fv(uniforms.uPMatrix, false,
+        mat4.ortho(-0.8, 0.8, -0.8, 0.8, -1, 1, pMatrix));
+      sendViewUniforms();
+    }
+    this.setViewToBlock = setViewToBlock;
+    function saveView() {
+      var saveMVMatrix = mvMatrix; mvMatrix = mat4.create();
+      var savePMatrix = pMatrix;  pMatrix = mat4.create();
+      var saveView = viewPosition;
+      return function () {
+        mvMatrix = saveMVMatrix;
+        pMatrix = savePMatrix;
+        viewPosition = saveView;
+
+        gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
+        sendViewUniforms();
+      }
+    }
+    this.saveView = saveView;
     
     function BufferAndArray(numComponents) {
       this.numComponents = numComponents;

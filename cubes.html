@@ -253,7 +253,7 @@
     var pMatrix = mat4.create();
     var mvMatrix = mat4.create();
     var viewPosition = vec3.create();
-    var viewFrustum; // computed
+    var viewFrustum = {}; // computed
 
     function calculateFrustum() {
       var matrix = mat4.multiply(pMatrix, mvMatrix, mat4.create());
@@ -310,12 +310,6 @@
       return true;
     }
     
-    function sendViewUniforms() {
-        gl.uniformMatrix4fv(uniforms.uMVMatrix, false, mvMatrix);
-        gl.uniform3fv(uniforms.uViewPosition, viewPosition);
-        calculateFrustum();
-    }
-
     function updateViewport() {
       var pagePixelWidth = parseInt(window.getComputedStyle(theCanvas,null).width);
       var pagePixelHeight = parseInt(window.getComputedStyle(theCanvas,null).height);
@@ -423,29 +417,11 @@
     function drawScene(playerRender) {
         var wrend = playerRender.getWorldRenderer();
 
-        // Rendering settings for skybox
-        mat4.identity(mvMatrix);
-        playerRender.applyViewRot(mvMatrix);
-        viewPosition = [0,0,0];
-        sendViewUniforms();
-        gl.uniform1f(uniforms.uFogDistance, 1); // 0 would be div-by-0
-        gl.disable(gl.DEPTH_TEST);
-        
-        // The skybox exceeeds the fog distance, so it is rendered fully fogged
-        // and only the fog-shading determines the sky color. This ensures that
-        // normal geometry fades smoothly into the sky rather than turning
-        // a possibly-different fog color.
+        renderer.setViewToSkybox(playerRender);
         skyboxR.draw();
+        gl.clear(gl.DEPTH_BUFFER_BIT);
         
-        // Rendering settings for normal geometry
-        gl.enable(gl.DEPTH_TEST);
-        gl.clear(gl.DEPTH_BUFFER_BIT); // Backdrop depth is irrelevant
-        gl.uniform1f(uniforms.uFogDistance, config.renderDistance.get());
-
-        viewPosition = playerRender.getPosition();
-        playerRender.applyViewTranslation(mvMatrix);
-        sendViewUniforms();
-
+        renderer.setViewToEye(playerRender);
         wrend.draw();
         player.render.characterRender.draw();
         player.render.selectionRender.draw();
