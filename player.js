@@ -322,7 +322,7 @@ var Player = (function () {
             var type = currentPlace.world.blockSet.get(currentPlace.tool);
             if (!currentPlace.world.solid(x,y,z)) {
               // TODO: rotation on create should be more programmable.
-              var raypts = getAimRay();
+              var raypts = renderer.getAimRay(); // TODO depend on player orientation instead?
               var symm = nearestCubeSymmetry(vec3.subtract(raypts[0], raypts[1]), [0,0,1], type.automaticRotations);
               currentPlace.world.s(x,y,z, currentPlace.tool, symm);
               

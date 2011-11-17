@@ -7,19 +7,124 @@ var Renderer = (function () {
   function Renderer(canvas) {
     // --- State ---
     
-    var context = null;
+    var gl = null;
     
+    // View and projection transformation globals.
+    var pMatrix = mat4.create();
+    var mvMatrix = mat4.create();
+    var viewPosition = vec3.create();
+    var viewFrustum = {}; // computed
+
     // --- Internals ---
     
     function getContext() {
-      context = canvas.getContext("experimental-webgl", {
+      gl = canvas.getContext("experimental-webgl", {
         antialias: false // MORE FILLRATE!!!
       });
       if (DEBUG) { // TODO global variable
-        context = WebGLDebugUtils.makeDebugContext(context);
+        gl = WebGLDebugUtils.makeDebugContext(gl);
       } else {
-        WebGLDebugUtils.init(context);
-      }  
+        WebGLDebugUtils.init(gl);
+      }
+      
+      var decls = {
+        TILE_SIZE: World.TILE_SIZE
+      };
+      
+      prepareProgram(gl,
+                     prepareShader(gl, "shader-vs", decls),
+                     prepareShader(gl, "shader-fs", decls),
+                     attribs, uniforms);          
+      
+      // Initial GL state
+      gl.enableVertexAttribArray(attribs.aVertexPosition);
+      gl.enableVertexAttribArray(attribs.aVertexNormal);
+      gl.enable(gl.DEPTH_TEST);
+      gl.enable(gl.CULL_FACE);
+    }
+    
+    function calculateFrustum() {
+      var matrix = mat4.multiply(pMatrix, mvMatrix, mat4.create());
+      mat4.inverse(matrix);
+      // matrix is now a clip-space-to-model-space conversion
+      
+      function dehomog(v4) {
+        return [v4[0]/v4[3], v4[1]/v4[3], v4[2]/v4[3]];
+      }
+      // Return a function which tests whether the point is in the half-space bounded by the plane containing origin, pt1, and pt2, and pointed toward by pt1 cross pt2.
+      function makeHalfSpaceTest(origin, pt1, pt2) {
+        var normal = vec3.cross(
+          vec3.subtract(pt1, origin, vec3.create()),
+          vec3.subtract(pt2, origin, vec3.create()),
+          vec3.create());
+        var vecbuf = vec3.create();
+        return function (point) {
+          vec3.subtract(point, origin, vecbuf);
+          return vec3.dot(vecbuf, normal) > 0;
+        }
+      }
+      var lbn = dehomog(mat4.multiplyVec4(matrix, [-1,-1,-1,1]));
+      var lbf = dehomog(mat4.multiplyVec4(matrix, [-1,-1, 1,1]));
+      var ltn = dehomog(mat4.multiplyVec4(matrix, [-1, 1,-1,1]));
+      var ltf = dehomog(mat4.multiplyVec4(matrix, [-1, 1, 1,1]));
+      var rbn = dehomog(mat4.multiplyVec4(matrix, [ 1,-1,-1,1]));
+      var rbf = dehomog(mat4.multiplyVec4(matrix, [ 1,-1, 1,1]));
+      var rtn = dehomog(mat4.multiplyVec4(matrix, [ 1, 1,-1,1]));
+      var rtf = dehomog(mat4.multiplyVec4(matrix, [ 1, 1, 1,1]));
+      
+      viewFrustum = [
+        makeHalfSpaceTest(lbn, lbf, ltf), // left
+        makeHalfSpaceTest(rtn, rtf, rbf), // right
+        makeHalfSpaceTest(ltn, ltf, rtf), // top
+        makeHalfSpaceTest(rbn, rbf, lbf), // bottom
+        makeHalfSpaceTest(lbn, ltn, rtn), // near
+        makeHalfSpaceTest(lbf, rbf, ltf), // far
+      ];
+    }
+    
+    function updateViewport() {
+      var pagePixelWidth = parseInt(window.getComputedStyle(theCanvas,null).width);
+      var pagePixelHeight = parseInt(window.getComputedStyle(theCanvas,null).height);
+      
+      // Specify canvas resolution
+      theCanvas.width = pagePixelWidth;
+      theCanvas.height = pagePixelHeight;
+      
+      // WebGL is not guaranteed to give us that resolution; instead, what it
+      // can supply is returned in .drawingBuffer{Width,Height}. However, those
+      // properties are not supported by, at least, Firefox 6.0.2.
+      if (!("drawingBufferWidth" in gl)) {
+        gl.drawingBufferWidth = pagePixelWidth;
+        gl.drawingBufferHeight = pagePixelHeight;
+      }
+      
+      gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+      gl.uniform2f(uniforms.uPixelsPerClipUnit, gl.drawingBufferWidth / 2,
+                                                gl.drawingBufferHeight / 2);
+
+      updateProjection();
+    }
+    
+    function updateProjection() {
+      var fov = config.fov.get();
+      var aspectRatio = gl.drawingBufferWidth / gl.drawingBufferHeight;
+      
+      var nearestApproachToPlayer = Math.min(
+        -Player.aabb[0][0], Player.aabb[0][1],
+        -Player.aabb[1][0], Player.aabb[1][1],
+        -Player.aabb[2][0], Player.aabb[2][1]);
+      var nearPlane = nearestApproachToPlayer 
+                      / Math.sqrt(1 + Math.pow(Math.tan(fov/180*Math.PI/2), 2)
+                                      * (Math.pow(aspectRatio, 2) + 1));
+      
+      mat4.perspective(fov,
+                       aspectRatio,
+                       nearPlane,
+                       config.renderDistance.get(),
+                       pMatrix);
+      
+      gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
+      // uFogDistance is handled by drawScene because it is changed.
     }
     
     function sendViewUniforms() {
@@ -34,7 +139,7 @@ var Renderer = (function () {
     
     Object.defineProperty(this, "context", {
       enumerable: true,
-      get: function () { return context; }
+      get: function () { return gl; }
     });
     
     // View-switching: Each of these produces a self-consistent state of variables and uniforms.
@@ -274,10 +379,78 @@ var Renderer = (function () {
     }
     this.BlockParticles = BlockParticles;
     
+    // Returns a pair of points along the line of aim of the screen cursor.
+    function getAimRay() {
+      var pos = input.getMousePos();
+      var glxy = [pos[0] / theCanvas.width * 2 - 1, -(pos[1] / theCanvas.height * 2 - 1)];
+      
+      var unproject = mat4.identity(mat4.create());
+      player.render.applyViewRot(unproject);
+      player.render.applyViewTranslation(unproject);
+      mat4.multiply(pMatrix, unproject, unproject);
+      mat4.inverse(unproject);
+
+      var pt1 = fixedmultiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 0]));
+      var pt2 = fixedmultiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 1]));
+
+      return [pt1, pt2];
+    }
+    this.getAimRay = getAimRay;
+    
+    function aabbInView(aabb) {
+      for (var i = 0; i < viewFrustum.length; i++) {
+        var outside = true;
+        for (var xb = 0; xb < 2; xb++)
+        for (var yb = 0; yb < 2; yb++)
+        for (var zb = 0; zb < 2; zb++) {
+          var vec = [aabb[0][xb], aabb[1][yb], aabb[2][zb]];
+          if (viewFrustum[i](vec))
+            outside = false;
+        }
+        if (outside)
+          return false;
+      }
+      return true;
+    }
+    this.aabbInView = aabbInView;
+    
+    function transformPoint(vec) {
+      mat4.multiplyVec4(mvMatrix, vec);
+      mat4.multiplyVec4(pMatrix, vec);
+    }
+    this.transformPoint = transformPoint;
+    
     // --- Initialization ---
     
     getContext();
     
+    // Set up viewport and projection matters
+    updateViewport();
+    window.addEventListener("resize", function () { // TODO shouldn't be global
+      updateViewport();
+      scheduleDraw();
+      return true;
+    }, false);
+    
+    // Bind and send rendering options
+    config.lighting.nowAndWhenChanged(function (v) {
+      gl.uniform1i(uniforms.uLighting, v ? 1 : 0);
+      scheduleDraw();
+      return true;
+    });
+    config.bumpMapping.nowAndWhenChanged(function (v) {
+      gl.uniform1i(uniforms.uBumpMapping, v ? 1 : 0);
+      scheduleDraw();
+      return true;
+    });
+    var projectionL = {changed: function (v) {
+      updateProjection();
+      scheduleDraw();
+      return true;
+    }};
+    config.fov.listen(projectionL);
+    config.renderDistance.listen(projectionL);
+
     Object.freeze(this);
   }
   

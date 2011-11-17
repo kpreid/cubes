@@ -340,7 +340,7 @@ var WorldRenderer = (function () {
       for (var index in chunks) {
         if (!chunks.hasOwnProperty(index)) continue;
         var chunk = chunks[index];
-        if (aabbInView(chunk.aabb))
+        if (renderer.aabbInView(chunk.aabb))
           chunk.draw();
       }
       
