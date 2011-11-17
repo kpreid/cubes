@@ -33,15 +33,21 @@ html {
   display: table;
 }
 
-#menu {
+#menu-container { /* exists to support centering */
   position: absolute;
-  left: auto;
-  right: auto;
-  bottom: 2px;
+  pointer-events: none;
+  left: 0;
+  bottom: 0;
+  display: table;
+  width: 100%;
+}
+#menu {
+  pointer-events: auto;
+  margin: 2px auto;
   background: gray;
   background: rgba(0, 0, 0, 0.5);
   border-radius: 5px;
-  display: block;
+  display: table;
   text-align: center;
 }
 #menu canvas {
