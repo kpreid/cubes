@@ -262,7 +262,8 @@ var Player = (function () {
       currentPlace.world.step();
     }
     
-    // The facet for rendering
+    // --- The facet for rendering ---
+    
     this.render = Object.freeze({
       applyViewRot: function (matrix) {
         mat4.rotate(matrix, -pitch, [1, 0, 0]);
@@ -300,10 +301,15 @@ var Player = (function () {
       // TODO: move this position downward to free space rather than just imparting velocity
       this.setPosition([world.wx/2, world.wy - playerAABB[1][0] + EPSILON, world.wz/2]);
       vec3.set([0,-120,0], currentPlace.vel);
+      notifyChangedPlace();
     };
     
-    // The facet for user input
+    // --- The facet for user input ---
+    
+    var inputNotifier = new Notifier("player.input");
     this.input = Object.freeze({
+      listen: inputNotifier.listen,
+      
       useTool: function () {
         if (currentPlace.tool === BlockSet.ID_EMPTY) {
           this.deleteBlock();
@@ -348,7 +354,25 @@ var Player = (function () {
       get yaw () { return currentPlace.yaw; },
       set yaw (angle) { currentPlace.yaw = angle; aimChanged(); },
       get tool () { return currentPlace.tool; },
-      set tool (id) { currentPlace.tool = id; aimChanged(); },
+      set tool (id) { 
+        currentPlace.tool = id; 
+        inputNotifier.notify("changedTool");
+      },
+      enterWorld: function (blockID) {
+        var world = currentPlace.world.blockSet.get(blockID).world;
+
+        if (!world) return; // TODO: UI message about this
+
+        var oldPlace = currentPlace;
+
+        currentPlace = new Place(world);
+        currentPlace.forBlock = blockID;
+        vec3.set([World.TILE_SIZE/2, World.TILE_SIZE - playerAABB[1][0] + EPSILON, World.TILE_SIZE/2], currentPlace.pos);
+        placeStack.push(oldPlace);
+        aimChanged();
+
+        notifyChangedPlace();
+      }, 
       changeWorld: function (direction) {
         switch (direction) {
           case 1:
@@ -389,18 +413,28 @@ var Player = (function () {
             
             break;
           case -1:
-            if (placeStack.length <= 0) break;
+            if (placeStack.length <= 0) return;
             currentPlace.wrend.deleteResources();
             currentPlace = placeStack.pop();
             aimChanged();
             break;
         }
+        
         aabbR.recompute();
+        notifyChangedPlace();
       },
+      aimChanged: aimChanged, // TODO kludge due to globals
       jump: function () {
         if (currentPlace.standingOn) currentPlace.vel[1] = JUMP_SPEED;
       }
     });
+    
+    function notifyChangedPlace() {
+      inputNotifier.notify("changedWorld");
+      inputNotifier.notify("changedTool");
+    }
+    
+    // --- Initialization ---
     
     config.debugPlayerCollision.listen({
       changed: function (v) {

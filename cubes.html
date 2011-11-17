@@ -890,9 +890,11 @@
       </canvas>
       <pre id="info" class="text-overlay">Not ready...</pre>
       <pre id="cursor-info" class="text-overlay"></pre>
-    </div>
-    <div id="menu" style="visibility: hidden; left: 1px; top: 1px;">
-      <!-- arbitrary initial position -->
+      <div id="menu-container">
+        <div id="menu">
+          <!-- dynamic content -->
+        </div>
+      </div>
     </div>
     <div id="error-notices">
     <div id="load-error-notice" class="error-notice" style="display: none;">
@@ -1017,15 +1019,15 @@
         <tr><td><kbd>Space</kbd><td>jump
         <tr><td><kbd>E</kbd><td>fly, move up
         <tr><td><kbd>C</kbd><td>land, move down
-        <tr><td>Mouse motion<td>look/target block
-        <tr><td>Mouseover<br>left/right edge<td>turn
+        <tr><td><kbd>Q</kbd><td>toggle mouselook
         <tr><th colspan=2>Blocks
-        <tr><td>Left button<td> Remove block
-        <tr><td>Right button<td> Place block
-        <tr><td><kbd>Q</kbd> (menu)<td rowspan=2> Choose block to place
-        <tr class="spanned"><td><kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd>
-        <tr><td><kbd>R</kbd><td> Edit targeted block
-        <tr><td><kbd>F</kbd><td> Exit editing
+        <tr><td>Left button<td> remove block
+        <tr><td>Right button<td> place block
+        <tr><td><kbd>Q</kbd><td> toggle block menu
+        <tr><td><kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd><td>choose from menu
+        <tr><td><kbd>R</kbd><td> edit targeted block
+        <tr><td>Right button in menu<td> edit clicked block
+        <tr><td><kbd>Esc</kbd>, <kbd>F</kbd><td> exit editing
       </table>
 
       <p>While you can edit any block to any shape, note that making the first block type (which makes up the underground volume in the default world) a non-cubical shape will likely be fatal to your frame rate.</p>

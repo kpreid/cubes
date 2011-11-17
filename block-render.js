@@ -49,6 +49,7 @@ function BlockRenderer(blockSet) {
     var saveMVMatrix = mvMatrix;
     var saveView = viewPosition;
     var projection = mat4.create();
+    gl.uniform1f(uniforms.uFogDistance, 100);
     gl.uniformMatrix4fv(uniforms.uPMatrix, false,
       mat4.ortho(-ow, ow, -oh, oh, -1, 1, mat4.create()));
     mat4.identity(mvMatrix);
