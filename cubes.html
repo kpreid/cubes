@@ -214,7 +214,7 @@
     function resetAllOptions() {
       Object.keys(config).forEach(function (k) { config[k].setToDefault(); });
     }
-    defineOption("fov", "number", 90);
+    defineOption("fov", "number", 60);
     defineOption("renderDistance", "number", 100);
     defineOption("lighting", "boolean", true);
     defineOption("bumpMapping", "boolean", true);
@@ -982,7 +982,7 @@
       <h2>Options</h2>
 
       <form onsubmit="return false;" action="">
-        <div class="optionline">Field of view: <input type="range" min="45" max="140" value="90" maxlength="4" size="4" id="fov"></div>
+        <div class="optionline">Field of view: <input type="range" min="45" max="140" value="60" maxlength="4" size="4" id="fov"></div>
         <script>config.fov.bindControl("fov");</script>
         <div class="optionline">Draw distance: <input type="range" min="10" max="500" value="100" maxlength="4" size="4" id="renderDistance"></div>
         <script>config.renderDistance.bindControl("renderDistance");</script>
