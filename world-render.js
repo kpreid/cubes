@@ -82,7 +82,7 @@ var WorldRenderer = (function () {
     
     var particles = [];
 
-    var textureDebugR = new RenderBundle(gl.TRIANGLE_STRIP, blockTexture, function (vertices, normals, texcoords) {
+    var textureDebugR = new renderer.RenderBundle(gl.TRIANGLE_STRIP, blockTexture, function (vertices, normals, texcoords) {
       var x = 1;
       var y = 1;
       var z = 0;
@@ -331,7 +331,7 @@ var WorldRenderer = (function () {
     this.updateSomeChunks = updateSomeChunks;
 
     function renderDestroyBlock(block) {
-      particles.push(new BlockParticles(
+      particles.push(new renderer.BlockParticles(
         block,
         world.gt(block[0],block[1],block[2]),
         true,
@@ -340,7 +340,7 @@ var WorldRenderer = (function () {
     this.renderDestroyBlock = renderDestroyBlock;
 
     function renderCreateBlock(block) {
-      particles.push(new BlockParticles(
+      particles.push(new renderer.BlockParticles(
         block,
         world.gt(block[0],block[1],block[2]),
         false,
@@ -417,7 +417,7 @@ var WorldRenderer = (function () {
         var TILE_SIZE = World.TILE_SIZE;
         var PIXEL_SIZE = 1/TILE_SIZE;
         var ID_EMPTY = BlockSet.ID_EMPTY;
-        chunks[xzkey] = new RenderBundle(gl.TRIANGLES,
+        chunks[xzkey] = new renderer.RenderBundle(gl.TRIANGLES,
                                          blockTexture,
                                          function (vertices, normals, texcoords) {
           // These statements are inside the function because they need to
@@ -586,7 +586,7 @@ var WorldRenderer = (function () {
     var CYL_RADIUS = Math.round(.08 * World.TILE_SIZE) / World.TILE_SIZE;
     function makeCircuitRenderer(circuit) {
       var dyns;
-      var circuitRenderer = new RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {
+      var circuitRenderer = new renderer.RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {
         dyns = [];
         circuit.getEdges().forEach(function (record) {
           var net = record[0];

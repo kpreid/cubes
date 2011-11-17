@@ -52,7 +52,7 @@ var Player = (function () {
     // kludge: Since UI sets pitch absolutely, it's not a place variable
     var pitch = 0;
   
-    var selectionR = new RenderBundle(gl.LINE_LOOP, null, function (vertices, normals, colors) {
+    var selectionR = new renderer.RenderBundle(gl.LINE_LOOP, null, function (vertices, normals, colors) {
       var sel = currentPlace ? currentPlace.selection : null;
       if (sel !== null) {
         var p = vec3.create(sel.cube);
@@ -80,7 +80,7 @@ var Player = (function () {
       }
     });
     
-    var aabbR = new RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
+    var aabbR = new renderer.RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
       // TODO: Would be more efficient to use the modelview matrix than recomputing this?
       if (!currentPlace) return;
       [[0,1,2], [1,2,0], [2,0,1]].forEach(function (dims) {
