@@ -8,13 +8,19 @@ function Input(eventReceiver, playerInput, menuElement) {
 
   var keymap = {};
   var mousePos = [0,0];
-  var mouselookMode = false;
+  var mouselookMode = true;
 
   // --- Utilities ---
 
   function evalVel(pos, neg) {
     return pos ? neg ? 0 : 1 : neg ? -1 : 0;
   }
+  
+  function setMouselook(value) {
+    mouselookMode = value;
+    menuElement.style.visibility = mouselookMode ? 'hidden' : 'visible';
+  }
+  setMouselook(mouselookMode);
   
   // --- Keyboard events ---
   
@@ -65,9 +71,7 @@ function Input(eventReceiver, playerInput, menuElement) {
       case "9": playerInput.tool = 9; return false;
       case "0": playerInput.tool = 10; return false;
       case "Q": 
-        mouselookMode = !mouselookMode;
-        mousePos = [event.clientX, event.clientY];
-        menuElement.style.visibility = mouselookMode ? 'hidden' : 'visible';
+        setMouselook(!mouselookMode);
         return false;
       case "R": playerInput.changeWorld(1);  return false;
       case "\x1B"/*Esc*/:
