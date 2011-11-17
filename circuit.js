@@ -531,7 +531,9 @@ var Circuit = (function () {
       circuits[ck].evaluate(state);
       
       if ("blockOut_become" in state) {
-        outerWorld.s(cube[0],cube[1],cube[2],state.blockOut_become)
+        outerWorld.s(cube[0],cube[1],cube[2],
+          state.blockOut_become,
+          outerWorld.gSub(cube[0],cube[1],cube[2]));
       } else {
         if ("blockOut_rotation" in state) {
           outerWorld.rawRotations[cube[0]*outerWorld.wy*outerWorld.wz+cube[1]*outerWorld.wz+cube[2]] // TODO KLUDGE

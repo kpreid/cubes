@@ -354,11 +354,16 @@ function generateWorlds() {
   }
   function rgbPat(b) { return brgb(b[0]/TL,b[1]/TL,b[2]/TL); }
   
-  function addSpontaneousConversionCircuit(blockType, targetID) {
+  function addSpontaneousConversion(type, targetID) {
     if (!ls.emitConstant) throw new Error("don't have constant block available");
     type.world.s(1,1,1, ls.emitConstant, targetID);
     type.world.s(2,1,1, ls.gate);  type.world.s(2,1,2, ls.spontaneous);
     type.world.s(3,1,1, ls.become);
+  }
+  function addRotation(type) {
+    type.world.s(1,3,0, ls.getSubDatum);
+    type.world.s(1,4,0, ls.setRotation);
+    type.automaticRotations = sixFaceRotations;
   }
   
   // --- default block worlds and block set ---
@@ -371,32 +376,40 @@ function generateWorlds() {
     return rgbPat(b);
   }));
   
-  // ground block (id 2)
+  // ground block
   blockset.add(type = genedit(function (b) {
     return (f.te(b) ? f.cond(f.speckle, f.flat(brgb(.67,.34,.34)), f.flat(brgb(.67,0,0))) :
             f.tp(b) ? f.flat(brgb(1,.34,.34)) :
             f.cond(f.speckle, f.flat(brgb(.34,0,0)), f.flat(brgb(0,0,0))))(b);
   }));
-  addSpontaneousConversionCircuit(type, 3);
   
-  // ground block #2 (id 3)
+  // ground block #2
   blockset.add(type = genedit(function (b) {
     return (f.te(b) ? f.cond(f.speckle, f.flat(brgb(.34,.67,.34)), f.flat(brgb(0,.34,0))) :
             f.tp(b) ? f.flat(brgb(.34,1,.34)) :
             f.cond(f.speckle, f.flat(brgb(0,.34,0)), f.flat(brgb(0,1,1))))(b);
   }));
-  addSpontaneousConversionCircuit(type, 2);
   
   // pyramid thing
+  var pyr1 = blockset.length;
   blockset.add(type = genedit(function (b) {
     if (Math.abs(b[0] - TL/2) + Math.abs(b[1] - TL/2) > (TS-0.5)-b[2])
       return 0;
     return brgb(mod((b[2]+2)/(TS/2), 1), Math.floor((b[2]+2)/(TS/2))*0.5, 0);
   }));
-  // rotate-based-on-subdatum circuit
-  type.world.s(1,1,0, ls.getSubDatum);
-  type.world.s(1,2,0, ls.setRotation);
-  type.automaticRotations = sixFaceRotations;
+  addRotation(type);
+
+  // pyramid thing variant
+  var pyr2 = blockset.length;
+  blockset.add(type = genedit(function (b) {
+    if (Math.abs(b[0] - TL/2) + Math.abs(b[1] - TL/2) > (TS-0.5)-b[2])
+      return 0;
+    return brgb(0, mod((b[2]+2)/(TS/2), 1), Math.floor((b[2]+2)/(TS/2))*0.5);
+  }));
+  addRotation(type);
+
+  addSpontaneousConversion(blockset.get(pyr1), pyr2);
+  addSpontaneousConversion(blockset.get(pyr2), pyr1);
   
   // "leaf block" transparency test
   blockset.add(type = genedit(function (b) {
