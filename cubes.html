@@ -590,7 +590,7 @@
         function () {
           
           theCanvas = document.getElementById('view-canvas');
-          renderer = new Renderer();
+          renderer = new Renderer(theCanvas);
           if (!renderer.context) {
             document.getElementById("webgl-error-notice").style.removeProperty("display");
             return ABORT;

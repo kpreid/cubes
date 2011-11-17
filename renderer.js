@@ -8,11 +8,11 @@ var Renderer = (function () {
     // --- State ---
     
     var context = null;
-
+    
     // --- Internals ---
     
     function getContext() {
-      context = theCanvas.getContext("experimental-webgl", {
+      context = canvas.getContext("experimental-webgl", {
         antialias: false // MORE FILLRATE!!!
       });
       if (DEBUG) { // TODO global variable
@@ -23,9 +23,11 @@ var Renderer = (function () {
     }
     
     function sendViewUniforms() {
-        gl.uniformMatrix4fv(uniforms.uMVMatrix, false, mvMatrix);
-        gl.uniform3fv(uniforms.uViewPosition, viewPosition);
-        calculateFrustum();
+      // TODO: We used to be able to avoid sending the projection matrix when only the view changed. Re-add that, if worthwhile.
+      gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
+      gl.uniformMatrix4fv(uniforms.uMVMatrix, false, mvMatrix);
+      gl.uniform3fv(uniforms.uViewPosition, viewPosition);
+      calculateFrustum();
     }
 
     // --- Public components ---
@@ -46,7 +48,6 @@ var Renderer = (function () {
       // and only the fog-shading determines the sky color. This ensures that
       // normal geometry fades smoothly into the sky rather than turning
       // a possibly-different fog color.
-      gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
       mat4.identity(mvMatrix);
       playerRender.applyViewRot(mvMatrix);
       viewPosition = [0,0,0];
@@ -74,9 +75,26 @@ var Renderer = (function () {
       gl.uniform1f(uniforms.uFogDistance, 100);
       gl.uniformMatrix4fv(uniforms.uPMatrix, false,
         mat4.ortho(-0.8, 0.8, -0.8, 0.8, -1, 1, pMatrix));
+      gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
       sendViewUniforms();
     }
     this.setViewToBlock = setViewToBlock;
+    function setViewTo2D() { // 2D view with coordinates in [-1..1]
+      var aspect = canvas.width / canvas.height;
+      var w, h;
+      if (aspect > 1) {
+        w = aspect;
+        h = 1;
+      } else {
+        w = 1;
+        h = 1/aspect;
+      }
+      
+      mat4.ortho(-w, w, -h, h, -1, 1, pMatrix);
+      mat4.identity(mvMatrix);
+      sendViewUniforms();
+    }
+    this.setViewTo2D = setViewTo2D;
     function saveView() {
       var saveMVMatrix = mvMatrix; mvMatrix = mat4.create();
       var savePMatrix = pMatrix;  pMatrix = mat4.create();

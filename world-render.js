@@ -102,28 +102,15 @@ var WorldRenderer = (function () {
       texcoords.push(1, 1);
     }, {
       aroundDraw: function (draw) {
-        var aspect = theCanvas.width / theCanvas.height;
-        var w, h;
-        if (aspect > 1) {
-          w = aspect;
-          h = 1;
-        } else {
-          w = 1;
-          h = 1/aspect;
-        }
-        var mvsave = mvMatrix;
-        mvMatrix = mat4.identity(mat4.create());
-        gl.uniformMatrix4fv(uniforms.uPMatrix, false, mat4.ortho(-w, w, -h, h, -1, 1, mat4.create()));
-        sendViewUniforms();
-        gl.disable(gl.DEPTH_TEST);
+        var restoreView = renderer.saveView();
+        renderer.setViewTo2D();
+        gl.disable(gl.DEPTH_TEST); // TODO should be handled by renderer?
         gl.depthMask(false);
         draw();
-        mvMatrix = mvsave;
+        restoreView();
         gl.enable(gl.DEPTH_TEST);
         gl.depthMask(true);
-        gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
-        sendViewUniforms();
-      },
+      }
     });
     
     var blockSet = world.blockSet;
