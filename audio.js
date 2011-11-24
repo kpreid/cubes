@@ -43,7 +43,7 @@ var CubesAudio = (function () {
       
       //console.log("synthBlock spans done");
 
-      function subSynth(duration, variation, echo) {
+      function subSynth(duration, variation, echo, noise) {
         var bsSamples = Math.round(duration * bsSampleRate);
         
         var b = context.createBuffer(1, bsSamples, bsSampleRate);
@@ -62,7 +62,7 @@ var CubesAudio = (function () {
 
           for (var c = 0; c < 3; c++) {
             var luminance = color[c];
-            var pitch = basePitch * Math.exp(3*luminance) /** (1 - variation/2+Math.random()*variation)*/;
+            var pitch = basePitch * Math.exp(3*luminance) * (1 - variation/2+Math.random()*variation);
             var pitchInSampleUnits = pitch / bsSampleRate;
 
             for (var i = 0; i < bsSamples; i++) {
@@ -72,17 +72,31 @@ var CubesAudio = (function () {
             totalAmp += count;
           }
         }
+
         var normalize = totalAmp > 0 ? 1/totalAmp : 0;
+        for (var i = 0; i < bsSamples; i++) {
+          a[i] *= normalize;
+        }
 
-        var decay = -5/bsSamples;
-        for (var i = 0; i < bsSamples; i++)
-          a[i] *= normalize * Math.exp(i*decay);
-
-        if (echo > 0) {
-          for (var i = 0; i < bsSamples; i++)
-            a[i] += i >= 100 ? a[i-100]*echo : 0;
+        if (noise) {
+          for (var i = 0; i < bsSamples; i++) {
+            var interp = i/bsSamples;
+            a[i] = a[i]*(1-interp) + Math.random()*interp*0.2;
+          }
         }
       
+        var decay = -5/bsSamples;
+        for (var i = 0; i < bsSamples; i++) {
+          a[i] *= Math.exp(i*decay);
+        }
+
+        if (echo > 0) {
+          var lookback = Math.floor(.04 * bsSampleRate);
+          for (var i = 0; i < bsSamples; i++) {
+            a[i] += i >= lookback ? a[i-lookback]*echo : 0;
+          }
+        }
+        
         if (!isFinite(a[0])) {
           if (typeof console !== "undefined")
             console.error("Synthesis produced bad data: ", a[0]);
@@ -92,8 +106,8 @@ var CubesAudio = (function () {
       }
       
       var r = {
-        create: subSynth(1, 0.1, 0),
-        destroy: subSynth(1, 0.5, 0.2)
+        create: subSynth(0.5, 0.1, 0, false),
+        destroy: subSynth(1, 0.22, 0.2, true)
       };
       //console.log("synthBlock done");
       return r;
