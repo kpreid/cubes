@@ -29,79 +29,58 @@ var CubesAudio = (function () {
     
     synthBlock: !audioSupported ? function () {} : function (blockWorld) {
       //console.log("synthBlock");
-      // Find spans of material in the block
+      // Find volumes of material in the block
       var types = blockWorld.blockSet.getAll();
-      var spans = {};
-      for (var dim = 0; dim < 3; dim++) {
-        var ud = mod(dim+1,3);
-        var vd = mod(dim+2,3);
-        for (var u = 0; u < TILE_SIZE; u++)
-        for (var v = 0; v < TILE_SIZE; v++) {
-          var vec = [u,v,w];
-          var count = 0;
-          var cur = null;
-          for (var w = 0; w < TILE_SIZE; w++) {
-            vec[2] = w;
-            var value = blockWorld.g(vec[dim],vec[ud],vec[vd]);
 
-            if (cur !== value) {
-              if (count > 0) {
-                var color = [];
-                types[value].writeColor(1, color, 0);
-                var luminance = Math.floor((0.2126*color[0]+0.7152*color[1]+0.0722*color[2])*16)/16;
-                var key = [count,luminance];
-                
-                if (color[3] > 0) {
-                  if (!spans[key])
-                    spans[key] = [0,key];
-                  spans[key][0]++;
-                }
-              }
-              
-              count = 1;
-              cur = value;
-            } else {
-              count++;
-            }
-          }
-        }
+      var counts = [];
+      for (var i = 0; i < BlockSet.ID_LIMIT; i++) counts.push(0);
+      for (var x = 0; x < TILE_SIZE; x++)
+      for (var y = 0; y < TILE_SIZE; y++)
+      for (var z = 0; z < TILE_SIZE; z++) {
+        var value = blockWorld.g(x,y,z);
+        counts[value]++;
       }
       
       //console.log("synthBlock spans done");
 
-      function subSynth(duration, variation) {
+      function subSynth(duration, variation, echo) {
         var bsSamples = Math.round(duration * bsSampleRate);
         
         var b = context.createBuffer(1, bsSamples, bsSampleRate);
         var a = b.getChannelData(0);
       
-        var basePitch = 50;
+        var basePitch = 40;
         
-        var spanskeys = Object.keys(spans);
         var totalAmp = 0;
-        spanskeys.forEach(function (k) {
-          var record = spans[k];
-          var spanCount = record[0];
-          var length = record[1][0]/TILE_SIZE;
-          var lumval = record[1][1];
+        var color = [];
+        for (var value = BlockSet.ID_EMPTY + 1; value < BlockSet.ID_LIMIT; value++) {
+          var count = counts[value];
+          if (count == 0) continue;
         
-          var reps = 2;
-          for (var r = 0; r < reps; r++) {
-            var pitch = basePitch * (Math.exp(length/10+lumval)) * (1 - variation/2+Math.random()*variation);
+          types[value].writeColor(1, color, 0);
+          //var luminance = Math.floor((0.2126*color[0]+0.7152*color[1]+0.0722*color[2])*16)/16;
+
+          for (var c = 0; c < 3; c++) {
+            var luminance = color[c];
+            var pitch = basePitch * Math.exp(3*luminance) /** (1 - variation/2+Math.random()*variation)*/;
             var pitchInSampleUnits = pitch / bsSampleRate;
 
             for (var i = 0; i < bsSamples; i++) {
               //a[i] += spanCount*square(i * pitchInSampleUnits);
-              a[i] += spanCount*Math.floor((i*pitchInSampleUnits) % 1 * 2);
+              a[i] += count*Math.floor((i*pitchInSampleUnits) % 1 * 2);
             }
+            totalAmp += count;
           }
-          totalAmp += spanCount * reps;
-        });
+        }
         var normalize = totalAmp > 0 ? 1/totalAmp : 0;
+
         var decay = -5/bsSamples;
-        for (var i = 0; i < bsSamples; i++) {
+        for (var i = 0; i < bsSamples; i++)
           a[i] *= normalize * Math.exp(i*decay);
-          a[i] += i >= 100 ? a[i-100]*0.2 : 0;
+
+        if (echo > 0) {
+          for (var i = 0; i < bsSamples; i++)
+            a[i] += i >= 100 ? a[i-100]*echo : 0;
         }
       
         if (!isFinite(a[0])) {
@@ -113,8 +92,8 @@ var CubesAudio = (function () {
       }
       
       var r = {
-        create: subSynth(1, 0.1),
-        destroy: subSynth(1, 0.5)
+        create: subSynth(1, 0.1, 0),
+        destroy: subSynth(1, 0.5, 0.2)
       };
       //console.log("synthBlock done");
       return r;
