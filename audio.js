@@ -7,6 +7,8 @@ var CubesAudio = (function () {
   }
   
   // --- Utilities ---
+  
+  var TILE_SIZE = World.TILE_SIZE;
 
   var bsSampleRate = 22050;
   
@@ -28,23 +30,24 @@ var CubesAudio = (function () {
     synthBlock: !audioSupported ? function () {} : function (blockWorld) {
       //console.log("synthBlock");
       // Find spans of material in the block
+      var types = blockWorld.blockSet.getAll();
       var spans = {};
       for (var dim = 0; dim < 3; dim++) {
         var ud = mod(dim+1,3);
         var vd = mod(dim+2,3);
-        for (var u = 0; u < World.TILE_SIZE; u++)
-        for (var v = 0; v < World.TILE_SIZE; v++) {
+        for (var u = 0; u < TILE_SIZE; u++)
+        for (var v = 0; v < TILE_SIZE; v++) {
           var vec = [u,v,w];
           var count = 0;
           var cur = null;
-          for (var w = 0; w < World.TILE_SIZE; w++) {
+          for (var w = 0; w < TILE_SIZE; w++) {
             vec[2] = w;
             var value = blockWorld.g(vec[dim],vec[ud],vec[vd]);
 
             if (cur !== value) {
               if (count > 0) {
                 var color = [];
-                blockWorld.blockSet.get(value).writeColor(1, color, 0);
+                types[value].writeColor(1, color, 0);
                 var luminance = Math.floor((0.2126*color[0]+0.7152*color[1]+0.0722*color[2])*16)/16;
                 var key = [count,luminance];
                 
@@ -64,29 +67,35 @@ var CubesAudio = (function () {
         }
       }
       
-      function subSynth(duration) {
+      //console.log("synthBlock spans done");
+
+      function subSynth(duration, variation) {
         var bsSamples = Math.round(duration * bsSampleRate);
         
-        var b = context.createBuffer(1, bsSamples, 44100);
+        var b = context.createBuffer(1, bsSamples, bsSampleRate);
         var a = b.getChannelData(0);
       
-        var basePitch = 40;
+        var basePitch = 50;
         
         var spanskeys = Object.keys(spans);
         var totalAmp = 0;
         spanskeys.forEach(function (k) {
           var record = spans[k];
-          var repetitions = record[0];
-          var length = record[1][0]/World.TILE_SIZE;
+          var spanCount = record[0];
+          var length = record[1][0]/TILE_SIZE;
           var lumval = record[1][1];
         
-          var pitch = basePitch * (Math.exp(length+lumval)) * (1+Math.random()*0.1);
-          var pitchInSampleUnits = pitch / bsSampleRate;
+          var reps = 2;
+          for (var r = 0; r < reps; r++) {
+            var pitch = basePitch * (Math.exp(length/10+lumval)) * (1 - variation/2+Math.random()*variation);
+            var pitchInSampleUnits = pitch / bsSampleRate;
 
-          for (var i = 0; i < bsSamples; i++) {
-            a[i] += repetitions*square(i * pitchInSampleUnits);
+            for (var i = 0; i < bsSamples; i++) {
+              //a[i] += spanCount*square(i * pitchInSampleUnits);
+              a[i] += spanCount*Math.floor((i*pitchInSampleUnits) % 1 * 2);
+            }
           }
-          totalAmp += repetitions;
+          totalAmp += spanCount * reps;
         });
         var normalize = totalAmp > 0 ? 1/totalAmp : 0;
         var decay = -5/bsSamples;
@@ -103,10 +112,12 @@ var CubesAudio = (function () {
         return b;
       }
       
-      return {
-        create: subSynth(1, 0),
-        destroy: subSynth(0.25, 0)
+      var r = {
+        create: subSynth(1, 0.1),
+        destroy: subSynth(1, 0.5)
       };
+      //console.log("synthBlock done");
+      return r;
     },
     
     play: !audioSupported ? function () {} : function (pos, blockType, kind) {
@@ -119,7 +130,7 @@ var CubesAudio = (function () {
 
       var source = context.createBufferSource();
       source.buffer = buffer;
-      //source.playbackRate.value = 0.9 + Math.random() * 0.2;
+      source.playbackRate.value = 0.98 + Math.random() * 0.04;
       
       source.connect(panner);
       panner.connect(context.destination);
