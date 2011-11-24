@@ -33,21 +33,41 @@ html {
   display: table;
 }
 
+#menu-container { /* exists to support centering */
+  position: absolute;
+  pointer-events: none;
+  left: 0;
+  bottom: 0;
+  display: table;
+  width: 100%;
+}
 #menu {
-  position: fixed;
+  pointer-events: auto;
+  margin: 2px auto;
   background: gray;
   background: rgba(0, 0, 0, 0.5);
   border-radius: 5px;
   display: table;
+  text-align: center;
 }
-#menu canvas {
+.menu-item {
+  display: inline-block;
+  position: relative;
   margin: 1px 1px;
+}
+.menu-shortcut-key {
+  position: absolute;
+  bottom: -1px;
+  left: 1px;
+  color: white;
+  background: none;
 }
 #menu .selectedTool {
   border-radius: 5px;
   margin: -1px -1px; /* outlines don't have radius */
   border: 2px solid white;
   background: gray;
+  visibility: visible; /* show current tool even when menu is hidden */
 }
 
 #error-notices {

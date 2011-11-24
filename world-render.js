@@ -78,11 +78,12 @@ var WorldRenderer = (function () {
     var circuitRenderers = {};
 
     var blockSet = world.blockSet;
-    var blockTexture = blockSet.texture;
     
     var particles = [];
 
-    var textureDebugR = new RenderBundle(gl.TRIANGLE_STRIP, blockTexture, function (vertices, normals, texcoords) {
+    var textureDebugR = new renderer.RenderBundle(gl.TRIANGLE_STRIP,
+                                                  function () { return blockSet.texture; },
+                                                  function (vertices, normals, texcoords) {
       var x = 1;
       var y = 1;
       var z = 0;
@@ -102,28 +103,15 @@ var WorldRenderer = (function () {
       texcoords.push(1, 1);
     }, {
       aroundDraw: function (draw) {
-        var aspect = theCanvas.width / theCanvas.height;
-        var w, h;
-        if (aspect > 1) {
-          w = aspect;
-          h = 1;
-        } else {
-          w = 1;
-          h = 1/aspect;
-        }
-        var mvsave = mvMatrix;
-        mvMatrix = mat4.identity(mat4.create());
-        gl.uniformMatrix4fv(uniforms.uPMatrix, false, mat4.ortho(-w, w, -h, h, -1, 1, mat4.create()));
-        sendViewUniforms();
-        gl.disable(gl.DEPTH_TEST);
+        var restoreView = renderer.saveView();
+        renderer.setViewTo2D();
+        gl.disable(gl.DEPTH_TEST); // TODO should be handled by renderer?
         gl.depthMask(false);
         draw();
-        mvMatrix = mvsave;
+        restoreView();
         gl.enable(gl.DEPTH_TEST);
         gl.depthMask(true);
-        gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
-        sendViewUniforms();
-      },
+      }
     });
     
     var blockSet = world.blockSet;
@@ -331,7 +319,7 @@ var WorldRenderer = (function () {
     this.updateSomeChunks = updateSomeChunks;
 
     function renderDestroyBlock(block) {
-      particles.push(new BlockParticles(
+      particles.push(new renderer.BlockParticles(
         block,
         world.gt(block[0],block[1],block[2]),
         true,
@@ -340,7 +328,7 @@ var WorldRenderer = (function () {
     this.renderDestroyBlock = renderDestroyBlock;
 
     function renderCreateBlock(block) {
-      particles.push(new BlockParticles(
+      particles.push(new renderer.BlockParticles(
         block,
         world.gt(block[0],block[1],block[2]),
         false,
@@ -353,17 +341,18 @@ var WorldRenderer = (function () {
       for (var index in chunks) {
         if (!chunks.hasOwnProperty(index)) continue;
         var chunk = chunks[index];
-        if (aabbInView(chunk.aabb))
+        if (renderer.aabbInView(chunk.aabb))
           chunk.draw();
       }
       
       // Draw circuits.
-      gl.uniform1i(uniforms.uStipple, 1);
+      renderer.setStipple(true);
       for (var index in circuitRenderers) {
         if (!circuitRenderers.hasOwnProperty(index)) continue;
         circuitRenderers[index].draw();
       }
-      gl.uniform1i(uniforms.uStipple, 0);
+      renderer.setStipple(false);
+      
       
       // Draw particles.
       for (var i = 0; i < particles.length; i++) {
@@ -417,8 +406,8 @@ var WorldRenderer = (function () {
         var TILE_SIZE = World.TILE_SIZE;
         var PIXEL_SIZE = 1/TILE_SIZE;
         var ID_EMPTY = BlockSet.ID_EMPTY;
-        chunks[xzkey] = new RenderBundle(gl.TRIANGLES,
-                                         blockTexture,
+        chunks[xzkey] = new renderer.RenderBundle(gl.TRIANGLES,
+                                         function () { return blockSet.texture; },
                                          function (vertices, normals, texcoords) {
           // These statements are inside the function because they need to
           // retrieve the most up-to-date values.
@@ -586,7 +575,7 @@ var WorldRenderer = (function () {
     var CYL_RADIUS = Math.round(.08 * World.TILE_SIZE) / World.TILE_SIZE;
     function makeCircuitRenderer(circuit) {
       var dyns;
-      var circuitRenderer = new RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {
+      var circuitRenderer = new renderer.RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {
         dyns = [];
         circuit.getEdges().forEach(function (record) {
           var net = record[0];

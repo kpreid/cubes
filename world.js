@@ -19,7 +19,7 @@ function World(sizes, blockSet) {
   // Maps from an arbitrary block "x,y,z" to circuit object (no duplicate circuits)
   var circuits = {};
   
-  var spontaneousBaseRate = 0.00003; // probability of block spontaneous effect call per block per second
+  var spontaneousBaseRate = 0.0003; // probability of block spontaneous effect call per block per second
   var numToDisturb = wx*wy*wz * TIMESTEP * spontaneousBaseRate;
   
   var notifier = new Notifier("World");

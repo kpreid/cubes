@@ -34,11 +34,8 @@ function BlockRenderer(blockSet) {
   gl.bindRenderbuffer(gl.RENDERBUFFER, null);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   
-  var ow = 0.8;
-  var oh = 0.8;
-  
   function blockToImageData(blockID, context2d) {
-    // TODO: global variables gl, mvMatrix, pMatrix, viewPosition
+    // TODO: global variables gl, renderer
     
     gl.bindFramebuffer(gl.FRAMEBUFFER, rttFramebuffer);
     
@@ -46,25 +43,15 @@ function BlockRenderer(blockSet) {
     gl.clearColor(0,0,0,0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     
-    var saveMVMatrix = mvMatrix;
-    var saveView = viewPosition;
-    var projection = mat4.create();
-    gl.uniformMatrix4fv(uniforms.uPMatrix, false,
-      mat4.ortho(-ow, ow, -oh, oh, -1, 1, mat4.create()));
-    mat4.identity(mvMatrix);
-    mat4.rotate(mvMatrix, Math.PI/4 * 0.6, [1, 0, 0]);
-    mat4.rotate(mvMatrix, Math.PI/4 * 0.555, [0, 1, 0]);
-    mat4.translate(mvMatrix, [-0.5,-0.5,-0.5]);
-    sendViewUniforms();
+    var restoreView = renderer.saveView();
+    renderer.setViewToBlock();
     singleBlockWorld.s(0,0,0,blockID);
     singleBlockR.updateSomeChunks();
     singleBlockR.draw();
     
     // restore stuff (except for framebuffer which we're about to read)
-    gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
-    mvMatrix = saveMVMatrix;
-    viewPosition = saveView;
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+    restoreView();
     
     var imageData = context2d.createImageData(rttFramebuffer.width, rttFramebuffer.height);
     var arrayC = imageData.data;
@@ -85,6 +72,9 @@ function BlockRenderer(blockSet) {
     
     return imageData;
   }
+  
+  // TODO: This is a workaround for some glitch that happens only on Chrome (17.0.938.0), which causes the first block rendered to not appear.
+  blockToImageData(1, document.createElement("canvas").getContext("2d"));
 
   return {
     blockToImageData: blockToImageData,

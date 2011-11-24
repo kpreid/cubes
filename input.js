@@ -8,12 +8,19 @@ function Input(eventReceiver, playerInput, menuElement) {
 
   var keymap = {};
   var mousePos = [0,0];
+  var mouselookMode = true;
 
   // --- Utilities ---
 
   function evalVel(pos, neg) {
     return pos ? neg ? 0 : 1 : neg ? -1 : 0;
   }
+  
+  function setMouselook(value) {
+    mouselookMode = value;
+    menuElement.style.visibility = mouselookMode ? 'hidden' : 'visible';
+  }
+  setMouselook(mouselookMode);
   
   // --- Keyboard events ---
   
@@ -63,9 +70,12 @@ function Input(eventReceiver, playerInput, menuElement) {
       case "8": playerInput.tool = 8; return false;
       case "9": playerInput.tool = 9; return false;
       case "0": playerInput.tool = 10; return false;
-      case "Q": if (menuVisible()) hideMenu(); else showMenu(); return false;
-      case "R": hideMenu(); playerInput.changeWorld(1); return false;
-      case "F": hideMenu(); playerInput.changeWorld(-1); return false;
+      case "Q": 
+        setMouselook(!mouselookMode);
+        return false;
+      case "R": playerInput.changeWorld(1);  return false;
+      case "\x1B"/*Esc*/:
+      case "F": playerInput.changeWorld(-1); return false;
       case " ": playerInput.jump(); return false;
     }
 
@@ -98,6 +108,7 @@ function Input(eventReceiver, playerInput, menuElement) {
   
   eventReceiver.addEventListener("mousemove", function (event) {
     mousePos = [event.clientX, event.clientY];
+    playerInput.aimChanged(); // TODO kludge due to globals
 
     var cs = window.getComputedStyle(eventReceiver, null);
     var w = parseInt(cs.width);
@@ -106,14 +117,17 @@ function Input(eventReceiver, playerInput, menuElement) {
     var swingY = event.clientY / (h*0.5) - 1;
     var swingX = event.clientX / (w*0.5) - 1;
     
-    // y effect
-    playerInput.pitch = -Math.PI/2 * swingY;
-    
-    // x effect
-    var direct = -Math.PI/2 * swingX;
-    playerInput.yaw += (direct - prevx);
-    prevx = direct;
-    dx = -15.0 * deadzone(swingX, 0.4);
+    var directY = -Math.PI/2 * swingY;
+    var directX = -Math.PI/2 * swingX;
+
+    if (mouselookMode) {
+      playerInput.pitch = directY;
+      playerInput.yaw += (directX - prevx);
+      dx = -10.0 * deadzone(swingX, 0.1);
+    } else {
+      dx = 0;
+    }
+    prevx = directX;
   }, false);
   eventReceiver.addEventListener("mouseout", function (event) {
     mousePos = [event.clientX, event.clientY];
@@ -128,22 +142,14 @@ function Input(eventReceiver, playerInput, menuElement) {
 
   eventReceiver.addEventListener("click", function (event) {
     mousePos = [event.clientX, event.clientY];
-    if (menuVisible()) {
-      hideMenu();
-    } else {
-      eventReceiver.focus();
-      playerInput.deleteBlock();
-    }
+    eventReceiver.focus();
+    playerInput.deleteBlock();
     return false;
   }, false);
   eventReceiver.oncontextmenu = function (event) { // On Firefox 5.0.1 (most recent tested 2011-09-10), addEventListener does not suppress the builtin context menu, so this is an attribute rather than a listener.
     mousePos = [event.clientX, event.clientY];
-    if (menuVisible()) {
-      hideMenu();
-    } else {
-      eventReceiver.focus();
-      playerInput.useTool();
-    }
+    eventReceiver.focus();
+    playerInput.useTool();
     return false;
   };
   
@@ -158,72 +164,84 @@ function Input(eventReceiver, playerInput, menuElement) {
   
   // --- Block menu ---
   
-  function menuVisible() {
-    return menuElement.style.visibility !== "hidden";
-  }
+  var menuItems = [];
+  var blockSetInMenu;
+  
+  function updateMenuBlocks() {
+    while (menuElement.firstChild) menuElement.removeChild(menuElement.firstChild);
 
-  var blockSetInMenu = null;
-  var menuCanvases = [];
-  function showMenu() {
-
-    // TODO: Need to rebuild menu if blocks in the set have changed appearance
-    if (playerInput.blockSet !== blockSetInMenu) {
-      while (menuElement.firstChild) menuElement.removeChild(menuElement.firstChild);
-
-      blockSetInMenu = playerInput.blockSet;
-      var blockRenderer = new BlockRenderer(blockSetInMenu);
-    
-      var sidecount = Math.ceil(Math.sqrt(blockSetInMenu.length));
-      var size = Math.min(64, 300 / sidecount);
-    
-      for (var i = 1; i < blockSetInMenu.length; i++) {
-        var canvas = document.createElement('canvas');
-        canvas.width = canvas.height = 64; // TODO magic number
-        canvas.style.width = canvas.style.height = size + "px";
-        menuCanvases[i] = canvas;
-        menuElement.appendChild(canvas);
-        var cctx = canvas.getContext('2d');
-        cctx.putImageData(blockRenderer.blockToImageData(i, cctx), 0, 0);
-        (function (canvas,i) {
-          canvas.onclick = function () {
-            hideMenu();
-            playerInput.tool = i;
-            return false;
-          };
-          canvas.onmousedown = canvas.onselectstart = function () {
-            canvas.className = "selectedTool";
-            return false; // inhibit selection
-          };
-          canvas.onmouseout = function () {
-            canvas.className = i == playerInput.tool ? "selectedTool" : "";
-            return true;
-          };
-        })(canvas,i);
-        if (i % sidecount == 0) {
-          menuElement.appendChild(document.createElement('br'));
-        }
-      }
-      
-      blockRenderer.deleteResources();
-    }
-
+    blockSetInMenu = playerInput.blockSet;
+    var blockRenderer = new BlockRenderer(blockSetInMenu);
+  
+    var sidecount = Math.ceil(Math.sqrt(blockSetInMenu.length));
+    var size = Math.min(64, 300 / sidecount);
+  
     for (var i = 1; i < blockSetInMenu.length; i++) {
-      menuCanvases[i].className = i == playerInput.tool ? "selectedTool" : "";
+      // element structure and style
+      var item = menuItems[i] = document.createElement("span");
+      item.className = "menu-item";
+      var canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 64; // TODO magic number
+      canvas.style.width = canvas.style.height = size + "px";
+      if (i <= 10) {
+        // keyboard shortcut hint
+        var number = document.createElement("kbd");
+        number.appendChild(document.createTextNode((i % 10).toString()));
+        number.className = "menu-shortcut-key";
+        item.appendChild(number);
+      }
+      item.appendChild(canvas);
+      menuElement.appendChild(item);
+      
+      // render block
+      var cctx = canvas.getContext('2d');
+      cctx.putImageData(blockRenderer.blockToImageData(i, cctx), 0, 0);
+
+      // event handlers
+      (function (item,canvas,i) {
+        canvas.onclick = function () {
+          playerInput.tool = i;
+          return false;
+        };
+        canvas.onmousedown = canvas.onselectstart = function () {
+          item.className = "menu-item selectedTool";
+          return false; // inhibit selection
+        };
+        canvas.oncontextmenu = function () {
+          playerInput.enterWorld(i);
+          return false;
+        };
+        canvas.onmouseout = function () {
+          item.className = "menu-item " + (i == playerInput.tool ? " selectedTool" : "");
+          return true;
+        };
+      })(item,canvas,i);
     }
     
-    var cs = window.getComputedStyle(menuElement, null);
-    var menuW = parseInt(cs.width);
-    var menuH = parseInt(cs.height);
-    
-    menuElement.style.left = (mousePos[0] - menuW/2) + "px";
-    menuElement.style.top  = (mousePos[1] - menuH/2) + "px";
-    menuElement.style.visibility = 'visible';
-  }
-  function hideMenu() {
-    menuElement.style.visibility = 'hidden';
-    eventReceiver.focus();
+    blockRenderer.deleteResources();
   }
   
+  function updateMenuSelection() {
+    var tool = playerInput.tool;
+    for (var i = 1; i < blockSetInMenu.length; i++) {
+      menuItems[i].className = i == tool ? "menu-item selectedTool" : "menu-item";
+    }
+  }
+  
+  playerInput.listen({
+    changedWorld: function (v) {
+      updateMenuBlocks();
+      return true;
+    },
+    changedTool: function (v) {
+      updateMenuSelection();
+      return true;
+    }
+  });
+
+  updateMenuBlocks();
+  updateMenuSelection();
+    
   // --- Methods ---
   
   this.step = step;

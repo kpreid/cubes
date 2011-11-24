@@ -52,7 +52,7 @@ var Player = (function () {
     // kludge: Since UI sets pitch absolutely, it's not a place variable
     var pitch = 0;
   
-    var selectionR = new RenderBundle(gl.LINE_LOOP, null, function (vertices, normals, colors) {
+    var selectionR = new renderer.RenderBundle(gl.LINE_LOOP, null, function (vertices, normals, colors) {
       var sel = currentPlace ? currentPlace.selection : null;
       if (sel !== null) {
         var p = vec3.create(sel.cube);
@@ -80,7 +80,7 @@ var Player = (function () {
       }
     });
     
-    var aabbR = new RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
+    var aabbR = new renderer.RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
       // TODO: Would be more efficient to use the modelview matrix than recomputing this?
       if (!currentPlace) return;
       [[0,1,2], [1,2,0], [2,0,1]].forEach(function (dims) {
@@ -266,7 +266,8 @@ var Player = (function () {
       currentPlace.world.step();
     }
     
-    // The facet for rendering
+    // --- The facet for rendering ---
+    
     this.render = Object.freeze({
       applyViewRot: function (matrix) {
         mat4.rotate(matrix, -pitch, [1, 0, 0]);
@@ -304,10 +305,15 @@ var Player = (function () {
       // TODO: move this position downward to free space rather than just imparting velocity
       this.setPosition([world.wx/2, world.wy - playerAABB[1][0] + EPSILON, world.wz/2]);
       vec3.set([0,-120,0], currentPlace.vel);
+      notifyChangedPlace();
     };
     
-    // The facet for user input
+    // --- The facet for user input ---
+    
+    var inputNotifier = new Notifier("player.input");
     this.input = Object.freeze({
+      listen: inputNotifier.listen,
+      
       useTool: function () {
         if (currentPlace.tool === BlockSet.ID_EMPTY) {
           this.deleteBlock();
@@ -320,7 +326,7 @@ var Player = (function () {
             var type = currentPlace.world.blockSet.get(currentPlace.tool);
             if (!currentPlace.world.solid(x,y,z)) {
               // TODO: rotation on create should be more programmable.
-              var raypts = getAimRay();
+              var raypts = renderer.getAimRay(); // TODO depend on player orientation instead?
               var symm = nearestCubeSymmetry(vec3.subtract(raypts[0], raypts[1]), [0,0,1], type.automaticRotations);
               currentPlace.world.s(x,y,z, currentPlace.tool, symm);
               
@@ -354,7 +360,25 @@ var Player = (function () {
       get yaw () { return currentPlace.yaw; },
       set yaw (angle) { currentPlace.yaw = angle; aimChanged(); },
       get tool () { return currentPlace.tool; },
-      set tool (id) { currentPlace.tool = id; aimChanged(); },
+      set tool (id) { 
+        currentPlace.tool = id; 
+        inputNotifier.notify("changedTool");
+      },
+      enterWorld: function (blockID) {
+        var world = currentPlace.world.blockSet.get(blockID).world;
+
+        if (!world) return; // TODO: UI message about this
+
+        var oldPlace = currentPlace;
+
+        currentPlace = new Place(world);
+        currentPlace.forBlock = blockID;
+        vec3.set([World.TILE_SIZE/2, World.TILE_SIZE - playerAABB[1][0] + EPSILON, World.TILE_SIZE/2], currentPlace.pos);
+        placeStack.push(oldPlace);
+        aimChanged();
+
+        notifyChangedPlace();
+      }, 
       changeWorld: function (direction) {
         switch (direction) {
           case 1:
@@ -395,18 +419,28 @@ var Player = (function () {
             
             break;
           case -1:
-            if (placeStack.length <= 0) break;
+            if (placeStack.length <= 0) return;
             currentPlace.wrend.deleteResources();
             currentPlace = placeStack.pop();
             aimChanged();
             break;
         }
+        
         aabbR.recompute();
+        notifyChangedPlace();
       },
+      aimChanged: aimChanged, // TODO kludge due to globals
       jump: function () {
         if (currentPlace.standingOn) currentPlace.vel[1] = JUMP_SPEED;
       }
     });
+    
+    function notifyChangedPlace() {
+      inputNotifier.notify("changedWorld");
+      inputNotifier.notify("changedTool");
+    }
+    
+    // --- Initialization ---
     
     config.debugPlayerCollision.listen({
       changed: function (v) {

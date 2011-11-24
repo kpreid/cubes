@@ -120,6 +120,17 @@ PersistentCell.prototype.bindControl = function (id) {
         return true;
       };
       break;
+    case "Tstring":
+    case "Eselect-one":
+      listener = function(value) {
+        elem.value = value;
+        return true;
+      };
+      elem.onchange = function () {
+        self.set(elem.value);
+        return true;
+      };
+      break;
     case "Enumber":
     case "Tnumber":
       listener = function(value) {
@@ -146,11 +157,16 @@ PersistentCell.prototype.bindControl = function (id) {
   });
   listener(this.get());
 };
-PersistentCell.prototype.nowAndWhenChanged = function (func) {
+// Returns a function to trigger the function now.
+PersistentCell.prototype.whenChanged = function (func) {
   this.listen({
     changed: func,
   });
-  func(this.get());
+  var self = this;
+  return function () { func(self.get()); };
+};
+PersistentCell.prototype.nowAndWhenChanged = function (func) {
+  this.whenChanged(func)();
 };
 
 function mod(value, modulus) {
@@ -346,7 +362,7 @@ function Notifier(label) {
         }
       }
       if (res !== true) {
-        if (res !== true && typeof console !== "undefined") {
+        if (res !== false && typeof console !== "undefined") {
           console.warn("Listener", listener, " did not return boolean.");
         }
         if (i < listeners.length - 1) {

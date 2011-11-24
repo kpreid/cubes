@@ -354,11 +354,16 @@ function generateWorlds() {
   }
   function rgbPat(b) { return brgb(b[0]/TL,b[1]/TL,b[2]/TL); }
   
-  function addSpontaneousConversionCircuit(blockType, targetID) {
+  function addSpontaneousConversion(type, targetID) {
     if (!ls.emitConstant) throw new Error("don't have constant block available");
     type.world.s(1,1,1, ls.emitConstant, targetID);
     type.world.s(2,1,1, ls.gate);  type.world.s(2,1,2, ls.spontaneous);
     type.world.s(3,1,1, ls.become);
+  }
+  function addRotation(type) {
+    type.world.s(1,3,0, ls.getSubDatum);
+    type.world.s(1,4,0, ls.setRotation);
+    type.automaticRotations = sixFaceRotations;
   }
   
   // --- default block worlds and block set ---
@@ -371,32 +376,40 @@ function generateWorlds() {
     return rgbPat(b);
   }));
   
-  // ground block (id 2)
+  // ground block
   blockset.add(type = genedit(function (b) {
     return (f.te(b) ? f.cond(f.speckle, f.flat(brgb(.67,.34,.34)), f.flat(brgb(.67,0,0))) :
             f.tp(b) ? f.flat(brgb(1,.34,.34)) :
             f.cond(f.speckle, f.flat(brgb(.34,0,0)), f.flat(brgb(0,0,0))))(b);
   }));
-  addSpontaneousConversionCircuit(type, 3);
   
-  // ground block #2 (id 3)
+  // ground block #2
   blockset.add(type = genedit(function (b) {
     return (f.te(b) ? f.cond(f.speckle, f.flat(brgb(.34,.67,.34)), f.flat(brgb(0,.34,0))) :
             f.tp(b) ? f.flat(brgb(.34,1,.34)) :
             f.cond(f.speckle, f.flat(brgb(0,.34,0)), f.flat(brgb(0,1,1))))(b);
   }));
-  addSpontaneousConversionCircuit(type, 2);
   
   // pyramid thing
+  var pyr1 = blockset.length;
   blockset.add(type = genedit(function (b) {
     if (Math.abs(b[0] - TL/2) + Math.abs(b[1] - TL/2) > (TS-0.5)-b[2])
       return 0;
     return brgb(mod((b[2]+2)/(TS/2), 1), Math.floor((b[2]+2)/(TS/2))*0.5, 0);
   }));
-  // rotate-based-on-subdatum circuit
-  type.world.s(1,1,0, ls.getSubDatum);
-  type.world.s(1,2,0, ls.setRotation);
-  type.automaticRotations = sixFaceRotations;
+  addRotation(type);
+
+  // pyramid thing variant
+  var pyr2 = blockset.length;
+  blockset.add(type = genedit(function (b) {
+    if (Math.abs(b[0] - TL/2) + Math.abs(b[1] - TL/2) > (TS-0.5)-b[2])
+      return 0;
+    return brgb(0, mod((b[2]+2)/(TS/2), 1), Math.floor((b[2]+2)/(TS/2))*0.5);
+  }));
+  addRotation(type);
+
+  addSpontaneousConversion(blockset.get(pyr1), pyr2);
+  addSpontaneousConversion(blockset.get(pyr2), pyr1);
   
   // "leaf block" transparency test
   blockset.add(type = genedit(function (b) {
@@ -421,6 +434,7 @@ function generateWorlds() {
   
   
   // --- big world ---
+  
 
   var topWorld = new World([
     config.generate_wx.get(),
@@ -430,27 +444,53 @@ function generateWorlds() {
   var wx = topWorld.wx;
   var wy = topWorld.wy;
   var wz = topWorld.wz;
+  
   var mid = wy / 2;
   var sin = Math.sin;
   var round = Math.round;
-  // Using raw array access because it lets us cache the altitude computation, not because the overhead of .edit() is especially high.
+  var sqrt = Math.sqrt;
+  var random = Math.random;
+  
+  var bottomFunc;
+  switch (config.generate_shape.get()) {
+    case "fill":
+    default:
+      bottomFunc = function () { return 0; };
+      break;
+    case "island":
+      bottomFunc = function (x,z,terrain) {
+        var nx = x/wx*2 - 1;
+        var nz = z/wz*2 - 1;
+        var negr = 1 - (nx*nx+nz*nz);
+        var dome = (negr >= 0 ? sqrt(negr) : -1);
+        return mid - (mid-10)*dome + terrain * 2.0;
+      };
+      break;
+  }
+  
+  // The constant is the maximum slope of the 'terrain' function; therefore generate_slope is the maximum slope of the returned terrain.
+  var slopeScaled = config.generate_slope.get() / 0.904087;
+
+  // Using raw array access because it lets us cache the altitude computation by iterating over y last, not because the overhead of .edit() is especially high.
   var raw = topWorld.raw;
   var rawSubData = topWorld.rawSubData;
   for (var x = 0; x < wx; x++) {
     var xbase = x*wy*wz;
     for (var z = 0; z < wz; z++) {
-      var terrain = mid + round(
+      var terrain = slopeScaled * (
         (sin(x/8) + sin(z/8))*1
         + (sin(x/14) + sin(z/14))*3
-        + (sin(x/2) + sin(z/2))*0.6
-      );
+        + (sin(x/2) + sin(z/2))*0.6);
+      var top = mid - round(terrain);
+      var bottom = bottomFunc(x,z,terrain);
       for (var y = 0; y < wy; y++) {
         var index = xbase + y*wz + z;
-        var altitude = y - terrain;
-        raw[index] = altitude > 1 ? 0 :
+        var altitude = y - top;
+        raw[index] = y < bottom ? 0 :
+                     altitude > 1 ? 0 :
                      altitude < 0 ? 1 :
                      altitude == 0 ? 2 :
-                     /* altitude == 1 */ Math.random() > 0.99 ? (rawSubData[index] = 4, 4) : 0;
+                     /* altitude == 1 */ random() > 0.99 ? (rawSubData[index] = 4, 4) : 0;
       }
     }
   }

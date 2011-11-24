@@ -24,6 +24,7 @@
 <script type="text/javascript" src="world.js"></script>
 <script type="text/javascript" src="world-gen.js"></script>
 <script type="text/javascript" src="circuit.js"></script>
+<script type="text/javascript" src="renderer.js"></script>
 <script type="text/javascript" src="world-render.js"></script>
 <script type="text/javascript" src="block-render.js"></script>
 <script type="text/javascript" src="player.js"></script>
@@ -56,7 +57,7 @@
     const vec4 cGround = vec4(0.5,0.4,0.4,1.0);
     const float cModEpsilon = 1e-20;
     const float cTileCurvature = 0.2;
-    const float cTileBumpDistance = 7.0;
+    const float cTileBumpDistance = 2.0;
 
     const float cLightAmbient = 0.5;
     const vec3 cLight1Dir = vec3(0.8,-0.2,0);
@@ -226,10 +227,13 @@
     defineOption("generate_wx", "number", 400);
     defineOption("generate_wy", "number", 128);
     defineOption("generate_wz", "number", 400);
+    defineOption("generate_shape", "string", "fill");
+    defineOption("generate_slope", "number", 0.9);
 
     // GL objects
     var gl;
     var theCanvas;
+    var renderer;
     
     var sceneInfo;
     var cursorInfoElem;
@@ -242,311 +246,15 @@
     
     var readyToDraw = false;
     
-    // prepareProgram fills in these with the locations of the shader program variables
-    var attribs = {};
-    var uniforms = {};
-
-    // Projection trans
-
-    // View and projection transformation globals.
-    var pMatrix = mat4.create();
-    var mvMatrix = mat4.create();
-    var viewPosition = vec3.create();
-    var viewFrustum; // computed
-
-    function calculateFrustum() {
-      var matrix = mat4.multiply(pMatrix, mvMatrix, mat4.create());
-      mat4.inverse(matrix);
-      // matrix is now a clip-space-to-model-space conversion
-      
-      function dehomog(v4) {
-        return [v4[0]/v4[3], v4[1]/v4[3], v4[2]/v4[3]];
-      }
-      // Return a function which tests whether the point is in the half-space bounded by the plane containing origin, pt1, and pt2, and pointed toward by pt1 cross pt2.
-      function makeHalfSpaceTest(origin, pt1, pt2) {
-        var normal = vec3.cross(
-          vec3.subtract(pt1, origin, vec3.create()),
-          vec3.subtract(pt2, origin, vec3.create()),
-          vec3.create());
-        var vecbuf = vec3.create();
-        return function (point) {
-          vec3.subtract(point, origin, vecbuf);
-          return vec3.dot(vecbuf, normal) > 0;
-        }
-      }
-      var lbn = dehomog(mat4.multiplyVec4(matrix, [-1,-1,-1,1]));
-      var lbf = dehomog(mat4.multiplyVec4(matrix, [-1,-1, 1,1]));
-      var ltn = dehomog(mat4.multiplyVec4(matrix, [-1, 1,-1,1]));
-      var ltf = dehomog(mat4.multiplyVec4(matrix, [-1, 1, 1,1]));
-      var rbn = dehomog(mat4.multiplyVec4(matrix, [ 1,-1,-1,1]));
-      var rbf = dehomog(mat4.multiplyVec4(matrix, [ 1,-1, 1,1]));
-      var rtn = dehomog(mat4.multiplyVec4(matrix, [ 1, 1,-1,1]));
-      var rtf = dehomog(mat4.multiplyVec4(matrix, [ 1, 1, 1,1]));
-      
-      viewFrustum = [
-        makeHalfSpaceTest(lbn, lbf, ltf), // left
-        makeHalfSpaceTest(rtn, rtf, rbf), // right
-        makeHalfSpaceTest(ltn, ltf, rtf), // top
-        makeHalfSpaceTest(rbn, rbf, lbf), // bottom
-        makeHalfSpaceTest(lbn, ltn, rtn), // near
-        makeHalfSpaceTest(lbf, rbf, ltf), // far
-      ];
-    }
-
-    function aabbInView(aabb) {
-      for (var i = 0; i < viewFrustum.length; i++) {
-        var outside = true;
-        for (var xb = 0; xb < 2; xb++)
-        for (var yb = 0; yb < 2; yb++)
-        for (var zb = 0; zb < 2; zb++) {
-          var vec = [aabb[0][xb], aabb[1][yb], aabb[2][zb]];
-          if (viewFrustum[i](vec))
-            outside = false;
-        }
-        if (outside)
-          return false;
-      }
-      return true;
-    }
-    
-    function sendViewUniforms() {
-        gl.uniformMatrix4fv(uniforms.uMVMatrix, false, mvMatrix);
-        gl.uniform3fv(uniforms.uViewPosition, viewPosition);
-        calculateFrustum();
-    }
-
-    function updateViewport() {
-      var pagePixelWidth = parseInt(window.getComputedStyle(theCanvas,null).width);
-      var pagePixelHeight = parseInt(window.getComputedStyle(theCanvas,null).height);
-      
-      // Specify canvas resolution
-      theCanvas.width = pagePixelWidth;
-      theCanvas.height = pagePixelHeight;
-      
-      // WebGL is not guaranteed to give us that resolution; instead, what it
-      // can supply is returned in .drawingBuffer{Width,Height}. However, those
-      // properties are not supported by, at least, Firefox 6.0.2.
-      if (!("drawingBufferWidth" in gl)) {
-        gl.drawingBufferWidth = pagePixelWidth;
-        gl.drawingBufferHeight = pagePixelHeight;
-      }
-      
-      gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-      gl.uniform2f(uniforms.uPixelsPerClipUnit, gl.drawingBufferWidth / 2,
-                                                gl.drawingBufferHeight / 2);
-
-      updateProjection();
-    }
-    
-    function updateProjection() {
-      var fov = config.fov.get();
-      var aspectRatio = gl.drawingBufferWidth / gl.drawingBufferHeight;
-      
-      var nearestApproachToPlayer = Math.min(
-        -Player.aabb[0][0], Player.aabb[0][1],
-        -Player.aabb[1][0], Player.aabb[1][1],
-        -Player.aabb[2][0], Player.aabb[2][1]);
-      var nearPlane = nearestApproachToPlayer 
-                      / Math.sqrt(1 + Math.pow(Math.tan(fov/180*Math.PI/2), 2)
-                                      * (Math.pow(aspectRatio, 2) + 1));
-      
-      mat4.perspective(fov,
-                       aspectRatio,
-                       nearPlane,
-                       config.renderDistance.get(),
-                       pMatrix);
-      
-      gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
-      // uFogDistance is handled by drawScene because it is changed.
-    }
-    
-    // Returns a pair of points along the line of aim of the screen cursor.
-    function getAimRay() {
-      var pos = input.getMousePos();
-      var glxy = [pos[0] / theCanvas.width * 2 - 1, -(pos[1] / theCanvas.height * 2 - 1)];
-      
-      var unproject = mat4.identity(mat4.create());
-      player.render.applyViewRot(unproject);
-      player.render.applyViewTranslation(unproject);
-      mat4.multiply(pMatrix, unproject, unproject);
-      mat4.inverse(unproject);
-
-      var pt1 = fixedmultiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 0]));
-      var pt2 = fixedmultiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 1]));
-
-      return [pt1, pt2];
-    }
-
     function raycastFromScreen(radius, callback) {
-      var pts = getAimRay();
+      var pts = renderer.getAimRay();
       return player.getWorld().raycast(pts[0], pts[1], radius, callback);
     }
     
-    function BufferAndArray(numComponents) {
-      this.numComponents = numComponents;
-      this.buffer = gl.createBuffer();
-      this.array = null;
-    }
-    BufferAndArray.prototype.countVertices = function () {
-      return this.array.length / this.numComponents;
-    };
-    BufferAndArray.prototype.load = function (jsArray, checkAgainst) {
-      this.array = new Float32Array(jsArray);
-      if (checkAgainst && this.countVertices() !== checkAgainst.countVertices()) {
-        throw new Error("Inconsistent number of vertices.");
-      }
-    };
-    BufferAndArray.prototype.send = function (mode) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
-      gl.bufferData(gl.ARRAY_BUFFER, this.array, mode);
-    };
-    BufferAndArray.prototype.attrib = function (attrib) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
-      gl.vertexAttribPointer(attrib, this.numComponents, gl.FLOAT, false, 0, 0);
-    };
-    BufferAndArray.prototype.deleteResources = function () {
-      gl.deleteBuffer(this.buffer);
-      this.buffer = this.array = null;
-    };
-    
-    // Manages a set of attribute arrays for some geometry to render.
-    // The calcFunc is called and given a set of JS arrays to fill, immediately as well as whenever this.recompute() is called.
-    // If calcFunc is null, then the client is expected to fill the arrays manually.
-    function RenderBundle(primitive, optTexture, calcFunc, options) {
-      options = options || {};
-      
-      var v = new BufferAndArray(3);
-      var n = new BufferAndArray(3);
-      if (!optTexture) var c = new BufferAndArray(4);
-      if (optTexture) var t = new BufferAndArray(2);
-      
-      if (calcFunc != null) {
-        this.recompute = function () {
-          var vertices = [];
-          var normals = [];
-          var colors = optTexture ? null : [];
-          var texcoords = optTexture ? [] : null;
-          calcFunc(vertices, normals, optTexture ? texcoords : colors);
-
-          v.load(vertices);
-          v.send(gl.STATIC_DRAW);
-          n.load(normals, v);
-          n.send(gl.STATIC_DRAW);
-
-          if (optTexture) {
-            t.load(texcoords, v);
-            t.send(gl.STATIC_DRAW);
-          } else {
-            c.load(colors, v);
-            c.send(gl.STATIC_DRAW);
-          }
-        };
-
-        this.recompute();
-      }
-
-      // made available for partial updates
-      this.vertices = v;
-      this.normals = n;
-      this.colors = c;
-      this.texcoords = t;
-      
-      function draw() {
-        v.attrib(attribs.aVertexPosition);
-        n.attrib(attribs.aVertexNormal);
-        
-        gl.uniform1i(uniforms.uTextureEnabled, optTexture ? 1 : 0);
-
-        if (optTexture) {
-          gl.enableVertexAttribArray(attribs.aTextureCoord);
-          gl.disableVertexAttribArray(attribs.aVertexColor);
-          
-          t.attrib(attribs.aTextureCoord);
-  
-          gl.activeTexture(gl.TEXTURE0);
-          gl.bindTexture(gl.TEXTURE_2D, optTexture);
-          gl.uniform1i(uniforms.uSampler, 0);
-        } else {
-          gl.disableVertexAttribArray(attribs.aTextureCoord);
-          gl.enableVertexAttribArray(attribs.aVertexColor);
-
-          c.attrib(attribs.aVertexColor);
-        }
-        var count = v.countVertices();
-        totalVertices += count;
-        gl.drawArrays(primitive, 0, count);
-      };
-      this.draw = options.aroundDraw ? function () { options.aroundDraw(draw); } : draw;
-      
-      this.deleteResources = function () {
-        v.deleteResources();        this.vertices  = v = null;
-        n.deleteResources();        this.normals   = n = null;
-        if (c) c.deleteResources(); this.colors    = c = null;
-        if (t) t.deleteResources(); this.texcoords = t = null;
-      }
-    }
-    
-    function BlockParticles(location, blockType, destroyMode, symm) {
-      var blockWorld = blockType.world;
-      var k = 2;
-      var t0 = Date.now();
-      var rb = new RenderBundle(gl.POINTS, null, function (vertices, normals, colors) {
-        var TILE_SIZE = World.TILE_SIZE;
-        for (var x = 0; x < TILE_SIZE; x++) {
-          for (var y = 0; y < TILE_SIZE; y++) {
-            for (var z = 0; z < TILE_SIZE; z++) {
-              if (!destroyMode) {
-                if (!(x < k || x >= TILE_SIZE-k || y < k || y >= TILE_SIZE-k || z < k || z >= TILE_SIZE-k))
-                  continue;
-                var c = 1.0 - Math.random() * 0.04;
-                colors.push(c,c,c,1);
-              } else if (blockWorld) {
-                blockWorld.gt(x,y,z).writeColor(1, colors, colors.length);
-                if (colors[colors.length - 1] <= 0.0) {
-                  // transparent, skip
-                  colors.length -= 4;
-                  continue;
-                }
-              } else if (blockType.color) {
-                // destroy mode for color cubes
-                blockType.writeColor(1, colors, colors.length);
-              }
-              var v = applyCubeSymmetry(symm, 1, [
-                (x+0.5)/TILE_SIZE,
-                (y+0.5)/TILE_SIZE,
-                (z+0.5)/TILE_SIZE
-              ]);
-              
-              vertices.push(location[0]+v[0],
-                            location[1]+v[1],
-                            location[2]+v[2]);
-              normals.push(0,0,0); // disable lighting
-            }
-          }
-        }
-      }, {
-        aroundDraw: function (draw) {
-          gl.uniform1i(uniforms.uParticleMode, 1);
-          gl.uniform1i(uniforms.uParticleExplode, destroyMode ? 1 : 0);
-          gl.uniform1f(uniforms.uParticleInterp, t());
-          draw();
-          gl.uniform1i(uniforms.uParticleMode, 0);
-        }
-      });
-      
-      function t() {
-        return Math.min((Date.now() - t0) * 0.003, 1);
-      }
-      
-      rb.expired = function () { return t() >= 1; };
-      
-      return rb;
-    }
-
     var skyboxR;
     
     function initBuffers() {
-      skyboxR = new RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {
+      skyboxR = new renderer.RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {
         // abstracted in case this is useful elsewhere ...
         function cube(vertices, colors, size, outward) {
           function ppush(a, b, c) {
@@ -582,37 +290,20 @@
     function drawScene(playerRender) {
         var wrend = playerRender.getWorldRenderer();
 
-        // Rendering settings for skybox
-        mat4.identity(mvMatrix);
-        playerRender.applyViewRot(mvMatrix);
-        viewPosition = [0,0,0];
-        sendViewUniforms();
-        gl.uniform1f(uniforms.uFogDistance, 1); // 0 would be div-by-0
-        gl.disable(gl.DEPTH_TEST);
-        
-        // The skybox exceeeds the fog distance, so it is rendered fully fogged
-        // and only the fog-shading determines the sky color. This ensures that
-        // normal geometry fades smoothly into the sky rather than turning
-        // a possibly-different fog color.
+        renderer.setViewToSkybox(playerRender);
         skyboxR.draw();
+        gl.clear(gl.DEPTH_BUFFER_BIT);
         
-        // Rendering settings for normal geometry
-        gl.enable(gl.DEPTH_TEST);
-        gl.clear(gl.DEPTH_BUFFER_BIT); // Backdrop depth is irrelevant
-        gl.uniform1f(uniforms.uFogDistance, config.renderDistance.get());
-
-        viewPosition = playerRender.getPosition();
-        playerRender.applyViewTranslation(mvMatrix);
-        sendViewUniforms();
-
+        renderer.setViewToEye(playerRender);
         wrend.draw();
         player.render.characterRender.draw();
         player.render.selectionRender.draw();
         
         var e, errs = [];
-        while (e = gl.getError()) {
+        while ((e = gl.getError()) && e != gl.CONTEXT_LOST_WEBGL) {
           errs.push(e);
         }
+        // Note: The above comparison is an != rather than !== because webgl-debug.js's wrapped context returns numeric strings (!) instead of numbers for error enums. TODO: File bug.
         
         // Selection info
         cursorInfo.data = "";
@@ -625,8 +316,7 @@
           for (var dy = 0; dy <= 1; dy++)
           for (var dz = 0; dz <= 1; dz++) {
             var vec = [cube[0]+dx,cube[1]+dy,cube[2]+dz,1];
-            mat4.multiplyVec4(mvMatrix, vec);
-            mat4.multiplyVec4(pMatrix, vec);
+            renderer.transformPoint(vec);
             sx = Math.min(sx, vec[0]/vec[3]);
             sy = Math.max(sy, vec[1]/vec[3]);
           }
@@ -654,7 +344,7 @@
         // Per-frame debug/stats info
         var text = "";
         {
-          var pp = viewPosition;
+          var pp = player.render.getPosition();
           var d = 2;
           text += "XYZ: " + pp[0].toFixed(d) + "," + pp[1].toFixed(d) + "," + pp[2].toFixed(d) + "\n";
         }
@@ -705,7 +395,7 @@
     
     var animFrameWasRequested = false;
     function scheduleDraw() {
-      if (!animFrameWasRequested && readyToDraw) {
+      if (!animFrameWasRequested && readyToDraw && !renderer.contextLost) {
         window.requestAnimFrame(function () {
           animFrameWasRequested = false;
 
@@ -775,66 +465,17 @@
             document.getElementById("feature-error-text").appendChild(document.createTextNode("ECMAScript 5 property accessors on frozen objects"));
           }
         },
-        "Getting WebGL...",
+        "Setting up WebGL...",
         function () {
+          
           theCanvas = document.getElementById('view-canvas');
-
-          gl = theCanvas.getContext("experimental-webgl", {
-            antialias: false // MORE FILLRATE!!!
-          });
-          if (DEBUG) {
-            gl = WebGLDebugUtils.makeDebugContext(gl);
-          } else {
-            WebGLDebugUtils.init(gl);
-          }
-
-          if (!gl) {
+          renderer = new Renderer(theCanvas);
+          if (!renderer.context) {
             document.getElementById("webgl-error-notice").style.removeProperty("display");
             return ABORT;
           }
-        },
-        "Setting up WebGL...",
-        function () {
-          var decls = {
-            TILE_SIZE: World.TILE_SIZE
-          };
-          prepareProgram(gl,
-                         prepareShader(gl, "shader-vs", decls),
-                         prepareShader(gl, "shader-fs", decls),
-                         attribs, uniforms);          
-          
-          // Set up viewport and projection matters
-          updateViewport();
-          window.addEventListener("resize", function () {
-            updateViewport();
-            return true;
-          }, false);
-          
-          // Bind and send rendering options
-          config.lighting.nowAndWhenChanged(function (v) {
-            gl.uniform1i(uniforms.uLighting, v ? 1 : 0);
-            scheduleDraw();
-            return true;
-          });
-          config.bumpMapping.nowAndWhenChanged(function (v) {
-            gl.uniform1i(uniforms.uBumpMapping, v ? 1 : 0);
-            scheduleDraw();
-            return true;
-          });
-          var projectionL = {changed: function (v) {
-            updateProjection();
-            scheduleDraw();
-            return true;
-          }};
-          config.fov.listen(projectionL);
-          config.renderDistance.listen(projectionL);
+          gl = renderer.context;
 
-          // Initial GL state
-          gl.enableVertexAttribArray(attribs.aVertexPosition);
-          gl.enableVertexAttribArray(attribs.aVertexNormal);
-          gl.enable(gl.DEPTH_TEST);
-          gl.enable(gl.CULL_FACE);
-          
           initBuffers();
         },
         "Loading worlds...",
@@ -897,9 +538,11 @@
       </canvas>
       <pre id="info" class="text-overlay">Not ready...</pre>
       <pre id="cursor-info" class="text-overlay"></pre>
-    </div>
-    <div id="menu" style="visibility: hidden; left: 1px; top: 1px;">
-      <!-- arbitrary initial position -->
+      <div id="menu-container">
+        <div id="menu">
+          <!-- dynamic content -->
+        </div>
+      </div>
     </div>
     <div id="error-notices">
     <div id="load-error-notice" class="error-notice" style="display: none;">
@@ -966,8 +609,18 @@
       
       <h2>World</h2>
 
-      <form onsubmit="return false;" action=""  style="text-align: center">
+      <form onsubmit="return false;" action="">
         <table class="optionline">
+          <tr><td>Shape: 
+          <td><select id="generate_shape">
+            <option value="fill">Flat-sided</option>
+            <option value="island">Island</option>
+          </select>
+          <tr><td>Bumpiness:<td><input type="range" step="any" min="0" max="2" value="1" maxlength="4" size="4" id="generate_slope">
+        </table>
+        <script>config.generate_shape.bindControl("generate_shape");</script>
+        <script>config.generate_slope.bindControl("generate_slope");</script>
+        <table class="optionline" style="text-align: center;">
           <tr><td>Size: 
           <td><input type="number" min="1" max="9999" value="400" maxlength="4" size="4" id="generate_wx">
           <td><input type="number" min="1" max="512" value="128" maxlength="3" size="3" id="generate_wy">
@@ -989,9 +642,9 @@
       <h2>Options</h2>
 
       <form onsubmit="return false;" action="">
-        <div class="optionline">Field of view: <input type="range" min="45" max="140" value="60" maxlength="4" size="4" id="fov"></div>
+        <div class="optionline">Field of view: <input type="range" step="any" min="45" max="140" value="60" maxlength="4" size="4" id="fov"></div>
         <script>config.fov.bindControl("fov");</script>
-        <div class="optionline">Draw distance: <input type="range" min="10" max="500" value="100" maxlength="4" size="4" id="renderDistance"></div>
+        <div class="optionline">Draw distance: <input type="range" step="any" min="10" max="500" value="100" maxlength="4" size="4" id="renderDistance"></div>
         <script>config.renderDistance.bindControl("renderDistance");</script>
         <div class="optionline"><label><input type="checkbox" id="lighting"> Lighting</label></div>
         <script>config.lighting.bindControl("lighting");</script>
@@ -1024,15 +677,15 @@
         <tr><td><kbd>Space</kbd><td>jump
         <tr><td><kbd>E</kbd><td>fly, move up
         <tr><td><kbd>C</kbd><td>land, move down
-        <tr><td>Mouse motion<td>look/target block
-        <tr><td>Mouseover<br>left/right edge<td>turn
+        <tr><td><kbd>Q</kbd><td>toggle mouselook
         <tr><th colspan=2>Blocks
-        <tr><td>Left button<td> Remove block
-        <tr><td>Right button<td> Place block
-        <tr><td><kbd>Q</kbd> (menu)<td rowspan=2> Choose block to place
-        <tr class="spanned"><td><kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd>
-        <tr><td><kbd>R</kbd><td> Edit targeted block
-        <tr><td><kbd>F</kbd><td> Exit editing
+        <tr><td>Left button<td> remove block
+        <tr><td>Right button<td> place block
+        <tr><td><kbd>Q</kbd><td> toggle block menu
+        <tr><td><kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd><td>choose from menu
+        <tr><td><kbd>R</kbd><td> edit targeted block
+        <tr><td>Right button in menu<td> edit clicked block
+        <tr><td><kbd>Esc</kbd>, <kbd>F</kbd><td> exit editing
       </table>
 
       <p>While you can edit any block to any shape, note that making the first block type (which makes up the underground volume in the default world) a non-cubical shape will likely be fatal to your frame rate.</p>
