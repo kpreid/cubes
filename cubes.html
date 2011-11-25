@@ -239,6 +239,7 @@
     var cursorInfoElem;
     var cursorInfo;
     var chunkProgressBar;
+    var audioProgressBar;
     
     // Game state, etc. objects
     var player;
@@ -368,6 +369,7 @@
         sceneInfo.data = text;
         
         chunkProgressBar.setByTodoCount(wrend.chunkRendersToDo());
+        audioProgressBar.setByTodoCount(BlockType.audioRendersToDo());
         
         totalVertices = 0;
         renderCount++;
@@ -460,6 +462,7 @@
       cursorInfoElem = document.getElementById("cursor-info");
       cursorInfo = dynamicText(cursorInfoElem);
       chunkProgressBar = new ProgressBar(document.getElementById("chunks-progress-bar"));
+      audioProgressBar = new ProgressBar(document.getElementById("audio-progress-bar"));
 
       sequence([
         function () {
@@ -542,6 +545,7 @@
       <div id="scene-info-overlay" class="overlay">
         <pre id="scene-info-text">Not ready...</pre>
         <div class="progress-bar" id="chunks-progress-bar" style="width: 20em;"></div>
+        <div class="progress-bar" id="audio-progress-bar" style="width: 20em;"></div>
       </div>
       <pre id="cursor-info" class="overlay"></pre>
       <div id="menu-container">

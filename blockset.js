@@ -4,7 +4,7 @@
 var BlockType = (function () {
   "use strict";
   
-  // TODO KLUDGE: This calls for something other than or beyond a DirtyQueue.
+  // TODO KLUDGE: This calls for something other than or beyond a DirtyQueue, and possibly a more widely scoped "unimportant things to do" queue.
   var soundRenderQueue = new DirtyQueue();
   function renderSomeSound() {
     setTimeout(function () {
@@ -15,7 +15,7 @@ var BlockType = (function () {
         f();
         renderSomeSound();
       } else {
-        console.info("Audio rendering queue empty.");
+        //console.info("Audio rendering queue empty.");
       }
     }, 100);
   }
@@ -196,6 +196,10 @@ var BlockType = (function () {
     self.automaticRotations = json.automaticRotations || [0];
     
     return self;
+  };
+  
+  BlockType.audioRendersToDo = function () {
+    return soundRenderQueue.size();
   };
   
   return Object.freeze(BlockType);
@@ -589,6 +593,6 @@ var BlockSet = (function () {
       throw new Error("unknown BlockSet serialization type");
     }
   };
-  
+
   return Object.freeze(BlockSet);
 })();
