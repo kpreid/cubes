@@ -231,7 +231,7 @@ var Renderer = (function () {
     //   * Modelview matrix and viewPosition
     //   * Fog distance
     //   * Depth test
-    function setViewToSkybox(playerRender) {
+    function setViewToSkybox(playerRender, focus) {
       // The skybox exceeeds the fog distance, so it is rendered fully fogged
       // and only the fog-shading determines the sky color. This ensures that
       // normal geometry fades smoothly into the sky rather than turning
@@ -242,9 +242,10 @@ var Renderer = (function () {
       sendViewUniforms();
       gl.uniform1f(uniforms.uFogDistance, 1); // 0 would be div-by-0
       gl.disable(gl.DEPTH_TEST);
+      gl.uniform1f(uniforms.uFocusCue, focus);
     }
     this.setViewToSkybox = setViewToSkybox;
-    function setViewToEye(playerRender) {
+    function setViewToEye(playerRender, focus) {
       gl.enable(gl.DEPTH_TEST);
       viewPosition = playerRender.getPosition();
       playerRender.applyViewTranslation(mvMatrix);
@@ -252,6 +253,7 @@ var Renderer = (function () {
       gl.uniform1f(uniforms.uFogDistance, config.renderDistance.get());
       gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
       sendViewUniforms();
+      gl.uniform1f(uniforms.uFocusCue, focus);
     }
     this.setViewToEye = setViewToEye;
     function setViewToBlock() { // Ortho view of block at 0,0,0
@@ -265,6 +267,7 @@ var Renderer = (function () {
         mat4.ortho(-0.8, 0.8, -0.8, 0.8, -1, 1, pMatrix));
       gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
       sendViewUniforms();
+      gl.uniform1f(uniforms.uFocusCue, true);
     }
     this.setViewToBlock = setViewToBlock;
     function setViewTo2D() { // 2D view with coordinates in [-1..1]
@@ -281,6 +284,7 @@ var Renderer = (function () {
       mat4.ortho(-w, w, -h, h, -1, 1, pMatrix);
       mat4.identity(mvMatrix);
       sendViewUniforms();
+      gl.uniform1f(uniforms.uFocusCue, true);
     }
     this.setViewTo2D = setViewTo2D;
     function saveView() {
@@ -533,6 +537,11 @@ var Renderer = (function () {
       mat4.multiplyVec4(pMatrix, vec);
     }
     this.transformPoint = transformPoint;
+    
+    this.setFocusCue = function (v) {
+      gl.uniform1i(uniforms.uFocusCue, v ? 1 : 0);
+      scheduleDraw();
+    }
     
     // --- Non-core game-specific rendering utilities ---
     

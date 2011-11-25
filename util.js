@@ -54,12 +54,12 @@ function cyclicUnserialize(json, constructor) {
   return unserialize(json, constructor);
 }
 
-function PersistentCell(storageName, type, defaultValue) {
+function Cell(label, initialValue) {
   "use strict";
-  
-  var value = defaultValue;
 
-  var notifier = new Notifier(storageName);
+  var value = initialValue;
+
+  var notifier = new Notifier(label);
   var notify = notifier.notify;
   
   function get() {
@@ -67,18 +67,40 @@ function PersistentCell(storageName, type, defaultValue) {
   }
   function set(newV) {
     value = newV;
-    localStorage.setItem(storageName, JSON.stringify(newV));
     notify("changed", newV);
   }
-  
-  this.type = type;
+
   this.get = get;
   this.set = set;
-  this.setToDefault = function () { set(defaultValue); };
   this.listen = notifier.listen;
+}
+// Returns a function to trigger the function now.
+Cell.prototype.whenChanged = function (func) {
+  this.listen({
+    changed: func,
+  });
+  var self = this;
+  return function () { func(self.get()); };
+};
+Cell.prototype.nowAndWhenChanged = function (func) {
+  this.whenChanged(func)();
+};
+
+function PersistentCell(storageName, type, defaultValue) {
+  "use strict";
+  Cell.call(this, storageName, defaultValue);
+  
+  this.type = type;
+  var bareSet = this.set;
+  this.set = function (newV) {
+    bareSet(newV);
+    localStorage.setItem(storageName, JSON.stringify(newV));
+  }
+  this.setToDefault = function () { this.set(defaultValue); };
   
   var valueString = localStorage.getItem(storageName);
   if (valueString !== null) {
+    var value;
     try {
       value = JSON.parse(valueString);
     } catch (e) {
@@ -89,11 +111,10 @@ function PersistentCell(storageName, type, defaultValue) {
       if (typeof console !== "undefined")
         console.error("Stored value " + storageName + " not a " + type + ":", value);
     }
-    set(value); // canonicalize/overwrite
+    this.set(value); // canonicalize/overwrite
   }
-  
-  Object.freeze(this);
 }
+PersistentCell.prototype = Object.create(Cell.prototype);
 PersistentCell.prototype.bindControl = function (id) {
   var elem = document.getElementById(id);
   var self = this;
@@ -156,17 +177,6 @@ PersistentCell.prototype.bindControl = function (id) {
     changed: listener
   });
   listener(this.get());
-};
-// Returns a function to trigger the function now.
-PersistentCell.prototype.whenChanged = function (func) {
-  this.listen({
-    changed: func,
-  });
-  var self = this;
-  return function () { func(self.get()); };
-};
-PersistentCell.prototype.nowAndWhenChanged = function (func) {
-  this.whenChanged(func)();
 };
 
 function mod(value, modulus) {

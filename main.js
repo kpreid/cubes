@@ -52,6 +52,12 @@ var CubesMain = (function () {
     var chunkProgressBar;
     var audioProgressBar;
     
+    var focusCell = new Cell("focus", false);
+    focusCell.whenChanged(function () {
+      scheduleDraw();
+      return true;
+    });
+    
     // Game state, etc. objects
     var player;
     var worldH;
@@ -63,11 +69,11 @@ var CubesMain = (function () {
     function drawScene(playerRender) {
         var wrend = playerRender.getWorldRenderer();
 
-        renderer.setViewToSkybox(playerRender);
+        renderer.setViewToSkybox(playerRender, focusCell.get());
         renderer.skybox.draw();
         gl.clear(gl.DEPTH_BUFFER_BIT);
         
-        renderer.setViewToEye(playerRender);
+        renderer.setViewToEye(playerRender, focusCell.get());
         wrend.draw();
         player.render.characterRender.draw();
         player.render.selectionRender.draw();
@@ -284,7 +290,7 @@ var CubesMain = (function () {
         },
         "Finishing...",
         function () {
-          input = new Input(theCanvas, player.input, document.getElementById("menu"), renderer);
+          input = new Input(theCanvas, player.input, document.getElementById("menu"), renderer, focusCell);
           theCanvas.focus();
           readyToDraw = true;
 

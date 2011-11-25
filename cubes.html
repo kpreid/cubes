@@ -54,6 +54,7 @@
     uniform bool uLighting;
     uniform bool uBumpMapping;
     uniform bool uStipple;
+    uniform bool uFocusCue;
     
     const vec4 cSky = vec4(0.1,0.3,0.5,1.0);   
     const vec4 cHorizon = vec4(0.7,0.8,1.0,1.0);  
@@ -121,6 +122,13 @@
           ? mix(cHorizon, cGround, clamp(log(1.0 + -elevationSine * 120.0), 0.0, 1.0))
           : mix(cHorizon, cSky, clamp(log(1.0 + elevationSine * 2.0), 0.0, 1.0));
         gl_FragColor = color * (1.0-vFog) + fogColor * vFog;
+        
+        if (!uFocusCue) {
+          float gray = 0.2126*gl_FragColor.r
+                      +0.7152*gl_FragColor.g
+                      +0.0722*gl_FragColor.b;
+          gl_FragColor = 0.5 * gl_FragColor + 0.5 * vec4(vec3(gray), gl_FragColor.a);
+        }
     }
 </script>
 

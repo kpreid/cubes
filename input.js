@@ -3,7 +3,7 @@
 
 // TODO: explicitly connect global vars
 
-function Input(eventReceiver, playerInput, menuElement, renderer) {
+function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   "use strict";
 
   var keymap = {};
@@ -20,6 +20,19 @@ function Input(eventReceiver, playerInput, menuElement, renderer) {
     menuElement.style.visibility = mouselookMode ? 'hidden' : 'visible';
   }
   setMouselook(mouselookMode);
+  
+  // --- Focus ---
+  
+  eventReceiver.addEventListener("focus", function (event) {
+    focusCell.set(true);
+    return true;
+  }, false);
+  eventReceiver.addEventListener("blur", function (event) {
+    focusCell.set(false);
+    keymap = {};
+    dx = 0;
+    return true;
+  }, false);
   
   // --- Keyboard events ---
   
@@ -134,11 +147,8 @@ function Input(eventReceiver, playerInput, menuElement, renderer) {
   eventReceiver.addEventListener("mouseout", function (event) {
     updateMouse(event);
     dx = 0;
+    return true;
   }, false);
-  eventReceiver.onblur = function (event) {
-    keymap = {};
-    dx = 0;
-  };
 
   // --- Clicks ---
 
