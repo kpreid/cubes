@@ -440,3 +440,33 @@ function DirtyQueue(optCompareFunc) {
     }
   });
 }
+
+function ProgressBar(rootElem) {
+  "use strict";
+
+  rootElem.className += " progress-bar";
+  var fill = document.createElement("div");
+  fill.className = "progress-bar-fill";
+  rootElem.appendChild(fill);
+  
+  this.set = function (value) {
+    rootElem.style.display = value < 1 && value > 0 ? "block" : "none";
+    fill.style.width = value * 100 + "%";
+  };
+  
+  this.set(0);
+}
+// Update progress bar from an 'items remaining to do' count.
+// Infer progress bar range from the highest count seen since a zero.
+ProgressBar.prototype.setByTodoCount = function (count) {
+  "use strict";
+
+  if (count === 0) {
+    this._rangeEstimate = 0;
+  } else {
+    this._rangeEstimate = Math.max(count, (this._rangeEstimate || 0));
+  }
+  this.set(1 - count/this._rangeEstimate); // if this produces +Infinity that's fine
+};
+
+
