@@ -11,6 +11,8 @@ var Renderer = (function () {
     
     // --- State ---
     
+    var renderer = this;
+    
     var gl = null;
     
     // View and projection transformation globals.
@@ -206,6 +208,12 @@ var Renderer = (function () {
     Object.defineProperty(this, "contextLost", {
       enumerable: true,
       get: function () { return contextLost; }
+    });
+
+    Object.defineProperty(this, "verticesDrawn", {
+      enumerable: true,
+      writable: true,
+      value: 0
     });
 
     // Return a function which returns true when the context currently in effect has been lost.
@@ -409,7 +417,7 @@ var Renderer = (function () {
           c.attrib(attribs.aVertexColor);
         }
         var count = v.countVertices();
-        totalVertices += count;
+        renderer.verticesDrawn += count;
         gl.drawArrays(primitive, 0, count);
       };
       this.draw = options.aroundDraw ? function () { options.aroundDraw(draw); } : draw;
@@ -557,7 +565,7 @@ var Renderer = (function () {
     
     this.skybox = skyboxR;
     
-    Object.freeze(this);
+    Object.seal(this); // TODO freeze all but verticesDrawn
   }
   
   return Renderer;

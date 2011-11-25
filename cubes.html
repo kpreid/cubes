@@ -330,18 +330,18 @@
           });
           text += "\n";
         }
-        text += totalVertices + " vertices\n";
+        text += renderer.verticesDrawn + " vertices\n";
         text += fpsDesc + "\n";
         sceneInfo.data = text;
         
         chunkProgressBar.setByTodoCount(wrend.chunkRendersToDo());
         audioProgressBar.setByTodoCount(BlockType.audioRendersToDo());
         
-        totalVertices = 0;
+        renderer.verticesDrawn = 0;
         renderCount++;
     }
     
-    var fpsDesc = "", stepCount = 0, renderCount = 0, chunkRenders = 0, totalVertices = 0;
+    var fpsDesc = "", stepCount = 0, renderCount = 0, chunkRenders = 0;
     
     var lastStepTime = null;
     function doOneStep() {
