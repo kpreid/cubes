@@ -6,20 +6,10 @@ var BlockType = (function () {
   
   // TODO KLUDGE: This calls for something other than or beyond a DirtyQueue, and possibly a more widely scoped "unimportant things to do" queue.
   var soundRenderQueue = new DirtyQueue();
-  function renderSomeSound() {
-    setTimeout(function () {
-      //console.log("renderSomeSound");
-      var f = soundRenderQueue.dequeue();
-      if (f) {
-        //console.log("renderSomeSound loop");
-        f();
-        renderSomeSound();
-      } else {
-        //console.info("Audio rendering queue empty.");
-      }
-    }, 100);
-  }
-  var nextSRK = 0;
+  soundRenderQueue.setBackgroundFlusher(function (f) { f(); });
+  
+  // Global non-persistent serial numbers for block types, used in the sound render queue.
+  var nextBlockTypeSerial = 0;
   
   function BlockType() {
     throw new Error("abstract");
@@ -33,7 +23,7 @@ var BlockType = (function () {
     this._notify = n.notify; // should be private
     this.listen = n.listen;
     
-    this._srk = nextSRK++;
+    this._serial = nextBlockTypeSerial++;
     this.sound = {}; // computed, TODO should be readonly
     
     // TODO: This property is to be replaced by circuits.
@@ -128,9 +118,8 @@ var BlockType = (function () {
     function f() {
       self.sound = CubesAudio.synthBlock(self.world);
     }
-    f.toString = function () { return ""+self._srk; }; // TODO KLUDGE we should use something other than DirtyQueue, or extend it.
+    f.toString = function () { return ""+self._serial; }; // TODO KLUDGE we should use something other than DirtyQueue, or extend it to have 'values as well as keys'
     soundRenderQueue.enqueue(f);
-    if (soundRenderQueue.size() === 1) renderSomeSound();
   }
   
   BlockType.World.prototype.serialize = function (serialize) {
