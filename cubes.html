@@ -249,10 +249,6 @@
     
     var readyToDraw = false;
     
-    function raycastFromScreen(radius, callback) {
-      var pts = renderer.getAimRay();
-      return player.getWorld().raycast(pts[0], pts[1], radius, callback);
-    }
     
     var lastGLErrors = [];
     function drawScene(playerRender) {

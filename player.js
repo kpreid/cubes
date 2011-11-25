@@ -105,7 +105,8 @@ var Player = (function () {
       var foundCube = null, foundFace = null;
 
       var w = currentPlace.world;
-      raycastFromScreen(20, function (x,y,z,value,face) {
+      var pts = renderer.getAimRay(); // TODO global variable 'renderer'
+      w.raycast(pts[0], pts[1], 20, function (x,y,z,value,face) {
         if (w.solid(x,y,z)) {
           foundCube = Object.freeze([x,y,z]);
           foundFace = face;
