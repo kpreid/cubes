@@ -4,9 +4,15 @@
 var BlockType = (function () {
   "use strict";
   
-  // TODO KLUDGE: This calls for something other than or beyond a DirtyQueue, and possibly a more widely scoped "unimportant things to do" queue.
+  // TODO KLUDGE: The scope of this seems wrong; it should be either an more global "unimportant things to do" queue or a more narrow driven-by-the-game-loop thing.
   var soundRenderQueue = new DirtyQueue();
-  soundRenderQueue.setBackgroundFlusher(function (f) { f(); });
+  
+  setTimeout(function () { // TODO global variable config (which is the only reason this is deferred)
+    config.sound.nowAndWhenChanged(function (enabled) {
+      soundRenderQueue.setBackgroundFlusher(enabled ? function (f) { f(); } : null);
+      return true;
+    });
+  }, 0);
   
   // Global non-persistent serial numbers for block types, used in the sound render queue.
   var nextBlockTypeSerial = 0;
@@ -188,7 +194,7 @@ var BlockType = (function () {
   };
   
   BlockType.audioRendersToDo = function () {
-    return soundRenderQueue.size();
+    return config.sound.get() ? soundRenderQueue.size() : 0;
   };
   
   return Object.freeze(BlockType);

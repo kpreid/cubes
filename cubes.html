@@ -220,6 +220,7 @@
     defineOption("renderDistance", "number", 100);
     defineOption("lighting", "boolean", true);
     defineOption("bumpMapping", "boolean", true);
+    defineOption("sound", "boolean", true);
     defineOption("debugTextureAllocation", "boolean", false);
     defineOption("debugForceRender", "boolean", false);
     defineOption("debugPlayerCollision", "boolean", false);
@@ -660,6 +661,8 @@
         <script>config.lighting.bindControl("lighting");</script>
         <div class="optionline"><label><input type="checkbox" id="bumpMapping"> Bump mapping</label></div>
         <script>config.bumpMapping.bindControl("bumpMapping");</script>
+        <div class="optionline"><label><input type="checkbox" id="enableSound"> Sound</label></div>
+        <script>config.sound.bindControl("enableSound");</script>
         
         <h3>Debug</h3>
         

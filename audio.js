@@ -114,6 +114,8 @@ var CubesAudio = (function () {
     },
     
     play: !audioSupported ? function () {} : function (pos, blockType, kind) {
+      if (!config.sound.get()) return;
+      
       var buffer = blockType.sound[kind];
       
       if (!buffer) return;
