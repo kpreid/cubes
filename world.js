@@ -20,7 +20,7 @@ function World(sizes, blockSet) {
   var circuits = {};
   
   var spontaneousBaseRate = 0.0003; // probability of block spontaneous effect call per block per second
-  var numToDisturb = wx*wy*wz * TIMESTEP * spontaneousBaseRate;
+  var numToDisturbPerSec = wx*wy*wz * spontaneousBaseRate;
   
   var notifier = new Notifier("World");
   
@@ -305,8 +305,9 @@ function World(sizes, blockSet) {
     }
   }
   
-  function step() {
+  function step(timestep) {
     // turn fractional part of number of iterations into randomness - 1.25 = 1 3/4 and 2 1/4 of the time
+    var numToDisturb = numToDisturbPerSec * timestep;
     var roundedNum = Math.floor(numToDisturb) + (Math.random() < (numToDisturb % 1) ? 1 : 0);
     
     for (var i = 0; i < roundedNum; i++) {

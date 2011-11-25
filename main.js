@@ -35,8 +35,11 @@ var config = {};
 })();
 
 var CubesMain = (function () {
-  function CubesMain() {
+  var MAX_CATCHUP_MS = 500;
+  
+  function CubesMain(timestep) {
     var main = this;
+    var timestep_ms = timestep*1000;
     
     // GL objects
     var gl;
@@ -55,7 +58,6 @@ var CubesMain = (function () {
     var input;
     
     var readyToDraw = false;
-    
     
     var lastGLErrors = [];
     function drawScene(playerRender) {
@@ -148,8 +150,8 @@ var CubesMain = (function () {
     
     var lastStepTime = null;
     function doOneStep() {
-      player.stepYourselfAndWorld();
-      input.step();
+      player.stepYourselfAndWorld(timestep);
+      input.step(timestep);
       stepCount++;
     }
     function doStep() {
@@ -160,9 +162,9 @@ var CubesMain = (function () {
       if ((now - lastStepTime) > MAX_CATCHUP_MS)
         lastStepTime = now - MAX_CATCHUP_MS;
       
-      while ((now - lastStepTime) > TIMESTEP_MS) {
+      while ((now - lastStepTime) > timestep_ms) {
         doOneStep();
-        lastStepTime += TIMESTEP_MS;
+        lastStepTime += timestep_ms;
       }
     }
     
@@ -286,7 +288,7 @@ var CubesMain = (function () {
           theCanvas.focus();
           readyToDraw = true;
 
-          setInterval(doStep, TIMESTEP_MS);
+          setInterval(doStep, timestep_ms);
         },
         "Ready!"
       ], function (exception) {

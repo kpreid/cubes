@@ -139,7 +139,7 @@ var Player = (function () {
     }
     
     var EPSILON = 1e-3;
-    function stepPlayer() {
+    function stepPlayer(timestep) {
       var world = currentPlace.world;
       
       // apply movement control to velocity
@@ -153,20 +153,20 @@ var Player = (function () {
         currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * 0.4;
       } else {
         if (movAdj[1] != 0)
-          currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * 0.4 + TIMESTEP * GRAVITY;
+          currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * 0.4 + timestep * GRAVITY;
       }
       currentPlace.vel[2] += (movAdj[2] - currentPlace.vel[2]) * 0.4;
       
       // gravity
       if (!currentPlace.flying)
-        currentPlace.vel[1] -= TIMESTEP * GRAVITY;
+        currentPlace.vel[1] -= timestep * GRAVITY;
       
       // early exit
       if (vec3.length(currentPlace.vel) <= 0) return;
       
       var curPos = currentPlace.pos;
       var curVel = currentPlace.vel;
-      var nextPos = vec3.scale(currentPlace.vel, TIMESTEP, vec3.create()); // TODO global variable timestep
+      var nextPos = vec3.scale(currentPlace.vel, timestep, vec3.create());
       vec3.add(nextPos, curPos);
       
       // collision
@@ -267,9 +267,9 @@ var Player = (function () {
       }
     };
     
-    this.stepYourselfAndWorld = function () {
-      stepPlayer();
-      currentPlace.world.step();
+    this.stepYourselfAndWorld = function (timestep) {
+      stepPlayer(timestep);
+      currentPlace.world.step(timestep);
     }
     
     // --- The facet for rendering ---

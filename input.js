@@ -159,9 +159,9 @@ function Input(eventReceiver, playerInput, menuElement, renderer) {
   // inhibit incidental text selection
   eventReceiver.onmousedown/* Chrome/Firefox */ = eventReceiver.onselectstart/* for IE */ = function (event) { return false; };
   
-  function step() {
+  function step(timestep) {
     if (dx != 0) {
-      playerInput.yaw += dx*TIMESTEP;
+      playerInput.yaw += dx*timestep;
     }
   }
   
