@@ -20,6 +20,8 @@ var CubesAudio = (function () {
   // --- Object ---
   
   return Object.freeze({
+    audioSupported: audioSupported,
+    
     setListener: !audioSupported ? function () {return null;} : function (pos, fwd, vel) {
       context.listener.gain = 0.3;
       context.listener.setPosition(pos[0],pos[1],pos[2]);

@@ -662,7 +662,10 @@
         <div class="optionline"><label><input type="checkbox" id="bumpMapping"> Bump mapping</label></div>
         <script>config.bumpMapping.bindControl("bumpMapping");</script>
         <div class="optionline"><label><input type="checkbox" id="enableSound"> Sound</label></div>
-        <script>config.sound.bindControl("enableSound");</script>
+        <script>
+          document.getElementById("enableSound").disabled = !CubesAudio.audioSupported;
+          config.sound.bindControl("enableSound");
+        </script>
         
         <h3>Debug</h3>
         
