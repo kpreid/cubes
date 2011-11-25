@@ -361,9 +361,7 @@ var Player = (function () {
         vec3.set(vec, movement);
         if (movement[1] > 0) currentPlace.flying = true;
       },
-      set mousePos (vec) { 
-        mousePos = vec;
-      },
+      set mousePos (vec) { mousePos = vec.slice(); aimChanged(); },
       get pitch () { return pitch; },
       set pitch (angle) { pitch = angle; aimChanged(); },
       get yaw () { return currentPlace.yaw; },
@@ -438,7 +436,6 @@ var Player = (function () {
         aabbR.recompute();
         notifyChangedPlace();
       },
-      aimChanged: aimChanged, // TODO kludge due to globals
       jump: function () {
         if (currentPlace.standingOn) currentPlace.vel[1] = JUMP_SPEED;
       }

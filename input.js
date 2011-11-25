@@ -111,7 +111,6 @@ function Input(eventReceiver, playerInput, menuElement, renderer) {
   
   eventReceiver.addEventListener("mousemove", function (event) {
     updateMouse(event);
-    playerInput.aimChanged(); // TODO kludge due to globals
 
     var cs = window.getComputedStyle(eventReceiver, null);
     var w = parseInt(cs.width);
@@ -133,7 +132,7 @@ function Input(eventReceiver, playerInput, menuElement, renderer) {
     prevx = directX;
   }, false);
   eventReceiver.addEventListener("mouseout", function (event) {
-    updateMouse();
+    updateMouse(event);
     dx = 0;
   }, false);
   eventReceiver.onblur = function (event) {
