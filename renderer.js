@@ -156,6 +156,51 @@ var Renderer = (function () {
       scheduleDraw();
     }
 
+    // --- Config bindings ---
+    
+    var sendLighting = config.lighting.whenChanged(function (v) {
+      gl.uniform1i(uniforms.uLighting, v ? 1 : 0);
+      scheduleDraw();
+      return true;
+    });
+    var sendBumpMapping = config.bumpMapping.whenChanged(function (v) {
+      gl.uniform1i(uniforms.uBumpMapping, v ? 1 : 0);
+      scheduleDraw();
+      return true;
+    });
+    var projectionL = {changed: function (v) {
+      updateProjection();
+      scheduleDraw();
+      return true;
+    }};
+    config.fov.listen(projectionL);
+    config.renderDistance.listen(projectionL);
+
+    // --- Initialization ---
+    
+    gl = canvas.getContext("experimental-webgl", {
+      // Reduces fillrate cost (which is a problem due to the layered block rendering), and also avoids MSAA problems with the edges of our atlas'd textures. TODO: Figure out how to work around the latter so we can make this an option.
+      antialias: false
+    });
+    if (DEBUG) { // TODO global variable
+      gl = WebGLDebugUtils.makeDebugContext(gl);
+    } else {
+      WebGLDebugUtils.init(gl);
+    }
+    this.context = gl;
+    
+    canvas.addEventListener("webglcontextlost", handleContextLost, false);
+    canvas.addEventListener("webglcontextrestored", handleContextRestored, false);
+    
+    initContext();
+    updateViewport();
+    
+    window.addEventListener("resize", function () { // TODO shouldn't be global
+      updateViewport();
+      scheduleDraw();
+      return true;
+    }, false);
+    
     // --- Public components ---
     
     Object.defineProperty(this, "contextLost", {
@@ -477,49 +522,40 @@ var Renderer = (function () {
     }
     this.transformPoint = transformPoint;
     
-    // --- Config bindings ---
+    // --- Non-core game-specific rendering utilities ---
     
-    var sendLighting = config.lighting.whenChanged(function (v) {
-      gl.uniform1i(uniforms.uLighting, v ? 1 : 0);
-      scheduleDraw();
-      return true;
+    var skyboxR = new RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {
+      // abstracted in case this becomes useful elsewhere ...
+      function cube(vertices, colors, size, outward) {
+        function ppush(a, b, c) {
+          var v = [];
+          v[dim] = a;
+          v[da] = b;
+          v[db] = c;
+          vertices.push(v[0], v[1], v[2]);
+          normals.push(0,0,0); // TODO stub
+          colors.push(1, 0, 0, 1);
+        }
+        for (var dim = 0; dim < 3; dim++) {
+          for (var dir = -1; dir < 2; dir+=2) {
+            var da = mod(dim + (outward ? 1 : -1) * dir, 3);
+            var db = mod(dim + (outward ? 2 : -2) * dir, 3);
+            ppush(dir*size, -size, -size);
+            ppush(dir*size,  size, -size);
+            ppush(dir*size,  size,  size);
+            ppush(dir*size,  size,  size);
+            ppush(dir*size, -size,  size);
+            ppush(dir*size, -size, -size);
+          }
+        }
+      }
+      
+      // While rendering this, the fog distance is adjusted so that anything
+      // farther than 1 unit is fully fogged.
+      cube(vertices, colors, 1, false);
     });
-    var sendBumpMapping = config.bumpMapping.whenChanged(function (v) {
-      gl.uniform1i(uniforms.uBumpMapping, v ? 1 : 0);
-      scheduleDraw();
-      return true;
-    });
-    var projectionL = {changed: function (v) {
-      updateProjection();
-      scheduleDraw();
-      return true;
-    }};
-    config.fov.listen(projectionL);
-    config.renderDistance.listen(projectionL);
-
-    // --- Initialization ---
     
-    gl = canvas.getContext("experimental-webgl", {
-      antialias: false // MORE FILLRATE!!!
-    });
-    if (DEBUG) { // TODO global variable
-      gl = WebGLDebugUtils.makeDebugContext(gl);
-    } else {
-      WebGLDebugUtils.init(gl);
-    }
-    this.context = gl;
-    
-    canvas.addEventListener("webglcontextlost", handleContextLost, false);
-    canvas.addEventListener("webglcontextrestored", handleContextRestored, false);
-    
-    initContext();
-    updateViewport();
-    
-    window.addEventListener("resize", function () { // TODO shouldn't be global
-      updateViewport();
-      scheduleDraw();
-      return true;
-    }, false);
+    this.skybox = skyboxR;
     
     Object.freeze(this);
   }

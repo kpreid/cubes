@@ -254,47 +254,12 @@
       return player.getWorld().raycast(pts[0], pts[1], radius, callback);
     }
     
-    var skyboxR;
-    
-    function initBuffers() {
-      skyboxR = new renderer.RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {
-        // abstracted in case this is useful elsewhere ...
-        function cube(vertices, colors, size, outward) {
-          function ppush(a, b, c) {
-            var v = [];
-            v[dim] = a;
-            v[da] = b;
-            v[db] = c;
-            vertices.push(v[0], v[1], v[2]);
-            normals.push(0,0,0); // TODO stub
-            colors.push(1, 0, 0, 1);
-          }
-          for (var dim = 0; dim < 3; dim++) {
-            for (var dir = -1; dir < 2; dir+=2) {
-              var da = mod(dim + (outward ? 1 : -1) * dir, 3);
-              var db = mod(dim + (outward ? 2 : -2) * dir, 3);
-              ppush(dir*size, -size, -size);
-              ppush(dir*size,  size, -size);
-              ppush(dir*size,  size,  size);
-              ppush(dir*size,  size,  size);
-              ppush(dir*size, -size,  size);
-              ppush(dir*size, -size, -size);
-            }
-          }
-        }
-        
-        // While rendering this, the fog distance is adjusted so that anything
-        // farther than 1 unit is fully fogged.
-        cube(vertices, colors, 1, false);
-      });
-    }
-    
     var lastGLErrors = [];
     function drawScene(playerRender) {
         var wrend = playerRender.getWorldRenderer();
 
         renderer.setViewToSkybox(playerRender);
-        skyboxR.draw();
+        renderer.skybox.draw();
         gl.clear(gl.DEPTH_BUFFER_BIT);
         
         renderer.setViewToEye(playerRender);
@@ -482,8 +447,6 @@
             return ABORT;
           }
           gl = renderer.context;
-
-          initBuffers();
         },
         "Loading worlds...",
         function () {
