@@ -4,7 +4,7 @@
 var Renderer = (function () {
   "use strict";
   
-  function Renderer(canvas) {
+  function Renderer(canvas, scheduleDraw) {
     //canvas = WebGLDebugUtils.makeLostContextSimulatingCanvas(canvas);
     //canvas.loseContextInNCalls(5000);
     //canvas.setRestoreTimeout(2000);
@@ -489,14 +489,16 @@ var Renderer = (function () {
     }
     this.BlockParticles = BlockParticles;
     
-    // Returns a pair of points along the line of aim of the screen cursor.
-    function getAimRay() {
-      var pos = input.getMousePos();
-      var glxy = [pos[0] / canvas.width * 2 - 1, -(pos[1] / canvas.height * 2 - 1)];
+    // Returns a pair of points along the line through the given screen point.
+    function getAimRay(screenPoint, playerRender) {
+      var glxy = [
+          screenPoint[0] / canvas.width * 2 - 1, 
+        -(screenPoint[1] / canvas.height * 2 - 1)
+      ];
       
       var unproject = mat4.identity(mat4.create());
-      player.render.applyViewRot(unproject);
-      player.render.applyViewTranslation(unproject);
+      playerRender.applyViewRot(unproject);
+      playerRender.applyViewTranslation(unproject);
       mat4.multiply(pMatrix, unproject, unproject);
       mat4.inverse(unproject);
 

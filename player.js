@@ -2,6 +2,8 @@
 // the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
 var Player = (function () {
+  "use strict";
+  
   // physics constants
   var WALKING_SPEED = 4; // cubes/s
   var FLYING_SPEED = 10; // cubes/s
@@ -19,38 +21,41 @@ var Player = (function () {
     PLACEHOLDER_ROTATIONS.push(i);
   }
   
-  var movement = vec3.create([0,0,0]);
-  
-  // a Place stores a world and location in it; used for push/pop
-  function Place(world) {
-    // Body state
-    this.world = world;
-    this.pos = vec3.create([0,0,0]);
-    this.vel = vec3.create([0,0,0]);
-    this.yaw = Math.PI/4 * 5;
-    this.standingOn = [];
-    this.flying = false;
-
-    // Selection
-    this.selection = null;
-
-    // Current tool/block id
-    this.tool = 2; // first non-bogus block id
-
-    // must happen late
-    this.wrend = new WorldRenderer(world, this); // ideally, would be readonly(this)
-    
-  }
-  
-  function Player(initialWorld) {
+  function Player(initialWorld, renderer, scheduleDraw) {
     "use strict";
+    var player = this;
+    var gl = renderer.context;
     
+    // a Place stores a world and location in it; used for push/pop
+    function Place(world) {
+      // Body state
+      this.world = world;
+      this.pos = vec3.create([0,0,0]);
+      this.vel = vec3.create([0,0,0]);
+      this.yaw = Math.PI/4 * 5;
+      this.standingOn = [];
+      this.flying = false;
+
+      // Selection
+      this.selection = null;
+
+      // Current tool/block id
+      this.tool = 2; // first non-bogus block id
+
+      // must happen late
+      this.wrend = new WorldRenderer(world, this /* TODO: facet */, renderer, scheduleDraw);
+
+    }
+
     // Worlds we've been in
     var placeStack = [];
     var currentPlace;
 
     // kludge: Since UI sets pitch absolutely, it's not a place variable
     var pitch = 0;
+
+    var movement = vec3.create([0,0,0]);
+    var mousePos = [0,0];
   
     var selectionR = new renderer.RenderBundle(gl.LINE_LOOP, null, function (vertices, normals, colors) {
       var sel = currentPlace ? currentPlace.selection : null;
@@ -105,7 +110,7 @@ var Player = (function () {
       var foundCube = null, foundFace = null;
 
       var w = currentPlace.world;
-      var pts = renderer.getAimRay(); // TODO global variable 'renderer'
+      var pts = renderer.getAimRay(mousePos, player.render);
       w.raycast(pts[0], pts[1], 20, function (x,y,z,value,face) {
         if (w.solid(x,y,z)) {
           foundCube = Object.freeze([x,y,z]);
@@ -327,7 +332,7 @@ var Player = (function () {
             var type = currentPlace.world.blockSet.get(currentPlace.tool);
             if (!currentPlace.world.solid(x,y,z)) {
               // TODO: rotation on create should be more programmable.
-              var raypts = renderer.getAimRay(); // TODO depend on player orientation instead?
+              var raypts = renderer.getAimRay(mousePos, player.render); // TODO depend on player orientation instead?
               var symm = nearestCubeSymmetry(vec3.subtract(raypts[0], raypts[1]), [0,0,1], type.automaticRotations);
               currentPlace.world.s(x,y,z, currentPlace.tool, symm);
               
@@ -355,6 +360,9 @@ var Player = (function () {
       set movement (vec) { 
         vec3.set(vec, movement);
         if (movement[1] > 0) currentPlace.flying = true;
+      },
+      set mousePos (vec) { 
+        mousePos = vec;
       },
       get pitch () { return pitch; },
       set pitch (angle) { pitch = angle; aimChanged(); },

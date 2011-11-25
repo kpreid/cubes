@@ -194,6 +194,7 @@ var BlockType = (function () {
   };
   
   BlockType.audioRendersToDo = function () {
+    // TODO global variable main
     return config.sound.get() ? soundRenderQueue.size() : 0;
   };
   
@@ -240,7 +241,9 @@ var BlockSet = (function () {
   Object.freeze(EMPTY_TILING);
   
   function Texgen() {
+    var renderer = main.renderer; // TODO global variable -- the problem being that BlockSets are not (and should not be) parameterized w/ a renderer.
     var self = this;
+    var gl = renderer.context;
     
     // Texture holding tiles
     // TODO: Confirm that WebGL garbage collects these, or add a delete method to BlockSet for use as needed
@@ -487,6 +490,7 @@ var BlockSet = (function () {
         upload = true;
       }
       if (upload) {
+        var gl = main.renderer.context; // TODO global variable
         gl.bindTexture(gl.TEXTURE_2D, texgen.texture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texgen.image);
         gl.bindTexture(gl.TEXTURE_2D, null);

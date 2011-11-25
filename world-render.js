@@ -56,7 +56,9 @@ var WorldRenderer = (function () {
     return distanceInfoCache;
   }
   
-  function WorldRenderer(world, place) {
+  function WorldRenderer(world, place, renderer, scheduleDraw) {
+    var gl = renderer.context;
+    
     // Object holding all world rendering chunks which have RenderBundles created, indexed by "<x>,<z>" where x and z are the low coordinates (i.e. divisible by CHUNKSIZE).
     var chunks = {};
 

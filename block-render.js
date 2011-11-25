@@ -10,10 +10,12 @@
 
 // Renders single blocks from a world.
 
-function BlockRenderer(blockSet) {
+function BlockRenderer(blockSet, renderer) {
+  var gl = renderer.context;
+  
   var singleBlockWorld = new World([1,1,1], blockSet);
   singleBlockWorld.s(0,0,0,1);
-  singleBlockR = new WorldRenderer(singleBlockWorld, {pos: [0,0,0]});
+  singleBlockR = new WorldRenderer(singleBlockWorld, {pos: [0,0,0]}, renderer, function (){});
   
   var rttFramebuffer = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, rttFramebuffer);

@@ -3,11 +3,10 @@
 
 // TODO: explicitly connect global vars
 
-function Input(eventReceiver, playerInput, menuElement) {
+function Input(eventReceiver, playerInput, menuElement, renderer) {
   "use strict";
 
   var keymap = {};
-  var mousePos = [0,0];
   var mouselookMode = true;
 
   // --- Utilities ---
@@ -106,8 +105,12 @@ function Input(eventReceiver, playerInput, menuElement) {
   var dx = 0;
   var prevx = 0;
   
+  function updateMouse() {
+    playerInput.mousePos = [event.clientX, event.clientY];
+  }
+  
   eventReceiver.addEventListener("mousemove", function (event) {
-    mousePos = [event.clientX, event.clientY];
+    updateMouse(event);
     playerInput.aimChanged(); // TODO kludge due to globals
 
     var cs = window.getComputedStyle(eventReceiver, null);
@@ -130,7 +133,7 @@ function Input(eventReceiver, playerInput, menuElement) {
     prevx = directX;
   }, false);
   eventReceiver.addEventListener("mouseout", function (event) {
-    mousePos = [event.clientX, event.clientY];
+    updateMouse();
     dx = 0;
   }, false);
   eventReceiver.onblur = function (event) {
@@ -141,13 +144,13 @@ function Input(eventReceiver, playerInput, menuElement) {
   // --- Clicks ---
 
   eventReceiver.addEventListener("click", function (event) {
-    mousePos = [event.clientX, event.clientY];
+    updateMouse();
     eventReceiver.focus();
     playerInput.deleteBlock();
     return false;
   }, false);
   eventReceiver.oncontextmenu = function (event) { // On Firefox 5.0.1 (most recent tested 2011-09-10), addEventListener does not suppress the builtin context menu, so this is an attribute rather than a listener.
-    mousePos = [event.clientX, event.clientY];
+    updateMouse();
     eventReceiver.focus();
     playerInput.useTool();
     return false;
@@ -171,7 +174,7 @@ function Input(eventReceiver, playerInput, menuElement) {
     while (menuElement.firstChild) menuElement.removeChild(menuElement.firstChild);
 
     blockSetInMenu = playerInput.blockSet;
-    var blockRenderer = new BlockRenderer(blockSetInMenu);
+    var blockRenderer = new BlockRenderer(blockSetInMenu, renderer);
   
     var sidecount = Math.ceil(Math.sqrt(blockSetInMenu.length));
     var size = Math.min(64, 300 / sidecount);
@@ -245,5 +248,4 @@ function Input(eventReceiver, playerInput, menuElement) {
   // --- Methods ---
   
   this.step = step;
-  this.getMousePos = function () { return mousePos; };
 }
