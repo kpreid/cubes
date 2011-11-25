@@ -4,6 +4,8 @@
 var Renderer = (function () {
   "use strict";
   
+  var DEBUG_GL = false;
+  
   function Renderer(canvas, scheduleDraw) {
     //canvas = WebGLDebugUtils.makeLostContextSimulatingCanvas(canvas);
     //canvas.loseContextInNCalls(5000);
@@ -184,7 +186,7 @@ var Renderer = (function () {
       // Reduces fillrate cost (which is a problem due to the layered block rendering), and also avoids MSAA problems with the edges of our atlas'd textures. TODO: Figure out how to work around the latter so we can make this an option.
       antialias: false
     });
-    if (DEBUG) { // TODO global variable
+    if (DEBUG_GL) {
       gl = WebGLDebugUtils.makeDebugContext(gl);
     } else {
       WebGLDebugUtils.init(gl);
