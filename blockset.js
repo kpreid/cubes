@@ -4,6 +4,19 @@
 var BlockType = (function () {
   "use strict";
   
+  // TODO KLUDGE: The scope of this seems wrong; it should be either an more global "unimportant things to do" queue or a more narrow driven-by-the-game-loop thing.
+  var soundRenderQueue = new DirtyQueue();
+  
+  setTimeout(function () { // TODO global variable config (which is the only reason this is deferred)
+    config.sound.nowAndWhenChanged(function (enabled) {
+      soundRenderQueue.setBackgroundFlusher(enabled ? function (f) { f(); } : null);
+      return true;
+    });
+  }, 0);
+  
+  // Global non-persistent serial numbers for block types, used in the sound render queue.
+  var nextBlockTypeSerial = 0;
+  
   function BlockType() {
     throw new Error("abstract");
   }
@@ -15,6 +28,9 @@ var BlockType = (function () {
     var n = new Notifier("BlockType");
     this._notify = n.notify; // should be private
     this.listen = n.listen;
+    
+    this._serial = nextBlockTypeSerial++;
+    this.sound = {}; // computed, TODO should be readonly
     
     // TODO: This property is to be replaced by circuits.
     this.automaticRotations = [0];
@@ -102,6 +118,14 @@ var BlockType = (function () {
       }
     }
     this.opaque = opaque;
+    
+    // audio recalc is done async to reduce initial load delay
+    var self = this;
+    function f() {
+      self.sound = CubesAudio.synthBlock(self.world);
+    }
+    f.toString = function () { return ""+self._serial; }; // TODO KLUDGE we should use something other than DirtyQueue, or extend it to have 'values as well as keys'
+    soundRenderQueue.enqueue(f);
   }
   
   BlockType.World.prototype.serialize = function (serialize) {
@@ -167,6 +191,10 @@ var BlockType = (function () {
     self.automaticRotations = json.automaticRotations || [0];
     
     return self;
+  };
+  
+  BlockType.audioRendersToDo = function () {
+    return config.sound.get() ? soundRenderQueue.size() : 0;
   };
   
   return Object.freeze(BlockType);
@@ -560,6 +588,6 @@ var BlockSet = (function () {
       throw new Error("unknown BlockSet serialization type");
     }
   };
-  
+
   return Object.freeze(BlockSet);
 })();

@@ -237,6 +237,10 @@ var Player = (function () {
       
       if (vec3.length(vec3.subtract(nextPosIncr, currentPlace.pos, vec3.create())) >= EPSILON) {
         vec3.set(nextPosIncr, currentPlace.pos);
+        CubesAudio.setListener(
+          currentPlace.pos,
+          [-Math.sin(currentPlace.yaw), 0, -Math.cos(currentPlace.yaw)],
+          currentPlace.vel);
         aimChanged();
       }
       aabbR.recompute();
@@ -328,6 +332,7 @@ var Player = (function () {
               
               currentPlace.wrend.renderCreateBlock([x,y,z]);
               aimChanged();
+              CubesAudio.play(vec3.add([0.5,0.5,0.5], cube), type, "create");
             }
           }
         }
@@ -341,6 +346,7 @@ var Player = (function () {
             currentPlace.wrend.renderDestroyBlock(cube);
             currentPlace.world.s(x, y, z, 0);
             aimChanged();
+            CubesAudio.play(vec3.add([0.5,0.5,0.5], cube), currentPlace.world.blockSet.get(value), "destroy");
           }
         }
       },

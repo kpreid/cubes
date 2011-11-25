@@ -405,7 +405,17 @@ function DirtyQueue(optCompareFunc) {
   var queueNear = [];
   var queueFar = [];
   var hop = Object.prototype.hasOwnProperty;
-  return Object.freeze({
+  var flusher = null;
+  var flushing = false;
+  function flushLoop() {
+    if (self.size() && flushing) {
+      flusher(self.dequeue());
+      setTimeout(flushLoop, 0);
+    } else {
+      flushing = false;
+    }
+  }
+  var self = Object.freeze({
     size: function () {
       return queueNear.length + queueFar.length;
     },
@@ -418,6 +428,11 @@ function DirtyQueue(optCompareFunc) {
       if (hop.call(index, key)) return;
       index[key] = true;
       queueFar.push(key);
+
+      if (flusher && !flushing) {
+        flushing = true;
+        setTimeout(flushLoop, 0);
+      }
     },
     // Return a value if available or null.
     dequeue: function () {
@@ -437,8 +452,22 @@ function DirtyQueue(optCompareFunc) {
       var key = queueNear.pop();
       delete index[key];
       return key;
+    },
+    // Automatically call the handler function on elements of the queue in the background.
+    setBackgroundFlusher: function (handler) {
+      flusher = handler;
+      if (flusher) {
+        if (self.size() && !flushing) {
+          flushing = true;
+          setTimeout(flushLoop, 0);
+        }
+      } else {
+        flushing = false;
+      }
     }
   });
+  
+  return self;
 }
 
 function ProgressBar(rootElem) {

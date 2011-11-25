@@ -29,6 +29,7 @@
 <script type="text/javascript" src="block-render.js"></script>
 <script type="text/javascript" src="player.js"></script>
 <script type="text/javascript" src="input.js"></script>
+<script type="text/javascript" src="audio.js"></script>
 
 <script id="shader-fs" type="x-shader/x-fragment">
     #ifdef GL_ES
@@ -219,6 +220,7 @@
     defineOption("renderDistance", "number", 100);
     defineOption("lighting", "boolean", true);
     defineOption("bumpMapping", "boolean", true);
+    defineOption("sound", "boolean", true);
     defineOption("debugTextureAllocation", "boolean", false);
     defineOption("debugForceRender", "boolean", false);
     defineOption("debugPlayerCollision", "boolean", false);
@@ -238,6 +240,7 @@
     var cursorInfoElem;
     var cursorInfo;
     var chunkProgressBar;
+    var audioProgressBar;
     
     // Game state, etc. objects
     var player;
@@ -367,6 +370,7 @@
         sceneInfo.data = text;
         
         chunkProgressBar.setByTodoCount(wrend.chunkRendersToDo());
+        audioProgressBar.setByTodoCount(BlockType.audioRendersToDo());
         
         totalVertices = 0;
         renderCount++;
@@ -416,6 +420,12 @@
     setInterval(function () {
       fpsDesc = stepCount + " steps/s, " + renderCount + " frames/s, " + chunkRenders + " chunk rebuilds";
       stepCount = renderCount = chunkRenders = 0;
+      
+      // audio spatial test
+      //var world = player.getWorld();
+      //var b = [world.wx/2, world.wy/2+10, world.wz/2];
+      //CubesAudio.play(b, world.blockSet.get(2));
+      //player.render.getWorldRenderer().renderCreateBlock(b);
     }, 1000);
     
     // for making our loading more async
@@ -453,6 +463,7 @@
       cursorInfoElem = document.getElementById("cursor-info");
       cursorInfo = dynamicText(cursorInfoElem);
       chunkProgressBar = new ProgressBar(document.getElementById("chunks-progress-bar"));
+      audioProgressBar = new ProgressBar(document.getElementById("audio-progress-bar"));
 
       sequence([
         function () {
@@ -535,6 +546,7 @@
       <div id="scene-info-overlay" class="overlay">
         <pre id="scene-info-text">Not ready...</pre>
         <div class="progress-bar" id="chunks-progress-bar" style="width: 20em;"></div>
+        <div class="progress-bar" id="audio-progress-bar" style="width: 20em;"></div>
       </div>
       <pre id="cursor-info" class="overlay"></pre>
       <div id="menu-container">
@@ -649,6 +661,11 @@
         <script>config.lighting.bindControl("lighting");</script>
         <div class="optionline"><label><input type="checkbox" id="bumpMapping"> Bump mapping</label></div>
         <script>config.bumpMapping.bindControl("bumpMapping");</script>
+        <div class="optionline"><label><input type="checkbox" id="enableSound"> Sound</label></div>
+        <script>
+          document.getElementById("enableSound").disabled = !CubesAudio.audioSupported;
+          config.sound.bindControl("enableSound");
+        </script>
         
         <h3>Debug</h3>
         
