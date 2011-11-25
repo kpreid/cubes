@@ -237,6 +237,7 @@
     var sceneInfo;
     var cursorInfoElem;
     var cursorInfo;
+    var chunkProgressBar;
     
     // Game state, etc. objects
     var player;
@@ -363,8 +364,9 @@
         }
         text += totalVertices + " vertices\n";
         text += fpsDesc + "\n";
-        text += wrend.debugText();
         sceneInfo.data = text;
+        
+        chunkProgressBar.setByTodoCount(wrend.chunkRendersToDo());
         
         totalVertices = 0;
         renderCount++;
@@ -447,9 +449,10 @@
     }
     
     function webGLStart() {
-      sceneInfo = dynamicText(document.getElementById('info'));
-      cursorInfoElem = document.getElementById('cursor-info');
+      sceneInfo = dynamicText(document.getElementById("scene-info-text"));
+      cursorInfoElem = document.getElementById("cursor-info");
       cursorInfo = dynamicText(cursorInfoElem);
+      chunkProgressBar = new ProgressBar(document.getElementById("chunks-progress-bar"));
 
       sequence([
         function () {
@@ -529,8 +532,11 @@
           <p>Sorry, but the web browser you are using does not appear to support WebGL (or even Canvas).</p>
         </div>
       </canvas>
-      <pre id="info" class="text-overlay">Not ready...</pre>
-      <pre id="cursor-info" class="text-overlay"></pre>
+      <div id="scene-info-overlay" class="overlay">
+        <pre id="scene-info-text">Not ready...</pre>
+        <div class="progress-bar" id="chunks-progress-bar" style="width: 20em;"></div>
+      </div>
+      <pre id="cursor-info" class="overlay"></pre>
       <div id="menu-container">
         <div id="menu">
           <!-- dynamic content -->

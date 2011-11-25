@@ -20,17 +20,21 @@ html {
   }
 }
 
-#info {
+#scene-info-overlay {
+  position: absolute;
   left: 1px;
   top: 1px;
 }
-.text-overlay {
+.overlay {
   position: absolute;
   font-family: monospace;
   color: white;
   text-shadow: 0 0 .3em #000;
   margin: 0 0;
   display: table;
+}
+.overlay p, .overlay pre {
+  margin: 0;
 }
 
 #menu-container { /* exists to support centering */
@@ -146,4 +150,17 @@ html {
 
 .optionline input[type="range"] {
   vertical-align: middle;
+}
+
+/* --- widgets --- */
+
+.progress-bar {
+  height: .5em;
+  margin: .25em;
+  background: #CCC;
+  background: rgba(255,255,255,0.2);
+}
+.progress-bar-fill {
+  height: 100%;
+  background: white;
 }

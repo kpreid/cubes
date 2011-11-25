@@ -629,15 +629,12 @@ var WorldRenderer = (function () {
       
       return circuitRenderer;
     }
-
-    function debugText() {
-      var text = "";
-      if (dirtyChunks.size() > 0 || addChunks.size() > 0) {
-        text += "Chunk Q: " + dirtyChunks.size() + " dirty, " + addChunks.size() + " new\n";
-      }
-      return text;
+    
+    // For info/debug displays
+    function chunkRendersToDo() {
+      return dirtyChunks.size() + addChunks.size();
     }
-    this.debugText = debugText;
+    this.chunkRendersToDo = chunkRendersToDo;
 
     // --- init ---
 
