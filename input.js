@@ -21,6 +21,10 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   }
   setMouselook(mouselookMode);
   
+  function quick(n) {
+    playerInput.tool = quickSlots[n];
+  }
+  
   // --- Focus ---
   
   eventReceiver.addEventListener("focus", function (event) {
@@ -72,16 +76,16 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
 
     // handlers for 'action' keys (immediate effects)
     switch (String.fromCharCode(code)) {
-      case "1": playerInput.tool = 1; return false;
-      case "2": playerInput.tool = 2; return false;
-      case "3": playerInput.tool = 3; return false;
-      case "4": playerInput.tool = 4; return false;
-      case "5": playerInput.tool = 5; return false;
-      case "6": playerInput.tool = 6; return false;
-      case "7": playerInput.tool = 7; return false;
-      case "8": playerInput.tool = 8; return false;
-      case "9": playerInput.tool = 9; return false;
-      case "0": playerInput.tool = 10; return false;
+      case "1": quick(0); return false;
+      case "2": quick(1); return false;
+      case "3": quick(2); return false;
+      case "4": quick(3); return false;
+      case "5": quick(4); return false;
+      case "6": quick(5); return false;
+      case "7": quick(6); return false;
+      case "8": quick(7); return false;
+      case "9": quick(8); return false;
+      case "0": quick(9); return false;
       case "Q": 
         setMouselook(!mouselookMode);
         return false;
@@ -176,43 +180,76 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   
   // --- Block menu ---
   
-  var menuItems = [];
+  var QUICK_SLOT_COUNT = 10;
+  
+  var menuItemsByBlockId;
+  var hintTextsByBlockId;
   var blockSetInMenu;
+  var quickSlots;
+  var quickSlotLRU;
+
+  function resetQuick() {
+    quickSlots = [];
+    quickSlotLRU = [];
+    for (var i = 0; i < QUICK_SLOT_COUNT; i++) {
+      quickSlots[i] = i + 1; // block ids starting from 1
+      quickSlotLRU[i] = QUICK_SLOT_COUNT - (i + 1); // reverse order
+    }
+  }
+  resetQuick();
+
+  function forAllMenuBlocks(f) {
+    for (var i = 1; i < blockSetInMenu.length; i++) f(i, menuItemsByBlockId[i]);
+  }
   
   function updateMenuBlocks() {
-    while (menuElement.firstChild) menuElement.removeChild(menuElement.firstChild);
-
     blockSetInMenu = playerInput.blockSet;
+    menuItemsByBlockId = [];
+    hintTextsByBlockId = [];
+    resetQuick();
+
     var blockRenderer = new BlockRenderer(blockSetInMenu, renderer);
   
     var sidecount = Math.ceil(Math.sqrt(blockSetInMenu.length));
     var size = Math.min(64, 300 / sidecount);
   
-    for (var i = 1; i < blockSetInMenu.length; i++) {
+    forAllMenuBlocks(function (i) {
       // element structure and style
-      var item = menuItems[i] = document.createElement("span");
+      var item = menuItemsByBlockId[i] = document.createElement("span");
       item.className = "menu-item";
       var canvas = document.createElement("canvas");
       canvas.width = canvas.height = 64; // TODO magic number
       canvas.style.width = canvas.style.height = size + "px";
-      if (i <= 10) {
-        // keyboard shortcut hint
-        var number = document.createElement("kbd");
-        number.appendChild(document.createTextNode((i % 10).toString()));
-        number.className = "menu-shortcut-key";
-        item.appendChild(number);
-      }
+
+      // keyboard shortcut hint
+      var hint = document.createElement("kbd");
+      hint.appendChild(hintTextsByBlockId[i] = document.createTextNode());
+      hint.className = "menu-shortcut-key";
+      item.appendChild(hint);
+
       item.appendChild(canvas);
-      menuElement.appendChild(item);
       
       // render block
       var cctx = canvas.getContext('2d');
       cctx.putImageData(blockRenderer.blockToImageData(i, cctx), 0, 0);
 
       // event handlers
-      (function (item,canvas,i) {
+      (function (item,canvas,i) { // TODO remove, now moot
         canvas.onclick = function () {
           playerInput.tool = i;
+          
+          var quickSlot = quickSlots.indexOf(i);
+          if (quickSlot === -1) {
+            // promote to recently-used menu
+            quickSlot = quickSlotLRU.shift();
+            quickSlots[quickSlot] = i;
+            updateMenuLayout();
+          } else {
+            // touch LRU entry
+            quickSlotLRU.splice(quickSlotLRU.indexOf(quickSlot), 1);
+          }
+          quickSlotLRU.push(quickSlot);
+          
           return false;
         };
         canvas.onmousedown = canvas.onselectstart = function () {
@@ -228,20 +265,45 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
           return true;
         };
       })(item,canvas,i);
-    }
+    });
     
     blockRenderer.deleteResources();
+    
+    updateMenuLayout();
+  }
+  
+  function updateMenuLayout() {
+    // This is not especially efficient, but it doesn't need to be.
+    
+    while (menuElement.firstChild) menuElement.removeChild(menuElement.firstChild);
+
+    var quickGroup = document.createElement("div");
+
+    forAllMenuBlocks(function (i, item) {
+      menuElement.appendChild(item);
+      hintTextsByBlockId[i].data = "";
+    });
+    quickSlots.forEach(function (blockId, index) {
+      var item = menuItemsByBlockId[blockId];
+      if (item) {
+        quickGroup.appendChild(item);
+        hintTextsByBlockId[blockId].data = ((index+1) % 10).toString();
+      }
+    });
+
+    menuElement.appendChild(quickGroup);
   }
   
   function updateMenuSelection() {
     var tool = playerInput.tool;
-    for (var i = 1; i < blockSetInMenu.length; i++) {
-      menuItems[i].className = i == tool ? "menu-item selectedTool" : "menu-item";
-    }
+    forAllMenuBlocks(function (i, item) {
+      item.className = i == tool ? "menu-item selectedTool" : "menu-item";
+    });
   }
-  
+
   playerInput.listen({
     changedWorld: function (v) {
+      // TODO: remember quick slot contents across worlds (add an input-state object to player's Places?)
       updateMenuBlocks();
       return true;
     },
