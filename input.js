@@ -145,7 +145,7 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
     prevx = directX;
   }, false);
   eventReceiver.addEventListener("mouseout", function (event) {
-    updateMouse(event);
+    playerInput.mousePos = null;
     dx = 0;
     return true;
   }, false);

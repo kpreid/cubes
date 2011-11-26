@@ -55,7 +55,7 @@ var Player = (function () {
     var pitch = 0;
 
     var movement = vec3.create([0,0,0]);
-    var mousePos = [0,0];
+    var mousePos = null; // or an [screen x, screen y] vector. Immutable value.
   
     var selectionR = new renderer.RenderBundle(gl.LINE_LOOP, null, function (vertices, normals, colors) {
       var sel = currentPlace ? currentPlace.selection : null;
@@ -108,18 +108,19 @@ var Player = (function () {
       scheduleDraw(); // because this routine is also 'view direction changed'
 
       var foundCube = null, foundFace = null;
-
-      var w = currentPlace.world;
-      var pts = renderer.getAimRay(mousePos, player.render);
-      w.raycast(pts[0], pts[1], 20, function (x,y,z,value,face) {
-        if (w.solid(x,y,z)) {
-          foundCube = Object.freeze([x,y,z]);
-          foundFace = face;
-          return true;
-        }
-      });
-      // Note: If we ever want to enable selection of the edges of the world,
-      // then that can be done by noting the last cube the raycast hit.
+      if (mousePos !== null) {
+        var w = currentPlace.world;
+        var pts = renderer.getAimRay(mousePos, player.render);
+        w.raycast(pts[0], pts[1], 20, function (x,y,z,value,face) {
+          if (w.solid(x,y,z)) {
+            foundCube = Object.freeze([x,y,z]);
+            foundFace = face;
+            return true;
+          }
+        });
+        // Note: If we ever want to enable selection of the edges of the world,
+        // then that can be done by noting the last cube the raycast hit.
+      }
       
       if (foundCube !== null) {
         var newSel = Object.freeze({
@@ -361,7 +362,7 @@ var Player = (function () {
         vec3.set(vec, movement);
         if (movement[1] > 0) currentPlace.flying = true;
       },
-      set mousePos (vec) { mousePos = vec.slice(); aimChanged(); },
+      set mousePos (vec) { mousePos = vec; aimChanged(); },
       get pitch () { return pitch; },
       set pitch (angle) { pitch = angle; aimChanged(); },
       get yaw () { return currentPlace.yaw; },
