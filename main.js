@@ -309,6 +309,12 @@ var CubesMain = (function () {
         throw exception; // propagate to browser console
       });
     };
+    
+    this.setTopWorld = function (world) {
+      worldH = world;
+      player.setWorld(world);
+    };
+    this.getTopWorld = function () { return worldH; };
   }
   
   return CubesMain;

@@ -265,11 +265,10 @@
       <form onsubmit="return false;" action=""  style="text-align: center">
         <p id="local-save-controls">
           <button onclick="
-            localStorage.setItem('world', JSON.stringify(cyclicSerialize(worldH))); return false;
+            localStorage.setItem('world', JSON.stringify(cyclicSerialize(main.getTopWorld()))); return false;
           ">Save</button>
           <button onclick="
-            worldH = cyclicUnserialize(JSON.parse(localStorage.getItem('world')), World);
-            player.setWorld(worldH);
+            main.setTopWorld(cyclicUnserialize(JSON.parse(localStorage.getItem('world')), World));
             return false;
           ">Revert to saved</button>
         </p>
@@ -280,15 +279,14 @@
           <textarea id="loadfield" width="20" height="3" style="width: 80%;"></textarea>
           <br>
           <button onclick="
-            document.getElementById('loadfield').value = JSON.stringify(cyclicSerialize(worldH)); return false;
+            document.getElementById('loadfield').value = JSON.stringify(cyclicSerialize(main.getTopWorld())); return false;
           ">Text Export</button>
           <button onclick="
             while (document.getElementById('load-error').firstChild)
               document.getElementById('load-error').removeChild(
                 document.getElementById('load-error').firstChild);
             try {
-              worldH = cyclicUnserialize(JSON.parse(document.getElementById('loadfield').value), World)
-              player.setWorld(worldH);
+              main.setTopWorld(cyclicUnserialize(JSON.parse(document.getElementById('loadfield').value), World));
             } catch (e) {
               console.log(e);
               document.getElementById('load-error').appendChild(document.createTextNode(e));
@@ -325,8 +323,7 @@
         <script>config.generate_wz.bindControl("generate_wz");</script>
         <div style="text-align: center;">
           <button onclick="
-            worldH = generateWorlds();
-            player.setWorld(worldH);
+            main.setTopWorld(generateWorlds());
             return false;
           ">Generate new world</button>
         </div>
