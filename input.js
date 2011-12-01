@@ -223,7 +223,7 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
 
       // keyboard shortcut hint
       var hint = document.createElement("kbd");
-      hint.appendChild(hintTextsByBlockId[i] = document.createTextNode());
+      hint.appendChild(hintTextsByBlockId[i] = document.createTextNode(""));
       hint.className = "menu-shortcut-key";
       item.appendChild(hint);
 
