@@ -253,10 +253,15 @@ var CubesMain = (function () {
         function () {
           
           theCanvas = document.getElementById('view-canvas');
+          try {
           renderer = main.renderer = new Renderer(theCanvas, scheduleDraw);
-          if (!renderer.context) {
-            document.getElementById("webgl-error-notice").style.removeProperty("display");
-            return ABORT;
+          } catch (e) {
+            if (e instanceof Renderer.NoWebGLError) {
+              document.getElementById("webgl-error-notice").style.removeProperty("display");
+              return ABORT;
+            } else {
+              throw e;
+            }
           }
           gl = renderer.context;
         },

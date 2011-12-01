@@ -193,6 +193,8 @@ var Renderer = (function () {
     }
     this.context = gl;
     
+    if (!gl) throw new Renderer.NoWebGLError();
+    
     canvas.addEventListener("webglcontextlost", handleContextLost, false);
     canvas.addEventListener("webglcontextrestored", handleContextRestored, false);
     
@@ -581,5 +583,10 @@ var Renderer = (function () {
     Object.seal(this); // TODO freeze all but verticesDrawn
   }
   
-  return Renderer;
+  Renderer.NoWebGLError = function () {
+    Error.call(this);
+  };
+  Renderer.NoWebGLError.prototype = Object.create(Error.prototype);
+  
+  return Object.freeze(Renderer);
 })();
