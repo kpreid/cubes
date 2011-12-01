@@ -122,7 +122,7 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   var dx = 0;
   var prevx = 0;
   
-  function updateMouse() {
+  function updateMouse(event) {
     playerInput.mousePos = [event.clientX, event.clientY];
   }
   
@@ -157,13 +157,13 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   // --- Clicks ---
 
   eventReceiver.addEventListener("click", function (event) {
-    updateMouse();
+    updateMouse(event);
     eventReceiver.focus();
     playerInput.deleteBlock();
     return false;
   }, false);
   eventReceiver.oncontextmenu = function (event) { // On Firefox 5.0.1 (most recent tested 2011-09-10), addEventListener does not suppress the builtin context menu, so this is an attribute rather than a listener.
-    updateMouse();
+    updateMouse(event);
     eventReceiver.focus();
     playerInput.useTool();
     return false;
