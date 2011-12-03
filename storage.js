@@ -3,7 +3,9 @@
 
 // This file contains implementation of persistent storage.
 
-function cyclicSerialize(root) {
+var SERIAL_TYPE_NAME = "()"; // TODO local variable
+
+function cyclicSerialize(root, unserializers) {
   "use strict";
   var seen = [];
   function serialize(obj) {
@@ -17,22 +19,40 @@ function cyclicSerialize(root) {
     json["#"] = i;
     return json;
   }
+  serialize.setUnserializer = function (json, constructor) {
+    for (var k in unserializers) {
+      if (unserializers[k] === constructor
+          && Object.prototype.hasOwnProperty.call(unserializers, k)) {
+        json[SERIAL_TYPE_NAME] = k;
+        return;
+      }
+    }
+    throw new Error("Don't know how to serialize the constructor " + constructor);
+  };
   return serialize(root);
 }
 
-function cyclicUnserialize(json, constructor) {
+function cyclicUnserialize(json, unserializers) {
   "use strict";
   var seen = [];
-  function unserialize(json, constructor) {
+
+  function findConstructor(json) {
+    var typename = json[SERIAL_TYPE_NAME];
+    if (Object.prototype.hasOwnProperty.call(unserializers, typename))
+      return unserializers[typename];
+    throw new Error("Don't know how to unserialize type name: " + typename);
+  }
+
+  function unserialize(json) {
     if (typeof json === "number" && json >= 0) {
       return seen[json];
     } else if (typeof json === "object") {
-      return seen[+(json["#"])] = constructor.unserialize(json, unserialize);
+      return seen[+(json["#"])] = findConstructor(json).unserialize(json, unserialize);
     } else {
       throw new Error("Don't know how to unserialize from a " + typeof json);
     }
   }
-  return unserialize(json, constructor);
+  return unserialize(json);
 }
 
 function Cell(label, initialValue) {
@@ -160,3 +180,50 @@ PersistentCell.prototype.bindControl = function (id) {
   listener(this.get());
 };
 
+function Persister(object) {
+  var name = null;
+  var dirty = false;
+  this.persist = function (newName) {
+    if (!Persister.available) {
+      throw new Error("localStorage not supported by this browser; persistence not available");
+    }
+    if (name !== null) {
+      throw new Error("This object already has the name " + name);
+    }
+    name = newName;
+    dirty = true;
+    console.log("Persister: persisted", name, ":", object);
+  };
+  this.dirty = function () {
+    if (name) console.log("Persister: dirtied", name);
+    dirty = true;
+  };
+  this.commit = function () {
+    if (name === null) return;
+    if (!dirty) {
+      console.log("Persister: not writing clean", name);
+      return;
+    }
+    console.log("Persister: writing dirty", name);
+    localStorage.setItem(
+      // TODO prefix should be configurable
+      "cubes.object." + name,
+      JSON.stringify(cyclicSerialize(object, Persister.types)));
+  };
+}
+Persister.get = function (name) {
+  // TODO: Don't multiply instantiate the same object
+  var data = localStorage.getItem("cubes.object." + name);
+  if (data === null) {
+    console.log("Persister: no object for", name);
+    return null;
+  } else {
+    console.log("Persister: retrieving", name);
+    var object = cyclicUnserialize(JSON.parse(data), Persister.types);
+    object.persistence.persist(name); // TODO: This sets dirty flag when it shouldn't.
+    return object;
+  }
+};
+Persister.available = typeof localStorage !== "undefined";
+Persister.types = []; // TODO global mutable state
+Object.freeze(Persister);

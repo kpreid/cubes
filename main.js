@@ -267,26 +267,25 @@ var CubesMain = (function () {
         },
         "Loading worlds...",
         function () {
-          var hasLocalStorage = typeof localStorage !== 'undefined';
-          document.getElementById('local-save-controls').style.display = hasLocalStorage ? 'block' : 'none';
-          document.getElementById('local-save-warning').style.display = !hasLocalStorage ? 'block' : 'none';
-          if (hasLocalStorage) {
-            var worldData = localStorage.getItem("world");
-            if (worldData !== null) {
-              try {
-                worldH = cyclicUnserialize(JSON.parse(worldData), World);
-              } catch (e) {
-                if (typeof console !== 'undefined')
-                  console.error(e);
-                alert("Failed to load saved world!");
-              }
+          var world;
+          document.getElementById('local-save-controls').style.display = Persister.available ? 'block' : 'none';
+          document.getElementById('local-save-warning').style.display = !Persister.available ? 'block' : 'none';
+          if (Persister.available) {
+            try {
+              world = Persister.get("world");
+            } catch (e) {
+              if (typeof console !== 'undefined')
+                console.error(e);
+              alert("Failed to load saved world!");
             }
           } else {
             console.warn("localStorage not available; world will not be saved.");
           }
-          if (!worldH) {
-            worldH = generateWorlds();
+          if (!world) {
+            world = generateWorlds();
+            world.persistence.persist("world");
           }
+          main.setTopWorld(world);
         },
         "Painting blocks...", // this is what takes the time in world renderer construction
         function () {
@@ -312,7 +311,7 @@ var CubesMain = (function () {
     
     this.setTopWorld = function (world) {
       worldH = world;
-      player.setWorld(world);
+      if (player) player.setWorld(world);
     };
     this.getTopWorld = function () { return worldH; };
   }

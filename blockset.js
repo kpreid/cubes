@@ -40,6 +40,7 @@ var BlockType = (function () {
   
   BlockType.prototype.serialize = function (serialize) {
     var json = {};
+    serialize.setUnserializer(json, BlockType);
     if (this.automaticRotations.length !== 1 || this.automaticRotations[0] !== 0)
       json.automaticRotations = this.automaticRotations;
     if (this.behavior && this.behavior.name)
@@ -129,7 +130,7 @@ var BlockType = (function () {
   }
   
   BlockType.World.prototype.serialize = function (serialize) {
-    var json = BlockType.prototype.serialize.call(this);
+    var json = BlockType.prototype.serialize.call(this, serialize);
     json.world = serialize(this.world);
     return json;
   };
@@ -170,13 +171,14 @@ var BlockType = (function () {
   };
   
   BlockType.Color.prototype.serialize = function (serialize) {
-    var json = BlockType.prototype.serialize.call(this);
+    var json = BlockType.prototype.serialize.call(this, serialize);
     json.color = this.color;
     return json;
   };
   
   BlockType.air = new BlockType.Color([0,0,0,0]);
   
+  Persister.types["BlockType"] = BlockType;
   BlockType.unserialize = function (json, unserialize) {
     var self;
     if (json.color) {
@@ -548,10 +550,12 @@ var BlockSet = (function () {
         return types[blockID] ? types[blockID].world : null;
       },
       serialize: function (serialize) {
-        return {
+        var json = {
           type: "types",
           types: types.slice(1).map(function (type) { return serialize(type); })
-        }
+        };
+        serialize.setUnserializer(json, BlockSet);
+        return json;
       }
     });
     
@@ -570,6 +574,7 @@ var BlockSet = (function () {
   // This value arises because worlds store blocks as bytes.
   BlockSet.ID_LIMIT = 256;
   
+  Persister.types["BlockSrt"] = BlockSet;
   BlockSet.unserialize = function (json, unserialize) {
     if (json.type === "colors") {
       // obsolete serialization type
