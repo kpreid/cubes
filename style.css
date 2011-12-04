@@ -20,14 +20,8 @@ html {
   }
 }
 
-#scene-info-overlay {
-  position: absolute;
-  left: 1px;
-  top: 1px;
-}
 .overlay {
   position: absolute;
-  font-family: monospace;
   color: white;
   text-shadow: 0 0 .3em #000;
   margin: 0 0;
@@ -35,6 +29,17 @@ html {
 }
 .overlay p, .overlay pre {
   margin: 0;
+}
+
+#scene-info-overlay {
+  position: absolute;
+  left: 1px;
+  top: 1px;
+}
+
+#save-button {
+  text-shadow: 0 0 .5em #F00;
+  font-weight: bold;
 }
 
 #menu-container { /* exists to support centering */

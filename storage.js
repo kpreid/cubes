@@ -74,6 +74,10 @@ function Cell(label, initialValue) {
   this.get = get;
   this.set = set;
   this.listen = notifier.listen;
+  this.readOnly = Object.create(Cell.prototype);
+  this.readOnly.get = get;
+  this.readOnly.listen = notifier.listen;
+  Object.freeze(this.readOnly);
 }
 // Returns a function to trigger the function now.
 Cell.prototype.whenChanged = function (func) {
@@ -180,50 +184,109 @@ PersistentCell.prototype.bindControl = function (id) {
   listener(this.get());
 };
 
-function Persister(object) {
-  var name = null;
-  var dirty = false;
-  this.persist = function (newName) {
-    if (!Persister.available) {
-      throw new Error("localStorage not supported by this browser; persistence not available");
-    }
-    if (name !== null) {
-      throw new Error("This object already has the name " + name);
-    }
-    name = newName;
-    dirty = true;
-    console.log("Persister: persisted", name, ":", object);
-  };
-  this.dirty = function () {
-    if (name) console.log("Persister: dirtied", name);
-    dirty = true;
-  };
-  this.commit = function () {
-    if (name === null) return;
-    if (!dirty) {
-      console.log("Persister: not writing clean", name);
-      return;
-    }
-    console.log("Persister: writing dirty", name);
-    localStorage.setItem(
-      // TODO prefix should be configurable
-      "cubes.object." + name,
-      JSON.stringify(cyclicSerialize(object, Persister.types)));
-  };
-}
-Persister.get = function (name) {
-  // TODO: Don't multiply instantiate the same object
-  var data = localStorage.getItem("cubes.object." + name);
-  if (data === null) {
-    console.log("Persister: no object for", name);
-    return null;
-  } else {
-    console.log("Persister: retrieving", name);
-    var object = cyclicUnserialize(JSON.parse(data), Persister.types);
-    object.persistence.persist(name); // TODO: This sets dirty flag when it shouldn't.
-    return object;
+var Persister = (function () {
+  var hop = Object.prototype.hasOwnProperty;
+  var currentlyLiveObjects = {};
+  var dirtyQueue = new DirtyQueue();
+  
+  var status = new Cell("Persister.status", 0);
+  function updateStatus() {
+    status.set(dirtyQueue.size());
   }
-};
-Persister.available = typeof localStorage !== "undefined";
-Persister.types = []; // TODO global mutable state
-Object.freeze(Persister);
+  
+  function handleDirty(name) {
+    currentlyLiveObjects[name].persistence.commit(); // TODO: spoofable (safely)
+  }
+  
+  function Persister(object) {
+    var persister = this;
+    var name = null;
+    var dirty = false;
+    
+    this._registerName = function (newName) { // TODO internal
+      if (!Persister.available) {
+        throw new Error("localStorage not supported by this browser; persistence not available");
+      }
+      if (name === newName) {
+        return;
+      }
+      if (name !== null) {
+        throw new Error("This object already has the name " + name);
+      }
+      name = newName;
+      currentlyLiveObjects[name] = object;
+      console.log("Persister: persisted", name, ":", object);
+    };
+    this.persist = function (newName) {
+      persister._registerName(newName);
+      persister.dirty();
+    };
+    this.ephemeralize = function () {
+      if (name) {
+        console.log("Persister: ephemeralized", name);
+      }
+    }
+    this.dirty = function () {
+      if (name) {
+        console.log("Persister: dirtied", name);
+        dirty = true;
+        dirtyQueue.enqueue(name);
+        updateStatus();
+      }
+    };
+    this.commit = function () {
+      if (name === null) return;
+      if (!dirty) {
+        console.log("Persister: not writing clean", name);
+        return;
+      } else {
+        console.log("Persister: writing dirty", name);
+        localStorage.setItem(
+          // TODO prefix should be configurable
+          "cubes.object." + name,
+          JSON.stringify(cyclicSerialize(object, Persister.types)));
+        dirty = false;
+      }
+    };
+  }
+  Persister.flushAsync = function () {
+    function loop() {
+      var name = dirtyQueue.dequeue();
+      if (name !== null) {
+        handleDirty(name);
+        setTimeout(loop, 0);
+      }
+      updateStatus();
+    }
+    setTimeout(loop, 0);
+  };
+  Persister.flushNow = function () {
+    var name;
+    while ((name = dirtyQueue.dequeue()) !== null) {
+      handleDirty(name);
+    }
+    updateStatus();
+  };
+  Persister.get = function (name) {
+    // TODO: Don't multiply instantiate the same object
+    if (hop.call(currentlyLiveObjects, name)) {
+      console.log("Persister: already live", name);
+      return currentlyLiveObjects[name];
+    }
+    var data = localStorage.getItem("cubes.object." + name);
+    if (data === null) {
+      console.log("Persister: no object for", name);
+      return null;
+    } else {
+      console.log("Persister: retrieving", name);
+      var object = cyclicUnserialize(JSON.parse(data), Persister.types);
+      object.persistence._registerName(name);
+      return object;
+    }
+  };
+  Persister.available = typeof localStorage !== "undefined";
+  Persister.types = []; // TODO global mutable state
+  Persister.status = status.readOnly;
+
+  return Object.freeze(Persister);
+})();

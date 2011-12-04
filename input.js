@@ -35,6 +35,7 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
     focusCell.set(false);
     keymap = {};
     dx = 0;
+    Persister.flushAsync();
     return true;
   }, false);
   

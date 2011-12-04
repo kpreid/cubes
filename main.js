@@ -51,6 +51,7 @@ var CubesMain = (function () {
     var cursorInfo;
     var chunkProgressBar;
     var audioProgressBar;
+    var persistenceProgressBar;
     
     var focusCell = new Cell("focus", false);
     focusCell.whenChanged(function () {
@@ -147,6 +148,7 @@ var CubesMain = (function () {
         
         chunkProgressBar.setByTodoCount(wrend.chunkRendersToDo());
         audioProgressBar.setByTodoCount(BlockType.audioRendersToDo());
+        persistenceProgressBar.setByTodoCount(Persister.status.get());
         
         renderer.verticesDrawn = 0;
         renderCount++;
@@ -241,6 +243,21 @@ var CubesMain = (function () {
       cursorInfo = dynamicText(cursorInfoElem);
       chunkProgressBar = new ProgressBar(document.getElementById("chunks-progress-bar"));
       audioProgressBar = new ProgressBar(document.getElementById("audio-progress-bar"));
+      persistenceProgressBar = new ProgressBar(document.getElementById("persistence-progress-bar"));
+
+      var saveButton = document.getElementById("save-button");
+      var saveButtonText = dynamicText(saveButton);
+      var lastSavedTime = Date.now();
+      Persister.status.nowAndWhenChanged(function (count) {
+        if (count === 0) {
+          lastSavedTime = Date.now();
+          saveButton.style.visibility = "hidden";
+        } else {
+          saveButton.style.visibility = "visible";
+          saveButtonText.data = "Save (last " + Math.round((Date.now() - lastSavedTime) / (1000*60)) + " min ago)";
+        }
+        return true;
+      });
 
       sequence([
         function () {
@@ -267,8 +284,14 @@ var CubesMain = (function () {
         },
         "Loading worlds...",
         function () {
+          // Save-on-exit
+          window.addEventListener("unload", function () {
+            Persister.flushNow();
+            return true;
+          }, false);
+          
           var world;
-          document.getElementById('local-save-controls').style.display = Persister.available ? 'block' : 'none';
+          document.getElementById('local-save-ok').style.display = Persister.available ? 'block' : 'none';
           document.getElementById('local-save-warning').style.display = !Persister.available ? 'block' : 'none';
           if (Persister.available) {
             try {
@@ -309,11 +332,21 @@ var CubesMain = (function () {
       });
     };
     
+    this.regenerate = function () {
+      this.setTopWorld(generateWorlds());
+    };
+    
     this.setTopWorld = function (world) {
+      if (worldH) worldH.persistence.ephemeralize();
       worldH = world;
+      worldH.persistence.persist("world");
       if (player) player.setWorld(world);
     };
     this.getTopWorld = function () { return worldH; };
+    
+    this.save = function () {
+      Persister.flushAsync();
+    };
   }
   
   return CubesMain;
