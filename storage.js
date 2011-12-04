@@ -224,6 +224,7 @@ var Persister = (function () {
       currentlyLiveObjects[name] = object;
       console.log("Persister: persisted", name, ":", object);
     };
+    this.getName = function () { return name; };
     this.persist = function (newName) {
       persister._registerName(newName);
       persister.dirty();

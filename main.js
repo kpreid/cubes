@@ -33,6 +33,8 @@ var config = {};
   defineOption("generate_shape", "string", "fill");
   defineOption("generate_slope", "number", 0.9);
   defineOption("generate_name", "string", "Untitled");
+
+  defineOption("currentTopWorld", "string", "Untitled");
 })();
 
 var CubesMain = (function () {
@@ -270,6 +272,7 @@ var CubesMain = (function () {
           if (Object.create(type.prototype) instanceof World) {
             var c = document.createElement("option");
             c.appendChild(document.createTextNode(name));
+            if (config.currentTopWorld.get() === name) c.selected = true;
             worldSelect.appendChild(c);
           }
         });
@@ -321,7 +324,7 @@ var CubesMain = (function () {
           document.getElementById('local-save-warning').style.display = !Persister.available ? 'block' : 'none';
           if (Persister.available) {
             try {
-              world = Persister.get("world");
+              world = Persister.get(config.currentTopWorld.get());
             } catch (e) {
               if (typeof console !== 'undefined')
                 console.error(e);
@@ -367,6 +370,9 @@ var CubesMain = (function () {
     this.setTopWorld = function (world) {
       worldH = world;
       if (player) player.setWorld(world);
+
+      var name = world.persistence.getName();
+      if (name !== null) config.currentTopWorld.set(name);
     };
     this.getTopWorld = function () { return worldH; };
     
