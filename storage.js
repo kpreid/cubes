@@ -185,9 +185,14 @@ PersistentCell.prototype.bindControl = function (id) {
 };
 
 var Persister = (function () {
+  // constants
   var hop = Object.prototype.hasOwnProperty;
+  var objectPrefix = "cubes.object."; // TODO not hardcoded
+  
+  // global state
   var currentlyLiveObjects = {};
   var dirtyQueue = new DirtyQueue();
+  var notifier = new Notifier();
   
   var status = new Cell("Persister.status", 0);
   function updateStatus() {
@@ -195,7 +200,9 @@ var Persister = (function () {
   }
   
   function handleDirty(name) {
-    currentlyLiveObjects[name].persistence.commit(); // TODO: spoofable (safely)
+    if (hop.call(currentlyLiveObjects, name)) {
+      currentlyLiveObjects[name].persistence.commit(); // TODO: spoofable (safely)
+    }
   }
   
   function Persister(object) {
@@ -220,10 +227,16 @@ var Persister = (function () {
     this.persist = function (newName) {
       persister._registerName(newName);
       persister.dirty();
+      persister.commit(); // TODO all we really need to do here is ensure that it appears in the forEach list; this is just a kludge for that.
+      notifier.notify("added", name);
     };
     this.ephemeralize = function () {
       if (name) {
         console.log("Persister: ephemeralized", name);
+        localStorage.removeItem(objectPrefix + name);
+        delete currentlyLiveObjects[name];
+        name = null;
+        notifier.notify("deleted", name);
       }
     }
     this.dirty = function () {
@@ -243,7 +256,7 @@ var Persister = (function () {
         console.log("Persister: writing dirty", name);
         localStorage.setItem(
           // TODO prefix should be configurable
-          "cubes.object." + name,
+          objectPrefix + name,
           JSON.stringify(cyclicSerialize(object, Persister.types)));
         dirty = false;
       }
@@ -273,7 +286,7 @@ var Persister = (function () {
       console.log("Persister: already live", name);
       return currentlyLiveObjects[name];
     }
-    var data = localStorage.getItem("cubes.object." + name);
+    var data = localStorage.getItem(objectPrefix + name);
     if (data === null) {
       console.log("Persister: no object for", name);
       return null;
@@ -284,6 +297,17 @@ var Persister = (function () {
       return object;
     }
   };
+  Persister.forEach = function (f) {
+    // TODO Instead of this expensive unserialize-and-inspect, examine the db on startup and cache
+    for (var i = localStorage.length - 1; i >= 0; i--) {
+      var key = localStorage.key(i);
+      if (key.length >= objectPrefix.length && key.substring(0, objectPrefix.length) == objectPrefix) {
+        f(key.substring(objectPrefix.length),
+          Persister.types[JSON.parse(localStorage.getItem(key))[SERIAL_TYPE_NAME]]);
+      }
+    }
+  };
+  Persister.listen = notifier.listen;
   Persister.available = typeof localStorage !== "undefined";
   Persister.types = []; // TODO global mutable state
   Persister.status = status.readOnly;

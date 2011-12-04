@@ -261,12 +261,14 @@
     <div id="options" class="sidebar" onclick="if (event.target.tagName == 'INPUT' || event.target.tagName == 'LABEL' || event.target.tagName == 'BUTTON' || event.target.tagName == 'TEXTAREA') return true; this.style.display='none'; document.getElementById('optionsbtn').style.display='inline'; document.getElementById('view-canvas').focus();" style="display: none;">
       <p>Click to close.</p>
 
-      <h2>Import/Export</h2>
+      <h2>Load/Save</h2>
       
       <form onsubmit="return false;" action="" style="text-align: center">
-        <p id="local-save-ok" style="display: none">
-          Your browser supports local storage. This world will be saved automatically.
-        </p>
+        <div id="local-save-ok" style="display: none">
+          <div class="optionline">World:</div>
+          <select id="world-select" size="5" style="width: 90%;"><option>not loaded</option></select>
+          <p>Your browser supports local storage. This world will be saved automatically.</p>
+        </div>
         <p id="local-save-warning" style="display: none">
           Your browser does not appear to support local storage. This world will be lost when you close the page unless you export it and save the text.
         </p>
@@ -297,6 +299,7 @@
 
       <form onsubmit="return false;" action="">
         <table class="optionline">
+          <tr><td>Name:<td><input id="generate_name" type="text" value="" style="width: 95%;">
           <tr><td>Shape: 
           <td><select id="generate_shape">
             <option value="fill">Flat-sided</option>
@@ -304,6 +307,7 @@
           </select>
           <tr><td>Bumpiness:<td><input type="range" step="any" min="0" max="2" value="1" maxlength="4" size="4" id="generate_slope">
         </table>
+        <script>config.generate_name.bindControl("generate_name");</script>
         <script>config.generate_shape.bindControl("generate_shape");</script>
         <script>config.generate_slope.bindControl("generate_slope");</script>
         <table class="optionline" style="text-align: center;">

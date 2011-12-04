@@ -32,6 +32,7 @@ var config = {};
   defineOption("generate_wz", "number", 400);
   defineOption("generate_shape", "string", "fill");
   defineOption("generate_slope", "number", 0.9);
+  defineOption("generate_name", "string", "Untitled");
 })();
 
 var CubesMain = (function () {
@@ -238,6 +239,7 @@ var CubesMain = (function () {
     }
     
     this.start = function () {
+      // Miscellaneous references
       sceneInfo = dynamicText(document.getElementById("scene-info-text"));
       cursorInfoElem = document.getElementById("cursor-info");
       cursorInfo = dynamicText(cursorInfoElem);
@@ -245,6 +247,7 @@ var CubesMain = (function () {
       audioProgressBar = new ProgressBar(document.getElementById("audio-progress-bar"));
       persistenceProgressBar = new ProgressBar(document.getElementById("persistence-progress-bar"));
 
+      // Save button
       var saveButton = document.getElementById("save-button");
       var saveButtonText = dynamicText(saveButton);
       var lastSavedTime = Date.now();
@@ -258,7 +261,30 @@ var CubesMain = (function () {
         }
         return true;
       });
+      
+      // World list
+      var worldSelect = document.getElementById("world-select");
+      function updateWorldList() {
+        while (worldSelect.firstChild) worldSelect.removeChild(worldSelect.firstChild);
+        Persister.forEach(function (name, type) {
+          if (Object.create(type.prototype) instanceof World) {
+            var c = document.createElement("option");
+            c.appendChild(document.createTextNode(name));
+            worldSelect.appendChild(c);
+          }
+        });
+        return true;
+      }
+      worldSelect.addEventListener("change", function () {
+        main.setTopWorld(Persister.get(worldSelect.value));
+      });
+      updateWorldList();
+      Persister.listen({
+        added: updateWorldList,
+        deleted: updateWorldList
+      });
 
+      // Main startup sequence
       sequence([
         function () {
           if (typeof testSettersWork === 'undefined' || !testSettersWork()) {
@@ -306,7 +332,7 @@ var CubesMain = (function () {
           }
           if (!world) {
             world = generateWorlds();
-            world.persistence.persist("world");
+            world.persistence.persist("Default");
           }
           main.setTopWorld(world);
         },
@@ -333,13 +359,13 @@ var CubesMain = (function () {
     };
     
     this.regenerate = function () {
-      this.setTopWorld(generateWorlds());
+      var world = generateWorlds();
+      world.persistence.persist(config.generate_name.get());
+      this.setTopWorld(world);
     };
     
     this.setTopWorld = function (world) {
-      if (worldH) worldH.persistence.ephemeralize();
       worldH = world;
-      worldH.persistence.persist("world");
       if (player) player.setWorld(world);
     };
     this.getTopWorld = function () { return worldH; };
