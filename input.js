@@ -35,7 +35,14 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
     focusCell.set(false);
     keymap = {};
     dx = 0;
-    Persister.flushAsync();
+    
+    // Blur is probably a good time to autosave, but not if this is a spurious immediately-refocused-by-other-code or user-clicked-on-a-button blur
+    setTimeout(function () {
+      if (!focusCell.get()) {
+        Persister.flushAsync();
+      }
+    }, 1000);
+    
     return true;
   }, false);
   
