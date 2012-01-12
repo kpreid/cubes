@@ -142,7 +142,7 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
     if (mouselookMode) {
       playerInput.pitch = directY;
       playerInput.yaw += (directX - prevx);
-      dx = -10.0 * deadzone(swingX, 0.1);
+      dx = -(config.mouseTurnRate.get()) * deadzone(swingX, 0.1);
     } else {
       dx = 0;
     }

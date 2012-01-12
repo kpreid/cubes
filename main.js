@@ -20,6 +20,7 @@ var config = {};
   }
   defineOption("fov", "number", 60);
   defineOption("renderDistance", "number", 100);
+  defineOption("mouseTurnRate", "number", 4); // radians/second/half-screen-width
   defineOption("lighting", "boolean", true);
   defineOption("bumpMapping", "boolean", true);
   defineOption("sound", "boolean", true);
