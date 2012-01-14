@@ -112,7 +112,7 @@ var Player = (function () {
         var w = currentPlace.world;
         var pts = renderer.getAimRay(mousePos, player.render);
         w.raycast(pts[0], pts[1], 20, function (x,y,z,value,face) {
-          if (w.solid(x,y,z)) {
+          if (w.selectable(x,y,z)) {
             foundCube = Object.freeze([x,y,z]);
             foundFace = face;
             return true;
@@ -331,7 +331,7 @@ var Player = (function () {
             var face = currentPlace.selection.face;
             var x = cube[0]+face[0], y = cube[1]+face[1], z = cube[2]+face[2];
             var type = currentPlace.world.blockSet.get(currentPlace.tool);
-            if (!currentPlace.world.solid(x,y,z)) {
+            if (currentPlace.world.g(x,y,z) == 0) {
               // TODO: rotation on create should be more programmable.
               var raypts = renderer.getAimRay(mousePos, player.render); // TODO depend on player orientation instead?
               var symm = nearestCubeSymmetry(vec3.subtract(raypts[0], raypts[1]), [0,0,1], type.automaticRotations);
@@ -348,7 +348,7 @@ var Player = (function () {
         if (currentPlace.selection !== null) {
           var cube = currentPlace.selection.cube;
           var x = cube[0], y = cube[1], z = cube[2];
-          if (currentPlace.world.solid(x,y,z)) {
+          if (currentPlace.world.g(x,y,z) != 0 /* i.e. would destruction do anything */) { 
             var value = currentPlace.world.g(x,y,z);
             currentPlace.wrend.renderDestroyBlock(cube);
             currentPlace.world.s(x, y, z, 0);

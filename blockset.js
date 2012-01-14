@@ -33,15 +33,18 @@ var BlockType = (function () {
     this.sound = {}; // computed, TODO should be readonly
     
     // TODO: This property is to be replaced by circuits.
-    this.automaticRotations = [0];
+    this.automaticRotations = [0]; // editable property
     
-    this.behavior = null;
+    this.solid = true; // editable property
+    
+    this.behavior = null; // editable property
   }
   
   BlockType.prototype.serialize = function (serialize) {
     var json = {};
     if (this.automaticRotations.length !== 1 || this.automaticRotations[0] !== 0)
       json.automaticRotations = this.automaticRotations;
+    if (!this.solid) json.solid = false; // default true
     if (this.behavior && this.behavior.name)
       json.behavior = this.behavior.name;
     return json;
@@ -176,6 +179,7 @@ var BlockType = (function () {
   };
   
   BlockType.air = new BlockType.Color([0,0,0,0]);
+  BlockType.air.solid = false;
   
   BlockType.unserialize = function (json, unserialize) {
     var self;
@@ -187,8 +191,13 @@ var BlockType = (function () {
       throw new Error("unknown BlockType serialization type");
     }
     
-    self.behavior = Circuit.behaviors.hasOwnProperty(json.behavior) ? Circuit.behaviors[json.behavior] : null;
-    self.automaticRotations = json.automaticRotations || [0];
+    if (Object.prototype.hasOwnProperty.call(json, "automaticRotations"))
+      self.automaticRotations = json.automaticRotations || [0];
+    if (Object.prototype.hasOwnProperty.call(json, "solid"))
+      self.solid = json.solid;
+    if (Object.prototype.hasOwnProperty.call(json, "behavior"))
+      self.behavior = Circuit.behaviors.hasOwnProperty(json.behavior) 
+          ? Circuit.behaviors[json.behavior] : null;
     
     return self;
   };

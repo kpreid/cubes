@@ -201,6 +201,7 @@ var WorldGen = (function () {
       }
       function genedit(pattern) {
         var type = WorldGen.newProceduralBlockType(baseKit.blockset, boxed(pattern));
+        type.solid = false;
         targetSet.add(type);
         return type;
       }
@@ -231,6 +232,7 @@ var WorldGen = (function () {
       type = genedit(f.sphere(TS/2,TS-0.5,TS/2,TS/2,specklePat));
       selfRotating(TL-1);
       type.behavior = Circuit.behaviors.pad;
+      type.solid = true; // override circuit-block default
 
       // indicator block
       ids.indicator = targetSet.length;

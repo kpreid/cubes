@@ -166,10 +166,13 @@ function World(sizes, blockSet) {
     s(x,y,z,g(x,y,z),subdatum);
   }
   function solid(x,y,z) {
-    return g(x,y,z) != 0;
+    return gt(x,y,z).solid;
   }
   function opaque(x,y,z) {
     return gt(x,y,z).opaque;
+  }
+  function selectable(x,y,z) {
+    return g(x,y,z) != 0;
   }
   
   /**
@@ -380,6 +383,7 @@ function World(sizes, blockSet) {
   this.sSub = sSub;
   this.solid = solid;
   this.opaque = opaque;
+  this.selectable = selectable;
   this.raw = blocks;
   this.rawSubData = subData;
   this.rawRotations = rotations;
