@@ -36,9 +36,7 @@ var Renderer = (function () {
     function initContext() {
       contextSerial++;
       
-      var decls = {
-        TILE_SIZE: World.TILE_SIZE
-      };
+      var decls = {};
       
       prepareProgram(gl,
                      prepareShader(gl, "shader-vs", decls),
@@ -309,6 +307,11 @@ var Renderer = (function () {
     }
     this.setStipple = setStipple;
     
+    function setTileSize(val) {
+      gl.uniform1f(uniforms.uTileSize, val);
+    }
+    this.setTileSize = setTileSize;
+    
     function BufferAndArray(numComponents) {
       this.numComponents = numComponents;
       this.buffer = gl.createBuffer();
@@ -439,17 +442,16 @@ var Renderer = (function () {
     }
     this.RenderBundle = RenderBundle;
     
-    function BlockParticles(location, blockType, destroyMode, symm) {
+    function BlockParticles(location, tileSize, blockType, destroyMode, symm) {
       var blockWorld = blockType.world;
       var k = 2;
       var t0 = Date.now();
       var rb = new renderer.RenderBundle(gl.POINTS, null, function (vertices, normals, colors) {
-        var TILE_SIZE = World.TILE_SIZE;
-        for (var x = 0; x < TILE_SIZE; x++) {
-          for (var y = 0; y < TILE_SIZE; y++) {
-            for (var z = 0; z < TILE_SIZE; z++) {
+        for (var x = 0; x < tileSize; x++) {
+          for (var y = 0; y < tileSize; y++) {
+            for (var z = 0; z < tileSize; z++) {
               if (!destroyMode) {
-                if (!(x < k || x >= TILE_SIZE-k || y < k || y >= TILE_SIZE-k || z < k || z >= TILE_SIZE-k))
+                if (!(x < k || x >= tileSize-k || y < k || y >= tileSize-k || z < k || z >= tileSize-k))
                   continue;
                 var c = 1.0 - Math.random() * 0.04;
                 colors.push(c,c,c,1);
@@ -465,9 +467,9 @@ var Renderer = (function () {
                 blockType.writeColor(1, colors, colors.length);
               }
               var v = applyCubeSymmetry(symm, 1, [
-                (x+0.5)/TILE_SIZE,
-                (y+0.5)/TILE_SIZE,
-                (z+0.5)/TILE_SIZE
+                (x+0.5)/tileSize,
+                (y+0.5)/tileSize,
+                (z+0.5)/tileSize
               ]);
               
               vertices.push(location[0]+v[0],

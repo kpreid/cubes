@@ -405,9 +405,6 @@ function World(sizes, blockSet) {
   Object.freeze(this);
 }
 
-// The size of a texture tile, and therefore the size of a block-defining-block
-World.TILE_SIZE = 16;
-
 World.unserialize = function (json, unserialize) {
   var base = json.blockCodeBase;
   

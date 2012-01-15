@@ -106,17 +106,17 @@ var BlockType = (function () {
   };
   
   function _recomputeOpacity() {
-    var TILE_SIZE = this.world.wx; // assumed cubical
-    var TILE_LASTINDEX = TILE_SIZE - 1;
+    var tileSize = this.world.wx; // assumed cubical
+    var tileLastIndex = tileSize - 1;
     var opaque = true;
     for (var dim = 0; dim < 3; dim++) {
       var ud = mod(dim+1,3);
       var vd = mod(dim+2,3);
-      for (var u = 0; u < TILE_SIZE; u++)
-      for (var v = 0; v < TILE_SIZE; v++) {
+      for (var u = 0; u < tileSize; u++)
+      for (var v = 0; v < tileSize; v++) {
         var vec = [u,v,0];
         opaque = opaque && this.world.opaque(vec[dim],vec[ud],vec[vd]);
-        vec[2] = TILE_LASTINDEX;
+        vec[2] = tileLastIndex;
         opaque = opaque && this.world.opaque(vec[dim],vec[ud],vec[vd]);
       }
     }
@@ -249,10 +249,12 @@ var BlockSet = (function () {
   });
   Object.freeze(EMPTY_TILING);
   
-  function Texgen() {
+  function Texgen(tileSize) {
     var renderer = main.renderer; // TODO global variable -- the problem being that BlockSets are not (and should not be) parameterized w/ a renderer.
     var self = this;
     var gl = renderer.context;
+    
+    this.tileSize = tileSize;
     
     // Texture holding tiles
     // TODO: Confirm that WebGL garbage collects these, or add a delete method to BlockSet for use as needed
@@ -276,7 +278,7 @@ var BlockSet = (function () {
       
       // ImageData object used to buffer calculated texture data
       self.image = document.createElement("canvas").getContext("2d")
-        .createImageData(World.TILE_SIZE * tileCountSqrt, World.TILE_SIZE * tileCountSqrt);
+        .createImageData(tileSize * tileCountSqrt, tileSize * tileCountSqrt);
       
       // tile position allocator
       tileAllocMap = new Uint8Array(tileCountSqrt*tileCountSqrt);
@@ -341,9 +343,7 @@ var BlockSet = (function () {
   }
   
   function BlockSet(initialTypes) {
-    // not at top level because world.js is not yet loaded
-    var TILE_SIZE = World.TILE_SIZE;
-    var TILE_LASTINDEX = TILE_SIZE - 1;
+    var tileSize = NaN;
 
     // All block sets unconditionally have the standard empty block at ID 0.
     var types = [BlockType.air];
@@ -353,6 +353,8 @@ var BlockSet = (function () {
     var typesToRerender = new DirtyQueue();
     
     function rebuildOne(blockID) {
+      var tileSize = texgen.tileSize; // shadowing
+      var tileLastIndex = tileSize - 1;
       var blockType = types[blockID];
       var tiling = tilings[blockID];
       
@@ -370,10 +372,10 @@ var BlockSet = (function () {
         var a = 255 * color[3];
 
         var tileu = coord[0], tilev = coord[1];
-        var pixu = tileu*TILE_SIZE;
-        var pixv = tilev*TILE_SIZE;
-        for (var u = 0; u < TILE_SIZE; u++)
-        for (var v = 0; v < TILE_SIZE; v++) {
+        var pixu = tileu*tileSize;
+        var pixv = tilev*tileSize;
+        for (var u = 0; u < tileSize; u++)
+        for (var v = 0; v < tileSize; v++) {
           var c = ((pixu+u) * texWidth + pixv+v) * 4;
           texData[c+0] = r;
           texData[c+1] = g;
@@ -387,7 +389,7 @@ var BlockSet = (function () {
           var layers = [];
           tiling["l" + dimName] = layers;
           tiling["h" + dimName] = layers;
-          for (var layer = 0; layer < TILE_SIZE; layer++) {
+          for (var layer = 0; layer < tileSize; layer++) {
             // u,v coordinates of this tile for use by the vertex generator
             layers[layer] = layer == 0 ? uv : null;
           }
@@ -404,7 +406,7 @@ var BlockSet = (function () {
           var viewH = vec3.create();
           
           function sliceWorld(dimName, layerL, transform, layersL, layersH) {
-            var layerH = TILE_LASTINDEX - layerL;
+            var layerH = tileLastIndex - layerL;
             var usageIndex = blockID + "," + dimName + "," + layerL;
             
             var coord = texgen.allocationFor(usageIndex);
@@ -412,8 +414,8 @@ var BlockSet = (function () {
             
             var thisLayerNotEmptyL = false;
             var thisLayerNotEmptyH = false;
-            var pixu = tileu*TILE_SIZE;
-            var pixv = tilev*TILE_SIZE;
+            var pixu = tileu*tileSize;
+            var pixv = tilev*tileSize;
             
             // viewL is the offset of the subcube which would block the view
             // of this subcube if it is opaque.
@@ -423,8 +425,8 @@ var BlockSet = (function () {
             mat4.multiplyVec3(transform, viewH, viewH);
             
             // extract surface plane of block from world
-            for (var u = 0; u < TILE_SIZE; u++)
-            for (var v = 0; v < TILE_SIZE; v++) {
+            for (var u = 0; u < tileSize; u++)
+            for (var v = 0; v < tileSize; v++) {
               var c = ((pixu+u) * texWidth + pixv+v) * 4;
               vec[0] = u; vec[1] = v; vec[2] = layerL;
               mat4.multiplyVec3(transform, vec, vec);
@@ -466,10 +468,10 @@ var BlockSet = (function () {
             var layersH = tiling["h" + dimName] = [];
             if (blockType.opaque) {
               if (texgen.textureLost) return;
-              sliceWorld(dimName, 0,              transform, layersL, layersH);
-              sliceWorld(dimName, TILE_LASTINDEX, transform, layersL, layersH);
+              sliceWorld(dimName, 0,             transform, layersL, layersH);
+              sliceWorld(dimName, tileLastIndex, transform, layersL, layersH);
             } else {
-              for (var layer = 0; layer < TILE_SIZE; layer++) {
+              for (var layer = 0; layer < tileSize; layer++) {
                 if (texgen.textureLost) return;
                 sliceWorld(dimName, layer, transform, layersL, layersH);
               }
@@ -484,7 +486,7 @@ var BlockSet = (function () {
     function freshenTexture() {
       var upload = false;
       if (!texgen || texgen.mustRebuild()) {
-        texgen = new Texgen();
+        texgen = new Texgen(self.tileSize);
       }
       while (texgen.textureLost) {
         //console.info("Performing full block texture rebuild.");
@@ -509,6 +511,10 @@ var BlockSet = (function () {
     var notifier = new Notifier("BlockSet");
     
     var self = Object.freeze({
+      get tileSize () {
+        // If tile size is undefined because we have only color blocks, then we treat it as 1
+        return isNaN(tileSize) ? 1 : tileSize;
+      }, 
       get length () { return types.length; },
       
       add: function (newBlockType) {
@@ -523,7 +529,18 @@ var BlockSet = (function () {
             notifier.notify("texturingChanged", newID);
             return true;
           }
-        })
+        });
+        
+        // TODO: This is not correct if BlockTypes are allowed to change their worlds
+        if (newBlockType.world) {
+          var ts = newBlockType.world.wx; // assuming cubicality
+          if (tileSize == ts || isNaN(tileSize)) {
+            tileSize = ts;
+          } else {
+            if (typeof console !== "undefined")
+              console.warn("Inconsistent tile size for blockset; set has", tileSize, "and new type has", ts);
+          }
+        }
       },
       
       get: function (blockID) {

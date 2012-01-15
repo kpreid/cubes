@@ -381,7 +381,7 @@ var Player = (function () {
 
         currentPlace = new Place(world);
         currentPlace.forBlock = blockID;
-        vec3.set([World.TILE_SIZE/2, World.TILE_SIZE - playerAABB[1][0] + EPSILON, World.TILE_SIZE/2], currentPlace.pos);
+        vec3.set([world.wx/2, world.wy - playerAABB[1][0] + EPSILON, world.wz/2], currentPlace.pos);
         placeStack.push(oldPlace);
         aimChanged();
 
@@ -399,6 +399,7 @@ var Player = (function () {
             
             var world = currentPlace.world.blockSet.worldFor(blockID);
             if (world == null) return; // TODO: UI message about this
+            var tileSize = world.wx;
             
             currentPlace = new Place(world);
             
@@ -408,12 +409,12 @@ var Player = (function () {
             // Initial adjustments:
             // Make new position same relative to cube
             vec3.subtract(oldPlace.pos, cube, currentPlace.pos);
-            vec3.scale(currentPlace.pos, World.TILE_SIZE);
+            vec3.scale(currentPlace.pos, tileSize);
             // ... but not uselessly far away.
-            vec3.scale(currentPlace.pos, Math.min(1.0, (World.TILE_SIZE+40)/vec3.length(currentPlace.pos))); // TODO make relative to center of world, not origin
+            vec3.scale(currentPlace.pos, Math.min(1.0, (tileSize+40)/vec3.length(currentPlace.pos))); // TODO make relative to center of world, not origin
             // Same velocity, scaled
             vec3.set(oldPlace.vel, currentPlace.vel);
-            vec3.scale(currentPlace.vel, World.TILE_SIZE);
+            vec3.scale(currentPlace.vel, tileSize);
             // Same view direction
             currentPlace.yaw = oldPlace.yaw;
             // They'll probably end up in the air...

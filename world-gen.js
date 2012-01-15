@@ -4,17 +4,14 @@
 var WorldGen = (function () {
   "use strict";
 
-  var TS = World.TILE_SIZE;
-  var TL = TS - 1;
-  var blockWorldSize = [TS,TS,TS];
   
   var WorldGen = {
-    newWorldBlockType: function (blockSet) {
-       return new BlockType.World(new World(blockWorldSize, blockSet));
+    newWorldBlockType: function (TS, blockSet) {
+      return new BlockType.World(new World([TS,TS,TS], blockSet));
     },
     
-    newProceduralBlockType: function (blockSet, patfunc) {
-      var type = WorldGen.newWorldBlockType(blockSet);
+    newProceduralBlockType: function (TS, blockSet, patfunc) {
+      var type = WorldGen.newWorldBlockType(TS, blockSet);
       type.world.edit(function (x,y,z,value) {
         return patfunc([x,y,z]);
       });
@@ -64,7 +61,9 @@ var WorldGen = (function () {
       };
     },
     
-    blockFunctions: (function () {
+    blockFunctions: function (TS) {
+      var TL = TS - 1;
+
       // non-boolean property functions
       function vx(b) { return b[0]; }
       function vy(b) { return b[1]; }
@@ -182,13 +181,14 @@ var WorldGen = (function () {
         intersection: intersection,
         subtract: subtract
       });
-    })(),
+    },
     
-    addLogicBlocks: function (targetKit, baseKit) {
+    addLogicBlocks: function (TS, targetKit, baseKit) {
       var ids = {};
       var type;
-      var f = WorldGen.blockFunctions;
       var targetSet = targetKit.blockset;
+      var TL = TS-1;
+      var f = WorldGen.blockFunctions(TS);
       
       // appearance utilities
       var boxColor = baseKit.colorToID(0,1,1);
@@ -200,7 +200,7 @@ var WorldGen = (function () {
         };
       }
       function genedit(pattern) {
-        var type = WorldGen.newProceduralBlockType(baseKit.blockset, boxed(pattern));
+        var type = WorldGen.newProceduralBlockType(TS, baseKit.blockset, boxed(pattern));
         type.solid = false;
         targetSet.add(type);
         return type;
@@ -324,7 +324,7 @@ function generateWorlds() {
   // Given an object facing the +z direction, these will rotate that face to...
   var sixFaceRotations = [0/*+z*/, 2/*-z*/, 4/*+y*/, 4+2/*-y*/, 16+8/*-x*/, 16+11/*+x*/];
 
-  var TS = World.TILE_SIZE;
+  var TS = 16;
   var TL = TS - 1;
 
   // --- base blockset ---
@@ -334,12 +334,12 @@ function generateWorlds() {
   
   // layer 2
   var baseLogicAndColors = WorldGen.colorBlocks(7, 6, 5);
-  WorldGen.addLogicBlocks(baseLogicAndColors, pureColors);
+  WorldGen.addLogicBlocks(TS, baseLogicAndColors, pureColors);
   
   // layer 3
   var fullLogicAndColors = WorldGen.colorBlocks(7, 6, 5);
   var onlyColorCount = fullLogicAndColors.blockset.length; // before logic added
-  WorldGen.addLogicBlocks(fullLogicAndColors, baseLogicAndColors);
+  WorldGen.addLogicBlocks(TS, fullLogicAndColors, baseLogicAndColors);
   var colorSet = fullLogicAndColors.blockset;
   var brgb = fullLogicAndColors.colorToID;
   var ls = fullLogicAndColors.logic;
@@ -347,9 +347,9 @@ function generateWorlds() {
   // --- block world generation utilities ---
   
   function genedit(patfunc) {
-    return WorldGen.newProceduralBlockType(colorSet, patfunc);
+    return WorldGen.newProceduralBlockType(TS, colorSet, patfunc);
   }
-  var f = WorldGen.blockFunctions;
+  var f = WorldGen.blockFunctions(TS);
 
   function pickColor() {
     return Math.random() < 0.2 ? 0 : Math.floor(Math.random() * onlyColorCount);
@@ -432,7 +432,7 @@ function generateWorlds() {
     blockset.add(genedit(c));
   }
 
-  var l = WorldGen.addLogicBlocks({blockset: blockset}, fullLogicAndColors);
+  var l = WorldGen.addLogicBlocks(TS, {blockset: blockset}, fullLogicAndColors);
   
   
   // --- big world ---
@@ -500,7 +500,7 @@ function generateWorlds() {
   
   // circuit test
   (function () {
-    var x = 182, y = Math.floor(wy/2)+3, z = 191;
+    var x = 182/400*wx, y = Math.floor(wy/2)+3, z = 191/400*wx;
     topWorld.s(x+0,y,z+1,l.pad);
     topWorld.s(x+0,y,z+2,l.wire);
     topWorld.s(x+0,y,z+3,l.indicator);                    

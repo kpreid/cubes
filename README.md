@@ -3,7 +3,7 @@
 
 This project, working title “Cubes”, is a WebGL-based game engine (or game; I'm not sure yet) for worlds made of cubical blocks. It is trying hard to not be a Minecraft clone.
 
-The unique feature of this engine is that each ordinary block is itself made out of blocks; each block can be “entered” and edited at 16× scale, and changes will immediately be seen in the outer world.
+The unique feature of this engine is that each ordinary block is itself made out of blocks; each block can be “entered” and edited at an enlarged scale, and changes will immediately be seen in the outer world.
 
 Requirements and startup
 ------------------------
