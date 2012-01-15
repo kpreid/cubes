@@ -249,6 +249,14 @@ var BlockSet = (function () {
   });
   Object.freeze(EMPTY_TILING);
   
+  function smallestPowerOf2AtLeast(x) {
+    var result = Math.pow(2, Math.ceil(Math.log(x)/Math.LN2));
+    if (result < x) { // in case of FP rounding down
+      result *= 2;
+    }
+    return result;
+  }
+  
   function Texgen(tileSize) {
     var renderer = main.renderer; // TODO global variable -- the problem being that BlockSets are not (and should not be) parameterized w/ a renderer.
     var self = this;
@@ -274,11 +282,14 @@ var BlockSet = (function () {
     this.textureLost = false;
     function enlargeTexture() {
       tileCountSqrt *= 2;
-      self.tileUVSize = 1/tileCountSqrt;
+
+      var texturePOTSize = smallestPowerOf2AtLeast(tileSize * tileCountSqrt);
+            
+      self.tileUVSize = tileSize/texturePOTSize;
       
       // ImageData object used to buffer calculated texture data
       self.image = document.createElement("canvas").getContext("2d")
-        .createImageData(tileSize * tileCountSqrt, tileSize * tileCountSqrt);
+        .createImageData(texturePOTSize, texturePOTSize);
       
       // tile position allocator
       tileAllocMap = new Uint8Array(tileCountSqrt*tileCountSqrt);
