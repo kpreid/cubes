@@ -449,87 +449,53 @@ var WorldRenderer = (function () {
           // These statements are inside the function because they need to
           // retrieve the most up-to-date values.
           var tilings = blockSet.tilings; // has side effect of updating tiling if needed
+          var geometries = blockSet.geometries;
           var BOGUS_TILING = tilings.bogus;
+          var BOGUS_GEOMETRY = geometries.bogus;
           var rawCircuits = world.getCircuitsByBlock();
           var types = blockSet.getAll();
 
-          var vecbuf = vec3.create();
-
-          function pushVertex(vec) {
-            vertices.push(vec[0], vec[1], vec[2]);
-          }
-          function pushNormal(vec) {
-            normals.push(vec[0], vec[1], vec[2]);
-          }
-
-          function square(origin, v1, v2, tileKey, normal) {
-            // texO and texD are the originward and v'ward texture coordinates, used to flip the texture coords vs. origin for the 'positive side' squares
-
-            if (tileKey == null) return; // transparent or obscured layer
-            
-            texcoords.push.apply(texcoords, tileKey);
-
-            pushVertex(origin);
-            pushVertex(vec3.add(origin, v1, vecbuf));
-            pushVertex(vec3.add(origin, v2, vecbuf));
-
-            pushVertex(vec3.add(vec3.add(origin, v1, vecbuf), v2, vecbuf));
-            pushVertex(vec3.add(origin, v2, vecbuf));
-            pushVertex(vec3.add(origin, v1, vecbuf));
-            
-            pushNormal(normal);
-            pushNormal(normal);
-            pushNormal(normal);
-            pushNormal(normal);
-            pushNormal(normal);
-            pushNormal(normal);
-          }
+          // these variables are used by face() and written by the loop
+          var x,y,z;
+          var thisOpaque;
           
-          var c1 = vec3.create();
-          var c2 = vec3.create();
-          var depthOriginBuf = vec3.create();
-          var thiso; // used by squares, assigned by loop
-          function squares(origin, v1, v2, vDepth, vFacing, tileLayers) {
-            if (thiso && world.opaque(x+vFacing[0],y+vFacing[1],z+vFacing[2])) {
+          function face(vFacing, tileTexCoords, tileGeomList) {
+            if (thisOpaque && world.opaque(x+vFacing[0],y+vFacing[1],z+vFacing[2])) {
               // this face is invisible
               return
             } else {
-              vec3.set(origin, depthOriginBuf);
-              for (var i = 0; i < tileSize; i++) {
-                square(depthOriginBuf, v1, v2, tileLayers[i], vFacing);
-                depthOriginBuf[0] += vDepth[0]*pixelSize;
-                depthOriginBuf[1] += vDepth[1]*pixelSize;
-                depthOriginBuf[2] += vDepth[2]*pixelSize;
+              var vl = tileGeomList.length / 3;
+              for (var i = 0; i < vl; i++) {
+                vertices.push(tileGeomList[i*3  ]+x,
+                              tileGeomList[i*3+1]+y,
+                              tileGeomList[i*3+2]+z);
+                texcoords.push(tileTexCoords[i*2],tileTexCoords[i*2+1]);
+                normals.push(vFacing[0],vFacing[1],vFacing[2]);
               }
             }
           }
           
-          for (var x = chunkOriginX; x < chunkLimitX; x++)
-          for (var y = 0;            y < wy         ; y++)
-          for (var z = chunkOriginZ; z < chunkLimitZ; z++) {
+          for (x = chunkOriginX; x < chunkLimitX; x++)
+          for (y = 0;            y < wy         ; y++)
+          for (z = chunkOriginZ; z < chunkLimitZ; z++) {
             // raw array access inlined and simplified for efficiency
             var rawIndex = (x*wy+y)*wz+z;
             var value = rawBlocks[rawIndex];
-
             if (value === ID_EMPTY) continue;
 
-            var rot = ROT_DATA[rawRotations[rawIndex]];
-            var rzero = rot.zero;
-            var rpos = rot.pos;
-            c1[0] = x+rzero[0]; c2[0] = x+rpos[0];
-            c1[1] = y+rzero[1]; c2[1] = y+rpos[1];
-            c1[2] = z+rzero[2]; c2[2] = z+rpos[2];
-
+            var rotIndex = rawRotations[rawIndex];
+            var rot = ROT_DATA[rotIndex];
             var btype = types[value];
             var tiling = tilings[value] || BOGUS_TILING;
-            thiso = btype.opaque; // -- Note used by squares()
+            var geometry = geometries[value] || BOGUS_GEOMETRY;
+            thisOpaque = btype.opaque;
 
-            squares(c1, rot.pz, rot.py, rot.px, rot.nx, tiling.lx);
-            squares(c1, rot.px, rot.pz, rot.py, rot.ny, tiling.ly);
-            squares(c1, rot.py, rot.px, rot.pz, rot.nz, tiling.lz);
-            squares(c2, rot.ny, rot.nz, rot.nx, rot.px, tiling.hx);
-            squares(c2, rot.nz, rot.nx, rot.ny, rot.py, tiling.hy);
-            squares(c2, rot.nx, rot.ny, rot.nz, rot.pz, tiling.hz);
+            face(rot.nx, tiling.lx, geometry.lx[rotIndex]);
+            face(rot.ny, tiling.ly, geometry.ly[rotIndex]);
+            face(rot.nz, tiling.lz, geometry.lz[rotIndex]);
+            face(rot.px, tiling.hx, geometry.hx[rotIndex]);
+            face(rot.py, tiling.hy, geometry.hy[rotIndex]);
+            face(rot.pz, tiling.hz, geometry.hz[rotIndex]);
             var circuit = rawCircuits[x+","+y+","+z]; // TODO: replace this with some other spatial indexing scheme so we don't have to check per-every-block
             if (circuit) {
               var o = circuit.getOrigin();

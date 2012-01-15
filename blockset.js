@@ -242,12 +242,18 @@ var BlockSet = (function () {
   ];
 
   var EMPTY_TILING = {};
+  var EMPTY_GEOMETRY = {};
   TILE_MAPPINGS.forEach(function (m) {
     var dimName = m[0];
-    EMPTY_TILING["l" + dimName] = [];
+    EMPTY_TILING["l" + dimName] =
     EMPTY_TILING["h" + dimName] = [];
+    for (var rot = 0; rot < applyCubeSymmetry.COUNT; rot++) {
+      EMPTY_GEOMETRY["l" + dimName + rot] =
+      EMPTY_GEOMETRY["h" + dimName + rot] = [];
+    }
   });
   Object.freeze(EMPTY_TILING);
+  Object.freeze(EMPTY_GEOMETRY);
   
   function smallestPowerOf2AtLeast(x) {
     var result = Math.pow(2, Math.ceil(Math.log(x)/Math.LN2));
@@ -257,6 +263,19 @@ var BlockSet = (function () {
     return result;
   }
 
+  function pushVertex(array, vec) {
+    array.push(vec[0], vec[1], vec[2]);
+  }
+  
+  function rotateVertices(rot, vertices) {
+    var out = [];
+    for (var i = 0; i < vertices.length; i += 3) {
+      var t = applyCubeSymmetry(rot, 1, [vertices[i], vertices[i+1], vertices[i+2]]);
+      out.push(t[0],t[1],t[2]);
+    }
+    return out;
+  }
+  
   // Compute the texture coordinates for a tile as needed by WorldRenderer
   function calcTexCoords(texgen, usageIndex, flipped) {
     var uv = texgen.uvFor(usageIndex);
@@ -377,6 +396,7 @@ var BlockSet = (function () {
     // All block sets unconditionally have the standard empty block at ID 0.
     var types = [BlockType.air];
     var tilings = [EMPTY_TILING];
+    var geometries = [EMPTY_GEOMETRY];
     
     var texgen = null;
     var typesToRerender = new DirtyQueue();
@@ -386,9 +406,24 @@ var BlockSet = (function () {
       var tileLastIndex = tileSize - 1;
       var blockType = types[blockID];
       var tiling = tilings[blockID];
+      var geometry = geometries[blockID];
       
       var texWidth = texgen.image.width;
       var texData = texgen.image.data;
+      
+      function pushQuad(vertices, texcoords, flipped, transform, depth, usageIndex) {
+        texcoords.push.apply(texcoords, calcTexCoords(texgen, usageIndex, flipped));
+        var a = flipped ? 1 : 0;
+        var b = flipped ? 0 : 1;
+        
+        pushVertex(vertices, mat4.multiplyVec3(transform, [a,a,depth]));
+        pushVertex(vertices, mat4.multiplyVec3(transform, [0,1,depth]));
+        pushVertex(vertices, mat4.multiplyVec3(transform, [1,0,depth]));
+        
+        pushVertex(vertices, mat4.multiplyVec3(transform, [b,b,depth]));
+        pushVertex(vertices, mat4.multiplyVec3(transform, [1,0,depth]));
+        pushVertex(vertices, mat4.multiplyVec3(transform, [0,1,depth]));
+      }
       
       if (blockType.color) { // TODO: factor this conditional into BlockType
         var color = blockType.color;
@@ -411,18 +446,25 @@ var BlockSet = (function () {
           texData[c+3] = a;
         }
         
-        var texcoords = calcTexCoords(texgen, usageIndex, false);
-        
         TILE_MAPPINGS.forEach(function (m) {
           var dimName = m[0];
           var transform = m[1];
-          var layers = [];
-          tiling["l" + dimName] = layers;
-          tiling["h" + dimName] = layers;
-          for (var layer = 0; layer < tileSize; layer++) {
-            // u,v coordinates of this tile for use by the vertex generator
-            layers[layer] = layer == 0 ? texcoords : null;
+          var verticesL = [];
+          var verticesH = [];
+          var texcoords = [];
+          // Texture is a solid color, so we only need one set of texcoords.
+          pushQuad(verticesL, texcoords, false, transform, 0, usageIndex);
+          pushQuad(verticesH, [],        true,  transform, 1, usageIndex);
+          var rotationsL = [];
+          var rotationsH = [];
+          for (var i = 0; i < applyCubeSymmetry.COUNT; i++) {
+            rotationsL[i] = verticesL;
+            rotationsH[i] = verticesH;
           }
+          tiling["l" + dimName] = texcoords;
+          tiling["h" + dimName] = texcoords;
+          geometry["l" + dimName] = rotationsL;
+          geometry["h" + dimName] = rotationsH;
         });
       } else if (blockType.world) {
         (function () {
@@ -435,9 +477,8 @@ var BlockSet = (function () {
           var viewL = vec3.create();
           var viewH = vec3.create();
           
-          function sliceWorld(dimName, layerL, transform, layersL, layersH) {
-            var layerH = tileLastIndex - layerL;
-            var usageIndex = blockID + "," + dimName + "," + layerL;
+          function sliceWorld(dimName, layer, transform, texcoordsL, texcoordsH, geomL, geomH) {
+            var usageIndex = blockID + "," + dimName + "," + layer;
             
             var coord = texgen.allocationFor(usageIndex);
             var tileu = coord[0], tilev = coord[1];
@@ -458,7 +499,7 @@ var BlockSet = (function () {
             for (var u = 0; u < tileSize; u++)
             for (var v = 0; v < tileSize; v++) {
               var c = ((pixu+u) * texWidth + pixv+v) * 4;
-              vec[0] = u; vec[1] = v; vec[2] = layerL;
+              vec[0] = u; vec[1] = v; vec[2] = layer;
               mat4.multiplyVec3(transform, vec, vec);
           
               world.gt(vec[0],vec[1],vec[2]).writeColor(255, texData, c);
@@ -481,28 +522,40 @@ var BlockSet = (function () {
               texgen.deallocateUsage(usageIndex);
             } else {
               // If the layer has unobscured content, and it is not an interior surface of an opaque block, then add it to rendering. Note that the TILE_MAPPINGS loop skips slicing interiors of opaque blocks, but they still need to have the last layer excluded because the choice of call to sliceWorld does not express that.
-              layersL[layerL] = thisLayerNotEmptyL && (!blockType.opaque || layerL == 0) ? calcTexCoords(texgen, usageIndex, false) : null;
-              layersH[layerH] = thisLayerNotEmptyH && (!blockType.opaque || layerH == 0) ? calcTexCoords(texgen, usageIndex, true) : null;
+              if (thisLayerNotEmptyL && (!blockType.opaque || layer == 0)) {
+                pushQuad(geomL, texcoordsL, false, transform, layer/tileSize, usageIndex);
+              }
+              if (thisLayerNotEmptyH && (!blockType.opaque || layer == tileLastIndex)) {
+                pushQuad(geomH, texcoordsH, true, transform, (layer+1)/tileSize, usageIndex);
+              }
             }
             
             // TODO: trigger rerender of chunks only if we made changes to the tiling, not if only the colors changed
             
             //console.log("id ", wi + 1, " dim ", dimName, " layer ", layer, (thisLayerNotEmptyL || thisLayerNotEmptyH) ? " allocated" : " skipped");
-          }
+          }          
           TILE_MAPPINGS.forEach(function (m) {
             var dimName = m[0];
             var transform = m[1];
-            var layersL = tiling["l" + dimName] = [];
-            var layersH = tiling["h" + dimName] = [];
+            var texcoordsL = tiling["l" + dimName] = [];
+            var texcoordsH = tiling["h" + dimName] = [];
+            var geomRotsL = geometry["l" + dimName] = [];
+            var geomRotsH = geometry["h" + dimName] = [];
+            var geomL = [];
+            var geomH = [];
             if (blockType.opaque) {
               if (texgen.textureLost) return;
-              sliceWorld(dimName, 0,             transform, layersL, layersH);
-              sliceWorld(dimName, tileLastIndex, transform, layersL, layersH);
+              sliceWorld(dimName, 0,             transform, texcoordsL, texcoordsH, geomL, geomH);
+              sliceWorld(dimName, tileLastIndex, transform, texcoordsL, texcoordsH, geomL, geomH);
             } else {
               for (var layer = 0; layer < tileSize; layer++) {
                 if (texgen.textureLost) return;
-                sliceWorld(dimName, layer, transform, layersL, layersH);
+                sliceWorld(dimName, layer, transform, texcoordsL, texcoordsH, geomL, geomH);
               }
+            }
+            for (var rot = 0; rot < applyCubeSymmetry.COUNT; rot++) {
+              geomRotsL[rot] = rotateVertices(rot, geomL);
+              geomRotsH[rot] = rotateVertices(rot, geomH);
             }
           });
         })();
@@ -549,6 +602,7 @@ var BlockSet = (function () {
         var newID = types.length;
         types.push(newBlockType);
         tilings.push({});
+        geometries.push({});
         typesToRerender.enqueue(newID);
         newBlockType.listen({
           appearanceChanged: function () {
@@ -596,6 +650,11 @@ var BlockSet = (function () {
         freshenTexture();
         tilings.bogus = tilings[BlockSet.ID_BOGUS] || EMPTY_TILING;
         return tilings;
+      },
+      get geometries () {
+        freshenTexture();
+        geometries.bogus = geometries[BlockSet.ID_BOGUS] || EMPTY_GEOMETRY;
+        return geometries;
       },
       worldFor: function (blockID) {
         return types[blockID] ? types[blockID].world : null;
