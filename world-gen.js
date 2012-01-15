@@ -324,7 +324,7 @@ function generateWorlds() {
   // Given an object facing the +z direction, these will rotate that face to...
   var sixFaceRotations = [0/*+z*/, 2/*-z*/, 4/*+y*/, 4+2/*-y*/, 16+8/*-x*/, 16+11/*+x*/];
 
-  var TS = 16;
+  var TS = Math.round(config.generate_tileSize.get());
   var TL = TS - 1;
 
   // --- base blockset ---

@@ -33,6 +33,7 @@ var config = {};
   defineOption("generate_wz", "number", 400);
   defineOption("generate_shape", "string", "fill");
   defineOption("generate_slope", "number", 0.9);
+  defineOption("generate_tileSize", "number", 16);
 })();
 
 var CubesMain = (function () {
