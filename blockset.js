@@ -256,6 +256,24 @@ var BlockSet = (function () {
     }
     return result;
   }
+
+  // Compute the texture coordinates for a tile as needed by WorldRenderer
+  function calcTexCoords(texgen, usageIndex, flipped) {
+    var uv = texgen.uvFor(usageIndex);
+    var tileUVSize = texgen.tileUVSize;
+    var texO = flipped ? tileUVSize : 0;
+    var texD = flipped ? 0 : tileUVSize;
+    var uo = uv[1];
+    var vo = uv[0];
+    return [
+      uo + texO, vo + texO,
+      uo + tileUVSize, vo + 0,
+      uo + 0, vo + tileUVSize,
+      uo + texD, vo + texD,
+      uo + 0, vo + tileUVSize,
+      uo + tileUVSize, vo + 0
+    ];
+  }
   
   function Texgen(tileSize) {
     var renderer = main.renderer; // TODO global variable -- the problem being that BlockSets are not (and should not be) parameterized w/ a renderer.
@@ -376,7 +394,6 @@ var BlockSet = (function () {
         var color = blockType.color;
         var usageIndex = blockID.toString();
         var coord = texgen.allocationFor(usageIndex);
-        var uv = texgen.uvFor(usageIndex);
         var r = 255 * color[0];
         var g = 255 * color[1];
         var b = 255 * color[2];
@@ -394,6 +411,8 @@ var BlockSet = (function () {
           texData[c+3] = a;
         }
         
+        var texcoords = calcTexCoords(texgen, usageIndex, false);
+        
         TILE_MAPPINGS.forEach(function (m) {
           var dimName = m[0];
           var transform = m[1];
@@ -402,7 +421,7 @@ var BlockSet = (function () {
           tiling["h" + dimName] = layers;
           for (var layer = 0; layer < tileSize; layer++) {
             // u,v coordinates of this tile for use by the vertex generator
-            layers[layer] = layer == 0 ? uv : null;
+            layers[layer] = layer == 0 ? texcoords : null;
           }
         });
       } else if (blockType.world) {
@@ -461,11 +480,9 @@ var BlockSet = (function () {
               // We can reuse this tile iff it was blank or fully obscured
               texgen.deallocateUsage(usageIndex);
             } else {
-              // u,v coordinates of this tile for use by the vertex generator
-              var uv = texgen.uvFor(usageIndex);
               // If the layer has unobscured content, and it is not an interior surface of an opaque block, then add it to rendering. Note that the TILE_MAPPINGS loop skips slicing interiors of opaque blocks, but they still need to have the last layer excluded because the choice of call to sliceWorld does not express that.
-              layersL[layerL] = thisLayerNotEmptyL && (!blockType.opaque || layerL == 0) ? uv : null;
-              layersH[layerH] = thisLayerNotEmptyH && (!blockType.opaque || layerH == 0) ? uv : null;
+              layersL[layerL] = thisLayerNotEmptyL && (!blockType.opaque || layerL == 0) ? calcTexCoords(texgen, usageIndex, false) : null;
+              layersH[layerH] = thisLayerNotEmptyH && (!blockType.opaque || layerH == 0) ? calcTexCoords(texgen, usageIndex, true) : null;
             }
             
             // TODO: trigger rerender of chunks only if we made changes to the tiling, not if only the colors changed
@@ -575,7 +592,6 @@ var BlockSet = (function () {
         freshenTexture();
         return texgen.texture;
       },
-      getTexTileSize: function () { return texgen.tileUVSize; },
       get tilings () {
         freshenTexture();
         tilings.bogus = tilings[BlockSet.ID_BOGUS] || EMPTY_TILING;

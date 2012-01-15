@@ -450,7 +450,6 @@ var WorldRenderer = (function () {
           // retrieve the most up-to-date values.
           var tilings = blockSet.tilings; // has side effect of updating tiling if needed
           var BOGUS_TILING = tilings.bogus;
-          var tileSizeUV = blockSet.getTexTileSize();
           var rawCircuits = world.getCircuitsByBlock();
           var types = blockSet.getAll();
 
@@ -462,22 +461,13 @@ var WorldRenderer = (function () {
           function pushNormal(vec) {
             normals.push(vec[0], vec[1], vec[2]);
           }
-          function pushTileCoord(tileKey, u, v) {
-            texcoords.push(tileKey[1] + u,
-                           tileKey[0] + v);
-          }
 
-          function square(origin, v1, v2, tileKey, texO, texD, normal) {
+          function square(origin, v1, v2, tileKey, normal) {
             // texO and texD are the originward and v'ward texture coordinates, used to flip the texture coords vs. origin for the 'positive side' squares
 
             if (tileKey == null) return; // transparent or obscured layer
             
-            pushTileCoord(tileKey, texO, texO);
-            pushTileCoord(tileKey, tileSizeUV, 0);
-            pushTileCoord(tileKey, 0, tileSizeUV);
-            pushTileCoord(tileKey, texD, texD);
-            pushTileCoord(tileKey, 0, tileSizeUV);
-            pushTileCoord(tileKey, tileSizeUV, 0);
+            texcoords.push.apply(texcoords, tileKey);
 
             pushVertex(origin);
             pushVertex(vec3.add(origin, v1, vecbuf));
@@ -499,16 +489,14 @@ var WorldRenderer = (function () {
           var c2 = vec3.create();
           var depthOriginBuf = vec3.create();
           var thiso; // used by squares, assigned by loop
-          function squares(origin, v1, v2, vDepth, vFacing, tileLayers, texO, texD) {
+          function squares(origin, v1, v2, vDepth, vFacing, tileLayers) {
             if (thiso && world.opaque(x+vFacing[0],y+vFacing[1],z+vFacing[2])) {
               // this face is invisible
               return
-            } else if (tileLayers == null) {
-              square(origin, v1, v2, null, texO, texD);
             } else {
               vec3.set(origin, depthOriginBuf);
               for (var i = 0; i < tileSize; i++) {
-                square(depthOriginBuf, v1, v2, tileLayers[i], texO, texD, vFacing);
+                square(depthOriginBuf, v1, v2, tileLayers[i], vFacing);
                 depthOriginBuf[0] += vDepth[0]*pixelSize;
                 depthOriginBuf[1] += vDepth[1]*pixelSize;
                 depthOriginBuf[2] += vDepth[2]*pixelSize;
@@ -536,12 +524,12 @@ var WorldRenderer = (function () {
             var tiling = tilings[value] || BOGUS_TILING;
             thiso = btype.opaque; // -- Note used by squares()
 
-            squares(c1, rot.pz, rot.py, rot.px, rot.nx, tiling.lx, 0, tileSizeUV);
-            squares(c1, rot.px, rot.pz, rot.py, rot.ny, tiling.ly, 0, tileSizeUV);
-            squares(c1, rot.py, rot.px, rot.pz, rot.nz, tiling.lz, 0, tileSizeUV);
-            squares(c2, rot.ny, rot.nz, rot.nx, rot.px, tiling.hx, tileSizeUV, 0);
-            squares(c2, rot.nz, rot.nx, rot.ny, rot.py, tiling.hy, tileSizeUV, 0);
-            squares(c2, rot.nx, rot.ny, rot.nz, rot.pz, tiling.hz, tileSizeUV, 0);
+            squares(c1, rot.pz, rot.py, rot.px, rot.nx, tiling.lx);
+            squares(c1, rot.px, rot.pz, rot.py, rot.ny, tiling.ly);
+            squares(c1, rot.py, rot.px, rot.pz, rot.nz, tiling.lz);
+            squares(c2, rot.ny, rot.nz, rot.nx, rot.px, tiling.hx);
+            squares(c2, rot.nz, rot.nx, rot.ny, rot.py, tiling.hy);
+            squares(c2, rot.nx, rot.ny, rot.nz, rot.pz, tiling.hz);
             var circuit = rawCircuits[x+","+y+","+z]; // TODO: replace this with some other spatial indexing scheme so we don't have to check per-every-block
             if (circuit) {
               var o = circuit.getOrigin();
