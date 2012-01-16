@@ -453,50 +453,180 @@ function generateWorlds() {
   var sqrt = Math.sqrt;
   var random = Math.random;
   
-  var bottomFunc;
+  function generateSimpleBumpy(bottomFunc) {
+    // The constant is the maximum slope of the 'terrain' function; therefore generate_slope is the maximum slope of the returned terrain.
+    var slopeScaled = config.generate_slope.get() / 0.904087;
+
+    // Using raw array access because it lets us cache the altitude computation by iterating over y last, not because the overhead of .edit() is especially high.
+    var raw = topWorld.raw;
+    var rawSubData = topWorld.rawSubData;
+    for (var x = 0; x < wx; x++) {
+      var xbase = x*wy*wz;
+      for (var z = 0; z < wz; z++) {
+        var terrain = slopeScaled * (
+          (sin(x/8) + sin(z/8))*1
+          + (sin(x/14) + sin(z/14))*3
+          + (sin(x/2) + sin(z/2))*0.6);
+        var top = mid - round(terrain);
+        var bottom = bottomFunc(x,z,terrain);
+        for (var y = 0; y < wy; y++) {
+          var index = xbase + y*wz + z;
+          var altitude = y - top;
+          raw[index] = y < bottom ? 0 :
+                       altitude > 1 ? 0 :
+                       altitude < 0 ? 1 :
+                       altitude == 0 ? 2 :
+                       /* altitude == 1 */ random() > 0.99 ? (rawSubData[index] = 4, 4) : 0;
+        }
+      }
+    }
+    topWorld.notifyRawEdit();
+  }
+  
   switch (config.generate_shape.get()) {
     case "fill":
     default:
-      bottomFunc = function () { return 0; };
+      generateSimpleBumpy(function () { return 0; });
       break;
     case "island":
-      bottomFunc = function (x,z,terrain) {
+      generateSimpleBumpy(function (x,z,terrain) {
         var nx = x/wx*2 - 1;
         var nz = z/wz*2 - 1;
         var negr = 1 - (nx*nx+nz*nz);
         var dome = (negr >= 0 ? sqrt(negr) : -1);
         return mid - (mid-10)*dome + terrain * 2.0;
-      };
+      });
+      break;
+    case "city":
+      (function () {
+        var air = BlockSet.ID_EMPTY;
+        var bedrock = BlockSet.ID_BOGUS;
+        var ground = 3;
+        var road = 2;
+        var building = 8;
+        
+        var center = [wx/2,mid,wz/2];
+
+        topWorld.edit(function (x, y, z) {
+          return y > mid ? air : y < mid ? bedrock : ground;
+        });
+        
+        function madd(base, delta, scale) {
+          var r = vec3.create();
+          r[0] = base[0] + delta[0] * scale;
+          r[1] = base[1] + delta[1] * scale;
+          r[2] = base[2] + delta[2] * scale;
+          return r;
+        }
+        function setvec(vec,val) {
+          topWorld.s(vec[0],vec[1],vec[2],val);
+        }
+        
+        function roadBuilder(pos, vel, width) {
+          return posLoop(pos, vel, 
+              function (p) { return topWorld.g(p[0],p[1],p[2]) == ground; }, 
+              function (pos) {
+            var perp = [vel[2],vel[1],-vel[0]];
+            var step = vec3.create();
+            for (var i = -width; i <= width; i++) {
+              setvec(madd(pos, perp, i), road);
+            }
+            return [];
+          });
+        }
+        
+        function posLoop(initial, delta, condition, body) {
+          var pos = vec3.create(initial);
+          
+          function looper() {
+            var extra = body(pos);
+            
+            vec3.add(pos, delta);
+            
+            return condition(pos) ? [looper].concat(extra) : extra;
+          }
+          
+          return looper;
+        }
+        
+        function buildingBuilder(origin, u, v, usize, vsize) {
+          var material = 8 + Math.floor(Math.random() * 3);
+          var height = origin[1] + Math.floor(Math.random() * (wy-origin[1]));
+          return posLoop(origin, [0,1,0], 
+              function (pos) { return topWorld.g(pos[0],pos[1],pos[2]) == air && pos[1] <= height; }, 
+              function (pos) {
+            var step = vec3.create();
+            for (var i = 0; i < usize; i++) {
+              setvec(madd(pos, u, i), material);
+              setvec(madd(madd(pos, v, vsize-1), u, i), material);
+            }
+            for (var i = 0; i < vsize; i++) {
+              setvec(madd(pos, v, i), material);
+              setvec(madd(madd(pos, u, usize-1), v, i), material);
+            }
+            return [];
+          });
+        }
+        
+        function seedQuadrant(direction) {
+          var perp = [direction[2],direction[1],-direction[0]];
+          var roadWidth = 5;
+          var buildingOffset = 5;
+          var buildingSize = 10;
+          
+          var blockBuilder = posLoop(
+              madd(madd(center, perp, roadWidth + buildingOffset), direction, roadWidth + buildingOffset),
+              vec3.scale(direction, buildingSize + buildingOffset, vec3.create()),
+              function (pos) { return topWorld.inBounds(pos[0],pos[1],pos[2]); },
+              function (pos) {
+            return [posLoop(
+                pos,
+                vec3.scale(perp, buildingSize + buildingOffset, vec3.create()),
+                function (pos) { return topWorld.inBounds(pos[0],pos[1],pos[2]); },
+                function (pos) {
+              return [buildingBuilder(pos, direction, perp, buildingSize, buildingSize)];
+            })];
+            return [buildingBuilder(pos, direction, perp, buildingSize, buildingSize)];
+          });
+          
+          return function () {
+            return [
+              roadBuilder(
+                madd(center, direction, 2),
+                direction,
+                roadWidth),
+              blockBuilder,
+            ];
+          };
+        }
+        
+        var qin = [], qout = [];
+        function loop() {
+          for (var i = 0; i < 30; i++) {
+            if (!qout.length && qin.length) {
+              qout = qin;
+              qout.reverse();
+              qin = [];
+            }
+            if (qout.length) {
+              var add = qout.pop()();
+              qin.push.apply(qin, add);
+            } else {
+              return;
+            }
+          }
+          setTimeout(loop, 1/80);
+        }
+        qin = [
+          seedQuadrant([+1,0,0]),
+          seedQuadrant([-1,0,0]),
+          seedQuadrant([0,0,+1]),
+          seedQuadrant([0,0,-1]),
+        ];
+        loop();
+      })();
       break;
   }
-  
-  // The constant is the maximum slope of the 'terrain' function; therefore generate_slope is the maximum slope of the returned terrain.
-  var slopeScaled = config.generate_slope.get() / 0.904087;
-
-  // Using raw array access because it lets us cache the altitude computation by iterating over y last, not because the overhead of .edit() is especially high.
-  var raw = topWorld.raw;
-  var rawSubData = topWorld.rawSubData;
-  for (var x = 0; x < wx; x++) {
-    var xbase = x*wy*wz;
-    for (var z = 0; z < wz; z++) {
-      var terrain = slopeScaled * (
-        (sin(x/8) + sin(z/8))*1
-        + (sin(x/14) + sin(z/14))*3
-        + (sin(x/2) + sin(z/2))*0.6);
-      var top = mid - round(terrain);
-      var bottom = bottomFunc(x,z,terrain);
-      for (var y = 0; y < wy; y++) {
-        var index = xbase + y*wz + z;
-        var altitude = y - top;
-        raw[index] = y < bottom ? 0 :
-                     altitude > 1 ? 0 :
-                     altitude < 0 ? 1 :
-                     altitude == 0 ? 2 :
-                     /* altitude == 1 */ random() > 0.99 ? (rawSubData[index] = 4, 4) : 0;
-      }
-    }
-  }
-  topWorld.notifyRawEdit();
   
   // circuit test
   (function () {

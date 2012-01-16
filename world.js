@@ -174,6 +174,9 @@ function World(sizes, blockSet) {
   function selectable(x,y,z) {
     return g(x,y,z) != 0;
   }
+  function inBounds(x,y,z) {
+    return !(x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz);
+  }
   
   /**
    * Call the callback with (x,y,z,value,face) of all blocks along the line
@@ -384,6 +387,7 @@ function World(sizes, blockSet) {
   this.solid = solid;
   this.opaque = opaque;
   this.selectable = selectable;
+  this.inBounds = inBounds;
   this.raw = blocks;
   this.rawSubData = subData;
   this.rawRotations = rotations;
