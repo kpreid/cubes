@@ -37,6 +37,13 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
     dx = 0;
     return true;
   }, false);
+
+  // This is used as the conditiopn to inhibit focus-granting clicks from modifying the world. Simply checking focusCell is insufficient (due to focusiing happening before the event) in at least one case: when focus is on Chrome's Web Inspector.
+  var delayedFocus = false;
+  focusCell.whenChanged(function (value) {
+    setTimeout(function () { delayedFocus = value; }, 0);
+    return true;
+  });
   
   // --- Keyboard events ---
   
@@ -155,22 +162,29 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   }, false);
 
   // --- Clicks ---
-
-  eventReceiver.addEventListener("click", function (event) {
+  
+  // Note: this has the side effect of inhibiting text selection on drag
+  eventReceiver.addEventListener("mousedown", function (event) {
     updateMouse(event);
-    eventReceiver.focus();
-    playerInput.deleteBlock();
+    if (delayedFocus) {
+      switch (event.button) {
+        case 0: playerInput.deleteBlock(); break;
+        case 2: playerInput.useTool(); break;
+      }
+    } else {
+      eventReceiver.focus();
+    }
+    event.preventDefault(); // inhibits text selection
     return false;
   }, false);
-  eventReceiver.oncontextmenu = function (event) { // On Firefox 5.0.1 (most recent tested 2011-09-10), addEventListener does not suppress the builtin context menu, so this is an attribute rather than a listener.
-    updateMouse(event);
-    eventReceiver.focus();
-    playerInput.useTool();
-    return false;
-  };
   
-  // inhibit incidental text selection
-  eventReceiver.onmousedown/* Chrome/Firefox */ = eventReceiver.onselectstart/* for IE */ = function (event) { return false; };
+  // TODO: Implement repeat on held down button
+  
+  eventReceiver.addEventListener("contextmenu", function (event) {
+    event.preventDefault(); // inhibits context menu (on the game world only) since we use right-click for our own purposes
+  }, false);
+
+  // --- Stepping ---
   
   function step(timestep) {
     if (dx != 0) {
