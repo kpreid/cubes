@@ -115,7 +115,7 @@ var WorldRenderer = (function () {
     });
 
     var textureDebugR = new renderer.RenderBundle(gl.TRIANGLE_STRIP,
-                                                  function () { return blockSet.texture; },
+                                                  function () { return blockSet.getRenderData().texture; },
                                                   function (vertices, normals, texcoords) {
       var x = 1;
       var y = 1;
@@ -181,7 +181,7 @@ var WorldRenderer = (function () {
     }
     
     var listenerB = {
-      // TODO: Optimize by rerendering only if *tiling* changed, and only
+      // TODO: Optimize by rerendering only if render data changed, and only
       // chunks containing the changed block ID?
       texturingChanged: dirtyAll
     }
@@ -419,6 +419,8 @@ var WorldRenderer = (function () {
       }
     }
     this.draw = draw;
+    
+    var renderData; // updated as needed by chunk recalculate
 
     // returns whether no work was done
     function calcChunk(xzkey) {
@@ -444,14 +446,13 @@ var WorldRenderer = (function () {
         var chunkLimitX = Math.min(wx, xzkey[0] + CHUNKSIZE);
         var chunkLimitZ = Math.min(wz, xzkey[1] + CHUNKSIZE);
         chunks[xzkey] = new renderer.RenderBundle(gl.TRIANGLES,
-                                         function () { return blockSet.texture; },
+                                         function () { return renderData.texture; },
                                          function (vertices, normals, texcoords) {
-          // These statements are inside the function because they need to
-          // retrieve the most up-to-date values.
-          var tilings = blockSet.tilings; // has side effect of updating tiling if needed
-          var geometries = blockSet.geometries;
-          var BOGUS_TILING = tilings.bogus;
-          var BOGUS_GEOMETRY = geometries.bogus;
+          renderData = blockSet.getRenderData();
+          var texcoordsByFaceByBlock = renderData.texcoordsByFaceByBlock;
+          var verticesByRotationByFaceByBlock = renderData.verticesByRotationByFaceByBlock;
+          var BOGUS_BLOCK_TEXCOORDS = texcoordsByFaceByBlock.bogus;
+          var BOGUS_BLOCK_VERTICES = verticesByRotationByFaceByBlock.bogus;
           var rawCircuits = world.getCircuitsByBlock();
           var types = blockSet.getAll();
 
@@ -459,16 +460,16 @@ var WorldRenderer = (function () {
           var x,y,z;
           var thisOpaque;
           
-          function face(vFacing, tileTexCoords, tileGeomList) {
+          function face(vFacing, tileTexCoords, blockVertices) {
             if (thisOpaque && world.opaque(x+vFacing[0],y+vFacing[1],z+vFacing[2])) {
               // this face is invisible
               return
             } else {
-              var vl = tileGeomList.length / 3;
+              var vl = blockVertices.length / 3;
               for (var i = 0; i < vl; i++) {
-                vertices.push(tileGeomList[i*3  ]+x,
-                              tileGeomList[i*3+1]+y,
-                              tileGeomList[i*3+2]+z);
+                vertices.push(blockVertices[i*3  ]+x,
+                              blockVertices[i*3+1]+y,
+                              blockVertices[i*3+2]+z);
                 texcoords.push(tileTexCoords[i*2],tileTexCoords[i*2+1]);
                 normals.push(vFacing[0],vFacing[1],vFacing[2]);
               }
@@ -486,16 +487,16 @@ var WorldRenderer = (function () {
             var rotIndex = rawRotations[rawIndex];
             var rot = ROT_DATA[rotIndex];
             var btype = types[value];
-            var tiling = tilings[value] || BOGUS_TILING;
-            var geometry = geometries[value] || BOGUS_GEOMETRY;
+            var texcoordsByFace = texcoordsByFaceByBlock[value] || BOGUS_BLOCK_TEXCOORDS;
+            var verticesByRotationByFace = verticesByRotationByFaceByBlock[value] || BOGUS_BLOCK_VERTICES;
             thisOpaque = btype.opaque;
 
-            face(rot.nx, tiling.lx, geometry.lx[rotIndex]);
-            face(rot.ny, tiling.ly, geometry.ly[rotIndex]);
-            face(rot.nz, tiling.lz, geometry.lz[rotIndex]);
-            face(rot.px, tiling.hx, geometry.hx[rotIndex]);
-            face(rot.py, tiling.hy, geometry.hy[rotIndex]);
-            face(rot.pz, tiling.hz, geometry.hz[rotIndex]);
+            face(rot.nx, texcoordsByFace.lx, verticesByRotationByFace.lx[rotIndex]);
+            face(rot.ny, texcoordsByFace.ly, verticesByRotationByFace.ly[rotIndex]);
+            face(rot.nz, texcoordsByFace.lz, verticesByRotationByFace.lz[rotIndex]);
+            face(rot.px, texcoordsByFace.hx, verticesByRotationByFace.hx[rotIndex]);
+            face(rot.py, texcoordsByFace.hy, verticesByRotationByFace.hy[rotIndex]);
+            face(rot.pz, texcoordsByFace.hz, verticesByRotationByFace.hz[rotIndex]);
             var circuit = rawCircuits[x+","+y+","+z]; // TODO: replace this with some other spatial indexing scheme so we don't have to check per-every-block
             if (circuit) {
               var o = circuit.getOrigin();

@@ -241,19 +241,21 @@ var BlockSet = (function () {
     ])],
   ];
 
-  var EMPTY_TILING = {};
-  var EMPTY_GEOMETRY = {};
+  var EMPTY_TEXCOORDS = {};
+  var EMPTY_VERTICES = {};
   TILE_MAPPINGS.forEach(function (m) {
     var dimName = m[0];
-    EMPTY_TILING["l" + dimName] =
-    EMPTY_TILING["h" + dimName] = [];
+    EMPTY_TEXCOORDS["l" + dimName] =
+    EMPTY_TEXCOORDS["h" + dimName] = [];
+    var g =
+    EMPTY_VERTICES["l" + dimName] =
+    EMPTY_VERTICES["h" + dimName] = [];
     for (var rot = 0; rot < applyCubeSymmetry.COUNT; rot++) {
-      EMPTY_GEOMETRY["l" + dimName + rot] =
-      EMPTY_GEOMETRY["h" + dimName + rot] = [];
+      g.push([]);
     }
   });
-  Object.freeze(EMPTY_TILING);
-  Object.freeze(EMPTY_GEOMETRY);
+  Object.freeze(EMPTY_TEXCOORDS);
+  Object.freeze(EMPTY_VERTICES);
   
   function smallestPowerOf2AtLeast(x) {
     var result = Math.pow(2, Math.ceil(Math.log(x)/Math.LN2));
@@ -395,8 +397,8 @@ var BlockSet = (function () {
 
     // All block sets unconditionally have the standard empty block at ID 0.
     var types = [BlockType.air];
-    var tilings = [EMPTY_TILING];
-    var geometries = [EMPTY_GEOMETRY];
+    var texcoordsByFaceByBlock = [EMPTY_TEXCOORDS];
+    var verticesByRotationByFaceByBlock = [EMPTY_VERTICES];
     
     var texgen = null;
     var typesToRerender = new DirtyQueue();
@@ -405,8 +407,8 @@ var BlockSet = (function () {
       var tileSize = texgen.tileSize; // shadowing
       var tileLastIndex = tileSize - 1;
       var blockType = types[blockID];
-      var tiling = tilings[blockID];
-      var geometry = geometries[blockID];
+      var texcoordsByFace = texcoordsByFaceByBlock[blockID];
+      var verticesByRotationByFace = verticesByRotationByFaceByBlock[blockID];
       
       var texWidth = texgen.image.width;
       var texData = texgen.image.data;
@@ -461,10 +463,10 @@ var BlockSet = (function () {
             rotationsL[i] = verticesL;
             rotationsH[i] = verticesH;
           }
-          tiling["l" + dimName] = texcoords;
-          tiling["h" + dimName] = texcoords;
-          geometry["l" + dimName] = rotationsL;
-          geometry["h" + dimName] = rotationsH;
+          texcoordsByFace["l" + dimName] = texcoords;
+          texcoordsByFace["h" + dimName] = texcoords;
+          verticesByRotationByFace["l" + dimName] = rotationsL;
+          verticesByRotationByFace["h" + dimName] = rotationsH;
         });
       } else if (blockType.world) {
         (function () {
@@ -477,7 +479,7 @@ var BlockSet = (function () {
           var viewL = vec3.create();
           var viewH = vec3.create();
           
-          function sliceWorld(dimName, layer, transform, texcoordsL, texcoordsH, geomL, geomH) {
+          function sliceWorld(dimName, layer, transform, texcoordsL, texcoordsH, verticesL, verticesH) {
             var usageIndex = blockID + "," + dimName + "," + layer;
             
             var coord = texgen.allocationFor(usageIndex);
@@ -523,39 +525,39 @@ var BlockSet = (function () {
             } else {
               // If the layer has unobscured content, and it is not an interior surface of an opaque block, then add it to rendering. Note that the TILE_MAPPINGS loop skips slicing interiors of opaque blocks, but they still need to have the last layer excluded because the choice of call to sliceWorld does not express that.
               if (thisLayerNotEmptyL && (!blockType.opaque || layer == 0)) {
-                pushQuad(geomL, texcoordsL, false, transform, layer/tileSize, usageIndex);
+                pushQuad(verticesL, texcoordsL, false, transform, layer/tileSize, usageIndex);
               }
               if (thisLayerNotEmptyH && (!blockType.opaque || layer == tileLastIndex)) {
-                pushQuad(geomH, texcoordsH, true, transform, (layer+1)/tileSize, usageIndex);
+                pushQuad(verticesH, texcoordsH, true, transform, (layer+1)/tileSize, usageIndex);
               }
             }
             
-            // TODO: trigger rerender of chunks only if we made changes to the tiling, not if only the colors changed
+            // TODO: trigger rerender of chunks only if we made changes to the texcoords, not if only the colors changed
             
             //console.log("id ", wi + 1, " dim ", dimName, " layer ", layer, (thisLayerNotEmptyL || thisLayerNotEmptyH) ? " allocated" : " skipped");
           }          
           TILE_MAPPINGS.forEach(function (m) {
             var dimName = m[0];
             var transform = m[1];
-            var texcoordsL = tiling["l" + dimName] = [];
-            var texcoordsH = tiling["h" + dimName] = [];
-            var geomRotsL = geometry["l" + dimName] = [];
-            var geomRotsH = geometry["h" + dimName] = [];
-            var geomL = [];
-            var geomH = [];
+            var texcoordsL = texcoordsByFace["l" + dimName] = [];
+            var texcoordsH = texcoordsByFace["h" + dimName] = [];
+            var verticesByRotationL = verticesByRotationByFace["l" + dimName] = [];
+            var verticesByRotationH = verticesByRotationByFace["h" + dimName] = [];
+            var verticesL = [];
+            var verticesH = [];
             if (blockType.opaque) {
               if (texgen.textureLost) return;
-              sliceWorld(dimName, 0,             transform, texcoordsL, texcoordsH, geomL, geomH);
-              sliceWorld(dimName, tileLastIndex, transform, texcoordsL, texcoordsH, geomL, geomH);
+              sliceWorld(dimName, 0,             transform, texcoordsL, texcoordsH, verticesL, verticesH);
+              sliceWorld(dimName, tileLastIndex, transform, texcoordsL, texcoordsH, verticesL, verticesH);
             } else {
               for (var layer = 0; layer < tileSize; layer++) {
                 if (texgen.textureLost) return;
-                sliceWorld(dimName, layer, transform, texcoordsL, texcoordsH, geomL, geomH);
+                sliceWorld(dimName, layer, transform, texcoordsL, texcoordsH, verticesL, verticesH);
               }
             }
             for (var rot = 0; rot < applyCubeSymmetry.COUNT; rot++) {
-              geomRotsL[rot] = rotateVertices(rot, geomL);
-              geomRotsH[rot] = rotateVertices(rot, geomH);
+              verticesByRotationL[rot] = rotateVertices(rot, verticesL);
+              verticesByRotationH[rot] = rotateVertices(rot, verticesH);
             }
           });
         })();
@@ -601,8 +603,8 @@ var BlockSet = (function () {
       add: function (newBlockType) {
         var newID = types.length;
         types.push(newBlockType);
-        tilings.push({});
-        geometries.push({});
+        texcoordsByFaceByBlock.push({});
+        verticesByRotationByFaceByBlock.push({});
         typesToRerender.enqueue(newID);
         newBlockType.listen({
           appearanceChanged: function () {
@@ -641,20 +643,17 @@ var BlockSet = (function () {
       
       listen: notifier.listen,
       
-      // TODO: bundle texture/tilings into a facet
-      get texture () {
+      // Return the data required to render blocks, updating if it is out of date.
+      getRenderData: function () {
         freshenTexture();
-        return texgen.texture;
-      },
-      get tilings () {
-        freshenTexture();
-        tilings.bogus = tilings[BlockSet.ID_BOGUS] || EMPTY_TILING;
-        return tilings;
-      },
-      get geometries () {
-        freshenTexture();
-        geometries.bogus = geometries[BlockSet.ID_BOGUS] || EMPTY_GEOMETRY;
-        return geometries;
+        texcoordsByFaceByBlock.bogus = texcoordsByFaceByBlock[BlockSet.ID_BOGUS] || EMPTY_TEXCOORDS;
+        verticesByRotationByFaceByBlock.bogus =
+            verticesByRotationByFaceByBlock[BlockSet.ID_BOGUS] || EMPTY_VERTICES;
+        return {
+          texture: texgen.texture,
+          texcoordsByFaceByBlock: texcoordsByFaceByBlock,
+          verticesByRotationByFaceByBlock: verticesByRotationByFaceByBlock
+        };
       },
       worldFor: function (blockID) {
         return types[blockID] ? types[blockID].world : null;
