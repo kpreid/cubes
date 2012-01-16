@@ -18,8 +18,8 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   function setMouselook(value) {
     mouselookMode = value;
     menuElement.style.visibility = mouselookMode ? 'hidden' : 'visible';
+    applyMousePosition();
   }
-  setMouselook(mouselookMode);
   
   function quick(n) {
     playerInput.tool = quickSlots[n];
@@ -34,7 +34,6 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   eventReceiver.addEventListener("blur", function (event) {
     focusCell.set(false);
     keymap = {};
-    dx = 0;
     return true;
   }, false);
 
@@ -129,19 +128,23 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   var dx = 0;
   var prevx = 0;
   
-  function updateMouse(event) {
-    playerInput.mousePos = [event.clientX, event.clientY];
-  }
-  
-  eventReceiver.addEventListener("mousemove", function (event) {
-    updateMouse(event);
+  function applyMousePosition() {
+    if (!focusCell.get()) {
+      playerInput.mousePos = null;
+      dx = 0;
+      return;
+    } else {
+      playerInput.mousePos = mousePos;
+    }
+    
+    if (mousePos == null) return;
 
     var cs = window.getComputedStyle(eventReceiver, null);
     var w = parseInt(cs.width);
     var h = parseInt(cs.height);
 
-    var swingY = event.clientY / (h*0.5) - 1;
-    var swingX = event.clientX / (w*0.5) - 1;
+    var swingY = mousePos[1] / (h*0.5) - 1;
+    var swingX = mousePos[0] / (w*0.5) - 1;
     
     var directY = -Math.PI/2 * swingY;
     var directX = -Math.PI/2 * swingX;
@@ -154,10 +157,25 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
       dx = 0;
     }
     prevx = directX;
+  }
+  focusCell.whenChanged(function (value) {
+    applyMousePosition();
+    return true;
+  });
+  
+  var mousePos = null;
+  function updateMouseFromEvent(event) {
+    mousePos = [event.clientX, event.clientY];
+    applyMousePosition();
+  }
+  
+  eventReceiver.addEventListener("mousemove", function (event) {
+    updateMouseFromEvent(event);
+    return true;
   }, false);
   eventReceiver.addEventListener("mouseout", function (event) {
-    playerInput.mousePos = null;
-    dx = 0;
+    mousePos = null;
+    applyMousePosition();
     return true;
   }, false);
 
@@ -165,7 +183,7 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   
   // Note: this has the side effect of inhibiting text selection on drag
   eventReceiver.addEventListener("mousedown", function (event) {
-    updateMouse(event);
+    updateMouseFromEvent(event);
     if (delayedFocus) {
       switch (event.button) {
         case 0: playerInput.deleteBlock(); break;
@@ -333,4 +351,8 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   // --- Methods ---
   
   this.step = step;
+  
+  // --- Late initialization ---
+  
+  setMouselook(mouselookMode);
 }
