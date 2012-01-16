@@ -372,6 +372,7 @@ function generateWorlds() {
 
   var type;
   var blockset = new BlockSet([]);
+  var ids = {};
 
   // color cube - world base and bogus-placeholder
   blockset.add(type = genedit(function (b) {
@@ -422,8 +423,16 @@ function generateWorlds() {
   blockset.add(type = genedit(function (b) {
     return Math.max(Math.abs(b[0] - TS/2), Math.abs(b[2] - TS/2)) <= TS/4 ? brgb(.5,.5,0) : 0;
   }));
+  
+  // glass sheet for buildings
+  ids.glass = blockset.length;
+  blockset.add(type = genedit(function (b) {
+    return (f.xe(b) || f.te(b) || f.be(b)) && b[2] == TL ? brgb(.9,.9,.9) : 0;
+  }));
+  addRotation(type);
 
   // random block types
+  ids.firstRandom = blockset.length;
   for (var i = 0; i < 4; i++) {
     // TODO: make this more interesting
     var c = f.pickEdgeCond(f.flat(pickColor()),
@@ -506,6 +515,7 @@ function generateWorlds() {
         var building = 8;
         
         var center = [wx/2,mid,wz/2];
+        var buildingFloorHeight = 4; // 3 empty space, 1 floor
 
         topWorld.edit(function (x, y, z) {
           return y > mid ? air : y < mid ? bedrock : ground;
@@ -518,52 +528,113 @@ function generateWorlds() {
           r[2] = base[2] + delta[2] * scale;
           return r;
         }
+        function maddy(base, sy, d1, s1) {
+          var r = vec3.create();
+          r[0] = base[0] + d1[0] * s1;
+          r[1] = base[1] + d1[1] * s1 + sy;
+          r[2] = base[2] + d1[2] * s1;
+          return r;
+        }
+        function addy(base, sy) {
+          var r = vec3.create(base);
+          r[1] += sy;
+          return r;
+        }
+        function madd2y(base, sy, d1, s1, d2, s2) {
+          var r = vec3.create();
+          r[0] = base[0] + d1[0] * s1 + d2[0] * s2;
+          r[1] = base[1] + d1[1] * s1 + d2[1] * s2 + sy;
+          r[2] = base[2] + d1[2] * s1 + d2[2] * s2;
+          return r;
+        }
         function setvec(vec,val) {
           topWorld.s(vec[0],vec[1],vec[2],val);
+        }        
+        function fill(corner1, corner2, material, subdata) {
+          var lx = Math.min(corner1[0], corner2[0]);
+          var ly = Math.min(corner1[1], corner2[1]);
+          var lz = Math.min(corner1[2], corner2[2]);
+          var hx = Math.max(corner1[0], corner2[0]);
+          var hy = Math.max(corner1[1], corner2[1]);
+          var hz = Math.max(corner1[2], corner2[2]);
+          for (var x = lx; x <= hx; x++)
+          for (var y = ly; y <= hy; y++)
+          for (var z = lz; z <= hz; z++) {
+            topWorld.s(x, y, z, material, subdata);
+          }
+        }
+        // Return a rotation to bring the +z vector to match the given unit vector
+        function frontFaceTo(vec) {
+          switch (vec3.str(vec)) {
+            case "[1, 0, 0]" : return 16+11;
+            case "[0, 1, 0]" : return 4;
+            case "[0, 0, 1]" : return 0;
+            case "[-1, 0, 0]": return 16+8;
+            case "[0, -1, 0]": return 4+2;
+            case "[0, 0, -1]": return 2;
+            default: throw new Error("invalid direction vector " + vec3.str(vec));
+          }
+        }
+        function clockwise(v) {
+          return vec3.create([-v[2], v[1], v[0]]);
+        }
+        function counterclockwise(v) {
+          return vec3.create([v[2], v[1], -v[0]]);
         }
         
         function roadBuilder(pos, vel, width) {
           return posLoop(pos, vel, 
               function (p) { return topWorld.g(p[0],p[1],p[2]) == ground; }, 
               function (pos) {
-            var perp = [vel[2],vel[1],-vel[0]];
-            var step = vec3.create();
-            for (var i = -width; i <= width; i++) {
-              setvec(madd(pos, perp, i), road);
-            }
+            var perp = counterclockwise(vel);
+            fill(madd(pos, perp, -width), madd(pos, perp, width), road);
             return [];
           });
         }
         
-        function posLoop(initial, delta, condition, body) {
+        function posLoop(initial, delta, condition, body, finish) {
           var pos = vec3.create(initial);
           
           function looper() {
             var extra = body(pos);
             
-            vec3.add(pos, delta);
+            pos = vec3.add(pos, delta, vec3.create());
             
-            return condition(pos) ? [looper].concat(extra) : extra;
+            var after = condition(pos) ? [looper] : finish ? [function () { return finish(pos); }] : [];
+            return extra.concat(after);
           }
           
           return looper;
         }
         
         function buildingBuilder(origin, u, v, usize, vsize) {
-          var material = 8 + Math.floor(Math.random() * 3);
-          var height = origin[1] + Math.floor(Math.random() * (wy-origin[1]));
-          return posLoop(origin, [0,1,0], 
-              function (pos) { return topWorld.g(pos[0],pos[1],pos[2]) == air && pos[1] <= height; }, 
+          var material = ids.firstRandom + Math.floor(Math.random() * 3);
+          var height = origin[1] + Math.floor(Math.random() * (wy-origin[1])/buildingFloorHeight) * buildingFloorHeight;
+          // ground floor
+          fill(addy(origin, -1), madd2y(origin, -1, u, usize-1, v, vsize-1), material);
+          return posLoop(origin, vec3.scale(UNIT_PY, buildingFloorHeight, vec3.create()),
+              function (pos) { return topWorld.g(pos[0],pos[1],pos[2]) == air && pos[1] < height; }, 
               function (pos) {
-            var step = vec3.create();
-            for (var i = 0; i < usize; i++) {
-              setvec(madd(pos, u, i), material);
-              setvec(madd(madd(pos, v, vsize-1), u, i), material);
+            // building walls ring
+            var high = madd(madd(pos, u, usize-1), v, vsize-1);
+            function buildingWall(worigin, wdir, size) {
+              fill(worigin, maddy(worigin, buildingFloorHeight-2, wdir, size-1), material);
+              fill(madd(worigin, wdir, 1), maddy(worigin, buildingFloorHeight-2, wdir, size-2), ids.glass, frontFaceTo(clockwise(wdir)));
             }
-            for (var i = 0; i < vsize; i++) {
-              setvec(madd(pos, v, i), material);
-              setvec(madd(madd(pos, u, usize-1), v, i), material);
-            }
+            buildingWall(pos, u, usize);
+            buildingWall(high, vec3.scale(u, -1, vec3.create()), usize);
+            buildingWall(madd(pos, u, usize-1), v, vsize);
+            buildingWall(madd(pos, v, vsize-1), vec3.scale(v, -1, vec3.create()), vsize);
+            // ceiling/floor
+            fill(madd(pos, UNIT_PY, buildingFloorHeight-1), madd(high, UNIT_PY, buildingFloorHeight-1), material);
+            return [];
+          }, function (pos) {
+            
+            // doorway
+            var mid1 = madd(origin, u, Math.round(usize/2 - 1));
+            var mid2 = madd(origin, u, Math.round(usize/2 + 0));
+            //console.log("making door", vec3.str(mid1), vec3.str(mdid2));
+            fill(mid1, madd(mid2, UNIT_PY, 1/* door height - 1 */), air);
             return [];
           });
         }
@@ -580,13 +651,15 @@ function generateWorlds() {
               function (pos) { return topWorld.inBounds(pos[0],pos[1],pos[2]); },
               function (pos) {
             return [posLoop(
-                pos,
+                madd(pos, UNIT_PY, 1),
                 vec3.scale(perp, buildingSize + buildingOffset, vec3.create()),
                 function (pos) { return topWorld.inBounds(pos[0],pos[1],pos[2]); },
                 function (pos) {
-              return [buildingBuilder(pos, direction, perp, buildingSize, buildingSize)];
+              if (Math.random() > 0.5)
+                return [buildingBuilder(pos, direction, perp, buildingSize, buildingSize)];
+              else
+                return [];
             })];
-            return [buildingBuilder(pos, direction, perp, buildingSize, buildingSize)];
           });
           
           return function () {
@@ -615,7 +688,7 @@ function generateWorlds() {
               return;
             }
           }
-          setTimeout(loop, 1/80);
+          setTimeout(loop, 1000/80);
         }
         qin = [
           seedQuadrant([+1,0,0]),
@@ -623,7 +696,7 @@ function generateWorlds() {
           seedQuadrant([0,0,+1]),
           seedQuadrant([0,0,-1]),
         ];
-        loop();
+        setTimeout(loop, 2000);
       })();
       break;
   }
