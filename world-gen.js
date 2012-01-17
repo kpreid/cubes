@@ -414,9 +414,14 @@ function generateWorlds() {
   addSpontaneousConversion(blockset.get(pyr1), pyr2);
   addSpontaneousConversion(blockset.get(pyr2), pyr1);
   
-  // "leaf block" transparency test
+  // leaves/hedge
+  ids.greenery = blockset.length;
   blockset.add(type = genedit(function (b) {
-    return f.s(b) ? f.cond(f.speckle, f.flat(0), f.flat(brgb(0,1,0)))(b) : 0;
+    var edgeness = Math.max(Math.abs(b[0]-TL/2),Math.abs(b[1]-TL/2),Math.abs(b[2]-TL/2))/(TL/2);
+    if (Math.random() >= edgeness*0.2) return 0;
+    var green = Math.random() * 0.75 + 0.25;
+    var notgreen = Math.random() * green*0.3 + green*0.25;
+    return brgb(notgreen,green*edgeness,notgreen*(1-edgeness));
   }));
 
   // pillar thing
@@ -547,7 +552,10 @@ function generateWorlds() {
           r[2] = base[2] + d1[2] * s1 + d2[2] * s2;
           return r;
         }
-        function setvec(vec,val) {
+        function getvec(vec) {
+          return topWorld.g(vec[0],vec[1],vec[2]);
+        }        
+        function setvec(vec, val) {
           topWorld.s(vec[0],vec[1],vec[2],val);
         }        
         function fill(corner1, corner2, material, subdata) {
@@ -587,6 +595,8 @@ function generateWorlds() {
               function (p) { return topWorld.g(p[0],p[1],p[2]) == ground; }, 
               function (pos) {
             var perp = counterclockwise(vel);
+            setvec(maddy(pos, 1, perp, -width-1), ids.greenery);
+            setvec(maddy(pos, 1, perp, +width+1), ids.greenery);
             fill(madd(pos, perp, -width), madd(pos, perp, width), road);
             return [];
           });
@@ -665,7 +675,7 @@ function generateWorlds() {
           return function () {
             return [
               roadBuilder(
-                madd(center, direction, 2),
+                madd(center, direction, roadWidth + 1),
                 direction,
                 roadWidth),
               blockBuilder,
@@ -696,12 +706,13 @@ function generateWorlds() {
           seedQuadrant([0,0,+1]),
           seedQuadrant([0,0,-1]),
         ];
-        setTimeout(loop, 2000);
+        loop();
       })();
       break;
   }
   
-  // circuit test
+  // circuit test;
+  
   (function () {
     var x = 182/400*wx, y = Math.floor(wy/2)+3, z = 191/400*wx;
     topWorld.s(x+0,y,z+1,l.pad);
