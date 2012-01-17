@@ -63,6 +63,7 @@ var WorldGen = (function () {
     
     blockFunctions: function (TS) {
       var TL = TS - 1;
+      var HALF = TL/2; // subtract this to do calculations from block centers
 
       // non-boolean property functions
       function vx(b) { return b[0]; }
@@ -71,10 +72,17 @@ var WorldGen = (function () {
       function s(b) { return te(b) + be(b) + xe(b) + ze(b); }
       function rad(b) { 
         return Math.sqrt(
-          Math.pow(b[0]-TL/2, 2) +
-          Math.pow(b[1]-TL/2, 2) +
-          Math.pow(b[2]-TL/2, 2)
+          Math.pow(b[0]-HALF, 2) +
+          Math.pow(b[1]-HALF, 2) +
+          Math.pow(b[2]-HALF, 2)
         );
+      }
+      function maxrad(b) { // distance to closest edge, or distance from center per <http://en.wikipedia.org/wiki/Uniform_norm>, normalized to [0,1]
+        return Math.max(
+          Math.abs(b[0]-HALF),
+          Math.abs(b[1]-HALF),
+          Math.abs(b[2]-HALF)
+        )/HALF;
       }
       
       // condition functions
@@ -152,6 +160,7 @@ var WorldGen = (function () {
         vz: vz,
         s: s,
         rad: rad,
+        maxrad: maxrad,
 
         te: te,
         tp: tp,
@@ -188,6 +197,7 @@ var WorldGen = (function () {
       var type;
       var targetSet = targetKit.blockset;
       var TL = TS-1;
+      var HALF = TL/2;
       var f = WorldGen.blockFunctions(TS);
       
       // appearance utilities
@@ -259,7 +269,7 @@ var WorldGen = (function () {
       // get-subdata block
       ids.getSubDatum = targetSet.length;
       type = genedit(function (b) {
-        return Math.abs(Math.sqrt(Math.pow(b[0]-TL/2,2)+Math.pow(b[2]-TL/2,2))*4 - b[1]) <= 1 ? functionShapeColor : 0;
+        return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 1 ? functionShapeColor : 0;
       });
       type.behavior = Circuit.behaviors.getSubDatum;
 
@@ -267,7 +277,7 @@ var WorldGen = (function () {
       ids.spontaneous = targetSet.length;
       type = genedit(function (b) {
         // TODO: make this look more like a lightning bolt
-        return Math.abs(Math.sqrt(Math.pow(b[0]-TL/2,2)+Math.pow(b[2]-TL/2,2))*4 - b[1]) <= 1 ? baseKit.colorToID(1,1,0) : 0;
+        return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 1 ? baseKit.colorToID(1,1,0) : 0;
       });
       type.behavior = Circuit.behaviors.spontaneous;
 
@@ -292,7 +302,7 @@ var WorldGen = (function () {
       // emit-value block
       ids.emitUniform = targetSet.length;
       type = genedit(function (b) {
-        return Math.abs(b[0]-TL/2)+Math.abs(b[1]-TL/2)+Math.abs(b[2]-TL/2) < TS/2+0.5 ? functionShapeColor : 0;
+        return Math.abs(b[0]-HALF)+Math.abs(b[1]-HALF)+Math.abs(b[2]-HALF) < TS/2+0.5 ? functionShapeColor : 0;
       });
       type.behavior = Circuit.behaviors.emitUniform;
 
@@ -301,7 +311,7 @@ var WorldGen = (function () {
         ids.emitConstant = targetSet.length;
         type = genedit(function (b) {
           var r = f.rad(b);
-          return r < TS/2 && r > TL/2 && f.plane(0, TS/2-1, TS/2+1, function(){return true;})(b) && Math.abs(b[1]-TL/2) > (b[2]-TL/2) ? functionShapeColor : 0;
+          return r < TS/2 && r > HALF && f.plane(0, TS/2-1, TS/2+1, function(){return true;})(b) && Math.abs(b[1]-HALF) > (b[2]-HALF) ? functionShapeColor : 0;
         });
         type.world.s(1,1,1, baseKit.logic.getSubDatum);
         type.world.s(1,1,2, baseKit.logic.emitUniform);
@@ -326,7 +336,12 @@ function generateWorlds() {
 
   var TS = Math.round(config.generate_tileSize.get());
   var TL = TS - 1;
+  var HALF = TL/2;
 
+  function normalish() {
+    return (Math.random()+Math.random()+Math.random()+Math.random()+Math.random()+Math.random()) / 6 - 0.5;
+  }
+  
   // --- base blockset ---
   
   // layer 1
@@ -396,7 +411,7 @@ function generateWorlds() {
   // pyramid thing
   var pyr1 = blockset.length;
   blockset.add(type = genedit(function (b) {
-    if (Math.abs(b[0] - TL/2) + Math.abs(b[1] - TL/2) > (TS-0.5)-b[2])
+    if (Math.abs(b[0] - HALF) + Math.abs(b[1] - HALF) > (TS-0.5)-b[2])
       return 0;
     return brgb(mod((b[2]+2)/(TS/2), 1), Math.floor((b[2]+2)/(TS/2))*0.5, 0);
   }));
@@ -405,7 +420,7 @@ function generateWorlds() {
   // pyramid thing variant
   var pyr2 = blockset.length;
   blockset.add(type = genedit(function (b) {
-    if (Math.abs(b[0] - TL/2) + Math.abs(b[1] - TL/2) > (TS-0.5)-b[2])
+    if (Math.abs(b[0] - HALF) + Math.abs(b[1] - HALF) > (TS-0.5)-b[2])
       return 0;
     return brgb(0, mod((b[2]+2)/(TS/2), 1), Math.floor((b[2]+2)/(TS/2))*0.5);
   }));
@@ -417,7 +432,7 @@ function generateWorlds() {
   // leaves/hedge
   ids.greenery = blockset.length;
   blockset.add(type = genedit(function (b) {
-    var edgeness = Math.max(Math.abs(b[0]-TL/2),Math.abs(b[1]-TL/2),Math.abs(b[2]-TL/2))/(TL/2);
+    var edgeness = f.maxrad(b);
     if (Math.random() >= edgeness*0.2) return 0;
     var green = Math.random() * 0.75 + 0.25;
     var notgreen = Math.random() * green*0.3 + green*0.25;
@@ -435,6 +450,15 @@ function generateWorlds() {
     return (f.xe(b) || f.te(b) || f.be(b)) && b[2] == TL ? brgb(.9,.9,.9) : 0;
   }));
   addRotation(type);
+  
+  // "big chunk of stone" block
+  ids.slab = blockset.length;
+  blockset.add(type = genedit(function (b) {
+    var g = Math.pow(f.maxrad(b), 0.25) * 0.7 + f.rad(b)/HALF * 0.1 + normalish() * 0.2;
+    g = Math.min(1, g * 0.8);
+    return /* b[2] >= 8 ? 0 : */ brgb(g,g,g);
+  }));
+  
 
   // random block types
   ids.firstRandom = blockset.length;
@@ -516,7 +540,7 @@ function generateWorlds() {
         var air = BlockSet.ID_EMPTY;
         var bedrock = BlockSet.ID_BOGUS;
         var ground = 3;
-        var road = 2;
+        var road = ids.slab;
         var building = 8;
         
         var center = [wx/2,mid,wz/2];
@@ -648,10 +672,11 @@ function generateWorlds() {
             return [];
           });
         }
+
+        var roadWidth = 5;
         
         function seedQuadrant(direction) {
           var perp = [direction[2],direction[1],-direction[0]];
-          var roadWidth = 5;
           var buildingOffset = 5;
           var buildingSize = 10;
           
@@ -706,6 +731,7 @@ function generateWorlds() {
           seedQuadrant([0,0,+1]),
           seedQuadrant([0,0,-1]),
         ];
+        fill(madd2y(center, 0, UNIT_PX, roadWidth, UNIT_PZ, roadWidth), madd2y(center, 0, UNIT_NX, roadWidth, UNIT_NZ, roadWidth), road);
         loop();
       })();
       break;
