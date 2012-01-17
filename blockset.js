@@ -61,7 +61,7 @@ var BlockType = (function () {
     // note there is no opportunity here to remove listener, but it is unlikely to be needed.
     var self = this;
     function rebuild() {
-      _recomputeOpacity.call(self);
+      recomputeWorldBlockProperties.call(self);
       self._notify("appearanceChanged");
       return true;
     }
@@ -83,7 +83,7 @@ var BlockType = (function () {
       deletedCircuit: checkCircuits
     });
 
-    _recomputeOpacity.call(this);
+    recomputeWorldBlockProperties.call(this);
     checkCircuits();
     
     Object.seal(this);
@@ -96,33 +96,50 @@ var BlockType = (function () {
     value: null
   });
   
-  // TODO: implement nonstubbily
   BlockType.World.prototype.writeColor =
       function (scale, target, offset) {
-    target[offset] = scale;
-    target[offset+1] = scale;
-    target[offset+2] = scale;
-    target[offset+3] = scale;
+    var color = this._color;
+    target[offset  ] = scale * color[0];
+    target[offset+1] = scale * color[1];
+    target[offset+2] = scale * color[2];
+    target[offset+3] = this.opaque ? scale : 0;
   };
   
-  function _recomputeOpacity() {
-    var tileSize = this.world.wx; // assumed cubical
+  // Internal function: Recalculate all the properties derived from a BlockType.World's world.
+  function recomputeWorldBlockProperties() {
+    // Compute opacity and representative color.
+    var world = this.world;
+    var tileSize = world.wx; // assumed cubical
     var tileLastIndex = tileSize - 1;
     var opaque = true;
+    var color = vec3.create();
+    var colorCount = 0;
     for (var dim = 0; dim < 3; dim++) {
       var ud = mod(dim+1,3);
       var vd = mod(dim+2,3);
       for (var u = 0; u < tileSize; u++)
       for (var v = 0; v < tileSize; v++) {
         var vec = [u,v,0];
-        opaque = opaque && this.world.opaque(vec[dim],vec[ud],vec[vd]);
+        opaque = opaque && world.opaque(vec[dim],vec[ud],vec[vd]);
         vec[2] = tileLastIndex;
-        opaque = opaque && this.world.opaque(vec[dim],vec[ud],vec[vd]);
+        opaque = opaque && world.opaque(vec[dim],vec[ud],vec[vd]);
+        
+        // raycast for color -- TODO use both sides
+        while (!world.opaque(vec[dim],vec[ud],vec[vd]) && vec[2] < tileSize) {
+          vec[2] += 1;
+        }
+        if (vec[2] < tileSize) {
+          var subCubeColor = [];
+          world.gt(vec[dim],vec[ud],vec[vd]).writeColor(1, subCubeColor, 0);
+          vec3.add(color, subCubeColor);
+          colorCount++;
+        }
       }
     }
     this.opaque = opaque;
+    this._color = vec3.scale(color, 1/colorCount); // TODO make property private
     
-    // audio recalc is done async to reduce initial load delay
+    // Schedule audio synthesis.
     var self = this;
     function f() {
       self.sound = CubesAudio.synthBlock(self.world);
