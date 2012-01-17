@@ -594,7 +594,7 @@ function generateWorlds() {
             topWorld.s(x, y, z, material, subdata);
           }
         }
-        // Return a rotation to bring the +z vector to match the given unit vector
+        // Return a rotation to bring the +z vector to match the given axis-aligned unit vector.
         function frontFaceTo(vec) {
           switch (vec3.str(vec)) {
             case "[1, 0, 0]" : return 16+11;
@@ -603,7 +603,7 @@ function generateWorlds() {
             case "[-1, 0, 0]": return 16+8;
             case "[0, -1, 0]": return 4+2;
             case "[0, 0, -1]": return 2;
-            default: throw new Error("invalid direction vector " + vec3.str(vec));
+            default: throw new Error("unsuitable direction vector " + vec3.str(vec));
           }
         }
         function clockwise(v) {
