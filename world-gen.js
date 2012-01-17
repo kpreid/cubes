@@ -521,6 +521,222 @@ function generateWorlds() {
     topWorld.notifyRawEdit();
   }
   
+  function generateCity() {
+    // --- Parameters ---
+    
+    // Blocks
+    var air = BlockSet.ID_EMPTY;
+    var bedrock = BlockSet.ID_BOGUS;
+    var ground = 3; // TODO magic number
+    var road = ids.slab;
+    
+    // Dimensions
+    var roadWidth = 3;
+    var center = [Math.round((wx-1)/2),mid,Math.round((wz-1)/2)];
+
+    // --- Utilities ---
+
+    function runAsyncQueue(initial) {
+      var qin = initial.slice();
+      var qout = [];
+      function loop() {
+        for (var i = 0; i < 30; i++) {
+          if (!qout.length && qin.length) {
+            qout = qin;
+            qout.reverse();
+            qin = [];
+          }
+          if (qout.length) {
+            var add = qout.pop()();
+            qin.push.apply(qin, add);
+          } else {
+            return;
+          }
+        }
+        setTimeout(loop, 1000/80);
+      }
+      loop();
+    }
+
+    function madd(base, delta, scale) {
+      var r = vec3.create();
+      r[0] = base[0] + delta[0] * scale;
+      r[1] = base[1] + delta[1] * scale;
+      r[2] = base[2] + delta[2] * scale;
+      return r;
+    }
+    function maddy(base, sy, d1, s1) {
+      var r = vec3.create();
+      r[0] = base[0] + d1[0] * s1;
+      r[1] = base[1] + d1[1] * s1 + sy;
+      r[2] = base[2] + d1[2] * s1;
+      return r;
+    }
+    function addy(base, sy) {
+      var r = vec3.create(base);
+      r[1] += sy;
+      return r;
+    }
+    function madd2y(base, sy, d1, s1, d2, s2) {
+      var r = vec3.create();
+      r[0] = base[0] + d1[0] * s1 + d2[0] * s2;
+      r[1] = base[1] + d1[1] * s1 + d2[1] * s2 + sy;
+      r[2] = base[2] + d1[2] * s1 + d2[2] * s2;
+      return r;
+    }
+    function getvec(vec) {
+      return topWorld.g(vec[0],vec[1],vec[2]);
+    }        
+    function setvec(vec, val) {
+      topWorld.s(vec[0],vec[1],vec[2],val);
+    }        
+    function fill(corner1, corner2, material, subdata) {
+      var lx = Math.min(corner1[0], corner2[0]);
+      var ly = Math.min(corner1[1], corner2[1]);
+      var lz = Math.min(corner1[2], corner2[2]);
+      var hx = Math.max(corner1[0], corner2[0]);
+      var hy = Math.max(corner1[1], corner2[1]);
+      var hz = Math.max(corner1[2], corner2[2]);
+      for (var x = lx; x <= hx; x++)
+      for (var y = ly; y <= hy; y++)
+      for (var z = lz; z <= hz; z++) {
+        topWorld.s(x, y, z, material, subdata);
+      }
+    }
+    // Return a rotation to bring the +z vector to match the given axis-aligned unit vector.
+    function frontFaceTo(vec) {
+      switch (vec3.str(vec)) {
+        case "[1, 0, 0]" : return 16+11;
+        case "[0, 1, 0]" : return 4;
+        case "[0, 0, 1]" : return 0;
+        case "[-1, 0, 0]": return 16+8;
+        case "[0, -1, 0]": return 4+2;
+        case "[0, 0, -1]": return 2;
+        default: throw new Error("unsuitable direction vector " + vec3.str(vec));
+      }
+    }
+    function clockwise(v) {
+      return vec3.create([-v[2], v[1], v[0]]);
+    }
+    function counterclockwise(v) {
+      return vec3.create([v[2], v[1], -v[0]]);
+    }
+    
+    function roadBuilder(pos, vel, width) {
+      return posLoop(pos, vel, 
+          function (p) { return topWorld.g(p[0],p[1],p[2]) == ground; }, 
+          function (pos) {
+        var perp = counterclockwise(vel);
+        setvec(maddy(pos, 1, perp, -width-1), ids.greenery);
+        setvec(maddy(pos, 1, perp, +width+1), ids.greenery);
+        fill(madd(pos, perp, -width), madd(pos, perp, width), road);
+        return [];
+      });
+    }
+    
+    function posLoop(initial, delta, condition, body, finish) {
+      var pos = vec3.create(initial);
+      
+      function looper() {
+        var extra = body(pos);
+        
+        pos = vec3.add(pos, delta, vec3.create());
+        
+        var after = condition(pos) ? [looper] : finish ? [function () { return finish(pos); }] : [];
+        return extra.concat(after);
+      }
+      
+      return looper;
+    }
+    
+    function buildingBuilder(origin, u, v, usize, vsize) {
+      var buildingFloorHeight = 3 + Math.floor(Math.random() * 3);
+      
+      var material = f.pick([
+        ids.firstRandom+0,
+        ids.firstRandom+1,
+        ids.firstRandom+2,
+        ids.firstRandom+3,
+        ids.slab,
+      ]);
+      var height = origin[1] + Math.floor(Math.random() * (wy-origin[1])/buildingFloorHeight) * buildingFloorHeight;
+      // ground floor
+      fill(addy(origin, -1), madd2y(origin, -1, u, usize-1, v, vsize-1), material);
+      return posLoop(origin, vec3.scale(UNIT_PY, buildingFloorHeight, vec3.create()),
+          function (pos) { return topWorld.g(pos[0],pos[1],pos[2]) == air && pos[1] < height; }, 
+          function (pos) {
+        // building walls ring
+        var high = madd(madd(pos, u, usize-1), v, vsize-1);
+        function buildingWall(worigin, wdir, size) {
+          fill(worigin, maddy(worigin, buildingFloorHeight-2, wdir, size-1), material);
+          fill(madd(worigin, wdir, 1), maddy(worigin, buildingFloorHeight-2, wdir, size-2), ids.glass, frontFaceTo(clockwise(wdir)));
+        }
+        buildingWall(pos, u, usize);
+        buildingWall(high, vec3.scale(u, -1, vec3.create()), usize);
+        buildingWall(madd(pos, u, usize-1), v, vsize);
+        buildingWall(madd(pos, v, vsize-1), vec3.scale(v, -1, vec3.create()), vsize);
+        // ceiling/floor
+        fill(madd(pos, UNIT_PY, buildingFloorHeight-1), madd(high, UNIT_PY, buildingFloorHeight-1), material);
+        return [];
+      }, function (pos) {
+        
+        // doorway
+        var mid1 = madd(origin, u, Math.round(usize/2 - 1));
+        var mid2 = madd(origin, u, Math.round(usize/2 + 0));
+        //console.log("making door", vec3.str(mid1), vec3.str(mdid2));
+        fill(mid1, madd(mid2, UNIT_PY, 1/* door height - 1 */), air);
+        return [];
+      });
+    }
+
+    function seedQuadrant(direction) {
+      var perp = [direction[2],direction[1],-direction[0]];
+      var buildingOffset = 3 + Math.floor(Math.random() * 2);
+      var buildingSize = 6 + Math.floor(Math.random() * 7);
+      
+      var blockBuilder = posLoop(
+          madd(madd(center, perp, roadWidth + buildingOffset), direction, roadWidth + buildingOffset),
+          vec3.scale(direction, buildingSize + buildingOffset, vec3.create()),
+          function (pos) { return topWorld.inBounds(pos[0],pos[1],pos[2]); },
+          function (pos) {
+        return [posLoop(
+            madd(pos, UNIT_PY, 1),
+            vec3.scale(perp, buildingSize + buildingOffset, vec3.create()),
+            function (pos) { return topWorld.inBounds(pos[0],pos[1],pos[2]); },
+            function (pos) {
+          if (Math.random() > 0.5)
+            return [buildingBuilder(pos, direction, perp, buildingSize, buildingSize)];
+          else
+            return [];
+        })];
+      });
+      
+      return function () {
+        return [
+          roadBuilder(
+            madd(center, direction, roadWidth + 1),
+            direction,
+            roadWidth),
+          blockBuilder,
+        ];
+      };
+    }
+    
+    // --- Top-level operations ---
+    
+    topWorld.edit(function (x, y, z) {
+      return y > mid ? air : y < mid ? bedrock : ground;
+    });
+    
+    fill(madd2y(center, 0, UNIT_PX, roadWidth, UNIT_PZ, roadWidth), madd2y(center, 0, UNIT_NX, roadWidth, UNIT_NZ, roadWidth), road);
+    runAsyncQueue([
+      seedQuadrant([+1,0,0]),
+      seedQuadrant([-1,0,0]),
+      seedQuadrant([0,0,+1]),
+      seedQuadrant([0,0,-1]),
+    ]);
+  }
+  
   switch (config.generate_shape.get()) {
     case "fill":
     default:
@@ -536,211 +752,7 @@ function generateWorlds() {
       });
       break;
     case "city":
-      (function () {
-        var air = BlockSet.ID_EMPTY;
-        var bedrock = BlockSet.ID_BOGUS;
-        var ground = 3;
-        var road = ids.slab;
-        var building = 8;
-        
-        var center = [Math.round((wx-1)/2),mid,Math.round((wz-1)/2)];
-
-        topWorld.edit(function (x, y, z) {
-          return y > mid ? air : y < mid ? bedrock : ground;
-        });
-        
-        function madd(base, delta, scale) {
-          var r = vec3.create();
-          r[0] = base[0] + delta[0] * scale;
-          r[1] = base[1] + delta[1] * scale;
-          r[2] = base[2] + delta[2] * scale;
-          return r;
-        }
-        function maddy(base, sy, d1, s1) {
-          var r = vec3.create();
-          r[0] = base[0] + d1[0] * s1;
-          r[1] = base[1] + d1[1] * s1 + sy;
-          r[2] = base[2] + d1[2] * s1;
-          return r;
-        }
-        function addy(base, sy) {
-          var r = vec3.create(base);
-          r[1] += sy;
-          return r;
-        }
-        function madd2y(base, sy, d1, s1, d2, s2) {
-          var r = vec3.create();
-          r[0] = base[0] + d1[0] * s1 + d2[0] * s2;
-          r[1] = base[1] + d1[1] * s1 + d2[1] * s2 + sy;
-          r[2] = base[2] + d1[2] * s1 + d2[2] * s2;
-          return r;
-        }
-        function getvec(vec) {
-          return topWorld.g(vec[0],vec[1],vec[2]);
-        }        
-        function setvec(vec, val) {
-          topWorld.s(vec[0],vec[1],vec[2],val);
-        }        
-        function fill(corner1, corner2, material, subdata) {
-          var lx = Math.min(corner1[0], corner2[0]);
-          var ly = Math.min(corner1[1], corner2[1]);
-          var lz = Math.min(corner1[2], corner2[2]);
-          var hx = Math.max(corner1[0], corner2[0]);
-          var hy = Math.max(corner1[1], corner2[1]);
-          var hz = Math.max(corner1[2], corner2[2]);
-          for (var x = lx; x <= hx; x++)
-          for (var y = ly; y <= hy; y++)
-          for (var z = lz; z <= hz; z++) {
-            topWorld.s(x, y, z, material, subdata);
-          }
-        }
-        // Return a rotation to bring the +z vector to match the given axis-aligned unit vector.
-        function frontFaceTo(vec) {
-          switch (vec3.str(vec)) {
-            case "[1, 0, 0]" : return 16+11;
-            case "[0, 1, 0]" : return 4;
-            case "[0, 0, 1]" : return 0;
-            case "[-1, 0, 0]": return 16+8;
-            case "[0, -1, 0]": return 4+2;
-            case "[0, 0, -1]": return 2;
-            default: throw new Error("unsuitable direction vector " + vec3.str(vec));
-          }
-        }
-        function clockwise(v) {
-          return vec3.create([-v[2], v[1], v[0]]);
-        }
-        function counterclockwise(v) {
-          return vec3.create([v[2], v[1], -v[0]]);
-        }
-        
-        function roadBuilder(pos, vel, width) {
-          return posLoop(pos, vel, 
-              function (p) { return topWorld.g(p[0],p[1],p[2]) == ground; }, 
-              function (pos) {
-            var perp = counterclockwise(vel);
-            setvec(maddy(pos, 1, perp, -width-1), ids.greenery);
-            setvec(maddy(pos, 1, perp, +width+1), ids.greenery);
-            fill(madd(pos, perp, -width), madd(pos, perp, width), road);
-            return [];
-          });
-        }
-        
-        function posLoop(initial, delta, condition, body, finish) {
-          var pos = vec3.create(initial);
-          
-          function looper() {
-            var extra = body(pos);
-            
-            pos = vec3.add(pos, delta, vec3.create());
-            
-            var after = condition(pos) ? [looper] : finish ? [function () { return finish(pos); }] : [];
-            return extra.concat(after);
-          }
-          
-          return looper;
-        }
-        
-        function buildingBuilder(origin, u, v, usize, vsize) {
-          var buildingFloorHeight = 3 + Math.floor(Math.random() * 3);
-          
-          var material = f.pick([
-            ids.firstRandom+0,
-            ids.firstRandom+1,
-            ids.firstRandom+2,
-            ids.firstRandom+3,
-            ids.slab,
-          ]);
-          var height = origin[1] + Math.floor(Math.random() * (wy-origin[1])/buildingFloorHeight) * buildingFloorHeight;
-          // ground floor
-          fill(addy(origin, -1), madd2y(origin, -1, u, usize-1, v, vsize-1), material);
-          return posLoop(origin, vec3.scale(UNIT_PY, buildingFloorHeight, vec3.create()),
-              function (pos) { return topWorld.g(pos[0],pos[1],pos[2]) == air && pos[1] < height; }, 
-              function (pos) {
-            // building walls ring
-            var high = madd(madd(pos, u, usize-1), v, vsize-1);
-            function buildingWall(worigin, wdir, size) {
-              fill(worigin, maddy(worigin, buildingFloorHeight-2, wdir, size-1), material);
-              fill(madd(worigin, wdir, 1), maddy(worigin, buildingFloorHeight-2, wdir, size-2), ids.glass, frontFaceTo(clockwise(wdir)));
-            }
-            buildingWall(pos, u, usize);
-            buildingWall(high, vec3.scale(u, -1, vec3.create()), usize);
-            buildingWall(madd(pos, u, usize-1), v, vsize);
-            buildingWall(madd(pos, v, vsize-1), vec3.scale(v, -1, vec3.create()), vsize);
-            // ceiling/floor
-            fill(madd(pos, UNIT_PY, buildingFloorHeight-1), madd(high, UNIT_PY, buildingFloorHeight-1), material);
-            return [];
-          }, function (pos) {
-            
-            // doorway
-            var mid1 = madd(origin, u, Math.round(usize/2 - 1));
-            var mid2 = madd(origin, u, Math.round(usize/2 + 0));
-            //console.log("making door", vec3.str(mid1), vec3.str(mdid2));
-            fill(mid1, madd(mid2, UNIT_PY, 1/* door height - 1 */), air);
-            return [];
-          });
-        }
-
-        var roadWidth = 3;
-        
-        function seedQuadrant(direction) {
-          var perp = [direction[2],direction[1],-direction[0]];
-          var buildingOffset = 3 + Math.floor(Math.random() * 2);
-          var buildingSize = 6 + Math.floor(Math.random() * 7);
-          
-          var blockBuilder = posLoop(
-              madd(madd(center, perp, roadWidth + buildingOffset), direction, roadWidth + buildingOffset),
-              vec3.scale(direction, buildingSize + buildingOffset, vec3.create()),
-              function (pos) { return topWorld.inBounds(pos[0],pos[1],pos[2]); },
-              function (pos) {
-            return [posLoop(
-                madd(pos, UNIT_PY, 1),
-                vec3.scale(perp, buildingSize + buildingOffset, vec3.create()),
-                function (pos) { return topWorld.inBounds(pos[0],pos[1],pos[2]); },
-                function (pos) {
-              if (Math.random() > 0.5)
-                return [buildingBuilder(pos, direction, perp, buildingSize, buildingSize)];
-              else
-                return [];
-            })];
-          });
-          
-          return function () {
-            return [
-              roadBuilder(
-                madd(center, direction, roadWidth + 1),
-                direction,
-                roadWidth),
-              blockBuilder,
-            ];
-          };
-        }
-        
-        var qin = [], qout = [];
-        function loop() {
-          for (var i = 0; i < 30; i++) {
-            if (!qout.length && qin.length) {
-              qout = qin;
-              qout.reverse();
-              qin = [];
-            }
-            if (qout.length) {
-              var add = qout.pop()();
-              qin.push.apply(qin, add);
-            } else {
-              return;
-            }
-          }
-          setTimeout(loop, 1000/80);
-        }
-        qin = [
-          seedQuadrant([+1,0,0]),
-          seedQuadrant([-1,0,0]),
-          seedQuadrant([0,0,+1]),
-          seedQuadrant([0,0,-1]),
-        ];
-        fill(madd2y(center, 0, UNIT_PX, roadWidth, UNIT_PZ, roadWidth), madd2y(center, 0, UNIT_NX, roadWidth, UNIT_NZ, roadWidth), road);
-        loop();
-      })();
+      generateCity();
       break;
   }
   
