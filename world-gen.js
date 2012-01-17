@@ -543,8 +543,7 @@ function generateWorlds() {
         var road = ids.slab;
         var building = 8;
         
-        var center = [wx/2,mid,wz/2];
-        var buildingFloorHeight = 4; // 3 empty space, 1 floor
+        var center = [Math.round((wx-1)/2),mid,Math.round((wz-1)/2)];
 
         topWorld.edit(function (x, y, z) {
           return y > mid ? air : y < mid ? bedrock : ground;
@@ -642,7 +641,15 @@ function generateWorlds() {
         }
         
         function buildingBuilder(origin, u, v, usize, vsize) {
-          var material = ids.firstRandom + Math.floor(Math.random() * 3);
+          var buildingFloorHeight = 3 + Math.floor(Math.random() * 3);
+          
+          var material = f.pick([
+            ids.firstRandom+0,
+            ids.firstRandom+1,
+            ids.firstRandom+2,
+            ids.firstRandom+3,
+            ids.slab,
+          ]);
           var height = origin[1] + Math.floor(Math.random() * (wy-origin[1])/buildingFloorHeight) * buildingFloorHeight;
           // ground floor
           fill(addy(origin, -1), madd2y(origin, -1, u, usize-1, v, vsize-1), material);
@@ -673,12 +680,12 @@ function generateWorlds() {
           });
         }
 
-        var roadWidth = 5;
+        var roadWidth = 3;
         
         function seedQuadrant(direction) {
           var perp = [direction[2],direction[1],-direction[0]];
-          var buildingOffset = 5;
-          var buildingSize = 10;
+          var buildingOffset = 3 + Math.floor(Math.random() * 2);
+          var buildingSize = 6 + Math.floor(Math.random() * 7);
           
           var blockBuilder = posLoop(
               madd(madd(center, perp, roadWidth + buildingOffset), direction, roadWidth + buildingOffset),
