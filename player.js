@@ -85,24 +85,36 @@ var Player = (function () {
       }
     });
     
+    var debugHitAABBs = [];
     var aabbR = new renderer.RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
       // TODO: Would be more efficient to use the modelview matrix than recomputing this?
       if (!currentPlace) return;
-      [[0,1,2], [1,2,0], [2,0,1]].forEach(function (dims) {
-        for (var du = 0; du < 2; du++)
-        for (var dv = 0; dv < 2; dv++)
-        for (var dw = 0; dw < 2; dw++) {
-          var p = vec3.create(currentPlace.pos);
-          p[dims[0]] += playerAABB[dims[0]][du];
-          p[dims[1]] += playerAABB[dims[1]][dv];
-          p[dims[2]] += playerAABB[dims[2]][dw];
-          
-          vertices.push(p[0],p[1],p[2]);
-          normals.push(0,0,0);
-          colors.push(0,0,1,1);
-        }
-      });
-    });
+
+      function renderAABB(offset, aabb, r, g, b) {
+        [[0,1,2], [1,2,0], [2,0,1]].forEach(function (dims) {
+          for (var du = 0; du < 2; du++)
+          for (var dv = 0; dv < 2; dv++)
+          for (var dw = 0; dw < 2; dw++) {
+            var p = vec3.create(offset);
+            p[dims[0]] += aabb[dims[0]][du];
+            p[dims[1]] += aabb[dims[1]][dv];
+            p[dims[2]] += aabb[dims[2]][dw];
+
+            vertices.push(p[0],p[1],p[2]);
+            normals.push(0,0,0);
+            colors.push(r,g,b,1);
+          }
+        });
+      }
+      renderAABB(currentPlace.pos, playerAABB, 0,0,1);
+      debugHitAABBs.forEach(function (aabb) {
+        renderAABB([0,0,0], aabb, 0,1,0);
+      })
+    }, {aroundDraw: function (draw) {
+      gl.lineWidth(2);
+      draw();
+      gl.lineWidth(1); // TODO instead of restoring, make line width garbage-by-default
+    }});
   
     function aimChanged() {
       scheduleDraw(); // because this routine is also 'view direction changed'
@@ -186,15 +198,21 @@ var Player = (function () {
           var type = iworld.gt(x,y,z);
           if (!type.solid) continue;
           if (ignore[str = x+","+y+","+z]) continue;
-          if (!type.opaque && type.world) {
-            if (!intersectWorld(
-                  scaleAABB(type.world.wx, offsetAABB([-x, -y, -z], aabb)),
-                  type.world)) continue;
-            // TODO: Return information about collision boundaries, so that collision response can be correct
+          if (!type.opaque && type.world && !iworld.gRot(x,y,z) /* rotating-and-unrotating not yet supported */) {
+            var scale = type.world.wx;
+            var subhit = intersectWorld(
+                  scaleAABB(scale, offsetAABB([-x, -y, -z], aabb)),
+                  type.world);
+            if (subhit == null) continue;
+            for (var substr in subhit) {
+              if (!subhit.hasOwnProperty(substr)) continue;
+              hit[str+":"+substr] = offsetAABB([x, y, z], scaleAABB(1/scale, subhit[substr]));
+              hitCount++;
+            }
+          } else {
+            hit[str] = [[x,x+1],[y,y+1],[z,z+1]];
+            hitCount++;
           }
-
-          hit[str] = [x,y,z];
-          hitCount++;
         }
         return hitCount > 0 ? hit : null;
       }
@@ -202,6 +220,24 @@ var Player = (function () {
       function intersectPlayerAt(pos, ignore) {
         return intersectWorld(offsetAABB(pos, playerAABB), world, ignore);
       }
+      
+      function unionHits(hit) {
+        var union = [[Infinity,-Infinity],[Infinity,-Infinity],[Infinity,-Infinity]];
+        for (var k in hit) {
+          if (!hit.hasOwnProperty(k)) continue;
+          var aabb = hit[k];
+          debugHitAABBs.push(aabb); // TODO: misplaced for debug
+          union[0][0] = Math.min(union[0][0], aabb[0][0]);
+          union[0][1] = Math.max(union[0][1], aabb[0][1]);
+          union[1][0] = Math.min(union[1][0], aabb[1][0]);
+          union[1][1] = Math.max(union[1][1], aabb[1][1]);
+          union[2][0] = Math.min(union[2][0], aabb[2][0]);
+          union[2][1] = Math.max(union[2][1], aabb[2][1]);
+        }
+        return union;
+      }
+      
+      debugHitAABBs = [];
       
       var alreadyColliding = intersectPlayerAt(curPos);
       
@@ -211,23 +247,18 @@ var Player = (function () {
       var nextPosIncr = vec3.create(curPos);
       for (var dim = 0; dim < 3; dim++) {
         var dir = curVel[dim] >= 0 ? 1 : 0;
-        var front = nextPos[dim] + playerAABB[dim][dir];
-        var partial = vec3.create(nextPosIncr);
-        partial[dim] = nextPos[dim]; // TODO: Sample multiple times if velocity exceeds 1 block/step
-        //console.log(dir, dim, playerAABB[dim][dir], front, partial);
+        nextPosIncr[dim] = nextPos[dim]; // TODO: Sample multiple times if velocity exceeds 1 block/step
+        //console.log(dir, dim, playerAABB[dim][dir], front, nextPosIncr);
         var hit;
-        if ((hit = intersectPlayerAt(partial, alreadyColliding))) {
-          //console.log("clamped", dim);
-          nextPosIncr[dim] = dir 
-            ? Math.ceil(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 - EPSILON
-            : Math.floor(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 + EPSILON;
-          curVel[dim] = 0;
+        if ((hit = intersectPlayerAt(nextPosIncr, alreadyColliding))) {
+          var hitAABB = unionHits(hit); // TODO this is overkill, we only need one dimension
+          var surfaceOffset = hitAABB[dim][1-dir] - (nextPosIncr[dim] + playerAABB[dim][dir]);
+          nextPosIncr[dim] += surfaceOffset - (dir ? 1 : -1) * EPSILON;
+          curVel[dim] /= 10;
           if (dim == 1 && dir == 0) {
             currentPlace.standingOn = hit || {};
             currentPlace.flying = false;
           }
-        } else {
-          nextPosIncr[dim] = nextPos[dim];          
         }
       }
       
@@ -246,16 +277,19 @@ var Player = (function () {
       }
       aabbR.recompute();
       
+      // TODO this became a mess when AABB-base collision was introduced
       var seen = {};
       for (var k in currentPlace.standingOn || {}) {
         if (!currentPlace.standingOn.hasOwnProperty(k)) continue;
-        var cube = currentPlace.standingOn[k];
+        var cubeStr = k.split(":")[0].split(",");
+        var cube = [parseInt(cubeStr[0],10), parseInt(cubeStr[1],10), parseInt(cubeStr[2],10)];
         seen[cube] = true;
         world.setStandingOn(cube, true);
       }
       for (var k in previousStandingOn || {}) {
         if (!previousStandingOn.hasOwnProperty(k)) continue;
-        var cube = previousStandingOn[k];
+        var cubeStr = k.split(":")[0].split(",");
+        var cube = [parseInt(cubeStr[0],10), parseInt(cubeStr[1],10), parseInt(cubeStr[2],10)];
         if (!seen[cube]) {
           world.setStandingOn(cube, false);
         }

@@ -296,6 +296,17 @@ function scaleAABB(scale, aabb) {
             scale * aabb[2][1]]];
 }
 
+function rotateAABB(rotation, aabb) {
+  var v0 = applyCubeSymmetry(rotation, 0, [aabb[0][0], aabb[1][0], aabb[2][0]]);
+  var v1 = applyCubeSymmetry(rotation, 0, [aabb[0][1], aabb[1][1], aabb[2][1]]);
+  return  [[v0[0],
+            v1[0]],
+           [v0[1],
+            v1[1]],
+           [v0[2],
+            v1[2]]];
+}
+
 // Given an element, replace its contents with a text node and return that, so that the element's text can be updated by setting the .data property of the result.
 function dynamicText(elem) {
   "use strict";
