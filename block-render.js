@@ -75,9 +75,6 @@ function BlockRenderer(blockSet, renderer) {
     return imageData;
   }
   
-  // TODO: This is a workaround for some glitch that happens only on Chrome (17.0.938.0), which causes the first block rendered to not appear.
-  blockToImageData(1, document.createElement("canvas").getContext("2d"));
-
   return {
     blockToImageData: blockToImageData,
     deleteResources: function () {
