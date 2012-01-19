@@ -9,6 +9,7 @@ var Player = (function () {
   var FLYING_SPEED = 10; // cubes/s
   var GRAVITY = 20; // cubes/s^2
   var JUMP_SPEED = 8; // cubes/s
+  var MAX_STEP_UP = 0.57; // cubes
   
   var playerAABB = [
     [-.35, .35], // x
@@ -35,6 +36,7 @@ var Player = (function () {
       this.yaw = Math.PI/4 * 5;
       this.standingOn = [];
       this.flying = false;
+      this.cameraYLag = 0;
 
       // Selection
       this.selection = null;
@@ -245,19 +247,35 @@ var Player = (function () {
       var previousStandingOn = currentPlace.standingOn;
       currentPlace.standingOn = null;
       var nextPosIncr = vec3.create(curPos);
-      for (var dim = 0; dim < 3; dim++) {
+      for (var dimi = 0; dimi < 3; dimi++) {
+        var dim = [1,0,2][dimi]; // TODO: doing the dims in another order makes the slope walking glitch out, but I don't understand *why*.
         var dir = curVel[dim] >= 0 ? 1 : 0;
         nextPosIncr[dim] = nextPos[dim]; // TODO: Sample multiple times if velocity exceeds 1 block/step
         //console.log(dir, dim, playerAABB[dim][dir], front, nextPosIncr);
         var hit;
         if ((hit = intersectPlayerAt(nextPosIncr, alreadyColliding))) {
-          var hitAABB = unionHits(hit); // TODO this is overkill, we only need one dimension
-          var surfaceOffset = hitAABB[dim][1-dir] - (nextPosIncr[dim] + playerAABB[dim][dir]);
-          nextPosIncr[dim] += surfaceOffset - (dir ? 1 : -1) * EPSILON;
-          curVel[dim] /= 10;
-          if (dim == 1 && dir == 0) {
-            currentPlace.standingOn = hit || {};
-            currentPlace.flying = false;
+          var hitAABB = unionHits(hit);
+          resolveDirection: {
+            // Walk-up-slopes
+            if (dim != 1 /*moving horizontally*/ && currentPlace.standingOn /*not in air*/) {
+              var upward = vec3.create(nextPosIncr);
+              upward[1] = hitAABB[1][1] - playerAABB[1][0] + EPSILON;
+              var delta = upward[1] - nextPosIncr[1];
+              //console.log("upward test", delta, !!intersectPlayerAt(upward));
+              if (delta > 0 && delta < MAX_STEP_UP && !intersectPlayerAt(upward)) {
+                currentPlace.cameraYLag += delta;
+                nextPosIncr = upward;
+                break resolveDirection;
+              }
+            }
+          
+            var surfaceOffset = hitAABB[dim][1-dir] - (nextPosIncr[dim] + playerAABB[dim][dir]);
+            nextPosIncr[dim] += surfaceOffset - (dir ? 1 : -1) * EPSILON;
+            curVel[dim] /= 10;
+            if (dim == 1 && dir == 0) {
+              currentPlace.standingOn = hit || {};
+              currentPlace.flying = false;
+            }
           }
         }
       }
@@ -310,6 +328,8 @@ var Player = (function () {
       },
       applyViewTranslation: function (matrix) {
         var positionTrans = vec3.negate(currentPlace.pos, vec3.create());
+        positionTrans[1] += currentPlace.cameraYLag;
+        currentPlace.cameraYLag *= 0.75; /*Math.exp(-timestep*10) TODO we should be like this */
         mat4.translate(matrix, positionTrans);
       },
       getPosition: function() {
