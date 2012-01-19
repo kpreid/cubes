@@ -6,7 +6,7 @@ var Renderer = (function () {
   
   var DEBUG_GL = false;
   
-  function Renderer(canvas, scheduleDraw) {
+  function Renderer(canvas, shaders, scheduleDraw) {
     //canvas = WebGLDebugUtils.makeLostContextSimulatingCanvas(canvas);
     //canvas.loseContextInNCalls(5000);
     //canvas.setRestoreTimeout(2000);
@@ -39,8 +39,8 @@ var Renderer = (function () {
       var decls = {};
       
       prepareProgram(gl,
-                     prepareShader(gl, "shader-vs", decls),
-                     prepareShader(gl, "shader-fs", decls),
+                     prepareShader(gl, gl.VERTEX_SHADER, shaders.vertex, decls),
+                     prepareShader(gl, gl.FRAGMENT_SHADER, shaders.fragment, decls),
                      attribs, uniforms);          
       
       // Mostly-constant GL state
@@ -589,6 +589,18 @@ var Renderer = (function () {
     Error.call(this);
   };
   Renderer.NoWebGLError.prototype = Object.create(Error.prototype);
+  
+  Renderer.fetchShaders = function (callback) {
+    var f, v;
+    
+    fetchResource("vertex.glsl", "text", function (data) { v = data; check(); });
+    fetchResource("fragment.glsl", "text", function (data) { f = data; check(); });
+    function check() {
+      if (f !== undefined && v !== undefined) {
+        callback(Object.freeze({vertex: v, fragment: f}));
+      }
+    }
+  };
   
   return Object.freeze(Renderer);
 })();

@@ -218,15 +218,10 @@ var UNIT_NX = vec3.create([-1,0,0]);
 var UNIT_NY = vec3.create([0,-1,0]);
 var UNIT_NZ = vec3.create([0,0,-1]);
 
-function prepareShader(gl, id, declarations) {
+function prepareShader(gl, type, text, declarations) {
   // See note in license statement at the top of this file.  
   "use strict";
-  var scriptElement = document.getElementById(id);
-  var text = "";
-  for (var k = scriptElement.firstChild; k !== null; k = k.nextSibling)
-    if (k.nodeType == 3)
-      text += k.textContent;
-   
+  
   var prelude = "";
   for (var prop in declarations) {
     var value = declarations[prop];
@@ -236,14 +231,7 @@ function prepareShader(gl, id, declarations) {
     text = prelude + "#line 1\n" + text;
   }
   
-  var shader;
-  if (scriptElement.type == "x-shader/x-fragment") {
-    shader = gl.createShader(gl.FRAGMENT_SHADER);
-  } else if (scriptElement.type == "x-shader/x-vertex") {
-    shader = gl.createShader(gl.VERTEX_SHADER);
-  } else {
-    throw new Error("unknown shader script type");
-  }
+  var shader = gl.createShader(type);
   
   gl.shaderSource(shader, text);
   gl.compileShader(shader);
@@ -508,4 +496,30 @@ ProgressBar.prototype.setByTodoCount = function (count) {
   this.set(1 - count/this._rangeEstimate); // if this produces +Infinity that's fine
 };
 
-
+// 'type' is an xhr.responseType value such as 'text' or 'arraybuffer'
+// The callback will be called with parameters (response), or (null)
+// in the event of a failure.
+function fetchResource(url, type, callback) {
+  "use strict";
+  // TODO: review this code
+  if (typeof console !== "undefined")
+    console.log("Fetching", url);
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", url, true);
+  xhr.responseType = type;
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState != XMLHttpRequest.DONE) {
+      return;
+    }
+    if (typeof console !== "undefined")
+      console.log("completed", url);
+    if (xhr.status == 200) {
+      callback(xhr.response);
+    } else {
+      if (typeof console !== "undefined")
+        console.error("XHR fail:", xhr.readyState, xhr.status);
+      callback(null);
+    }
+  };
+  xhr.send(null);
+}

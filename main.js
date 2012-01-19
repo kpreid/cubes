@@ -225,7 +225,7 @@ var CubesMain = (function () {
               t0 = t1;
             } else {
               try {
-                if (actions[i]() === ABORT) return;
+                if (actions[i](function () { sub(i+1); }) === ABORT) return;
               } catch (e) {
                 catcher(e);
               }
@@ -243,6 +243,7 @@ var CubesMain = (function () {
       cursorInfo = dynamicText(cursorInfoElem);
       chunkProgressBar = new ProgressBar(document.getElementById("chunks-progress-bar"));
       audioProgressBar = new ProgressBar(document.getElementById("audio-progress-bar"));
+      var shaders;
 
       sequence([
         function () {
@@ -251,12 +252,20 @@ var CubesMain = (function () {
             document.getElementById("feature-error-text").appendChild(document.createTextNode("ECMAScript 5 property accessors on frozen objects"));
           }
         },
+        "Downloading resources...",
+        function (cont) {
+          Renderer.fetchShaders(function (s) {
+            shaders = s;
+            cont();
+          });
+          return ABORT; // actually continue by calling cont()
+        },
         "Setting up WebGL...",
         function () {
           
           theCanvas = document.getElementById('view-canvas');
           try {
-          renderer = main.renderer = new Renderer(theCanvas, scheduleDraw);
+          renderer = main.renderer = new Renderer(theCanvas, shaders, scheduleDraw);
           } catch (e) {
             if (e instanceof Renderer.NoWebGLError) {
               document.getElementById("webgl-error-notice").style.removeProperty("display");
