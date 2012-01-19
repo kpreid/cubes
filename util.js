@@ -278,6 +278,24 @@ function intersectAABB(a1, a2) {
   return true;
 }
 
+function offsetAABB(offset, aabb) {
+  return [[offset[0] + aabb[0][0],
+           offset[0] + aabb[0][1]],
+          [offset[1] + aabb[1][0],
+           offset[1] + aabb[1][1]],
+          [offset[2] + aabb[2][0],
+           offset[2] + aabb[2][1]]];
+}
+
+function scaleAABB(scale, aabb) {
+  return  [[scale * aabb[0][0],
+            scale * aabb[0][1]],
+           [scale * aabb[1][0],
+            scale * aabb[1][1]],
+           [scale * aabb[2][0],
+            scale * aabb[2][1]]];
+}
+
 // Given an element, replace its contents with a text node and return that, so that the element's text can be updated by setting the .data property of the result.
 function dynamicText(elem) {
   "use strict";

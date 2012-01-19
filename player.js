@@ -172,36 +172,38 @@ var Player = (function () {
       
       // --- collision ---
 
-      function playerRelativeAABB(offset) {
-        return [[offset[0] + playerAABB[0][0],
-                 offset[0] + playerAABB[0][1]],
-                [offset[1] + playerAABB[1][0],
-                 offset[1] + playerAABB[1][1]],
-                [offset[2] + playerAABB[2][0],
-                 offset[2] + playerAABB[2][1]]];
-      }
-      
-      function intersectWorld(vec, ignore) {
+      function intersectWorld(aabb, iworld, ignore) {
         ignore = ignore || {};
         var hit = {};
         var hitCount = 0;
         var str;        
-        var pr = playerRelativeAABB(vec);
-        var hx = Math.floor(pr[0][1]);
-        var hy = Math.floor(pr[1][1]);
-        var hz = Math.floor(pr[2][1]);
-        for (var x = Math.floor(pr[0][0]); x <= hx; x++)
-        for (var y = Math.floor(pr[1][0]); y <= hy; y++)
-        for (var z = Math.floor(pr[2][0]); z <= hz; z++) {
-          if (world.solid(x,y,z) && !ignore[str = x+","+y+","+z]) {
-            hit[str] = [x,y,z];
-            hitCount++;
+        var hx = Math.floor(aabb[0][1]);
+        var hy = Math.floor(aabb[1][1]);
+        var hz = Math.floor(aabb[2][1]);
+        for (var x = Math.floor(aabb[0][0]); x <= hx; x++)
+        for (var y = Math.floor(aabb[1][0]); y <= hy; y++)
+        for (var z = Math.floor(aabb[2][0]); z <= hz; z++) {
+          var type = iworld.gt(x,y,z);
+          if (!type.solid) continue;
+          if (ignore[str = x+","+y+","+z]) continue;
+          if (!type.opaque && type.world) {
+            if (!intersectWorld(
+                  scaleAABB(type.world.wx, offsetAABB([-x, -y, -z], aabb)),
+                  type.world)) continue;
+            // TODO: Return information about collision boundaries, so that collision response can be correct
           }
+
+          hit[str] = [x,y,z];
+          hitCount++;
         }
         return hitCount > 0 ? hit : null;
       }
       
-      var alreadyColliding = intersectWorld(curPos);
+      function intersectPlayerAt(pos, ignore) {
+        return intersectWorld(offsetAABB(pos, playerAABB), world, ignore);
+      }
+      
+      var alreadyColliding = intersectPlayerAt(curPos);
       
       // To resolve diagonal movement, we treat it as 3 orthogonal moves, updating nextPosIncr.
       var previousStandingOn = currentPlace.standingOn;
@@ -214,7 +216,7 @@ var Player = (function () {
         partial[dim] = nextPos[dim]; // TODO: Sample multiple times if velocity exceeds 1 block/step
         //console.log(dir, dim, playerAABB[dim][dir], front, partial);
         var hit;
-        if ((hit = intersectWorld(partial, alreadyColliding))) {
+        if ((hit = intersectPlayerAt(partial, alreadyColliding))) {
           //console.log("clamped", dim);
           nextPosIncr[dim] = dir 
             ? Math.ceil(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 - EPSILON
