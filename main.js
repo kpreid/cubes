@@ -255,6 +255,12 @@ var CubesMain = (function () {
         "Downloading resources...",
         function (cont) {
           Renderer.fetchShaders(function (s) {
+            if (s === null) {
+              // TODO abstract error handling; this duplicates the sequence catcher
+              document.getElementById("load-error-notice").style.removeProperty("display");
+              document.getElementById("load-error-text").appendChild(document.createTextNode("Failed to download shader files."));
+              return;
+            }
             shaders = s;
             cont();
           });

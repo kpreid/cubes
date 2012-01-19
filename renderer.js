@@ -607,7 +607,11 @@ var Renderer = (function () {
     fetchResource("fragment.glsl", "text", function (data) { f = data; check(); });
     function check() {
       if (f !== undefined && v !== undefined) {
-        callback(Object.freeze({vertex: v, fragment: f}));
+        if (f === null || v === null) {
+          callback(null); // TODO better error reporting
+        } else {
+          callback(Object.freeze({vertex: v, fragment: f}));
+        }
       }
     }
   };
