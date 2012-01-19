@@ -225,6 +225,9 @@ function prepareShader(gl, type, text, declarations) {
   var prelude = "";
   for (var prop in declarations) {
     var value = declarations[prop];
+    if (typeof value == "boolean") {
+      value = value ? 1 : 0; // GLSL preprocessor doesn't do booleans
+    }
     prelude += "#define " + prop + " (" + value + ")\n";
   }
   if (prelude !== "") {
@@ -256,8 +259,6 @@ function prepareProgram(gl, vertexShader, fragmentShader, attribs, uniforms) {
     throw new Error(gl.getProgramInfoLog(program));
   }
 
-  gl.useProgram(program);
-  
   for (var i = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES) - 1; i >= 0; i--) {
     var name = gl.getActiveAttrib(program, i).name;
     attribs[name] = gl.getAttribLocation(program, name);
@@ -266,6 +267,8 @@ function prepareProgram(gl, vertexShader, fragmentShader, attribs, uniforms) {
     var name = gl.getActiveUniform(program, i).name;
     uniforms[name] = gl.getUniformLocation(program, name);
   }
+  
+  return program;
 }
 
 function intersectAABB(a1, a2) {

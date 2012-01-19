@@ -33,25 +33,37 @@ var Renderer = (function () {
     
     // --- Internals ---
     
-    function initContext() {
-      contextSerial++;
+    function buildProgram() {
       
-      var decls = {};
+      attribs = {};
+      uniforms = {};
       
-      prepareProgram(gl,
+      var decls = {
+        LIGHTING: config.lighting.get(),
+        BUMP_MAPPING: config.bumpMapping.get()
+      };
+      
+      var program = prepareProgram(gl,
                      prepareShader(gl, gl.VERTEX_SHADER, shaders.vertex, decls),
                      prepareShader(gl, gl.FRAGMENT_SHADER, shaders.fragment, decls),
                      attribs, uniforms);          
-      
-      // Mostly-constant GL state
+      gl.useProgram(program);
+ 
+      // Constant program-specific state
       gl.enableVertexAttribArray(attribs.aVertexPosition);
       gl.enableVertexAttribArray(attribs.aVertexNormal);
+    }
+    
+    function initContext() {
+      contextSerial++;
+      
+      buildProgram();
+      
+      // Mostly-constant GL state
       gl.enable(gl.DEPTH_TEST);
       gl.enable(gl.CULL_FACE);
       
       // Config-based GL state
-      sendLighting();
-      sendBumpMapping();
       sendViewUniforms();
     }
     
@@ -160,21 +172,19 @@ var Renderer = (function () {
 
     // --- Config bindings ---
     
-    var sendLighting = config.lighting.whenChanged(function (v) {
-      gl.uniform1i(uniforms.uLighting, v ? 1 : 0);
+    var rebuildProgramL = {changed: function (v) {
+      buildProgram();
+      updateViewport(); // note this is only to re-send uPixelsPerClipUnit; TODO have better updating scheme
       scheduleDraw();
       return true;
-    });
-    var sendBumpMapping = config.bumpMapping.whenChanged(function (v) {
-      gl.uniform1i(uniforms.uBumpMapping, v ? 1 : 0);
-      scheduleDraw();
-      return true;
-    });
+    }};
     var projectionL = {changed: function (v) {
       updateProjection();
       scheduleDraw();
       return true;
     }};
+    config.lighting.listen(rebuildProgramL);
+    config.bumpMapping.listen(rebuildProgramL);
     config.fov.listen(projectionL);
     config.renderDistance.listen(projectionL);
 

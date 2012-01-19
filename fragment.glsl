@@ -14,8 +14,6 @@ uniform bool uTextureEnabled;
 uniform sampler2D uSampler;
 uniform float uTileSize; // always integer, but used as float
 
-uniform bool uLighting;
-uniform bool uBumpMapping;
 uniform bool uStipple;
 uniform bool uFocusCue;
 
@@ -50,12 +48,12 @@ float lighting() {
   // 'cell' is a vector with components in [-1.0, 1.0] indicating this point's
   // offset from the center of its sub-cube
   vec3 normal;
-  if (uBumpMapping) {
+#if BUMP_MAPPING
     vec3 cell = (mod(vGridPosition * uTileSize + cModEpsilon, 1.0) - vec3(0.5)) * 2.0;
     normal = normalize(vNormal + cTileCurvature / max(1.0, vDistanceFromEye / cTileBumpDistance) * pow7vec3(cell));
-  } else {
+#else
     normal = vNormal;
-  }
+#endif
   return cLightAmbient + lightEnv(normal);
 }
 
@@ -65,11 +63,13 @@ void main(void) {
     
     // color/lighting calculation
     // if the vertex normal is zero, then that means "do not use lighting"
-    vec4 color = vec4(vec3(vColor) * 
-        (!uLighting || vNormal == vec3(0,0,0)
-          ? 1.0 
-          : lighting()), vColor.a);
-
+#if LIGHTING
+    vec4 color = vec4(vec3(vColor) * (vNormal == vec3(0,0,0) ? 1.0 : lighting()),
+                      vColor.a);
+#else
+    vec4 color = vColor;
+#endif
+    
     if (uTextureEnabled) {
       color *= texture2D(uSampler, vTextureCoord);
 
