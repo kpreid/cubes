@@ -170,46 +170,38 @@ var Player = (function () {
       var nextPos = vec3.scale(currentPlace.vel, timestep, vec3.create());
       vec3.add(nextPos, curPos);
       
-      // collision
-      function sclamp(vec, ignore) {
-        // TODO: Clean up and optimize this mess
-        ignore = ignore || {};
-        var hit = {};
-        var str;
-        var buf = vec3.create();
+      // --- collision ---
 
-        function nd(dim2,dir2) {
-          return playerAABB[dim2][dir2];
-        }
-        function doHitTest() {
-          if (world.solid(buf[0],buf[1],buf[2]) && !ignore[str = buf[0]+","+buf[1]+","+buf[2]]) {
-            hit[str] = [buf[0],buf[1],buf[2]];
-          }
-        }
-
-        for (var fixed = 0; fixed < 3; fixed++) {
-          for (var fdir = 0; fdir < 2; fdir++) {
-            var fplane = vec[fixed] + nd(fixed, fdir);
-            var a = fixed == 0 ? 1 : 0;
-            var b = fixed == 2 ? 1 : 2;
-            buf[fixed] = Math.floor(fplane);
-            for (var ai = vec[a]+nd(a,0); ai < vec[a]+nd(a,1); ai++) {
-              for (var bi = vec[b]+nd(b,0); bi < vec[b]+nd(b,1); bi++) {
-                buf[a] = Math.floor(ai);
-                buf[b] = Math.floor(bi);
-                doHitTest();
-              }
-              buf[b] = Math.floor(vec[b]+nd(b,1));
-              doHitTest();
-            }
-            buf[a] = Math.floor(vec[a]+nd(a,1));
-            doHitTest();
-          }
-        }
-        return Object.keys(hit).length > 0 ? hit : null; // TODO inefficient
+      function playerRelativeAABB(offset) {
+        return [[offset[0] + playerAABB[0][0],
+                 offset[0] + playerAABB[0][1]],
+                [offset[1] + playerAABB[1][0],
+                 offset[1] + playerAABB[1][1]],
+                [offset[2] + playerAABB[2][0],
+                 offset[2] + playerAABB[2][1]]];
       }
       
-      var alreadyColliding = sclamp(curPos);
+      function intersectWorld(vec, ignore) {
+        ignore = ignore || {};
+        var hit = {};
+        var hitCount = 0;
+        var str;        
+        var pr = playerRelativeAABB(vec);
+        var hx = Math.floor(pr[0][1]);
+        var hy = Math.floor(pr[1][1]);
+        var hz = Math.floor(pr[2][1]);
+        for (var x = Math.floor(pr[0][0]); x <= hx; x++)
+        for (var y = Math.floor(pr[1][0]); y <= hy; y++)
+        for (var z = Math.floor(pr[2][0]); z <= hz; z++) {
+          if (world.solid(x,y,z) && !ignore[str = x+","+y+","+z]) {
+            hit[str] = [x,y,z];
+            hitCount++;
+          }
+        }
+        return hitCount > 0 ? hit : null;
+      }
+      
+      var alreadyColliding = intersectWorld(curPos);
       
       // To resolve diagonal movement, we treat it as 3 orthogonal moves, updating nextPosIncr.
       var previousStandingOn = currentPlace.standingOn;
@@ -222,7 +214,7 @@ var Player = (function () {
         partial[dim] = nextPos[dim]; // TODO: Sample multiple times if velocity exceeds 1 block/step
         //console.log(dir, dim, playerAABB[dim][dir], front, partial);
         var hit;
-        if ((hit = sclamp(partial, alreadyColliding))) {
+        if ((hit = intersectWorld(partial, alreadyColliding))) {
           //console.log("clamped", dim);
           nextPosIncr[dim] = dir 
             ? Math.ceil(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 - EPSILON
