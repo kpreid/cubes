@@ -15,9 +15,9 @@ var config = {};
   function defineOption(name, type, value) {
     config[name] = new PersistentCell("cubes.option." + name, type, value);
   }
-  function resetAllOptions() {
+  Object.defineProperty(config, "resetAllOptions", {value: function () {
     Object.keys(config).forEach(function (k) { config[k].setToDefault(); });
-  }
+  }});
   defineOption("fov", "number", 60);
   defineOption("renderDistance", "number", 100);
   defineOption("mouseTurnRate", "number", 4); // radians/second/half-screen-width
