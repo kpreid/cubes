@@ -258,21 +258,18 @@ var BlockSet = (function () {
     ])],
   ];
 
-  var EMPTY_TEXCOORDS = {};
-  var EMPTY_VERTICES = {};
+  var EMPTY_GEOMETRY = {vertices: [], texcoords: []};
+  var EMPTY_FACES = [];
   TILE_MAPPINGS.forEach(function (m) {
     var dimName = m[0];
-    EMPTY_TEXCOORDS["l" + dimName] =
-    EMPTY_TEXCOORDS["h" + dimName] = [];
-    var g =
-    EMPTY_VERTICES["l" + dimName] =
-    EMPTY_VERTICES["h" + dimName] = [];
-    for (var rot = 0; rot < applyCubeSymmetry.COUNT; rot++) {
-      g.push([]);
-    }
+    EMPTY_FACES["l" + dimName] = 
+    EMPTY_FACES["h" + dimName] = EMPTY_GEOMETRY;
   });
-  Object.freeze(EMPTY_TEXCOORDS);
-  Object.freeze(EMPTY_VERTICES);
+  var EMPTY_BLOCKRENDER = [];
+  for (var rot = 0; rot < applyCubeSymmetry.COUNT; rot++) {
+    EMPTY_BLOCKRENDER.push(EMPTY_FACES);
+  }
+  
   
   function smallestPowerOf2AtLeast(x) {
     var result = Math.pow(2, Math.ceil(Math.log(x)/Math.LN2));
@@ -288,10 +285,38 @@ var BlockSet = (function () {
   
   function rotateVertices(rot, vertices) {
     var out = [];
-    for (var i = 0; i < vertices.length; i += 3) {
-      var t = applyCubeSymmetry(rot, 1, [vertices[i], vertices[i+1], vertices[i+2]]);
-      out.push(t[0],t[1],t[2]);
+    if (applyCubeSymmetry.isReflection(rot)) {
+      for (var i = vertices.length - 3; i >= 0; i -= 3) {
+        var t = applyCubeSymmetry(rot, 1, [vertices[i], vertices[i+1], vertices[i+2]]);
+        out.push(t[0],t[1],t[2]);
+      }
+    } else {
+      for (var i = 0; i < vertices.length; i += 3) {
+        var t = applyCubeSymmetry(rot, 1, [vertices[i], vertices[i+1], vertices[i+2]]);
+        out.push(t[0],t[1],t[2]);
+      }
     }
+    return out;
+  }
+  
+  function rotateTexcoords(rot, texcoords) {
+    if (applyCubeSymmetry.isReflection(rot)) {
+      var out = [];
+      for (var i = texcoords.length - 2; i >= 0; i -= 2) {
+        out.push(texcoords[i],texcoords[i+1]);
+      }
+      return out;
+    } else {
+      return texcoords;
+    }
+  }
+  
+  function rotateFaceData(rot, faceData) {
+    var out = {};
+    ["lx","ly","lz","hx","hy","hz"].forEach(function (face) {
+      var f = faceData[face];
+      out[face] = {vertices: rotateVertices(rot, f.vertices), texcoords: rotateTexcoords(rot, f.texcoords)};
+    });
     return out;
   }
   
@@ -414,8 +439,7 @@ var BlockSet = (function () {
 
     // All block sets unconditionally have the standard empty block at ID 0.
     var types = [BlockType.air];
-    var texcoordsByFaceByBlock = [EMPTY_TEXCOORDS];
-    var verticesByRotationByFaceByBlock = [EMPTY_VERTICES];
+    var rotatedBlockFaceData = [EMPTY_BLOCKRENDER];
     
     var texgen = null;
     var typesToRerender = new DirtyQueue();
@@ -424,8 +448,7 @@ var BlockSet = (function () {
       var tileSize = texgen.tileSize; // shadowing
       var tileLastIndex = tileSize - 1;
       var blockType = types[blockID];
-      var texcoordsByFace = texcoordsByFaceByBlock[blockID];
-      var verticesByRotationByFace = verticesByRotationByFaceByBlock[blockID];
+      var rotatedFaceData = rotatedBlockFaceData[blockID];
       
       var texWidth = texgen.image.width;
       var texData = texgen.image.data;
@@ -465,6 +488,7 @@ var BlockSet = (function () {
           texData[c+3] = a;
         }
         
+        var faceData = [];
         TILE_MAPPINGS.forEach(function (m) {
           var dimName = m[0];
           var transform = m[1];
@@ -474,17 +498,12 @@ var BlockSet = (function () {
           // Texture is a solid color, so we only need one set of texcoords.
           pushQuad(verticesL, texcoords, false, transform, 0, usageIndex);
           pushQuad(verticesH, [],        true,  transform, 1, usageIndex);
-          var rotationsL = [];
-          var rotationsH = [];
-          for (var i = 0; i < applyCubeSymmetry.COUNT; i++) {
-            rotationsL[i] = verticesL;
-            rotationsH[i] = verticesH;
-          }
-          texcoordsByFace["l" + dimName] = texcoords;
-          texcoordsByFace["h" + dimName] = texcoords;
-          verticesByRotationByFace["l" + dimName] = rotationsL;
-          verticesByRotationByFace["h" + dimName] = rotationsH;
+          faceData["l" + dimName] = {vertices: verticesL, texcoords: texcoords};
+          faceData["h" + dimName] = {vertices: verticesH, texcoords: texcoords};
         });
+        for (var i = 0; i < applyCubeSymmetry.COUNT; i++) {
+          rotatedFaceData[i] = faceData;
+        }
       } else if (blockType.world) {
         (function () {
           var world = blockType.world;
@@ -552,14 +571,13 @@ var BlockSet = (function () {
             // TODO: trigger rerender of chunks only if we made changes to the texcoords, not if only the colors changed
             
             //console.log("id ", wi + 1, " dim ", dimName, " layer ", layer, (thisLayerNotEmptyL || thisLayerNotEmptyH) ? " allocated" : " skipped");
-          }          
+          }
+          var faceData = [];
           TILE_MAPPINGS.forEach(function (m) {
             var dimName = m[0];
             var transform = m[1];
-            var texcoordsL = texcoordsByFace["l" + dimName] = [];
-            var texcoordsH = texcoordsByFace["h" + dimName] = [];
-            var verticesByRotationL = verticesByRotationByFace["l" + dimName] = [];
-            var verticesByRotationH = verticesByRotationByFace["h" + dimName] = [];
+            var texcoordsL = [];
+            var texcoordsH = [];
             var verticesL = [];
             var verticesH = [];
             if (blockType.opaque) {
@@ -572,11 +590,13 @@ var BlockSet = (function () {
                 sliceWorld(dimName, layer, transform, texcoordsL, texcoordsH, verticesL, verticesH);
               }
             }
-            for (var rot = 0; rot < applyCubeSymmetry.COUNT; rot++) {
-              verticesByRotationL[rot] = rotateVertices(rot, verticesL);
-              verticesByRotationH[rot] = rotateVertices(rot, verticesH);
-            }
+            faceData["l" + dimName] = {vertices: verticesL, texcoords: texcoordsL};
+            faceData["h" + dimName] = {vertices: verticesH, texcoords: texcoordsH};
           });
+          // TODO: texcoords are copied and reversed for every reflection; it would be more memory-efficient to arrange to have only one reversed set
+          for (var rot = 0; rot < applyCubeSymmetry.COUNT; rot++) {
+            rotatedFaceData[rot] = rotateFaceData(rot, faceData);
+          }
         })();
       } else {
         throw new Error("Don't know how to render the BlockType");
@@ -620,8 +640,7 @@ var BlockSet = (function () {
       add: function (newBlockType) {
         var newID = types.length;
         types.push(newBlockType);
-        texcoordsByFaceByBlock.push({});
-        verticesByRotationByFaceByBlock.push({});
+        rotatedBlockFaceData.push({});
         typesToRerender.enqueue(newID);
         newBlockType.listen({
           appearanceChanged: function () {
@@ -663,13 +682,10 @@ var BlockSet = (function () {
       // Return the data required to render blocks, updating if it is out of date.
       getRenderData: function () {
         freshenTexture();
-        texcoordsByFaceByBlock.bogus = texcoordsByFaceByBlock[BlockSet.ID_BOGUS] || EMPTY_TEXCOORDS;
-        verticesByRotationByFaceByBlock.bogus =
-            verticesByRotationByFaceByBlock[BlockSet.ID_BOGUS] || EMPTY_VERTICES;
+        rotatedBlockFaceData.bogus = rotatedBlockFaceData[BlockSet.ID_BOGUS] || EMPTY_BLOCKRENDER;
         return {
           texture: texgen.texture,
-          texcoordsByFaceByBlock: texcoordsByFaceByBlock,
-          verticesByRotationByFaceByBlock: verticesByRotationByFaceByBlock
+          rotatedBlockFaceData: rotatedBlockFaceData
         };
       },
       worldFor: function (blockID) {

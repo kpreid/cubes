@@ -351,6 +351,7 @@ function applyCubeSymmetry(which, size, vec) {
    vec[2] = z;
    return vec;
 }
+applyCubeSymmetry.isReflection = function (symmetry) { return !!(symmetry & 32); };
 applyCubeSymmetry.COUNT = 60;
 applyCubeSymmetry.NO_REFLECT_COUNT = 27;
 

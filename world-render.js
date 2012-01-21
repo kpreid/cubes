@@ -449,10 +449,8 @@ var WorldRenderer = (function () {
                                          function () { return renderData.texture; },
                                          function (vertices, normals, texcoords) {
           renderData = blockSet.getRenderData();
-          var texcoordsByFaceByBlock = renderData.texcoordsByFaceByBlock;
-          var verticesByRotationByFaceByBlock = renderData.verticesByRotationByFaceByBlock;
-          var BOGUS_BLOCK_TEXCOORDS = texcoordsByFaceByBlock.bogus;
-          var BOGUS_BLOCK_VERTICES = verticesByRotationByFaceByBlock.bogus;
+          var rotatedBlockFaceData = renderData.rotatedBlockFaceData;
+          var BOGUS_BLOCK_DATA = rotatedBlockFaceData.bogus;
           var rawCircuits = world.getCircuitsByBlock();
           var types = blockSet.getAll();
 
@@ -460,17 +458,19 @@ var WorldRenderer = (function () {
           var x,y,z;
           var thisOpaque;
           
-          function face(vFacing, tileTexCoords, blockVertices) {
+          function face(vFacing, data) {
+            var faceVertices = data.vertices;
+            var faceTexcoords = data.texcoords;
             if (thisOpaque && world.opaque(x+vFacing[0],y+vFacing[1],z+vFacing[2])) {
               // this face is invisible
               return
             } else {
-              var vl = blockVertices.length / 3;
+              var vl = faceVertices.length / 3;
               for (var i = 0; i < vl; i++) {
-                vertices.push(blockVertices[i*3  ]+x,
-                              blockVertices[i*3+1]+y,
-                              blockVertices[i*3+2]+z);
-                texcoords.push(tileTexCoords[i*2],tileTexCoords[i*2+1]);
+                vertices.push(faceVertices[i*3  ]+x,
+                              faceVertices[i*3+1]+y,
+                              faceVertices[i*3+2]+z);
+                texcoords.push(faceTexcoords[i*2],faceTexcoords[i*2+1]);
                 normals.push(vFacing[0],vFacing[1],vFacing[2]);
               }
             }
@@ -487,16 +487,15 @@ var WorldRenderer = (function () {
             var rotIndex = rawRotations[rawIndex];
             var rot = ROT_DATA[rotIndex];
             var btype = types[value];
-            var texcoordsByFace = texcoordsByFaceByBlock[value] || BOGUS_BLOCK_TEXCOORDS;
-            var verticesByRotationByFace = verticesByRotationByFaceByBlock[value] || BOGUS_BLOCK_VERTICES;
+            var faceData = (rotatedBlockFaceData[value] || BOGUS_BLOCK_DATA)[rotIndex];
             thisOpaque = btype.opaque;
 
-            face(rot.nx, texcoordsByFace.lx, verticesByRotationByFace.lx[rotIndex]);
-            face(rot.ny, texcoordsByFace.ly, verticesByRotationByFace.ly[rotIndex]);
-            face(rot.nz, texcoordsByFace.lz, verticesByRotationByFace.lz[rotIndex]);
-            face(rot.px, texcoordsByFace.hx, verticesByRotationByFace.hx[rotIndex]);
-            face(rot.py, texcoordsByFace.hy, verticesByRotationByFace.hy[rotIndex]);
-            face(rot.pz, texcoordsByFace.hz, verticesByRotationByFace.hz[rotIndex]);
+            face(rot.nx, faceData.lx);
+            face(rot.ny, faceData.ly);
+            face(rot.nz, faceData.lz);
+            face(rot.px, faceData.hx);
+            face(rot.py, faceData.hy);
+            face(rot.pz, faceData.hz);
             var circuit = rawCircuits[x+","+y+","+z]; // TODO: replace this with some other spatial indexing scheme so we don't have to check per-every-block
             if (circuit) {
               var o = circuit.getOrigin();
