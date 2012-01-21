@@ -438,6 +438,7 @@ function generateWorlds() {
     var notgreen = Math.random() * green*0.3 + green*0.25;
     return brgb(notgreen,green*edgeness,notgreen*(1-edgeness));
   }));
+  addRotation(type); // allows random orientation to reduce uniformity
 
   // pillar thing
   blockset.add(type = genedit(function (b) {
@@ -587,8 +588,8 @@ function generateWorlds() {
     function getvec(vec) {
       return topWorld.g(vec[0],vec[1],vec[2]);
     }        
-    function setvec(vec, val) {
-      topWorld.s(vec[0],vec[1],vec[2],val);
+    function setvec(vec, val,subdatum) {
+      topWorld.s(vec[0],vec[1],vec[2],val,subdatum);
     }        
     function fill(corner1, corner2, material, subdata) {
       var lx = Math.min(corner1[0], corner2[0]);
@@ -627,8 +628,8 @@ function generateWorlds() {
           function (p) { return topWorld.g(p[0],p[1],p[2]) == ground; }, 
           function (pos) {
         var perp = counterclockwise(vel);
-        setvec(maddy(pos, 1, perp, -width-1), ids.greenery);
-        setvec(maddy(pos, 1, perp, +width+1), ids.greenery);
+        setvec(maddy(pos, 1, perp, -width-1), ids.greenery, Math.floor(Math.random()*applyCubeSymmetry.COUNT));
+        setvec(maddy(pos, 1, perp, +width+1), ids.greenery, Math.floor(Math.random()*applyCubeSymmetry.COUNT));
         fill(madd(pos, perp, -width), madd(pos, perp, width), road);
         return [];
       });
