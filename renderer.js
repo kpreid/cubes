@@ -191,7 +191,7 @@ var Renderer = (function () {
     // --- Initialization ---
     
     gl = canvas.getContext("experimental-webgl", {
-      // Reduces fillrate cost (which is a problem due to the layered block rendering), and also avoids MSAA problems with the edges of our atlas'd textures. TODO: Figure out how to work around the latter so we can make this an option.
+      // Reduces fillrate cost (which is a problem due to the layered block rendering), and also avoids MSAA problems with the meetings of subcube edges. (TODO: Try to fix that in the fragment shader by enlarging the texture.)
       antialias: false
     });
     if (DEBUG_GL) {

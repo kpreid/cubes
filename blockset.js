@@ -344,6 +344,11 @@ var BlockSet = (function () {
     var gl = renderer.context;
     
     this.tileSize = tileSize;
+
+    // Size of an actual tile in the texture, with borders
+    var borderTileSize = tileSize + 2;
+    var borderTileUVSize;
+    var borderUVOffset;
     
     // Texture holding tiles
     // TODO: Confirm that WebGL garbage collects these, or add a delete method to BlockSet for use as needed
@@ -364,15 +369,18 @@ var BlockSet = (function () {
     function enlargeTexture() {
       tileCountSqrt *= 2;
 
-      var texturePOTSize = smallestPowerOf2AtLeast(tileSize * tileCountSqrt);
+      var texturePOTSize = smallestPowerOf2AtLeast(borderTileSize * tileCountSqrt);
             
       self.tileUVSize = tileSize/texturePOTSize;
+      borderUVOffset = 1/texturePOTSize;
+      borderTileUVSize = borderTileSize/texturePOTSize;
       
       // ImageData object used to buffer calculated texture data
       self.image = document.createElement("canvas").getContext("2d")
         .createImageData(texturePOTSize, texturePOTSize);
       
       // tile position allocator
+      // TODO this wastes space because we're not using the texturePOTSize benefit
       tileAllocMap = new Uint8Array(tileCountSqrt*tileCountSqrt);
       freePointer = 0;
       
@@ -400,8 +408,14 @@ var BlockSet = (function () {
     };
     this.uvFor = function (usageIndex) {
       var c = self.allocationFor(usageIndex);
-      c[0] *= self.tileUVSize;
-      c[1] *= self.tileUVSize;
+      c[0] = borderUVOffset + borderTileUVSize*c[0];
+      c[1] = borderUVOffset + borderTileUVSize*c[1];
+      return c;
+    };
+    this.imageCoordsFor = function (usageIndex) {
+      var c = self.allocationFor(usageIndex);
+      c[0] = 1 + borderTileSize*c[0];
+      c[1] = 1 + borderTileSize*c[1];
       return c;
     };
     this.deallocateUsage = function (usageIndex) {
@@ -410,7 +424,30 @@ var BlockSet = (function () {
       }
       tileFree(usageMap[usageIndex]);
       delete usageMap[usageIndex];
-    }
+    };
+    this.completed = function (usageIndex) {
+      // generate texture clamp border
+      var coords = this.imageCoordsFor(usageIndex);
+      var w = self.image.width;
+      var data = self.image.data;
+      function pix(x,y) {
+        return (coords[0]+x + w * (coords[1]+y)) * 4;
+      }
+      function copy(dst, src) {
+        data[dst] = data[src];
+        data[dst+1] = data[src+1];
+        data[dst+2] = data[src+2];
+        data[dst+3] = data[src+3];
+      }
+      for (var x = 0; x < tileSize; x++) {
+        copy(pix(x,-1), pix(x,0));
+        copy(pix(x,tileSize), pix(x,tileSize-1));
+      }
+      for (var y = -1; y <= tileSize; y++) {
+        copy(pix(-1,y), pix(0,y));
+        copy(pix(tileSize,y), pix(tileSize-1,y));
+      }
+    };
     
     function tileAlloc() {
       var n = 0;
@@ -470,15 +507,13 @@ var BlockSet = (function () {
       if (blockType.color) { // TODO: factor this conditional into BlockType
         var color = blockType.color;
         var usageIndex = blockID.toString();
-        var coord = texgen.allocationFor(usageIndex);
+        var coord = texgen.imageCoordsFor(usageIndex);
+        var pixu = coord[0], pixv = coord[1];
         var r = 255 * color[0];
         var g = 255 * color[1];
         var b = 255 * color[2];
         var a = 255 * color[3];
 
-        var tileu = coord[0], tilev = coord[1];
-        var pixu = tileu*tileSize;
-        var pixv = tilev*tileSize;
         for (var u = 0; u < tileSize; u++)
         for (var v = 0; v < tileSize; v++) {
           var c = ((pixu+u) * texWidth + pixv+v) * 4;
@@ -487,6 +522,7 @@ var BlockSet = (function () {
           texData[c+2] = b;
           texData[c+3] = a;
         }
+        texgen.completed(usageIndex);
         
         var faceData = [];
         TILE_MAPPINGS.forEach(function (m) {
@@ -518,13 +554,11 @@ var BlockSet = (function () {
           function sliceWorld(dimName, layer, transform, texcoordsL, texcoordsH, verticesL, verticesH) {
             var usageIndex = blockID + "," + dimName + "," + layer;
             
-            var coord = texgen.allocationFor(usageIndex);
-            var tileu = coord[0], tilev = coord[1];
+            var coord = texgen.imageCoordsFor(usageIndex);
+            var pixu = coord[0], pixv = coord[1];
             
             var thisLayerNotEmptyL = false;
             var thisLayerNotEmptyH = false;
-            var pixu = tileu*tileSize;
-            var pixv = tilev*tileSize;
             
             // viewL is the offset of the subcube which would block the view
             // of this subcube if it is opaque.
@@ -559,6 +593,8 @@ var BlockSet = (function () {
               // We can reuse this tile iff it was blank or fully obscured
               texgen.deallocateUsage(usageIndex);
             } else {
+              texgen.completed(usageIndex);
+              
               // If the layer has unobscured content, and it is not an interior surface of an opaque block, then add it to rendering. Note that the TILE_MAPPINGS loop skips slicing interiors of opaque blocks, but they still need to have the last layer excluded because the choice of call to sliceWorld does not express that.
               if (thisLayerNotEmptyL && (!blockType.opaque || layer == 0)) {
                 pushQuad(verticesL, texcoordsL, false, transform, layer/tileSize, usageIndex);
