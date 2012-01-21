@@ -3,12 +3,20 @@
 
 function World(sizes, blockSet) {
   "use strict";
+  if (!blockSet) {
+    // early catch of various mistakes that can lead to this
+    throw new Error("missing BlockSet for new World");
+  }
   
   var self = this;
 
   var wx = sizes[0];
   var wy = sizes[1];
   var wz = sizes[2];
+  if (wx !== Math.floor(wx) || wx !== Math.floor(wx) || wx !== Math.floor(wx)) {
+    // early catch of various mistakes that can lead to this
+    throw new Error("invalid size for new World: " + vec3.str(sizes));
+  }
   var blocks = new Uint8Array(wx*wy*wz);
   var rotations = new Uint8Array(wx*wy*wz);
   var subData = new Uint8Array(wx*wy*wz);

@@ -18,6 +18,23 @@ var WorldGen = (function () {
       return type;
     },
 
+    newRandomBlockType: function (TS, blockset) {
+      var f = WorldGen.blockFunctions(TS);
+
+      var colorCount;
+      for (colorCount = 0; colorCount < blockset.length && blockset.get(colorCount).color; colorCount++);
+      function pickColor() {
+        return Math.random() < 0.2 ? 0 : Math.floor(Math.random() * colorCount);
+      }
+
+      // TODO: make this more interesting
+      var c = f.pickEdgeCond(f.flat(pickColor()),
+                f.pickEdgeCond(f.flat(pickColor()),
+                  f.pickFillCond(f.flat(pickColor()), f.flat(pickColor()))));
+                  
+      return WorldGen.newProceduralBlockType(TS, blockset, c);
+    },
+
     // Generate a blockset containing RGB colors with the specified number of
     // levels in each channel, and a function from (r,g,b) to block ID.
     colorBlocks: function (reds, greens, blues) {
@@ -366,9 +383,6 @@ function generateWorlds() {
   }
   var f = WorldGen.blockFunctions(TS);
 
-  function pickColor() {
-    return Math.random() < 0.2 ? 0 : Math.floor(Math.random() * onlyColorCount);
-  }
   function rgbPat(b) { return brgb(b[0]/TL,b[1]/TL,b[2]/TL); }
   
   function addSpontaneousConversion(type, targetID) {
@@ -463,12 +477,9 @@ function generateWorlds() {
 
   // random block types
   ids.firstRandom = blockset.length;
-  for (var i = 0; i < 4; i++) {
-    // TODO: make this more interesting
-    var c = f.pickEdgeCond(f.flat(pickColor()),
-              f.pickEdgeCond(f.flat(pickColor()),
-                f.pickFillCond(f.flat(pickColor()), f.flat(pickColor()))));
-    blockset.add(genedit(c));
+  ids.lastRandom = ids.firstRandom + 3;
+  while (blockset.length <= ids.lastRandom) {
+    blockset.add(WorldGen.newRandomBlockType(TS, colorSet));
   }
 
   var l = WorldGen.addLogicBlocks(TS, {blockset: blockset}, fullLogicAndColors);
@@ -654,7 +665,7 @@ function generateWorlds() {
       var buildingFloorHeight = 3 + Math.floor(Math.random() * 3);
       
       var material = f.pick([
-        ids.firstRandom+0,
+        ids.firstRandom+0, // TODO use ids.lastRandom
         ids.firstRandom+1,
         ids.firstRandom+2,
         ids.firstRandom+3,

@@ -493,7 +493,6 @@ var Player = (function () {
     
     function notifyChangedPlace() {
       inputNotifier.notify("changedWorld");
-      inputNotifier.notify("changedTool");
     }
     
     // --- Initialization ---

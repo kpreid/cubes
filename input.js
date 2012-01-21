@@ -220,6 +220,19 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   var quickSlots;
   var quickSlotLRU;
 
+  function deferrer(func) {
+    var set = false;
+    return function () {
+      if (!set) {
+        setTimeout(function () {
+          set = false;
+          func();
+        }, 0);
+        set = true;
+      }
+    }
+  }
+
   function resetQuick() {
     quickSlots = [];
     quickSlotLRU = [];
@@ -234,8 +247,20 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
     for (var i = 1; i < blockSetInMenu.length; i++) f(i, menuItemsByBlockId[i]);
   }
   
+  var updateDeferred = deferrer(updateMenuBlocks);
+  var menuListener = {
+    // deferred because otherwise we act while in the middle of a rebuild
+    texturingChanged: function (id) { updateDeferred(); return true; },
+    tableChanged:     function (id) { updateDeferred(); return true; }
+  };
+  
   function updateMenuBlocks() {
-    blockSetInMenu = playerInput.blockSet;
+    if (playerInput.blockSet !== blockSetInMenu) {
+      if (blockSetInMenu) blockSetInMenu.listen.cancel(menuListener);
+      blockSetInMenu = playerInput.blockSet;
+      if (blockSetInMenu) blockSetInMenu.listen(menuListener);
+    }
+    
     menuItemsByBlockId = [];
     hintTextsByBlockId = [];
     resetQuick();
@@ -301,7 +326,9 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
     
     blockRenderer.deleteResources();
     
+    // since we rebuilt the menu these need redoing
     updateMenuLayout();
+    updateMenuSelection();
   }
   
   function updateMenuLayout() {
@@ -322,6 +349,15 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
         hintTextsByBlockId[blockId].data = ((index+1) % 10).toString();
       }
     });
+    
+    var addButton = document.createElement("button");
+    addButton.className = "menu-item menu-button";
+    addButton.appendChild(document.createTextNode("+"));
+    addButton.onclick = function () {
+      playerInput.blockSet.add(WorldGen.newRandomBlockType(playerInput.blockSet.tileSize, playerInput.blockSet.get(1).world.blockSet));
+      eventReceiver.focus();
+    };
+    menuElement.appendChild(addButton);
 
     menuElement.appendChild(quickGroup);
   }
@@ -346,7 +382,6 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   });
 
   updateMenuBlocks();
-  updateMenuSelection();
     
   // --- Methods ---
   

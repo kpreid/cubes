@@ -632,24 +632,33 @@ var BlockSet = (function () {
       } else {
         throw new Error("Don't know how to render the BlockType");
       }
+      
+      // NOTE: This function does not notify texturingChanged because this is called lazily when clients ask about the new render data.
     }
     
     function freshenTexture() {
       var upload = false;
+      var allChanged = false;
+      var l = self.length;
       if (!texgen || texgen.mustRebuild()) {
         texgen = new Texgen(self.tileSize);
       }
       while (texgen.textureLost) {
         //console.info("Performing full block texture rebuild.");
         texgen.textureLost = false;
-        var l = self.length;
         for (var id = BlockSet.ID_EMPTY + 1; id < l && !texgen.textureLost; id++)
           rebuildOne(id);
         upload = true;
+        allChanged = true;
       }
       while (typesToRerender.size()) {
         rebuildOne(typesToRerender.dequeue());
         upload = true;
+      }
+      if (allChanged) {
+        // If textureLost, which might occur because it was resized, then we need to notify of *everything* changing
+        for (var id = BlockSet.ID_EMPTY + 1; id < l; id++)
+          notifier.notify("texturingChanged", id);
       }
       if (upload) {
         var gl = main.renderer.context; // TODO global variable
@@ -692,6 +701,8 @@ var BlockSet = (function () {
               console.warn("Inconsistent tile size for blockset; set has", tileSize, "and new type has", ts);
           }
         }
+
+        notifier.notify("tableChanged", newID);
       },
       
       get: function (blockID) {
@@ -708,6 +719,9 @@ var BlockSet = (function () {
         return array;
       },
       
+      // Listener protocol:
+      // tableChanged(id) -- the given id has a different block type associated with it
+      // texturingChanged(id) -- the render data for the given id has changed
       listen: notifier.listen,
       
       // Return the data required to render blocks, updating if it is out of date.

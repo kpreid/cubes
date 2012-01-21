@@ -181,9 +181,10 @@ var WorldRenderer = (function () {
     }
     
     var listenerB = {
-      // TODO: Optimize by rerendering only if render data changed, and only
+      // TODO: Optimize by rerendering only if render data (not just texture image) changed, and only
       // chunks containing the changed block ID?
-      texturingChanged: dirtyAll
+      texturingChanged: dirtyAll,
+      tableChanged: dirtyAll
     }
     
     var listenerRenderDistance = {
