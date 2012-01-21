@@ -271,14 +271,6 @@ var BlockSet = (function () {
   }
   
   
-  function smallestPowerOf2AtLeast(x) {
-    var result = Math.pow(2, Math.ceil(Math.log(x)/Math.LN2));
-    if (result < x) { // in case of FP rounding down
-      result *= 2;
-    }
-    return result;
-  }
-
   function pushVertex(array, vec) {
     array.push(vec[0], vec[1], vec[2]);
   }
@@ -313,7 +305,7 @@ var BlockSet = (function () {
   
   function rotateFaceData(rot, faceData) {
     var out = {};
-    ["lx","ly","lz","hx","hy","hz"].forEach(function (face) {
+    Object.keys(faceData).forEach(function (face) {
       var f = faceData[face];
       out[face] = {vertices: rotateVertices(rot, f.vertices), texcoords: rotateTexcoords(rot, f.texcoords)};
     });
@@ -346,9 +338,14 @@ var BlockSet = (function () {
     this.tileSize = tileSize;
 
     // Size of an actual tile in the texture, with borders
-    var borderTileSize = tileSize + 2;
-    var borderTileUVSize;
-    var borderUVOffset;
+    var /*constant*/ borderTileSize = tileSize + 2;
+
+    var textureSize = 128; // initial allocation; gets multiplied by 2 on initial enlargeTexture()
+    
+    // Values computed from the texture size
+    var borderTileUVSize; // Size of one tile, including border, in the texture in UV coordinates
+    var borderUVOffset;   // Offset from 0,0 of the corner of a tile
+    var tileCountSqrt;    // Number of tiles which fit in one row/column of the texture
     
     // Texture holding tiles
     // TODO: Confirm that WebGL garbage collects these, or add a delete method to BlockSet for use as needed
@@ -360,24 +357,22 @@ var BlockSet = (function () {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.bindTexture(gl.TEXTURE_2D, null);
     
-    var tileCountSqrt = 16; // initial allocation; gets multiplied by 2
     var blockTextureData;
     var tileAllocMap;
     var freePointer;
     var usageMap;
     this.textureLost = false;
     function enlargeTexture() {
-      tileCountSqrt *= 2;
-
-      var texturePOTSize = smallestPowerOf2AtLeast(borderTileSize * tileCountSqrt);
-            
-      self.tileUVSize = tileSize/texturePOTSize;
-      borderUVOffset = 1/texturePOTSize;
-      borderTileUVSize = borderTileSize/texturePOTSize;
+      textureSize *= 2;
+      
+      self.tileUVSize = tileSize/textureSize;
+      borderUVOffset = 1/textureSize;
+      borderTileUVSize = borderTileSize/textureSize;
+      tileCountSqrt = Math.floor(textureSize/borderTileSize);
       
       // ImageData object used to buffer calculated texture data
       self.image = document.createElement("canvas").getContext("2d")
-        .createImageData(texturePOTSize, texturePOTSize);
+        .createImageData(textureSize, textureSize);
       
       // tile position allocator
       // TODO this wastes space because we're not using the texturePOTSize benefit
