@@ -1,22 +1,3 @@
-precision mediump float;
-
-varying vec4 vColor;
-varying vec3 vGridPosition;
-varying vec3 vFixedOrientationPosition;
-varying vec2 vTextureCoord;
-varying float vFog;
-varying vec3 vNormal;
-varying float vDistanceFromEye;
-
-uniform mat4 uPMatrix;
-uniform mat4 uMVMatrix;
-uniform bool uTextureEnabled;
-uniform sampler2D uSampler;
-uniform float uTileSize; // always integer, but used as float
-
-uniform bool uStipple;
-uniform bool uFocusCue;
-
 const vec4 cSky = vec4(0.1,0.3,0.5,1.0);   
 const vec4 cHorizon = vec4(0.7,0.8,1.0,1.0);  
 const vec4 cGround = vec4(0.5,0.4,0.4,1.0);

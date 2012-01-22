@@ -3,26 +3,6 @@ attribute vec4 aVertexColor;
 attribute vec3 aVertexNormal;
 attribute vec2 aTextureCoord;
 
-uniform bool uTextureEnabled;
-uniform mat4 uMVMatrix;
-uniform mat4 uPMatrix;
-uniform vec3 uViewPosition;
-uniform vec2 uPixelsPerClipUnit;
-uniform float uFogDistance;
-uniform float uTileSize;
-
-uniform bool uParticleMode;     // flag we're rendering point particles
-uniform float uParticleInterp;  // particle system evolution time, [0.0, 1.0]
-uniform bool uParticleExplode; // particles explode or appear/fade?
-
-varying vec4 vColor;
-varying vec3 vGridPosition;
-varying vec3 vFixedOrientationPosition;
-varying vec2 vTextureCoord;
-varying vec3 vNormal;
-varying float vFog;
-varying float vDistanceFromEye;
-
 void main(void) {
     vec3 vertexPosition;
     float pointScale;

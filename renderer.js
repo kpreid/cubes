@@ -44,8 +44,8 @@ var Renderer = (function () {
       };
       
       var program = prepareProgram(gl,
-                     prepareShader(gl, gl.VERTEX_SHADER, shaders.vertex, decls),
-                     prepareShader(gl, gl.FRAGMENT_SHADER, shaders.fragment, decls),
+                     prepareShader(gl, gl.VERTEX_SHADER, [shaders.common, shaders.vertex], decls),
+                     prepareShader(gl, gl.FRAGMENT_SHADER, [shaders.common, shaders.fragment], decls),
                      attribs, uniforms);          
       gl.useProgram(program);
  
@@ -601,16 +601,26 @@ var Renderer = (function () {
   Renderer.NoWebGLError.prototype = Object.create(Error.prototype);
   
   Renderer.fetchShaders = function (callback) {
-    var f, v;
+    var table = {
+      common: undefined,
+      vertex: undefined,
+      fragment: undefined
+    };
+    var names = Object.keys(table);
     
-    fetchResource("shaders/vertex.glsl", "text", function (data) { v = data; check(); });
-    fetchResource("shaders/fragment.glsl", "text", function (data) { f = data; check(); });
+    names.forEach(function (filename) {
+      fetchResource("shaders/"+filename+".glsl", "text", function (data) { 
+        table[filename] = data;
+        check();
+      });
+    });
+    
     function check() {
-      if (f !== undefined && v !== undefined) {
-        if (f === null || v === null) {
+      if (names.every(function (f) { return table[f] !== undefined; })) {
+        if (names.some(function (f) { return table[f] === null; })) {
           callback(null); // TODO better error reporting
         } else {
-          callback(Object.freeze({vertex: v, fragment: f}));
+          callback(Object.freeze(table));
         }
       }
     }

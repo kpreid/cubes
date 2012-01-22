@@ -218,29 +218,29 @@ var UNIT_NX = vec3.create([-1,0,0]);
 var UNIT_NY = vec3.create([0,-1,0]);
 var UNIT_NZ = vec3.create([0,0,-1]);
 
-function prepareShader(gl, type, text, declarations) {
+function prepareShader(gl, type, sources, declarations) {
   // See note in license statement at the top of this file.  
   "use strict";
   
-  var prelude = "";
+  var strings = [];
   for (var prop in declarations) {
     var value = declarations[prop];
     if (typeof value == "boolean") {
       value = value ? 1 : 0; // GLSL preprocessor doesn't do booleans
     }
-    prelude += "#define " + prop + " (" + value + ")\n";
+    strings.push("#define ", prop, " (", value, ")\n");
   }
-  if (prelude !== "") {
-    text = prelude + "#line 1\n" + text;
-  }
+  sources.forEach(function (text, index) {
+    strings.push("#line 1 ", index.toString(), "\n", text);
+  });
   
   var shader = gl.createShader(type);
   
-  gl.shaderSource(shader, text);
+  gl.shaderSource(shader, strings.join(""));
   gl.compileShader(shader);
   
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    if (typeof console !== "undefined") console.log("Shader text:\n" + text);
+    if (typeof console !== "undefined") console.log("Shader text:\n" + strings.join(""));
     throw new Error(gl.getShaderInfoLog(shader));
   }
   
