@@ -304,10 +304,13 @@ var CubesMain = (function () {
             worldH = generateWorlds();
           }
         },
-        "Painting blocks...", // this is what takes the time in world renderer construction
+        "Creating your avatar...",
         function () {
-          // done after some GL init because player creates world renderer object internally
           player = new Player(worldH, renderer/*TODO facet? */, scheduleDraw);
+        },
+        "Painting blocks...",
+        function () {
+          player.getWorld().blockSet.getRenderData();
         },
         "Finishing...",
         function () {
