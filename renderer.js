@@ -603,8 +603,8 @@ var Renderer = (function () {
   Renderer.fetchShaders = function (callback) {
     var f, v;
     
-    fetchResource("vertex.glsl", "text", function (data) { v = data; check(); });
-    fetchResource("fragment.glsl", "text", function (data) { f = data; check(); });
+    fetchResource("shaders/vertex.glsl", "text", function (data) { v = data; check(); });
+    fetchResource("shaders/fragment.glsl", "text", function (data) { f = data; check(); });
     function check() {
       if (f !== undefined && v !== undefined) {
         if (f === null || v === null) {
