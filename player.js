@@ -9,6 +9,7 @@ var Player = (function () {
   var FLYING_SPEED = 10; // cubes/s
   var GRAVITY = 20; // cubes/s^2
   var JUMP_SPEED = 8; // cubes/s
+  var MAX_STEP_UP = 0.57; // cubes
   
   var playerAABB = [
     [-.35, .35], // x
@@ -35,6 +36,7 @@ var Player = (function () {
       this.yaw = Math.PI/4 * 5;
       this.standingOn = [];
       this.flying = false;
+      this.cameraYLag = 0;
 
       // Selection
       this.selection = null;
@@ -85,24 +87,36 @@ var Player = (function () {
       }
     });
     
+    var debugHitAABBs = [];
     var aabbR = new renderer.RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
       // TODO: Would be more efficient to use the modelview matrix than recomputing this?
       if (!currentPlace) return;
-      [[0,1,2], [1,2,0], [2,0,1]].forEach(function (dims) {
-        for (var du = 0; du < 2; du++)
-        for (var dv = 0; dv < 2; dv++)
-        for (var dw = 0; dw < 2; dw++) {
-          var p = vec3.create(currentPlace.pos);
-          p[dims[0]] += playerAABB[dims[0]][du];
-          p[dims[1]] += playerAABB[dims[1]][dv];
-          p[dims[2]] += playerAABB[dims[2]][dw];
-          
-          vertices.push(p[0],p[1],p[2]);
-          normals.push(0,0,0);
-          colors.push(0,0,1,1);
-        }
-      });
-    });
+
+      function renderAABB(offset, aabb, r, g, b) {
+        [[0,1,2], [1,2,0], [2,0,1]].forEach(function (dims) {
+          for (var du = 0; du < 2; du++)
+          for (var dv = 0; dv < 2; dv++)
+          for (var dw = 0; dw < 2; dw++) {
+            var p = vec3.create(offset);
+            p[dims[0]] += aabb[dims[0]][du];
+            p[dims[1]] += aabb[dims[1]][dv];
+            p[dims[2]] += aabb[dims[2]][dw];
+
+            vertices.push(p[0],p[1],p[2]);
+            normals.push(0,0,0);
+            colors.push(r,g,b,1);
+          }
+        });
+      }
+      renderAABB(currentPlace.pos, playerAABB, 0,0,1);
+      debugHitAABBs.forEach(function (aabb) {
+        renderAABB([0,0,0], aabb, 0,1,0);
+      })
+    }, {aroundDraw: function (draw) {
+      gl.lineWidth(2);
+      draw();
+      gl.lineWidth(1); // TODO instead of restoring, make line width garbage-by-default
+    }});
   
     function aimChanged() {
       scheduleDraw(); // because this routine is also 'view direction changed'
@@ -112,7 +126,7 @@ var Player = (function () {
         var w = currentPlace.world;
         var pts = renderer.getAimRay(mousePos, player.render);
         w.raycast(pts[0], pts[1], 20, function (x,y,z,value,face) {
-          if (w.solid(x,y,z)) {
+          if (w.selectable(x,y,z)) {
             foundCube = Object.freeze([x,y,z]);
             foundFace = face;
             return true;
@@ -170,70 +184,99 @@ var Player = (function () {
       var nextPos = vec3.scale(currentPlace.vel, timestep, vec3.create());
       vec3.add(nextPos, curPos);
       
-      // collision
-      function sclamp(vec, ignore) {
-        // TODO: Clean up and optimize this mess
+      // --- collision ---
+
+      function intersectWorld(aabb, iworld, ignore) {
         ignore = ignore || {};
         var hit = {};
-        var str;
-        var buf = vec3.create();
-
-        function nd(dim2,dir2) {
-          return playerAABB[dim2][dir2];
-        }
-        function doHitTest() {
-          if (world.solid(buf[0],buf[1],buf[2]) && !ignore[str = buf[0]+","+buf[1]+","+buf[2]]) {
-            hit[str] = [buf[0],buf[1],buf[2]];
-          }
-        }
-
-        for (var fixed = 0; fixed < 3; fixed++) {
-          for (var fdir = 0; fdir < 2; fdir++) {
-            var fplane = vec[fixed] + nd(fixed, fdir);
-            var a = fixed == 0 ? 1 : 0;
-            var b = fixed == 2 ? 1 : 2;
-            buf[fixed] = Math.floor(fplane);
-            for (var ai = vec[a]+nd(a,0); ai < vec[a]+nd(a,1); ai++) {
-              for (var bi = vec[b]+nd(b,0); bi < vec[b]+nd(b,1); bi++) {
-                buf[a] = Math.floor(ai);
-                buf[b] = Math.floor(bi);
-                doHitTest();
-              }
-              buf[b] = Math.floor(vec[b]+nd(b,1));
-              doHitTest();
+        var hitCount = 0;
+        var str;        
+        var hx = Math.floor(aabb[0][1]);
+        var hy = Math.floor(aabb[1][1]);
+        var hz = Math.floor(aabb[2][1]);
+        for (var x = Math.floor(aabb[0][0]); x <= hx; x++)
+        for (var y = Math.floor(aabb[1][0]); y <= hy; y++)
+        for (var z = Math.floor(aabb[2][0]); z <= hz; z++) {
+          var type = iworld.gt(x,y,z);
+          if (!type.solid) continue;
+          if (ignore[str = x+","+y+","+z]) continue;
+          if (!type.opaque && type.world && !iworld.gRot(x,y,z) /* rotating-and-unrotating not yet supported */) {
+            var scale = type.world.wx;
+            var subhit = intersectWorld(
+                  scaleAABB(scale, offsetAABB([-x, -y, -z], aabb)),
+                  type.world);
+            if (subhit == null) continue;
+            for (var substr in subhit) {
+              if (!subhit.hasOwnProperty(substr)) continue;
+              hit[str+":"+substr] = offsetAABB([x, y, z], scaleAABB(1/scale, subhit[substr]));
+              hitCount++;
             }
-            buf[a] = Math.floor(vec[a]+nd(a,1));
-            doHitTest();
+          } else {
+            hit[str] = [[x,x+1],[y,y+1],[z,z+1]];
+            hitCount++;
           }
         }
-        return Object.keys(hit).length > 0 ? hit : null; // TODO inefficient
+        return hitCount > 0 ? hit : null;
       }
       
-      var alreadyColliding = sclamp(curPos);
+      function intersectPlayerAt(pos, ignore) {
+        return intersectWorld(offsetAABB(pos, playerAABB), world, ignore);
+      }
+      
+      function unionHits(hit) {
+        var union = [[Infinity,-Infinity],[Infinity,-Infinity],[Infinity,-Infinity]];
+        for (var k in hit) {
+          if (!hit.hasOwnProperty(k)) continue;
+          var aabb = hit[k];
+          debugHitAABBs.push(aabb); // TODO: misplaced for debug
+          union[0][0] = Math.min(union[0][0], aabb[0][0]);
+          union[0][1] = Math.max(union[0][1], aabb[0][1]);
+          union[1][0] = Math.min(union[1][0], aabb[1][0]);
+          union[1][1] = Math.max(union[1][1], aabb[1][1]);
+          union[2][0] = Math.min(union[2][0], aabb[2][0]);
+          union[2][1] = Math.max(union[2][1], aabb[2][1]);
+        }
+        return union;
+      }
+      
+      debugHitAABBs = [];
+      
+      var alreadyColliding = intersectPlayerAt(curPos);
       
       // To resolve diagonal movement, we treat it as 3 orthogonal moves, updating nextPosIncr.
       var previousStandingOn = currentPlace.standingOn;
       currentPlace.standingOn = null;
       var nextPosIncr = vec3.create(curPos);
-      for (var dim = 0; dim < 3; dim++) {
+      for (var dimi = 0; dimi < 3; dimi++) {
+        var dim = [1,0,2][dimi]; // TODO: doing the dims in another order makes the slope walking glitch out, but I don't understand *why*.
         var dir = curVel[dim] >= 0 ? 1 : 0;
-        var front = nextPos[dim] + playerAABB[dim][dir];
-        var partial = vec3.create(nextPosIncr);
-        partial[dim] = nextPos[dim]; // TODO: Sample multiple times if velocity exceeds 1 block/step
-        //console.log(dir, dim, playerAABB[dim][dir], front, partial);
+        nextPosIncr[dim] = nextPos[dim]; // TODO: Sample multiple times if velocity exceeds 1 block/step
+        //console.log(dir, dim, playerAABB[dim][dir], front, nextPosIncr);
         var hit;
-        if ((hit = sclamp(partial, alreadyColliding))) {
-          //console.log("clamped", dim);
-          nextPosIncr[dim] = dir 
-            ? Math.ceil(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 - EPSILON
-            : Math.floor(nextPosIncr[dim] + playerAABB[dim][dir] % 1) - playerAABB[dim][dir] % 1 + EPSILON;
-          curVel[dim] = 0;
-          if (dim == 1 && dir == 0) {
-            currentPlace.standingOn = hit || {};
-            currentPlace.flying = false;
+        if ((hit = intersectPlayerAt(nextPosIncr, alreadyColliding))) {
+          var hitAABB = unionHits(hit);
+          resolveDirection: {
+            // Walk-up-slopes
+            if (dim != 1 /*moving horizontally*/ && currentPlace.standingOn /*not in air*/) {
+              var upward = vec3.create(nextPosIncr);
+              upward[1] = hitAABB[1][1] - playerAABB[1][0] + EPSILON;
+              var delta = upward[1] - nextPosIncr[1];
+              //console.log("upward test", delta, !!intersectPlayerAt(upward));
+              if (delta > 0 && delta < MAX_STEP_UP && !intersectPlayerAt(upward)) {
+                currentPlace.cameraYLag += delta;
+                nextPosIncr = upward;
+                break resolveDirection;
+              }
+            }
+          
+            var surfaceOffset = hitAABB[dim][1-dir] - (nextPosIncr[dim] + playerAABB[dim][dir]);
+            nextPosIncr[dim] += surfaceOffset - (dir ? 1 : -1) * EPSILON;
+            curVel[dim] /= 10;
+            if (dim == 1 && dir == 0) {
+              currentPlace.standingOn = hit || {};
+              currentPlace.flying = false;
+            }
           }
-        } else {
-          nextPosIncr[dim] = nextPos[dim];          
         }
       }
       
@@ -252,16 +295,19 @@ var Player = (function () {
       }
       aabbR.recompute();
       
+      // TODO this became a mess when AABB-base collision was introduced
       var seen = {};
       for (var k in currentPlace.standingOn || {}) {
         if (!currentPlace.standingOn.hasOwnProperty(k)) continue;
-        var cube = currentPlace.standingOn[k];
+        var cubeStr = k.split(":")[0].split(",");
+        var cube = [parseInt(cubeStr[0],10), parseInt(cubeStr[1],10), parseInt(cubeStr[2],10)];
         seen[cube] = true;
         world.setStandingOn(cube, true);
       }
       for (var k in previousStandingOn || {}) {
         if (!previousStandingOn.hasOwnProperty(k)) continue;
-        var cube = previousStandingOn[k];
+        var cubeStr = k.split(":")[0].split(",");
+        var cube = [parseInt(cubeStr[0],10), parseInt(cubeStr[1],10), parseInt(cubeStr[2],10)];
         if (!seen[cube]) {
           world.setStandingOn(cube, false);
         }
@@ -282,6 +328,8 @@ var Player = (function () {
       },
       applyViewTranslation: function (matrix) {
         var positionTrans = vec3.negate(currentPlace.pos, vec3.create());
+        positionTrans[1] += currentPlace.cameraYLag;
+        currentPlace.cameraYLag *= 0.75; /*Math.exp(-timestep*10) TODO we should be like this */
         mat4.translate(matrix, positionTrans);
       },
       getPosition: function() {
@@ -331,7 +379,7 @@ var Player = (function () {
             var face = currentPlace.selection.face;
             var x = cube[0]+face[0], y = cube[1]+face[1], z = cube[2]+face[2];
             var type = currentPlace.world.blockSet.get(currentPlace.tool);
-            if (!currentPlace.world.solid(x,y,z)) {
+            if (currentPlace.world.g(x,y,z) == 0) {
               // TODO: rotation on create should be more programmable.
               var raypts = renderer.getAimRay(mousePos, player.render); // TODO depend on player orientation instead?
               var symm = nearestCubeSymmetry(vec3.subtract(raypts[0], raypts[1]), [0,0,1], type.automaticRotations);
@@ -348,7 +396,7 @@ var Player = (function () {
         if (currentPlace.selection !== null) {
           var cube = currentPlace.selection.cube;
           var x = cube[0], y = cube[1], z = cube[2];
-          if (currentPlace.world.solid(x,y,z)) {
+          if (currentPlace.world.g(x,y,z) != 0 /* i.e. would destruction do anything */) { 
             var value = currentPlace.world.g(x,y,z);
             currentPlace.wrend.renderDestroyBlock(cube);
             currentPlace.world.s(x, y, z, 0);
@@ -381,7 +429,7 @@ var Player = (function () {
 
         currentPlace = new Place(world);
         currentPlace.forBlock = blockID;
-        vec3.set([World.TILE_SIZE/2, World.TILE_SIZE - playerAABB[1][0] + EPSILON, World.TILE_SIZE/2], currentPlace.pos);
+        vec3.set([world.wx/2, world.wy - playerAABB[1][0] + EPSILON, world.wz/2], currentPlace.pos);
         placeStack.push(oldPlace);
         aimChanged();
 
@@ -399,6 +447,7 @@ var Player = (function () {
             
             var world = currentPlace.world.blockSet.worldFor(blockID);
             if (world == null) return; // TODO: UI message about this
+            var tileSize = world.wx;
             
             currentPlace = new Place(world);
             
@@ -408,12 +457,12 @@ var Player = (function () {
             // Initial adjustments:
             // Make new position same relative to cube
             vec3.subtract(oldPlace.pos, cube, currentPlace.pos);
-            vec3.scale(currentPlace.pos, World.TILE_SIZE);
+            vec3.scale(currentPlace.pos, tileSize);
             // ... but not uselessly far away.
-            vec3.scale(currentPlace.pos, Math.min(1.0, (World.TILE_SIZE+40)/vec3.length(currentPlace.pos))); // TODO make relative to center of world, not origin
+            vec3.scale(currentPlace.pos, Math.min(1.0, (tileSize+40)/vec3.length(currentPlace.pos))); // TODO make relative to center of world, not origin
             // Same velocity, scaled
             vec3.set(oldPlace.vel, currentPlace.vel);
-            vec3.scale(currentPlace.vel, World.TILE_SIZE);
+            vec3.scale(currentPlace.vel, tileSize);
             // Same view direction
             currentPlace.yaw = oldPlace.yaw;
             // They'll probably end up in the air...
@@ -444,7 +493,6 @@ var Player = (function () {
     
     function notifyChangedPlace() {
       inputNotifier.notify("changedWorld");
-      inputNotifier.notify("changedTool");
     }
     
     // --- Initialization ---

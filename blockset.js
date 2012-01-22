@@ -33,9 +33,11 @@ var BlockType = (function () {
     this.sound = {}; // computed, TODO should be readonly
     
     // TODO: This property is to be replaced by circuits.
-    this.automaticRotations = [0];
+    this.automaticRotations = [0]; // editable property
     
-    this.behavior = null;
+    this.solid = true; // editable property
+    
+    this.behavior = null; // editable property
   }
   
   BlockType.prototype.serialize = function (serialize) {
@@ -43,6 +45,7 @@ var BlockType = (function () {
     serialize.setUnserializer(json, BlockType);
     if (this.automaticRotations.length !== 1 || this.automaticRotations[0] !== 0)
       json.automaticRotations = this.automaticRotations;
+    if (!this.solid) json.solid = false; // default true
     if (this.behavior && this.behavior.name)
       json.behavior = this.behavior.name;
     return json;
@@ -59,7 +62,7 @@ var BlockType = (function () {
     // note there is no opportunity here to remove listener, but it is unlikely to be needed.
     var self = this;
     function rebuild() {
-      _recomputeOpacity.call(self);
+      recomputeWorldBlockProperties.call(self);
       self._notify("appearanceChanged");
       return true;
     }
@@ -81,7 +84,7 @@ var BlockType = (function () {
       deletedCircuit: checkCircuits
     });
 
-    _recomputeOpacity.call(this);
+    recomputeWorldBlockProperties.call(this);
     checkCircuits();
     
     Object.seal(this);
@@ -94,33 +97,50 @@ var BlockType = (function () {
     value: null
   });
   
-  // TODO: implement nonstubbily
   BlockType.World.prototype.writeColor =
       function (scale, target, offset) {
-    target[offset] = scale;
-    target[offset+1] = scale;
-    target[offset+2] = scale;
-    target[offset+3] = scale;
+    var color = this._color;
+    target[offset  ] = scale * color[0];
+    target[offset+1] = scale * color[1];
+    target[offset+2] = scale * color[2];
+    target[offset+3] = this.opaque ? scale : 0;
   };
   
-  function _recomputeOpacity() {
-    var TILE_SIZE = this.world.wx; // assumed cubical
-    var TILE_LASTINDEX = TILE_SIZE - 1;
+  // Internal function: Recalculate all the properties derived from a BlockType.World's world.
+  function recomputeWorldBlockProperties() {
+    // Compute opacity and representative color.
+    var world = this.world;
+    var tileSize = world.wx; // assumed cubical
+    var tileLastIndex = tileSize - 1;
     var opaque = true;
+    var color = vec3.create();
+    var colorCount = 0;
     for (var dim = 0; dim < 3; dim++) {
       var ud = mod(dim+1,3);
       var vd = mod(dim+2,3);
-      for (var u = 0; u < TILE_SIZE; u++)
-      for (var v = 0; v < TILE_SIZE; v++) {
+      for (var u = 0; u < tileSize; u++)
+      for (var v = 0; v < tileSize; v++) {
         var vec = [u,v,0];
-        opaque = opaque && this.world.opaque(vec[dim],vec[ud],vec[vd]);
-        vec[2] = TILE_LASTINDEX;
-        opaque = opaque && this.world.opaque(vec[dim],vec[ud],vec[vd]);
+        opaque = opaque && world.opaque(vec[dim],vec[ud],vec[vd]);
+        vec[2] = tileLastIndex;
+        opaque = opaque && world.opaque(vec[dim],vec[ud],vec[vd]);
+        
+        // raycast for color -- TODO use both sides
+        while (!world.opaque(vec[dim],vec[ud],vec[vd]) && vec[2] < tileSize) {
+          vec[2] += 1;
+        }
+        if (vec[2] < tileSize) {
+          var subCubeColor = [];
+          world.gt(vec[dim],vec[ud],vec[vd]).writeColor(1, subCubeColor, 0);
+          vec3.add(color, subCubeColor);
+          colorCount++;
+        }
       }
     }
     this.opaque = opaque;
+    this._color = vec3.scale(color, 1/colorCount); // TODO make property private
     
-    // audio recalc is done async to reduce initial load delay
+    // Schedule audio synthesis.
     var self = this;
     function f() {
       self.sound = CubesAudio.synthBlock(self.world);
@@ -177,6 +197,7 @@ var BlockType = (function () {
   };
   
   BlockType.air = new BlockType.Color([0,0,0,0]);
+  BlockType.air.solid = false;
   
   Persister.types["BlockType"] = BlockType;
   BlockType.unserialize = function (json, unserialize) {
@@ -189,8 +210,13 @@ var BlockType = (function () {
       throw new Error("unknown BlockType serialization type");
     }
     
-    self.behavior = Circuit.behaviors.hasOwnProperty(json.behavior) ? Circuit.behaviors[json.behavior] : null;
-    self.automaticRotations = json.automaticRotations || [0];
+    if (Object.prototype.hasOwnProperty.call(json, "automaticRotations"))
+      self.automaticRotations = json.automaticRotations || [0];
+    if (Object.prototype.hasOwnProperty.call(json, "solid"))
+      self.solid = json.solid;
+    if (Object.prototype.hasOwnProperty.call(json, "behavior"))
+      self.behavior = Circuit.behaviors.hasOwnProperty(json.behavior) 
+          ? Circuit.behaviors[json.behavior] : null;
     
     return self;
   };
@@ -234,18 +260,94 @@ var BlockSet = (function () {
     ])],
   ];
 
-  var EMPTY_TILING = {};
+  var EMPTY_GEOMETRY = {vertices: [], texcoords: []};
+  var EMPTY_FACES = [];
   TILE_MAPPINGS.forEach(function (m) {
     var dimName = m[0];
-    EMPTY_TILING["l" + dimName] = [];
-    EMPTY_TILING["h" + dimName] = [];
+    EMPTY_FACES["l" + dimName] = 
+    EMPTY_FACES["h" + dimName] = EMPTY_GEOMETRY;
   });
-  Object.freeze(EMPTY_TILING);
+  var EMPTY_BLOCKRENDER = [];
+  for (var rot = 0; rot < applyCubeSymmetry.COUNT; rot++) {
+    EMPTY_BLOCKRENDER.push(EMPTY_FACES);
+  }
   
-  function Texgen() {
+  
+  function pushVertex(array, vec) {
+    array.push(vec[0], vec[1], vec[2]);
+  }
+  
+  function rotateVertices(rot, vertices) {
+    var out = [];
+    if (applyCubeSymmetry.isReflection(rot)) {
+      for (var i = vertices.length - 3; i >= 0; i -= 3) {
+        var t = applyCubeSymmetry(rot, 1, [vertices[i], vertices[i+1], vertices[i+2]]);
+        out.push(t[0],t[1],t[2]);
+      }
+    } else {
+      for (var i = 0; i < vertices.length; i += 3) {
+        var t = applyCubeSymmetry(rot, 1, [vertices[i], vertices[i+1], vertices[i+2]]);
+        out.push(t[0],t[1],t[2]);
+      }
+    }
+    return out;
+  }
+  
+  function rotateTexcoords(rot, texcoords) {
+    if (applyCubeSymmetry.isReflection(rot)) {
+      var out = [];
+      for (var i = texcoords.length - 2; i >= 0; i -= 2) {
+        out.push(texcoords[i],texcoords[i+1]);
+      }
+      return out;
+    } else {
+      return texcoords;
+    }
+  }
+  
+  function rotateFaceData(rot, faceData) {
+    var out = {};
+    Object.keys(faceData).forEach(function (face) {
+      var f = faceData[face];
+      out[face] = {vertices: rotateVertices(rot, f.vertices), texcoords: rotateTexcoords(rot, f.texcoords)};
+    });
+    return out;
+  }
+  
+  // Compute the texture coordinates for a tile as needed by WorldRenderer
+  function calcTexCoords(texgen, usageIndex, flipped) {
+    var uv = texgen.uvFor(usageIndex);
+    var tileUVSize = texgen.tileUVSize;
+    var texO = flipped ? tileUVSize : 0;
+    var texD = flipped ? 0 : tileUVSize;
+    var uo = uv[1];
+    var vo = uv[0];
+    return [
+      uo + texO, vo + texO,
+      uo + tileUVSize, vo + 0,
+      uo + 0, vo + tileUVSize,
+      uo + texD, vo + texD,
+      uo + 0, vo + tileUVSize,
+      uo + tileUVSize, vo + 0
+    ];
+  }
+  
+  function Texgen(tileSize) {
     var renderer = main.renderer; // TODO global variable -- the problem being that BlockSets are not (and should not be) parameterized w/ a renderer.
     var self = this;
     var gl = renderer.context;
+    
+    this.tileSize = tileSize;
+
+    // Size of an actual tile in the texture, with borders
+    var /*constant*/ borderTileSize = tileSize + 2;
+
+    var textureSize = 128; // initial allocation; gets multiplied by 2 on initial enlargeTexture()
+    
+    // Values computed from the texture size
+    var borderTileUVSize; // Size of one tile, including border, in the texture in UV coordinates
+    var borderUVOffset;   // Offset from 0,0 of the corner of a tile
+    var tileCountSqrt;    // Number of tiles which fit in one row/column of the texture
     
     // Texture holding tiles
     // TODO: Confirm that WebGL garbage collects these, or add a delete method to BlockSet for use as needed
@@ -257,21 +359,25 @@ var BlockSet = (function () {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.bindTexture(gl.TEXTURE_2D, null);
     
-    var tileCountSqrt = 16; // initial allocation; gets multiplied by 2
     var blockTextureData;
     var tileAllocMap;
     var freePointer;
     var usageMap;
     this.textureLost = false;
     function enlargeTexture() {
-      tileCountSqrt *= 2;
-      self.tileUVSize = 1/tileCountSqrt;
+      textureSize *= 2;
+      
+      self.tileUVSize = tileSize/textureSize;
+      borderUVOffset = 1/textureSize;
+      borderTileUVSize = borderTileSize/textureSize;
+      tileCountSqrt = Math.floor(textureSize/borderTileSize);
       
       // ImageData object used to buffer calculated texture data
       self.image = document.createElement("canvas").getContext("2d")
-        .createImageData(World.TILE_SIZE * tileCountSqrt, World.TILE_SIZE * tileCountSqrt);
+        .createImageData(textureSize, textureSize);
       
       // tile position allocator
+      // TODO this wastes space because we're not using the texturePOTSize benefit
       tileAllocMap = new Uint8Array(tileCountSqrt*tileCountSqrt);
       freePointer = 0;
       
@@ -299,8 +405,14 @@ var BlockSet = (function () {
     };
     this.uvFor = function (usageIndex) {
       var c = self.allocationFor(usageIndex);
-      c[0] *= self.tileUVSize;
-      c[1] *= self.tileUVSize;
+      c[0] = borderUVOffset + borderTileUVSize*c[0];
+      c[1] = borderUVOffset + borderTileUVSize*c[1];
+      return c;
+    };
+    this.imageCoordsFor = function (usageIndex) {
+      var c = self.allocationFor(usageIndex);
+      c[0] = 1 + borderTileSize*c[0];
+      c[1] = 1 + borderTileSize*c[1];
       return c;
     };
     this.deallocateUsage = function (usageIndex) {
@@ -309,7 +421,30 @@ var BlockSet = (function () {
       }
       tileFree(usageMap[usageIndex]);
       delete usageMap[usageIndex];
-    }
+    };
+    this.completed = function (usageIndex) {
+      // generate texture clamp border
+      var coords = this.imageCoordsFor(usageIndex);
+      var w = self.image.width;
+      var data = self.image.data;
+      function pix(x,y) {
+        return (coords[0]+x + w * (coords[1]+y)) * 4;
+      }
+      function copy(dst, src) {
+        data[dst] = data[src];
+        data[dst+1] = data[src+1];
+        data[dst+2] = data[src+2];
+        data[dst+3] = data[src+3];
+      }
+      for (var x = 0; x < tileSize; x++) {
+        copy(pix(x,-1), pix(x,0));
+        copy(pix(x,tileSize), pix(x,tileSize-1));
+      }
+      for (var y = -1; y <= tileSize; y++) {
+        copy(pix(-1,y), pix(0,y));
+        copy(pix(tileSize,y), pix(tileSize-1,y));
+      }
+    };
     
     function tileAlloc() {
       var n = 0;
@@ -334,57 +469,74 @@ var BlockSet = (function () {
   }
   
   function BlockSet(initialTypes) {
-    // not at top level because world.js is not yet loaded
-    var TILE_SIZE = World.TILE_SIZE;
-    var TILE_LASTINDEX = TILE_SIZE - 1;
+    var tileSize = NaN;
 
     // All block sets unconditionally have the standard empty block at ID 0.
     var types = [BlockType.air];
-    var tilings = [EMPTY_TILING];
+    var rotatedBlockFaceData = [EMPTY_BLOCKRENDER];
     
     var texgen = null;
     var typesToRerender = new DirtyQueue();
     
     function rebuildOne(blockID) {
+      var tileSize = texgen.tileSize; // shadowing
+      var tileLastIndex = tileSize - 1;
       var blockType = types[blockID];
-      var tiling = tilings[blockID];
+      var rotatedFaceData = rotatedBlockFaceData[blockID];
       
       var texWidth = texgen.image.width;
       var texData = texgen.image.data;
       
+      function pushQuad(vertices, texcoords, flipped, transform, depth, usageIndex) {
+        texcoords.push.apply(texcoords, calcTexCoords(texgen, usageIndex, flipped));
+        var a = flipped ? 1 : 0;
+        var b = flipped ? 0 : 1;
+        
+        pushVertex(vertices, mat4.multiplyVec3(transform, [a,a,depth]));
+        pushVertex(vertices, mat4.multiplyVec3(transform, [0,1,depth]));
+        pushVertex(vertices, mat4.multiplyVec3(transform, [1,0,depth]));
+        
+        pushVertex(vertices, mat4.multiplyVec3(transform, [b,b,depth]));
+        pushVertex(vertices, mat4.multiplyVec3(transform, [1,0,depth]));
+        pushVertex(vertices, mat4.multiplyVec3(transform, [0,1,depth]));
+      }
+      
       if (blockType.color) { // TODO: factor this conditional into BlockType
         var color = blockType.color;
         var usageIndex = blockID.toString();
-        var coord = texgen.allocationFor(usageIndex);
-        var uv = texgen.uvFor(usageIndex);
+        var coord = texgen.imageCoordsFor(usageIndex);
+        var pixu = coord[0], pixv = coord[1];
         var r = 255 * color[0];
         var g = 255 * color[1];
         var b = 255 * color[2];
         var a = 255 * color[3];
 
-        var tileu = coord[0], tilev = coord[1];
-        var pixu = tileu*TILE_SIZE;
-        var pixv = tilev*TILE_SIZE;
-        for (var u = 0; u < TILE_SIZE; u++)
-        for (var v = 0; v < TILE_SIZE; v++) {
+        for (var u = 0; u < tileSize; u++)
+        for (var v = 0; v < tileSize; v++) {
           var c = ((pixu+u) * texWidth + pixv+v) * 4;
           texData[c+0] = r;
           texData[c+1] = g;
           texData[c+2] = b;
           texData[c+3] = a;
         }
+        texgen.completed(usageIndex);
         
+        var faceData = [];
         TILE_MAPPINGS.forEach(function (m) {
           var dimName = m[0];
           var transform = m[1];
-          var layers = [];
-          tiling["l" + dimName] = layers;
-          tiling["h" + dimName] = layers;
-          for (var layer = 0; layer < TILE_SIZE; layer++) {
-            // u,v coordinates of this tile for use by the vertex generator
-            layers[layer] = layer == 0 ? uv : null;
-          }
+          var verticesL = [];
+          var verticesH = [];
+          var texcoords = [];
+          // Texture is a solid color, so we only need one set of texcoords.
+          pushQuad(verticesL, texcoords, false, transform, 0, usageIndex);
+          pushQuad(verticesH, [],        true,  transform, 1, usageIndex);
+          faceData["l" + dimName] = {vertices: verticesL, texcoords: texcoords};
+          faceData["h" + dimName] = {vertices: verticesH, texcoords: texcoords};
         });
+        for (var i = 0; i < applyCubeSymmetry.COUNT; i++) {
+          rotatedFaceData[i] = faceData;
+        }
       } else if (blockType.world) {
         (function () {
           var world = blockType.world;
@@ -396,17 +548,14 @@ var BlockSet = (function () {
           var viewL = vec3.create();
           var viewH = vec3.create();
           
-          function sliceWorld(dimName, layerL, transform, layersL, layersH) {
-            var layerH = TILE_LASTINDEX - layerL;
-            var usageIndex = blockID + "," + dimName + "," + layerL;
+          function sliceWorld(dimName, layer, transform, texcoordsL, texcoordsH, verticesL, verticesH) {
+            var usageIndex = blockID + "," + dimName + "," + layer;
             
-            var coord = texgen.allocationFor(usageIndex);
-            var tileu = coord[0], tilev = coord[1];
+            var coord = texgen.imageCoordsFor(usageIndex);
+            var pixu = coord[0], pixv = coord[1];
             
             var thisLayerNotEmptyL = false;
             var thisLayerNotEmptyH = false;
-            var pixu = tileu*TILE_SIZE;
-            var pixv = tilev*TILE_SIZE;
             
             // viewL is the offset of the subcube which would block the view
             // of this subcube if it is opaque.
@@ -416,10 +565,10 @@ var BlockSet = (function () {
             mat4.multiplyVec3(transform, viewH, viewH);
             
             // extract surface plane of block from world
-            for (var u = 0; u < TILE_SIZE; u++)
-            for (var v = 0; v < TILE_SIZE; v++) {
+            for (var u = 0; u < tileSize; u++)
+            for (var v = 0; v < tileSize; v++) {
               var c = ((pixu+u) * texWidth + pixv+v) * 4;
-              vec[0] = u; vec[1] = v; vec[2] = layerL;
+              vec[0] = u; vec[1] = v; vec[2] = layer;
               mat4.multiplyVec3(transform, vec, vec);
           
               world.gt(vec[0],vec[1],vec[2]).writeColor(255, texData, c);
@@ -441,55 +590,77 @@ var BlockSet = (function () {
               // We can reuse this tile iff it was blank or fully obscured
               texgen.deallocateUsage(usageIndex);
             } else {
-              // u,v coordinates of this tile for use by the vertex generator
-              var uv = texgen.uvFor(usageIndex);
+              texgen.completed(usageIndex);
+              
               // If the layer has unobscured content, and it is not an interior surface of an opaque block, then add it to rendering. Note that the TILE_MAPPINGS loop skips slicing interiors of opaque blocks, but they still need to have the last layer excluded because the choice of call to sliceWorld does not express that.
-              layersL[layerL] = thisLayerNotEmptyL && (!blockType.opaque || layerL == 0) ? uv : null;
-              layersH[layerH] = thisLayerNotEmptyH && (!blockType.opaque || layerH == 0) ? uv : null;
+              if (thisLayerNotEmptyL && (!blockType.opaque || layer == 0)) {
+                pushQuad(verticesL, texcoordsL, false, transform, layer/tileSize, usageIndex);
+              }
+              if (thisLayerNotEmptyH && (!blockType.opaque || layer == tileLastIndex)) {
+                pushQuad(verticesH, texcoordsH, true, transform, (layer+1)/tileSize, usageIndex);
+              }
             }
             
-            // TODO: trigger rerender of chunks only if we made changes to the tiling, not if only the colors changed
+            // TODO: trigger rerender of chunks only if we made changes to the texcoords, not if only the colors changed
             
             //console.log("id ", wi + 1, " dim ", dimName, " layer ", layer, (thisLayerNotEmptyL || thisLayerNotEmptyH) ? " allocated" : " skipped");
           }
+          var faceData = [];
           TILE_MAPPINGS.forEach(function (m) {
             var dimName = m[0];
             var transform = m[1];
-            var layersL = tiling["l" + dimName] = [];
-            var layersH = tiling["h" + dimName] = [];
+            var texcoordsL = [];
+            var texcoordsH = [];
+            var verticesL = [];
+            var verticesH = [];
             if (blockType.opaque) {
               if (texgen.textureLost) return;
-              sliceWorld(dimName, 0,              transform, layersL, layersH);
-              sliceWorld(dimName, TILE_LASTINDEX, transform, layersL, layersH);
+              sliceWorld(dimName, 0,             transform, texcoordsL, texcoordsH, verticesL, verticesH);
+              sliceWorld(dimName, tileLastIndex, transform, texcoordsL, texcoordsH, verticesL, verticesH);
             } else {
-              for (var layer = 0; layer < TILE_SIZE; layer++) {
+              for (var layer = 0; layer < tileSize; layer++) {
                 if (texgen.textureLost) return;
-                sliceWorld(dimName, layer, transform, layersL, layersH);
+                sliceWorld(dimName, layer, transform, texcoordsL, texcoordsH, verticesL, verticesH);
               }
             }
+            faceData["l" + dimName] = {vertices: verticesL, texcoords: texcoordsL};
+            faceData["h" + dimName] = {vertices: verticesH, texcoords: texcoordsH};
           });
+          // TODO: texcoords are copied and reversed for every reflection; it would be more memory-efficient to arrange to have only one reversed set
+          for (var rot = 0; rot < applyCubeSymmetry.COUNT; rot++) {
+            rotatedFaceData[rot] = rotateFaceData(rot, faceData);
+          }
         })();
       } else {
         throw new Error("Don't know how to render the BlockType");
       }
+      
+      // NOTE: This function does not notify texturingChanged because this is called lazily when clients ask about the new render data.
     }
     
     function freshenTexture() {
       var upload = false;
+      var allChanged = false;
+      var l = self.length;
       if (!texgen || texgen.mustRebuild()) {
-        texgen = new Texgen();
+        texgen = new Texgen(self.tileSize);
       }
       while (texgen.textureLost) {
         //console.info("Performing full block texture rebuild.");
         texgen.textureLost = false;
-        var l = self.length;
         for (var id = BlockSet.ID_EMPTY + 1; id < l && !texgen.textureLost; id++)
           rebuildOne(id);
         upload = true;
+        allChanged = true;
       }
       while (typesToRerender.size()) {
         rebuildOne(typesToRerender.dequeue());
         upload = true;
+      }
+      if (allChanged) {
+        // If textureLost, which might occur because it was resized, then we need to notify of *everything* changing
+        for (var id = BlockSet.ID_EMPTY + 1; id < l; id++)
+          notifier.notify("texturingChanged", id);
       }
       if (upload) {
         var gl = main.renderer.context; // TODO global variable
@@ -502,12 +673,16 @@ var BlockSet = (function () {
     var notifier = new Notifier("BlockSet");
     
     var self = Object.freeze({
+      get tileSize () {
+        // If tile size is undefined because we have only color blocks, then we treat it as 1
+        return isNaN(tileSize) ? 1 : tileSize;
+      }, 
       get length () { return types.length; },
       
       add: function (newBlockType) {
         var newID = types.length;
         types.push(newBlockType);
-        tilings.push({});
+        rotatedBlockFaceData.push({});
         typesToRerender.enqueue(newID);
         newBlockType.listen({
           appearanceChanged: function () {
@@ -516,7 +691,20 @@ var BlockSet = (function () {
             notifier.notify("texturingChanged", newID);
             return true;
           }
-        })
+        });
+        
+        // TODO: This is not correct if BlockTypes are allowed to change their worlds
+        if (newBlockType.world) {
+          var ts = newBlockType.world.wx; // assuming cubicality
+          if (tileSize == ts || isNaN(tileSize)) {
+            tileSize = ts;
+          } else {
+            if (typeof console !== "undefined")
+              console.warn("Inconsistent tile size for blockset; set has", tileSize, "and new type has", ts);
+          }
+        }
+
+        notifier.notify("tableChanged", newID);
       },
       
       get: function (blockID) {
@@ -533,18 +721,19 @@ var BlockSet = (function () {
         return array;
       },
       
+      // Listener protocol:
+      // tableChanged(id) -- the given id has a different block type associated with it
+      // texturingChanged(id) -- the render data for the given id has changed
       listen: notifier.listen,
       
-      // TODO: bundle texture/tilings into a facet
-      get texture () {
+      // Return the data required to render blocks, updating if it is out of date.
+      getRenderData: function () {
         freshenTexture();
-        return texgen.texture;
-      },
-      getTexTileSize: function () { return texgen.tileUVSize; },
-      get tilings () {
-        freshenTexture();
-        tilings.bogus = tilings[BlockSet.ID_BOGUS] || EMPTY_TILING;
-        return tilings;
+        rotatedBlockFaceData.bogus = rotatedBlockFaceData[BlockSet.ID_BOGUS] || EMPTY_BLOCKRENDER;
+        return {
+          texture: texgen.texture,
+          rotatedBlockFaceData: rotatedBlockFaceData
+        };
       },
       worldFor: function (blockID) {
         return types[blockID] ? types[blockID].world : null;

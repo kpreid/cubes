@@ -81,6 +81,11 @@ var WorldRenderer = (function () {
 
     var blockSet = world.blockSet;
     
+    // Cached blockset characteristics
+    var tileSize = blockSet.tileSize;
+    var pixelSize = 1/tileSize;
+    var ID_EMPTY = BlockSet.ID_EMPTY;
+    
     var particles = [];
     
     var boundaryR = new renderer.RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
@@ -110,7 +115,7 @@ var WorldRenderer = (function () {
     });
 
     var textureDebugR = new renderer.RenderBundle(gl.TRIANGLE_STRIP,
-                                                  function () { return blockSet.texture; },
+                                                  function () { return blockSet.getRenderData().texture; },
                                                   function (vertices, normals, texcoords) {
       var x = 1;
       var y = 1;
@@ -176,9 +181,10 @@ var WorldRenderer = (function () {
     }
     
     var listenerB = {
-      // TODO: Optimize by rerendering only if *tiling* changed, and only
+      // TODO: Optimize by rerendering only if render data (not just texture image) changed, and only
       // chunks containing the changed block ID?
-      texturingChanged: dirtyAll
+      texturingChanged: dirtyAll,
+      tableChanged: dirtyAll
     }
     
     var listenerRenderDistance = {
@@ -349,6 +355,7 @@ var WorldRenderer = (function () {
     function renderDestroyBlock(block) {
       particles.push(new renderer.BlockParticles(
         block,
+        tileSize,
         world.gt(block[0],block[1],block[2]),
         true,
         world.gRot(block[0],block[1],block[2])));
@@ -358,6 +365,7 @@ var WorldRenderer = (function () {
     function renderCreateBlock(block) {
       particles.push(new renderer.BlockParticles(
         block,
+        tileSize,
         world.gt(block[0],block[1],block[2]),
         false,
         world.gRot(block[0],block[1],block[2])));
@@ -366,6 +374,7 @@ var WorldRenderer = (function () {
 
     function draw() {
       // Draw chunks.
+      renderer.setTileSize(blockSet.tileSize);
       for (var index in chunks) {
         if (!chunks.hasOwnProperty(index)) continue;
         var chunk = chunks[index];
@@ -411,6 +420,8 @@ var WorldRenderer = (function () {
       }
     }
     this.draw = draw;
+    
+    var renderData; // updated as needed by chunk recalculate
 
     // returns whether no work was done
     function calcChunk(xzkey) {
@@ -435,108 +446,57 @@ var WorldRenderer = (function () {
         var chunkOriginZ = xzkey[1];
         var chunkLimitX = Math.min(wx, xzkey[0] + CHUNKSIZE);
         var chunkLimitZ = Math.min(wz, xzkey[1] + CHUNKSIZE);
-        var TILE_SIZE = World.TILE_SIZE;
-        var PIXEL_SIZE = 1/TILE_SIZE;
-        var ID_EMPTY = BlockSet.ID_EMPTY;
         chunks[xzkey] = new renderer.RenderBundle(gl.TRIANGLES,
-                                         function () { return blockSet.texture; },
+                                         function () { return renderData.texture; },
                                          function (vertices, normals, texcoords) {
-          // These statements are inside the function because they need to
-          // retrieve the most up-to-date values.
-          var tilings = blockSet.tilings; // has side effect of updating tiling if needed
-          var BOGUS_TILING = tilings.bogus;
-          var TILE_SIZE_UV = blockSet.getTexTileSize();
+          renderData = blockSet.getRenderData();
+          var rotatedBlockFaceData = renderData.rotatedBlockFaceData;
+          var BOGUS_BLOCK_DATA = rotatedBlockFaceData.bogus;
           var rawCircuits = world.getCircuitsByBlock();
           var types = blockSet.getAll();
 
-          var vecbuf = vec3.create();
-
-          function pushVertex(vec) {
-            vertices.push(vec[0], vec[1], vec[2]);
-          }
-          function pushNormal(vec) {
-            normals.push(vec[0], vec[1], vec[2]);
-          }
-          function pushTileCoord(tileKey, u, v) {
-            texcoords.push(tileKey[1] + u,
-                           tileKey[0] + v);
-          }
-
-          function square(origin, v1, v2, tileKey, texO, texD, normal) {
-            // texO and texD are the originward and v'ward texture coordinates, used to flip the texture coords vs. origin for the 'positive side' squares
-
-            if (tileKey == null) return; // transparent or obscured layer
-            
-            pushTileCoord(tileKey, texO, texO);
-            pushTileCoord(tileKey, TILE_SIZE_UV, 0);
-            pushTileCoord(tileKey, 0, TILE_SIZE_UV);
-            pushTileCoord(tileKey, texD, texD);
-            pushTileCoord(tileKey, 0, TILE_SIZE_UV);
-            pushTileCoord(tileKey, TILE_SIZE_UV, 0);
-
-            pushVertex(origin);
-            pushVertex(vec3.add(origin, v1, vecbuf));
-            pushVertex(vec3.add(origin, v2, vecbuf));
-
-            pushVertex(vec3.add(vec3.add(origin, v1, vecbuf), v2, vecbuf));
-            pushVertex(vec3.add(origin, v2, vecbuf));
-            pushVertex(vec3.add(origin, v1, vecbuf));
-            
-            pushNormal(normal);
-            pushNormal(normal);
-            pushNormal(normal);
-            pushNormal(normal);
-            pushNormal(normal);
-            pushNormal(normal);
-          }
+          // these variables are used by face() and written by the loop
+          var x,y,z;
+          var thisOpaque;
           
-          var c1 = vec3.create();
-          var c2 = vec3.create();
-          var depthOriginBuf = vec3.create();
-          var thiso; // used by squares, assigned by loop
-          function squares(origin, v1, v2, vDepth, vFacing, tileLayers, texO, texD) {
-            if (thiso && world.opaque(x+vFacing[0],y+vFacing[1],z+vFacing[2])) {
+          function face(vFacing, data) {
+            var faceVertices = data.vertices;
+            var faceTexcoords = data.texcoords;
+            if (thisOpaque && world.opaque(x+vFacing[0],y+vFacing[1],z+vFacing[2])) {
               // this face is invisible
               return
-            } else if (tileLayers == null) {
-              square(origin, v1, v2, null, texO, texD);
             } else {
-              vec3.set(origin, depthOriginBuf);
-              for (var i = 0; i < TILE_SIZE; i++) {
-                square(depthOriginBuf, v1, v2, tileLayers[i], texO, texD, vFacing);
-                depthOriginBuf[0] += vDepth[0]*PIXEL_SIZE;
-                depthOriginBuf[1] += vDepth[1]*PIXEL_SIZE;
-                depthOriginBuf[2] += vDepth[2]*PIXEL_SIZE;
+              var vl = faceVertices.length / 3;
+              for (var i = 0; i < vl; i++) {
+                vertices.push(faceVertices[i*3  ]+x,
+                              faceVertices[i*3+1]+y,
+                              faceVertices[i*3+2]+z);
+                texcoords.push(faceTexcoords[i*2],faceTexcoords[i*2+1]);
+                normals.push(vFacing[0],vFacing[1],vFacing[2]);
               }
             }
           }
           
-          for (var x = chunkOriginX; x < chunkLimitX; x++)
-          for (var y = 0;            y < wy         ; y++)
-          for (var z = chunkOriginZ; z < chunkLimitZ; z++) {
+          for (x = chunkOriginX; x < chunkLimitX; x++)
+          for (y = 0;            y < wy         ; y++)
+          for (z = chunkOriginZ; z < chunkLimitZ; z++) {
             // raw array access inlined and simplified for efficiency
             var rawIndex = (x*wy+y)*wz+z;
             var value = rawBlocks[rawIndex];
-
             if (value === ID_EMPTY) continue;
 
-            var rot = ROT_DATA[rawRotations[rawIndex]];
-            var rzero = rot.zero;
-            var rpos = rot.pos;
-            c1[0] = x+rzero[0]; c2[0] = x+rpos[0];
-            c1[1] = y+rzero[1]; c2[1] = y+rpos[1];
-            c1[2] = z+rzero[2]; c2[2] = z+rpos[2];
-
+            var rotIndex = rawRotations[rawIndex];
+            var rot = ROT_DATA[rotIndex];
             var btype = types[value];
-            var tiling = tilings[value] || BOGUS_TILING;
-            thiso = btype.opaque; // -- Note used by squares()
+            var faceData = (rotatedBlockFaceData[value] || BOGUS_BLOCK_DATA)[rotIndex];
+            thisOpaque = btype.opaque;
 
-            squares(c1, rot.pz, rot.py, rot.px, rot.nx, tiling.lx, 0, TILE_SIZE_UV);
-            squares(c1, rot.px, rot.pz, rot.py, rot.ny, tiling.ly, 0, TILE_SIZE_UV);
-            squares(c1, rot.py, rot.px, rot.pz, rot.nz, tiling.lz, 0, TILE_SIZE_UV);
-            squares(c2, rot.ny, rot.nz, rot.nx, rot.px, tiling.hx, TILE_SIZE_UV, 0);
-            squares(c2, rot.nz, rot.nx, rot.ny, rot.py, tiling.hy, TILE_SIZE_UV, 0);
-            squares(c2, rot.nx, rot.ny, rot.nz, rot.pz, tiling.hz, TILE_SIZE_UV, 0);
+            face(rot.nx, faceData.lx);
+            face(rot.ny, faceData.ly);
+            face(rot.nz, faceData.lz);
+            face(rot.px, faceData.hx);
+            face(rot.py, faceData.hy);
+            face(rot.pz, faceData.hz);
             var circuit = rawCircuits[x+","+y+","+z]; // TODO: replace this with some other spatial indexing scheme so we don't have to check per-every-block
             if (circuit) {
               var o = circuit.getOrigin();
@@ -604,7 +564,7 @@ var WorldRenderer = (function () {
     }
     
     var CENTER = [.5,.5,.5];
-    var CYL_RADIUS = Math.round(.08 * World.TILE_SIZE) / World.TILE_SIZE;
+    var CYL_RADIUS = Math.round(.08 * tileSize) / tileSize;
     function makeCircuitRenderer(circuit) {
       var dyns;
       var circuitRenderer = new renderer.RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {

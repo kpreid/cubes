@@ -15,11 +15,12 @@ var config = {};
   function defineOption(name, type, value) {
     config[name] = new PersistentCell("cubes.option." + name, type, value);
   }
-  function resetAllOptions() {
+  Object.defineProperty(config, "resetAllOptions", {value: function () {
     Object.keys(config).forEach(function (k) { config[k].setToDefault(); });
-  }
+  }});
   defineOption("fov", "number", 60);
   defineOption("renderDistance", "number", 100);
+  defineOption("mouseTurnRate", "number", 4); // radians/second/half-screen-width
   defineOption("lighting", "boolean", true);
   defineOption("bumpMapping", "boolean", true);
   defineOption("sound", "boolean", true);
@@ -32,6 +33,7 @@ var config = {};
   defineOption("generate_wz", "number", 400);
   defineOption("generate_shape", "string", "fill");
   defineOption("generate_slope", "number", 0.9);
+  defineOption("generate_tileSize", "number", 16);
   defineOption("generate_name", "string", "Untitled");
 
   defineOption("currentTopWorld", "string", "Untitled");
@@ -196,7 +198,6 @@ var CubesMain = (function () {
       }
     }
     config.debugForceRender.listen({changed: function () { scheduleDraw(); return true; }});
-    this.scheduleDraw = scheduleDraw();
 
     // statistics are reset once per second
     setInterval(function () {
@@ -210,10 +211,18 @@ var CubesMain = (function () {
       //player.render.getWorldRenderer().renderCreateBlock(b);
     }, 1000);
     
+    var t0 = undefined;
+    function startupMessage(text) {
+      var t1 = Date.now();
+      sceneInfo.data += text + "\n";
+      if (typeof console !== 'undefined')
+        console.log(t0 ? "(+"+(t1-t0)+" ms)" : "        ", text);
+      t0 = t1;
+    }
+    
     // for making our loading more async
     var ABORT = {};
     function sequence(actions, catcher) {
-      var t0 = undefined;
       function sub(i) {
         if (i >= actions.length) {
           return;
@@ -221,14 +230,10 @@ var CubesMain = (function () {
           setTimeout(function () {
             var a = actions[i];
             if (typeof a == 'string') {
-              var t1 = Date.now();
-              sceneInfo.data += a + "\n";
-              if (typeof console !== 'undefined')
-                console.log(t0 ? "(+"+(t1-t0)+" ms)" : "        ", a);
-              t0 = t1;
+              startupMessage(a);
             } else {
               try {
-                if (actions[i]() === ABORT) return;
+                if (actions[i](function () { sub(i+1); }) === ABORT) return;
               } catch (e) {
                 catcher(e);
               }
@@ -248,6 +253,11 @@ var CubesMain = (function () {
       chunkProgressBar = new ProgressBar(document.getElementById("chunks-progress-bar"));
       audioProgressBar = new ProgressBar(document.getElementById("audio-progress-bar"));
       persistenceProgressBar = new ProgressBar(document.getElementById("persistence-progress-bar"));
+
+      var shaders;
+
+      document.getElementById('local-save-ok').style.display = Persister.available ? 'block' : 'none';
+      document.getElementById('local-save-warning').style.display = !Persister.available ? 'block' : 'none';
 
       // Save button
       var saveButton = document.getElementById("save-button");
@@ -295,12 +305,25 @@ var CubesMain = (function () {
             document.getElementById("feature-error-text").appendChild(document.createTextNode("ECMAScript 5 property accessors on frozen objects"));
           }
         },
+        "Downloading resources...",
+        function (cont) {
+          Renderer.fetchShaders(function (s) {
+            if (s === null) {
+              // TODO abstract error handling; this duplicates the sequence catcher
+              document.getElementById("load-error-notice").style.removeProperty("display");
+              document.getElementById("load-error-text").appendChild(document.createTextNode("Failed to download shader files."));
+              return;
+            }
+            shaders = s;
+            cont();
+          });
+          return ABORT; // actually continue by calling cont()
+        },
         "Setting up WebGL...",
         function () {
-          
           theCanvas = document.getElementById('view-canvas');
           try {
-          renderer = main.renderer = new Renderer(theCanvas, scheduleDraw);
+          renderer = main.renderer = new Renderer(theCanvas, shaders, scheduleDraw);
           } catch (e) {
             if (e instanceof Renderer.NoWebGLError) {
               document.getElementById("webgl-error-notice").style.removeProperty("display");
@@ -311,7 +334,11 @@ var CubesMain = (function () {
           }
           gl = renderer.context;
         },
-        "Loading worlds...",
+        function () {
+          startupMessage(Persister.has("world")
+              ? "Loading saved worlds..."
+              : "Creating worlds...");
+        },
         function () {
           // Save-on-exit
           window.addEventListener("unload", function () {
@@ -320,8 +347,6 @@ var CubesMain = (function () {
           }, false);
           
           var world;
-          document.getElementById('local-save-ok').style.display = Persister.available ? 'block' : 'none';
-          document.getElementById('local-save-warning').style.display = !Persister.available ? 'block' : 'none';
           if (Persister.available) {
             try {
               world = Persister.get(config.currentTopWorld.get());
@@ -339,10 +364,14 @@ var CubesMain = (function () {
           }
           main.setTopWorld(world);
         },
-        "Painting blocks...", // this is what takes the time in world renderer construction
+        "Creating your avatar...",
         function () {
-          // done after some GL init because player creates world renderer object internally
           player = new Player(worldH, renderer/*TODO facet? */, scheduleDraw);
+        },
+        "Painting blocks...",
+        function () {
+          // force lazy init to happen now rather than on first frame
+          player.getWorld().blockSet.getRenderData();
         },
         "Finishing...",
         function () {
@@ -354,7 +383,7 @@ var CubesMain = (function () {
         },
         "Ready!"
       ], function (exception) {
-        sceneInfo.data += exception;
+        startupMessage(exception);
         document.getElementById("load-error-notice").style.removeProperty("display");
         document.getElementById("load-error-text").appendChild(document.createTextNode("" + exception));
         throw exception; // propagate to browser console

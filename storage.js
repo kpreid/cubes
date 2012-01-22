@@ -298,6 +298,10 @@ var Persister = (function () {
       return object;
     }
   };
+  Persister.has = function (name) {
+    return Persister.available &&
+        (hop.call(currentlyLiveObjects, name) || localStorage.getItem(objectPrefix + name) !== null);
+  };
   Persister.forEach = function (f) {
     // TODO Instead of this expensive unserialize-and-inspect, examine the db on startup and cache
     for (var i = localStorage.length - 1; i >= 0; i--) {

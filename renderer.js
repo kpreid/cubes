@@ -6,7 +6,7 @@ var Renderer = (function () {
   
   var DEBUG_GL = false;
   
-  function Renderer(canvas, scheduleDraw) {
+  function Renderer(canvas, shaders, scheduleDraw) {
     //canvas = WebGLDebugUtils.makeLostContextSimulatingCanvas(canvas);
     //canvas.loseContextInNCalls(5000);
     //canvas.setRestoreTimeout(2000);
@@ -33,27 +33,37 @@ var Renderer = (function () {
     
     // --- Internals ---
     
+    function buildProgram() {
+      
+      attribs = {};
+      uniforms = {};
+      
+      var decls = {
+        LIGHTING: config.lighting.get(),
+        BUMP_MAPPING: config.bumpMapping.get()
+      };
+      
+      var program = prepareProgram(gl,
+                     prepareShader(gl, gl.VERTEX_SHADER, [shaders.common, shaders.vertex], decls),
+                     prepareShader(gl, gl.FRAGMENT_SHADER, [shaders.common, shaders.fragment], decls),
+                     attribs, uniforms);          
+      gl.useProgram(program);
+ 
+      // Constant program-specific state
+      gl.enableVertexAttribArray(attribs.aVertexPosition);
+      gl.enableVertexAttribArray(attribs.aVertexNormal);
+    }
+    
     function initContext() {
       contextSerial++;
       
-      var decls = {
-        TILE_SIZE: World.TILE_SIZE
-      };
-      
-      prepareProgram(gl,
-                     prepareShader(gl, "shader-vs", decls),
-                     prepareShader(gl, "shader-fs", decls),
-                     attribs, uniforms);          
+      buildProgram();
       
       // Mostly-constant GL state
-      gl.enableVertexAttribArray(attribs.aVertexPosition);
-      gl.enableVertexAttribArray(attribs.aVertexNormal);
       gl.enable(gl.DEPTH_TEST);
       gl.enable(gl.CULL_FACE);
       
       // Config-based GL state
-      sendLighting();
-      sendBumpMapping();
       sendViewUniforms();
     }
     
@@ -162,28 +172,26 @@ var Renderer = (function () {
 
     // --- Config bindings ---
     
-    var sendLighting = config.lighting.whenChanged(function (v) {
-      gl.uniform1i(uniforms.uLighting, v ? 1 : 0);
+    var rebuildProgramL = {changed: function (v) {
+      buildProgram();
+      updateViewport(); // note this is only to re-send uPixelsPerClipUnit; TODO have better updating scheme
       scheduleDraw();
       return true;
-    });
-    var sendBumpMapping = config.bumpMapping.whenChanged(function (v) {
-      gl.uniform1i(uniforms.uBumpMapping, v ? 1 : 0);
-      scheduleDraw();
-      return true;
-    });
+    }};
     var projectionL = {changed: function (v) {
       updateProjection();
       scheduleDraw();
       return true;
     }};
+    config.lighting.listen(rebuildProgramL);
+    config.bumpMapping.listen(rebuildProgramL);
     config.fov.listen(projectionL);
     config.renderDistance.listen(projectionL);
 
     // --- Initialization ---
     
     gl = canvas.getContext("experimental-webgl", {
-      // Reduces fillrate cost (which is a problem due to the layered block rendering), and also avoids MSAA problems with the edges of our atlas'd textures. TODO: Figure out how to work around the latter so we can make this an option.
+      // Reduces fillrate cost (which is a problem due to the layered block rendering), and also avoids MSAA problems with the meetings of subcube edges. (TODO: Try to fix that in the fragment shader by enlarging the texture.)
       antialias: false
     });
     if (DEBUG_GL) {
@@ -308,6 +316,11 @@ var Renderer = (function () {
       gl.uniform1i(uniforms.uStipple, val ? 1 : 0);
     }
     this.setStipple = setStipple;
+    
+    function setTileSize(val) {
+      gl.uniform1f(uniforms.uTileSize, val);
+    }
+    this.setTileSize = setTileSize;
     
     function BufferAndArray(numComponents) {
       this.numComponents = numComponents;
@@ -439,17 +452,16 @@ var Renderer = (function () {
     }
     this.RenderBundle = RenderBundle;
     
-    function BlockParticles(location, blockType, destroyMode, symm) {
+    function BlockParticles(location, tileSize, blockType, destroyMode, symm) {
       var blockWorld = blockType.world;
       var k = 2;
       var t0 = Date.now();
       var rb = new renderer.RenderBundle(gl.POINTS, null, function (vertices, normals, colors) {
-        var TILE_SIZE = World.TILE_SIZE;
-        for (var x = 0; x < TILE_SIZE; x++) {
-          for (var y = 0; y < TILE_SIZE; y++) {
-            for (var z = 0; z < TILE_SIZE; z++) {
+        for (var x = 0; x < tileSize; x++) {
+          for (var y = 0; y < tileSize; y++) {
+            for (var z = 0; z < tileSize; z++) {
               if (!destroyMode) {
-                if (!(x < k || x >= TILE_SIZE-k || y < k || y >= TILE_SIZE-k || z < k || z >= TILE_SIZE-k))
+                if (!(x < k || x >= tileSize-k || y < k || y >= tileSize-k || z < k || z >= tileSize-k))
                   continue;
                 var c = 1.0 - Math.random() * 0.04;
                 colors.push(c,c,c,1);
@@ -465,9 +477,9 @@ var Renderer = (function () {
                 blockType.writeColor(1, colors, colors.length);
               }
               var v = applyCubeSymmetry(symm, 1, [
-                (x+0.5)/TILE_SIZE,
-                (y+0.5)/TILE_SIZE,
-                (z+0.5)/TILE_SIZE
+                (x+0.5)/tileSize,
+                (y+0.5)/tileSize,
+                (z+0.5)/tileSize
               ]);
               
               vertices.push(location[0]+v[0],
@@ -587,6 +599,32 @@ var Renderer = (function () {
     Error.call(this);
   };
   Renderer.NoWebGLError.prototype = Object.create(Error.prototype);
+  
+  Renderer.fetchShaders = function (callback) {
+    var table = {
+      common: undefined,
+      vertex: undefined,
+      fragment: undefined
+    };
+    var names = Object.keys(table);
+    
+    names.forEach(function (filename) {
+      fetchResource("shaders/"+filename+".glsl", "text", function (data) { 
+        table[filename] = data;
+        check();
+      });
+    });
+    
+    function check() {
+      if (names.every(function (f) { return table[f] !== undefined; })) {
+        if (names.some(function (f) { return table[f] === null; })) {
+          callback(null); // TODO better error reporting
+        } else {
+          callback(Object.freeze(table));
+        }
+      }
+    }
+  };
   
   return Object.freeze(Renderer);
 })();

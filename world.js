@@ -3,12 +3,20 @@
 
 function World(sizes, blockSet) {
   "use strict";
+  if (!blockSet) {
+    // early catch of various mistakes that can lead to this
+    throw new Error("missing BlockSet for new World");
+  }
   
   var self = this;
 
   var wx = sizes[0];
   var wy = sizes[1];
   var wz = sizes[2];
+  if (wx !== Math.floor(wx) || wx !== Math.floor(wx) || wx !== Math.floor(wx)) {
+    // early catch of various mistakes that can lead to this
+    throw new Error("invalid size for new World: " + vec3.str(sizes));
+  }
   var blocks = new Uint8Array(wx*wy*wz);
   var rotations = new Uint8Array(wx*wy*wz);
   var subData = new Uint8Array(wx*wy*wz);
@@ -169,10 +177,16 @@ function World(sizes, blockSet) {
     s(x,y,z,g(x,y,z),subdatum);
   }
   function solid(x,y,z) {
-    return g(x,y,z) != 0;
+    return gt(x,y,z).solid;
   }
   function opaque(x,y,z) {
     return gt(x,y,z).opaque;
+  }
+  function selectable(x,y,z) {
+    return g(x,y,z) != 0;
+  }
+  function inBounds(x,y,z) {
+    return !(x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz);
   }
   
   /**
@@ -387,6 +401,8 @@ function World(sizes, blockSet) {
   this.sSub = sSub;
   this.solid = solid;
   this.opaque = opaque;
+  this.selectable = selectable;
+  this.inBounds = inBounds;
   this.raw = blocks;
   this.rawSubData = subData;
   this.rawRotations = rotations;
@@ -407,9 +423,6 @@ function World(sizes, blockSet) {
   this.blockSet = blockSet;
   Object.freeze(this);
 }
-
-// The size of a texture tile, and therefore the size of a block-defining-block
-World.TILE_SIZE = 16;
 
 Persister.types["World"] = World;
 World.unserialize = function (json, unserialize) {

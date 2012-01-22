@@ -18,8 +18,8 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   function setMouselook(value) {
     mouselookMode = value;
     menuElement.style.visibility = mouselookMode ? 'hidden' : 'visible';
+    applyMousePosition();
   }
-  setMouselook(mouselookMode);
   
   function quick(n) {
     playerInput.tool = quickSlots[n];
@@ -34,17 +34,23 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   eventReceiver.addEventListener("blur", function (event) {
     focusCell.set(false);
     keymap = {};
-    dx = 0;
-    
-    // Blur is probably a good time to autosave, but not if this is a spurious immediately-refocused-by-other-code or user-clicked-on-a-button blur
-    setTimeout(function () {
-      if (!focusCell.get()) {
-        Persister.flushAsync();
-      }
-    }, 1000);
-    
     return true;
   }, false);
+
+  // This is used as the conditiopn to inhibit focus-granting clicks from modifying the world. Simply checking focusCell is insufficient (due to focusiing happening before the event) in at least one case: when focus is on Chrome's Web Inspector.
+  var delayedFocus = false;
+  
+  focusCell.whenChanged(function (value) {
+    setTimeout(function () { 
+      delayedFocus = value;
+      
+      if (!value) {
+        // Blur is probably a good time to autosave
+        Persister.flushAsync();
+      }
+    }, 0);
+    return true;
+  });
   
   // --- Keyboard events ---
   
@@ -130,19 +136,23 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   var dx = 0;
   var prevx = 0;
   
-  function updateMouse(event) {
-    playerInput.mousePos = [event.clientX, event.clientY];
-  }
-  
-  eventReceiver.addEventListener("mousemove", function (event) {
-    updateMouse(event);
+  function applyMousePosition() {
+    if (!focusCell.get()) {
+      playerInput.mousePos = null;
+      dx = 0;
+      return;
+    } else {
+      playerInput.mousePos = mousePos;
+    }
+    
+    if (mousePos == null) return;
 
     var cs = window.getComputedStyle(eventReceiver, null);
     var w = parseInt(cs.width);
     var h = parseInt(cs.height);
 
-    var swingY = event.clientY / (h*0.5) - 1;
-    var swingX = event.clientX / (w*0.5) - 1;
+    var swingY = mousePos[1] / (h*0.5) - 1;
+    var swingX = mousePos[0] / (w*0.5) - 1;
     
     var directY = -Math.PI/2 * swingY;
     var directX = -Math.PI/2 * swingX;
@@ -150,35 +160,57 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
     if (mouselookMode) {
       playerInput.pitch = directY;
       playerInput.yaw += (directX - prevx);
-      dx = -10.0 * deadzone(swingX, 0.1);
+      dx = -(config.mouseTurnRate.get()) * deadzone(swingX, 0.1);
     } else {
       dx = 0;
     }
     prevx = directX;
+  }
+  focusCell.whenChanged(function (value) {
+    applyMousePosition();
+    return true;
+  });
+  
+  var mousePos = null;
+  function updateMouseFromEvent(event) {
+    mousePos = [event.clientX, event.clientY];
+    applyMousePosition();
+  }
+  
+  eventReceiver.addEventListener("mousemove", function (event) {
+    updateMouseFromEvent(event);
+    return true;
   }, false);
   eventReceiver.addEventListener("mouseout", function (event) {
-    playerInput.mousePos = null;
-    dx = 0;
+    mousePos = null;
+    applyMousePosition();
     return true;
   }, false);
 
   // --- Clicks ---
-
-  eventReceiver.addEventListener("click", function (event) {
-    updateMouse(event);
-    eventReceiver.focus();
-    playerInput.deleteBlock();
+  
+  // Note: this has the side effect of inhibiting text selection on drag
+  eventReceiver.addEventListener("mousedown", function (event) {
+    updateMouseFromEvent(event);
+    if (delayedFocus) {
+      switch (event.button) {
+        case 0: playerInput.deleteBlock(); break;
+        case 2: playerInput.useTool(); break;
+      }
+    } else {
+      eventReceiver.focus();
+    }
+    event.preventDefault(); // inhibits text selection
     return false;
   }, false);
-  eventReceiver.oncontextmenu = function (event) { // On Firefox 5.0.1 (most recent tested 2011-09-10), addEventListener does not suppress the builtin context menu, so this is an attribute rather than a listener.
-    updateMouse(event);
-    eventReceiver.focus();
-    playerInput.useTool();
-    return false;
-  };
   
-  // inhibit incidental text selection
-  eventReceiver.onmousedown/* Chrome/Firefox */ = eventReceiver.onselectstart/* for IE */ = function (event) { return false; };
+  // TODO: Implement repeat on held down button
+  
+  eventReceiver.addEventListener("contextmenu", function (event) {
+    event.preventDefault(); // inhibits context menu (on the game world only) since we use right-click for our own purposes
+  }, false);
+
+  // --- Stepping ---
   
   function step(timestep) {
     if (dx != 0) {
@@ -196,6 +228,19 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   var quickSlots;
   var quickSlotLRU;
 
+  function deferrer(func) {
+    var set = false;
+    return function () {
+      if (!set) {
+        setTimeout(function () {
+          set = false;
+          func();
+        }, 0);
+        set = true;
+      }
+    }
+  }
+
   function resetQuick() {
     quickSlots = [];
     quickSlotLRU = [];
@@ -210,8 +255,20 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
     for (var i = 1; i < blockSetInMenu.length; i++) f(i, menuItemsByBlockId[i]);
   }
   
+  var updateDeferred = deferrer(updateMenuBlocks);
+  var menuListener = {
+    // deferred because otherwise we act while in the middle of a rebuild
+    texturingChanged: function (id) { updateDeferred(); return true; },
+    tableChanged:     function (id) { updateDeferred(); return true; }
+  };
+  
   function updateMenuBlocks() {
-    blockSetInMenu = playerInput.blockSet;
+    if (playerInput.blockSet !== blockSetInMenu) {
+      if (blockSetInMenu) blockSetInMenu.listen.cancel(menuListener);
+      blockSetInMenu = playerInput.blockSet;
+      if (blockSetInMenu) blockSetInMenu.listen(menuListener);
+    }
+    
     menuItemsByBlockId = [];
     hintTextsByBlockId = [];
     resetQuick();
@@ -277,7 +334,9 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
     
     blockRenderer.deleteResources();
     
+    // since we rebuilt the menu these need redoing
     updateMenuLayout();
+    updateMenuSelection();
   }
   
   function updateMenuLayout() {
@@ -298,6 +357,15 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
         hintTextsByBlockId[blockId].data = ((index+1) % 10).toString();
       }
     });
+    
+    var addButton = document.createElement("button");
+    addButton.className = "menu-item menu-button";
+    addButton.appendChild(document.createTextNode("+"));
+    addButton.onclick = function () {
+      playerInput.blockSet.add(WorldGen.newRandomBlockType(playerInput.blockSet.tileSize, playerInput.blockSet.get(1).world.blockSet));
+      eventReceiver.focus();
+    };
+    menuElement.appendChild(addButton);
 
     menuElement.appendChild(quickGroup);
   }
@@ -322,9 +390,12 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   });
 
   updateMenuBlocks();
-  updateMenuSelection();
     
   // --- Methods ---
   
   this.step = step;
+  
+  // --- Late initialization ---
+  
+  setMouselook(mouselookMode);
 }

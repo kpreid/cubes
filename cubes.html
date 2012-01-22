@@ -11,7 +11,7 @@
 -->
 <!doctype html>
 <html><head>
-<title>Cube Game</title>
+<title>Cubes</title>
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 <meta name="viewport" content="width=device-width">
 <link rel="stylesheet" href="style.css" type="text/css">
@@ -34,180 +34,6 @@
 <script type="text/javascript" src="player.js"></script>
 <script type="text/javascript" src="input.js"></script>
 <script type="text/javascript" src="audio.js"></script>
-
-<script id="shader-fs" type="x-shader/x-fragment">
-    precision mediump float;
-    
-    varying vec4 vColor;
-    varying vec3 vGridPosition;
-    varying vec3 vFixedOrientationPosition;
-    varying vec2 vTextureCoord;
-    varying float vFog;
-    varying vec3 vNormal;
-    varying float vDistanceFromEye;
-
-    uniform mat4 uPMatrix;
-    uniform mat4 uMVMatrix;
-    uniform bool uTextureEnabled;
-    uniform sampler2D uSampler;
-    uniform bool uLighting;
-    uniform bool uBumpMapping;
-    uniform bool uStipple;
-    uniform bool uFocusCue;
-    
-    const vec4 cSky = vec4(0.1,0.3,0.5,1.0);   
-    const vec4 cHorizon = vec4(0.7,0.8,1.0,1.0);  
-    const vec4 cGround = vec4(0.5,0.4,0.4,1.0);
-    const float cModEpsilon = 1e-20;
-    const float cTileCurvature = 0.2;
-    const float cTileBumpDistance = 2.0;
-
-    const float cLightAmbient = 0.5;
-    const vec3 cLight1Dir = vec3(0.8,-0.2,0);
-    const vec3 cLight2Dir = vec3(-0.8,0.7,0.5);
-
-    // What is the illumination from the given (unit vector) direction?
-    float lightEnv(vec3 dir) {
-      return max(0.0, dot(cLight1Dir, dir)) + max(0.0, dot(cLight2Dir, dir));
-    }
-    
-    // Componentwise x^7. pow() is unsuitable for negative arguments.
-    vec3 pow7vec3(vec3 x) {
-      vec3 y = x*x*x;
-      return y*y*x;
-    }
-
-    // Add amount of any component over 1.0 to all components (makes overbright colors turn to white)
-    vec3 spill(vec3 v) {
-      return v + vec3(max(1.0, max(v.r, max(v.g, v.b))) - 1.0);
-    }
-
-    float lighting() {
-      // 'cell' is a vector with components in [-1.0, 1.0] indicating this point's
-      // offset from the center of its sub-cube
-      vec3 normal;
-      if (uBumpMapping) {
-        vec3 cell = (mod(vGridPosition * float(TILE_SIZE) + cModEpsilon, 1.0) - vec3(0.5)) * 2.0;
-        normal = normalize(vNormal + cTileCurvature / max(1.0, vDistanceFromEye / cTileBumpDistance) * pow7vec3(cell));
-      } else {
-        normal = vNormal;
-      }
-      return cLightAmbient + lightEnv(normal);
-    }
-    
-    void main(void) {
-        if (uStipple && mod(gl_FragCoord.x - gl_FragCoord.y, 2.0) < 1.0)
-          discard;
-        
-        // color/lighting calculation
-        // if the vertex normal is zero, then that means "do not use lighting"
-        vec4 color = vec4(vec3(vColor) * 
-            (!uLighting || vNormal == vec3(0,0,0)
-              ? 1.0 
-              : lighting()), vColor.a);
-
-        if (uTextureEnabled) {
-          color *= texture2D(uSampler, vTextureCoord);
-
-          // alpha test
-          if (color.a <= 0.0)
-            discard;
-        }
-        
-        color = vec4(spill(vec3(color)), color.a);
-
-        float elevationSine = vFixedOrientationPosition.y / length(vFixedOrientationPosition);
-        vec4 fogColor = elevationSine < 0.0
-          ? mix(cHorizon, cGround, clamp(log(1.0 + -elevationSine * 120.0), 0.0, 1.0))
-          : mix(cHorizon, cSky, clamp(log(1.0 + elevationSine * 2.0), 0.0, 1.0));
-        gl_FragColor = color * (1.0-vFog) + fogColor * vFog;
-        
-        if (!uFocusCue) {
-          float gray = 0.2126*gl_FragColor.r
-                      +0.7152*gl_FragColor.g
-                      +0.0722*gl_FragColor.b;
-          gl_FragColor = 0.5 * gl_FragColor + 0.5 * vec4(vec3(gray), gl_FragColor.a);
-        }
-    }
-</script>
-
-<script id="shader-vs" type="x-shader/x-vertex">
-    attribute vec3 aVertexPosition;
-    attribute vec4 aVertexColor;
-    attribute vec3 aVertexNormal;
-    attribute vec2 aTextureCoord;
-
-    uniform bool uTextureEnabled;
-    uniform mat4 uMVMatrix;
-    uniform mat4 uPMatrix;
-    uniform vec3 uViewPosition;
-    uniform vec2 uPixelsPerClipUnit;
-    uniform float uFogDistance;
-    
-    uniform bool uParticleMode;     // flag we're rendering point particles
-    uniform float uParticleInterp;  // particle system evolution time, [0.0, 1.0]
-    uniform bool uParticleExplode; // particles explode or appear/fade?
-    
-    varying vec4 vColor;
-    varying vec3 vGridPosition;
-    varying vec3 vFixedOrientationPosition;
-    varying vec2 vTextureCoord;
-    varying vec3 vNormal;
-    varying float vFog;
-    varying float vDistanceFromEye;
-    
-    void main(void) {
-        vec3 vertexPosition;
-        float pointScale;
-        
-        if (uParticleMode) {
-          // center of block
-          vec3 blockPart = floor(aVertexPosition) + 0.5;
-          // offset from center of block
-          vec3 particlePart = mod(aVertexPosition, 1.0) - 0.5;
-          
-          // pseudorandom vector constant for the point
-          vec3 scramble = normalize(vec3(
-            sin(dot(aVertexPosition, vec3(24121.9, 2398.1, 234.8))),
-            sin(dot(aVertexPosition, vec3(1024.0, 28.0, 1834.0))),
-            sin(dot(aVertexPosition, vec3(486.0, 282.4, 7.215)))
-          ));
-          
-          vertexPosition = uParticleExplode
-            ? aVertexPosition + (1.0 * scramble + 0.5 * particlePart) * pow(uParticleInterp, 3.0)
-            : aVertexPosition + particlePart * (0.1 + uParticleInterp * 0.1);
-          pointScale = 1.0 - pow(uParticleInterp * 1.0, 2.0);
-        } else {
-          vertexPosition = aVertexPosition;
-        }
-        
-        vGridPosition = vertexPosition;
-        vFixedOrientationPosition = vertexPosition - uViewPosition;
-        vec4 relativePosition = uMVMatrix * vec4(vertexPosition, 1.0);
-        gl_Position = uPMatrix * relativePosition;
-        
-        if (uParticleMode) {
-          // Compute particle size
-          vec4 testPosition = relativePosition;
-          testPosition.x = uPixelsPerClipUnit.x / float(TILE_SIZE) * 1.2/*appearance fudge factor*/;
-          testPosition.y = 0.0;
-          testPosition = uPMatrix * testPosition;
-          gl_PointSize = testPosition.x / testPosition.w * pointScale;
-        }
-        
-        vTextureCoord = aTextureCoord;
-        
-        // linear distance from eye, scaled to 1.0 = 100% fog
-        vDistanceFromEye = length(vec3(relativePosition));
-        
-        // fog color mixing parameter
-        vFog = clamp(pow(vDistanceFromEye/uFogDistance, 4.0), 0.0, 1.0);
-        
-        vColor = uTextureEnabled ? vec4(1.0) : aVertexColor;
-        vNormal = aVertexNormal;
-    }
-</script>
-
 
 <script type="text/javascript">
     var main = new CubesMain(1/60 /* timestep */);
@@ -303,13 +129,16 @@
           <tr><td>Shape: 
           <td><select id="generate_shape">
             <option value="fill">Flat-sided</option>
-            <option value="island">Island</option>
+            <option value="island">Floating island</option>
+            <option value="city">City</option>
           </select>
           <tr><td>Bumpiness:<td><input type="range" step="any" min="0" max="2" value="1" maxlength="4" size="4" id="generate_slope">
+          <tr><td>Block res.:<td><input type="number" min="2" value="16" size="3" maxlength="4" step="1" id="generate_tileSize">
         </table>
         <script>config.generate_name.bindControl("generate_name");</script>
         <script>config.generate_shape.bindControl("generate_shape");</script>
         <script>config.generate_slope.bindControl("generate_slope");</script>
+        <script>config.generate_tileSize.bindControl("generate_tileSize");</script>
         <table class="optionline" style="text-align: center;">
           <tr><td>Size: 
           <td><input type="number" min="1" max="9999" value="400" maxlength="4" size="4" id="generate_wx">
@@ -333,8 +162,10 @@
       <form onsubmit="return false;" action="">
         <div class="optionline">Field of view: <input type="range" step="any" min="45" max="140" value="60" maxlength="4" size="4" id="fov"></div>
         <script>config.fov.bindControl("fov");</script>
-        <div class="optionline">Draw distance: <input type="range" step="any" min="10" max="500" value="100" maxlength="4" size="4" id="renderDistance"></div>
+        <div class="optionline">Draw distance: <input type="range" step="any" min="10" max="500" value="100" size="4" id="renderDistance"></div>
         <script>config.renderDistance.bindControl("renderDistance");</script>
+        <div class="optionline">Turn rate: <input type="range" step="any" min="0" max="10" value="5" size="4" id="mouseTurnRate"></div>
+        <script>config.mouseTurnRate.bindControl("mouseTurnRate");</script>
         <div class="optionline"><label><input type="checkbox" id="lighting"> Lighting</label></div>
         <script>config.lighting.bindControl("lighting");</script>
         <div class="optionline"><label><input type="checkbox" id="bumpMapping"> Bump mapping</label></div>
@@ -351,10 +182,10 @@
         <script>config.debugForceRender.bindControl("debugForceRender");</script>
         <div class="optionline"><label><input type="checkbox" id="debugTextureAllocation"> Show block texture</label></div>
         <script>config.debugTextureAllocation.bindControl("debugTextureAllocation");</script>
-        <div class="optionline"><label><input type="checkbox" id="debugPlayerCollision"> Show character volume</label></div>
+        <div class="optionline"><label><input type="checkbox" id="debugPlayerCollision"> Show collision volumes</label></div>
         <script>config.debugPlayerCollision.bindControl("debugPlayerCollision");</script>
 
-        <p><button onclick="resetAllOptions(); return false;">Reset to defaults</button></p>
+        <p><button onclick="config.resetAllOptions(); return false;">Reset to defaults</button></p>
       </form>
     </div>
 
@@ -387,6 +218,8 @@
       <h3>Compatibility &amp; Bugs</h3>
       
       <p>Player movement does not work on Safari 5.1.</p>
+      
+      <p>On an older MacBook Pro with 10.7 “Lion”, the terrain may be entirely white and the game may crash (exiting the browser in Firefox, a permanently gray screen in Chrome).</p>
 
     </div>
 </body>

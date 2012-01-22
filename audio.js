@@ -8,8 +8,6 @@ var CubesAudio = (function () {
   
   // --- Utilities ---
   
-  var TILE_SIZE = World.TILE_SIZE;
-
   var bsSampleRate = 22050;
   
   // argument is time in wavelengths
@@ -36,11 +34,10 @@ var CubesAudio = (function () {
 
       var counts = [];
       for (var i = 0; i < BlockSet.ID_LIMIT; i++) counts.push(0);
-      for (var x = 0; x < TILE_SIZE; x++)
-      for (var y = 0; y < TILE_SIZE; y++)
-      for (var z = 0; z < TILE_SIZE; z++) {
-        var value = blockWorld.g(x,y,z);
-        counts[value]++;
+      
+      var raw = blockWorld.raw;
+      for (var i = raw.length - 1; i >= 0; i--) {
+        counts[raw[i]]++;
       }
       
       //console.log("synthBlock spans done");

@@ -61,38 +61,29 @@ var UNIT_NX = vec3.create([-1,0,0]);
 var UNIT_NY = vec3.create([0,-1,0]);
 var UNIT_NZ = vec3.create([0,0,-1]);
 
-function prepareShader(gl, id, declarations) {
+function prepareShader(gl, type, sources, declarations) {
   // See note in license statement at the top of this file.  
   "use strict";
-  var scriptElement = document.getElementById(id);
-  var text = "";
-  for (var k = scriptElement.firstChild; k !== null; k = k.nextSibling)
-    if (k.nodeType == 3)
-      text += k.textContent;
-   
-  var prelude = "";
+  
+  var strings = [];
   for (var prop in declarations) {
     var value = declarations[prop];
-    prelude += "#define " + prop + " (" + value + ")\n";
+    if (typeof value == "boolean") {
+      value = value ? 1 : 0; // GLSL preprocessor doesn't do booleans
+    }
+    strings.push("#define ", prop, " (", value, ")\n");
   }
-  if (prelude !== "") {
-    text = prelude + "#line 1\n" + text;
-  }
+  sources.forEach(function (text, index) {
+    strings.push("#line 1 ", index.toString(), "\n", text);
+  });
   
-  var shader;
-  if (scriptElement.type == "x-shader/x-fragment") {
-    shader = gl.createShader(gl.FRAGMENT_SHADER);
-  } else if (scriptElement.type == "x-shader/x-vertex") {
-    shader = gl.createShader(gl.VERTEX_SHADER);
-  } else {
-    throw new Error("unknown shader script type");
-  }
+  var shader = gl.createShader(type);
   
-  gl.shaderSource(shader, text);
+  gl.shaderSource(shader, strings.join(""));
   gl.compileShader(shader);
   
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    if (typeof console !== "undefined") console.log("Shader text:\n" + text);
+    if (typeof console !== "undefined") console.log("Shader text:\n" + strings.join(""));
     throw new Error(gl.getShaderInfoLog(shader));
   }
   
@@ -111,8 +102,6 @@ function prepareProgram(gl, vertexShader, fragmentShader, attribs, uniforms) {
     throw new Error(gl.getProgramInfoLog(program));
   }
 
-  gl.useProgram(program);
-  
   for (var i = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES) - 1; i >= 0; i--) {
     var name = gl.getActiveAttrib(program, i).name;
     attribs[name] = gl.getAttribLocation(program, name);
@@ -121,6 +110,8 @@ function prepareProgram(gl, vertexShader, fragmentShader, attribs, uniforms) {
     var name = gl.getActiveUniform(program, i).name;
     uniforms[name] = gl.getUniformLocation(program, name);
   }
+  
+  return program;
 }
 
 function intersectAABB(a1, a2) {
@@ -128,6 +119,35 @@ function intersectAABB(a1, a2) {
     if (a1[dim][1] < a2[dim][0] || a2[dim][1] < a1[dim][0])
       return false;
   return true;
+}
+
+function offsetAABB(offset, aabb) {
+  return [[offset[0] + aabb[0][0],
+           offset[0] + aabb[0][1]],
+          [offset[1] + aabb[1][0],
+           offset[1] + aabb[1][1]],
+          [offset[2] + aabb[2][0],
+           offset[2] + aabb[2][1]]];
+}
+
+function scaleAABB(scale, aabb) {
+  return  [[scale * aabb[0][0],
+            scale * aabb[0][1]],
+           [scale * aabb[1][0],
+            scale * aabb[1][1]],
+           [scale * aabb[2][0],
+            scale * aabb[2][1]]];
+}
+
+function rotateAABB(rotation, aabb) {
+  var v0 = applyCubeSymmetry(rotation, 0, [aabb[0][0], aabb[1][0], aabb[2][0]]);
+  var v1 = applyCubeSymmetry(rotation, 0, [aabb[0][1], aabb[1][1], aabb[2][1]]);
+  return  [[v0[0],
+            v1[0]],
+           [v0[1],
+            v1[1]],
+           [v0[2],
+            v1[2]]];
 }
 
 // Given an element, replace its contents with a text node and return that, so that the element's text can be updated by setting the .data property of the result.
@@ -174,6 +194,7 @@ function applyCubeSymmetry(which, size, vec) {
    vec[2] = z;
    return vec;
 }
+applyCubeSymmetry.isReflection = function (symmetry) { return !!(symmetry & 32); };
 applyCubeSymmetry.COUNT = 60;
 applyCubeSymmetry.NO_REFLECT_COUNT = 27;
 
@@ -351,4 +372,30 @@ ProgressBar.prototype.setByTodoCount = function (count) {
   this.set(1 - count/this._rangeEstimate); // if this produces +Infinity that's fine
 };
 
-
+// 'type' is an xhr.responseType value such as 'text' or 'arraybuffer'
+// The callback will be called with parameters (response), or (null)
+// in the event of a failure.
+function fetchResource(url, type, callback) {
+  "use strict";
+  // TODO: review this code
+  if (typeof console !== "undefined")
+    console.log("Fetching", url);
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", url, true);
+  xhr.responseType = type;
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState != XMLHttpRequest.DONE) {
+      return;
+    }
+    if (typeof console !== "undefined")
+      console.log("completed", url);
+    if (xhr.status == 200) {
+      callback(xhr.response);
+    } else {
+      if (typeof console !== "undefined")
+        console.error("XHR fail:", xhr.readyState, xhr.status);
+      callback(null);
+    }
+  };
+  xhr.send(null);
+}
