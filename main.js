@@ -206,10 +206,18 @@ var CubesMain = (function () {
       //player.render.getWorldRenderer().renderCreateBlock(b);
     }, 1000);
     
+    var t0 = undefined;
+    function startupMessage(text) {
+      var t1 = Date.now();
+      sceneInfo.data += text + "\n";
+      if (typeof console !== 'undefined')
+        console.log(t0 ? "(+"+(t1-t0)+" ms)" : "        ", text);
+      t0 = t1;
+    }
+    
     // for making our loading more async
     var ABORT = {};
     function sequence(actions, catcher) {
-      var t0 = undefined;
       function sub(i) {
         if (i >= actions.length) {
           return;
@@ -217,11 +225,7 @@ var CubesMain = (function () {
           setTimeout(function () {
             var a = actions[i];
             if (typeof a == 'string') {
-              var t1 = Date.now();
-              sceneInfo.data += a + "\n";
-              if (typeof console !== 'undefined')
-                console.log(t0 ? "(+"+(t1-t0)+" ms)" : "        ", a);
-              t0 = t1;
+              startupMessage(a);
             } else {
               try {
                 if (actions[i](function () { sub(i+1); }) === ABORT) return;
@@ -243,6 +247,10 @@ var CubesMain = (function () {
       chunkProgressBar = new ProgressBar(document.getElementById("chunks-progress-bar"));
       audioProgressBar = new ProgressBar(document.getElementById("audio-progress-bar"));
       var shaders;
+
+      var hasLocalStorage = typeof localStorage !== 'undefined';
+      document.getElementById('local-save-controls').style.display = hasLocalStorage ? 'block' : 'none';
+      document.getElementById('local-save-warning').style.display = !hasLocalStorage ? 'block' : 'none';
 
       sequence([
         function () {
@@ -267,7 +275,6 @@ var CubesMain = (function () {
         },
         "Setting up WebGL...",
         function () {
-          
           theCanvas = document.getElementById('view-canvas');
           try {
           renderer = main.renderer = new Renderer(theCanvas, shaders, scheduleDraw);
@@ -281,11 +288,12 @@ var CubesMain = (function () {
           }
           gl = renderer.context;
         },
-        "Loading worlds...",
         function () {
-          var hasLocalStorage = typeof localStorage !== 'undefined';
-          document.getElementById('local-save-controls').style.display = hasLocalStorage ? 'block' : 'none';
-          document.getElementById('local-save-warning').style.display = !hasLocalStorage ? 'block' : 'none';
+          startupMessage(hasLocalStorage && localStorage.getItem("world")
+              ? "Loading saved worlds..."
+              : "Creating worlds...");
+        },
+        function () {
           if (hasLocalStorage) {
             var worldData = localStorage.getItem("world");
             if (worldData !== null) {
@@ -310,6 +318,7 @@ var CubesMain = (function () {
         },
         "Painting blocks...",
         function () {
+          // force lazy init to happen now rather than on first frame
           player.getWorld().blockSet.getRenderData();
         },
         "Finishing...",
@@ -322,7 +331,7 @@ var CubesMain = (function () {
         },
         "Ready!"
       ], function (exception) {
-        sceneInfo.data += exception;
+        startupMessage(exception);
         document.getElementById("load-error-notice").style.removeProperty("display");
         document.getElementById("load-error-text").appendChild(document.createTextNode("" + exception));
         throw exception; // propagate to browser console
