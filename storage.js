@@ -226,6 +226,9 @@ var Persister = (function () {
     };
     this.getName = function () { return name; };
     this.persist = function (newName) {
+      if (Persister.has(newName)) {
+        throw new Error("The name " + newName + " is already in use.");
+      }
       persister._registerName(newName);
       persister.dirty();
       persister.commit(); // TODO all we really need to do here is ensure that it appears in the forEach list; this is just a kludge for that.
