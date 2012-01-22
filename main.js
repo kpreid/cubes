@@ -193,7 +193,6 @@ var CubesMain = (function () {
       }
     }
     config.debugForceRender.listen({changed: function () { scheduleDraw(); return true; }});
-    this.scheduleDraw = scheduleDraw();
 
     // statistics are reset once per second
     setInterval(function () {
