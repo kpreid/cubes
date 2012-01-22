@@ -241,7 +241,7 @@ var Persister = (function () {
       }
     }
     this.dirty = function () {
-      if (name) {
+      if (name !== null && !dirty) {
         console.log("Persister: dirtied", name);
         dirty = true;
         dirtyQueue.enqueue(name);
