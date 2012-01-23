@@ -32,6 +32,8 @@ function World(sizes, blockSet) {
   
   var notifier = new Notifier("World");
   
+  this.persistence = new Persister(this);
+  
   // --- Internal functions ---
   
   function intbound(s, ds) {
@@ -169,6 +171,7 @@ function World(sizes, blockSet) {
     }
 
     notifier.notify("dirtyBlock", vec);
+    self.persistence.dirty();
   }
   function sSub(x,y,z,subdatum) {
     s(x,y,z,g(x,y,z),subdatum);
@@ -273,6 +276,7 @@ function World(sizes, blockSet) {
       }
     }
     notifier.notify("dirtyAll");
+    self.persistence.dirty();
   }
   
   // Perform actions related to block circuits immediately after a change
@@ -292,6 +296,7 @@ function World(sizes, blockSet) {
   function notifyRawEdit() {
     // Rebuild world circuits and reeval block circuits
     notifier.notify("dirtyAll");
+    self.persistence.dirty();
 
     blockCircuits = {};
     circuits = {};
@@ -373,7 +378,7 @@ function World(sizes, blockSet) {
   }
   
   function serialize(subSerialize) {
-    return {
+    var json = {
       wx: wx,
       wy: wy,
       wz: wz,
@@ -382,6 +387,8 @@ function World(sizes, blockSet) {
       blocks: rleBytes(blocks),
       subData: rleBytes(subData)
     };
+    subSerialize.setUnserializer(json, World);
+    return json;
   }
   
   // --- Final init ---
@@ -417,6 +424,7 @@ function World(sizes, blockSet) {
   Object.freeze(this);
 }
 
+Persister.types["World"] = World;
 World.unserialize = function (json, unserialize) {
   var base = json.blockCodeBase;
   

@@ -39,8 +39,16 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
 
   // This is used as the conditiopn to inhibit focus-granting clicks from modifying the world. Simply checking focusCell is insufficient (due to focusiing happening before the event) in at least one case: when focus is on Chrome's Web Inspector.
   var delayedFocus = false;
+  
   focusCell.whenChanged(function (value) {
-    setTimeout(function () { delayedFocus = value; }, 0);
+    setTimeout(function () { 
+      delayedFocus = value;
+      
+      if (!value) {
+        // Blur is probably a good time to autosave
+        Persister.flushAsync();
+      }
+    }, 0);
     return true;
   });
   

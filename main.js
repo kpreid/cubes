@@ -34,6 +34,9 @@ var config = {};
   defineOption("generate_shape", "string", "fill");
   defineOption("generate_slope", "number", 0.9);
   defineOption("generate_tileSize", "number", 16);
+  defineOption("generate_name", "string", "Untitled");
+
+  defineOption("currentTopWorld", "string", "Untitled");
 })();
 
 var CubesMain = (function () {
@@ -53,6 +56,7 @@ var CubesMain = (function () {
     var cursorInfo;
     var chunkProgressBar;
     var audioProgressBar;
+    var persistenceProgressBar;
     
     var focusCell = new Cell("focus", false);
     focusCell.whenChanged(function () {
@@ -149,6 +153,7 @@ var CubesMain = (function () {
         
         chunkProgressBar.setByTodoCount(wrend.chunkRendersToDo());
         audioProgressBar.setByTodoCount(BlockType.audioRendersToDo());
+        persistenceProgressBar.setByTodoCount(Persister.status.get());
         
         renderer.verticesDrawn = 0;
         renderCount++;
@@ -241,17 +246,58 @@ var CubesMain = (function () {
     }
     
     this.start = function () {
+      // Miscellaneous references
       sceneInfo = dynamicText(document.getElementById("scene-info-text"));
       cursorInfoElem = document.getElementById("cursor-info");
       cursorInfo = dynamicText(cursorInfoElem);
       chunkProgressBar = new ProgressBar(document.getElementById("chunks-progress-bar"));
       audioProgressBar = new ProgressBar(document.getElementById("audio-progress-bar"));
+      persistenceProgressBar = new ProgressBar(document.getElementById("persistence-progress-bar"));
+
       var shaders;
 
-      var hasLocalStorage = typeof localStorage !== 'undefined';
-      document.getElementById('local-save-controls').style.display = hasLocalStorage ? 'block' : 'none';
-      document.getElementById('local-save-warning').style.display = !hasLocalStorage ? 'block' : 'none';
+      document.getElementById('local-save-ok').style.display = Persister.available ? 'block' : 'none';
+      document.getElementById('local-save-warning').style.display = !Persister.available ? 'block' : 'none';
 
+      // Save button
+      var saveButton = document.getElementById("save-button");
+      var saveButtonText = dynamicText(saveButton);
+      var lastSavedTime = Date.now();
+      Persister.status.nowAndWhenChanged(function (count) {
+        if (count === 0) {
+          lastSavedTime = Date.now();
+          saveButton.style.visibility = "hidden";
+        } else {
+          saveButton.style.visibility = "visible";
+          saveButtonText.data = "Save (last " + Math.round((Date.now() - lastSavedTime) / (1000*60)) + " min ago)";
+        }
+        return true;
+      });
+      
+      // World list
+      var worldSelect = document.getElementById("world-select");
+      function updateWorldList() {
+        while (worldSelect.firstChild) worldSelect.removeChild(worldSelect.firstChild);
+        Persister.forEach(function (name, type) {
+          if (Object.create(type.prototype) instanceof World) {
+            var c = document.createElement("option");
+            c.appendChild(document.createTextNode(name));
+            if (config.currentTopWorld.get() === name) c.selected = true;
+            worldSelect.appendChild(c);
+          }
+        });
+        return true;
+      }
+      worldSelect.addEventListener("change", function () {
+        main.setTopWorld(Persister.get(worldSelect.value));
+      });
+      updateWorldList();
+      Persister.listen({
+        added: updateWorldList,
+        deleted: updateWorldList
+      });
+
+      // Main startup sequence
       sequence([
         function () {
           if (typeof testSettersWork === 'undefined' || !testSettersWork()) {
@@ -289,28 +335,34 @@ var CubesMain = (function () {
           gl = renderer.context;
         },
         function () {
-          startupMessage(hasLocalStorage && localStorage.getItem("world")
+          startupMessage(Persister.has("world")
               ? "Loading saved worlds..."
               : "Creating worlds...");
         },
         function () {
-          if (hasLocalStorage) {
-            var worldData = localStorage.getItem("world");
-            if (worldData !== null) {
-              try {
-                worldH = cyclicUnserialize(JSON.parse(worldData), World);
-              } catch (e) {
-                if (typeof console !== 'undefined')
-                  console.error(e);
-                alert("Failed to load saved world!");
-              }
+          // Save-on-exit
+          window.addEventListener("unload", function () {
+            Persister.flushNow();
+            return true;
+          }, false);
+          
+          var world;
+          if (Persister.available) {
+            try {
+              world = Persister.get(config.currentTopWorld.get());
+            } catch (e) {
+              if (typeof console !== 'undefined')
+                console.error(e);
+              alert("Failed to load saved world!");
             }
           } else {
             console.warn("localStorage not available; world will not be saved.");
           }
-          if (!worldH) {
-            worldH = generateWorlds();
+          if (!world) {
+            world = generateWorlds();
+            world.persistence.persist("Default");
           }
+          main.setTopWorld(world);
         },
         "Creating your avatar...",
         function () {
@@ -338,11 +390,30 @@ var CubesMain = (function () {
       });
     };
     
+    this.regenerate = function () {
+      if (Persister.has(config.generate_name.get())) {
+        document.getElementById("generate-name-conflict").style.display = "block";
+        return;
+      } else {
+        document.getElementById("generate-name-conflict").style.display = "none";
+      }
+      var world = generateWorlds();
+      world.persistence.persist(config.generate_name.get());
+      this.setTopWorld(world);
+    };
+    
     this.setTopWorld = function (world) {
       worldH = world;
-      player.setWorld(world);
+      if (player) player.setWorld(world);
+
+      var name = world.persistence.getName();
+      if (name !== null) config.currentTopWorld.set(name);
     };
     this.getTopWorld = function () { return worldH; };
+    
+    this.save = function () {
+      Persister.flushAsync();
+    };
   }
   
   return CubesMain;

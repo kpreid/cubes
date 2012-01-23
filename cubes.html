@@ -20,6 +20,7 @@
 <script type="text/javascript" src="webgl-utils.js"></script>
 <script type="text/javascript" src="glMatrix.js"></script>
 <script type="text/javascript" src="util.js"></script>
+<script type="text/javascript" src="storage.js"></script>
 
 <script type="text/javascript" src="main.js"></script> <!-- before other stuff because of config global — TODO fix -->
 
@@ -53,6 +54,7 @@
         <pre id="scene-info-text">Not ready...</pre>
         <div class="progress-bar" id="chunks-progress-bar" style="width: 20em;"></div>
         <div class="progress-bar" id="audio-progress-bar" style="width: 20em;"></div>
+        <div class="progress-bar" id="persistence-progress-bar" style="width: 20em;"></div>
       </div>
       <pre id="cursor-info" class="overlay"></pre>
       <div id="menu-container">
@@ -77,6 +79,7 @@
     </div>
 
     <div id="toggles">
+      <button id="save-button" onclick="main.save(); document.getElementById('view-canvas').focus(); return false;">Save</button>
       <button id="optionsbtn" onclick="this.style.display='none'; document.getElementById('options').style.display='block'; document.getElementById('view-canvas').focus();">Options</button>
       <button id="helpbtn" onclick="this.style.display='none'; document.getElementById('help').style.display='block'; document.getElementById('view-canvas').focus();">Help</button>
     </div>
@@ -84,33 +87,29 @@
     <div id="options" class="sidebar" onclick="if (event.target.tagName == 'INPUT' || event.target.tagName == 'LABEL' || event.target.tagName == 'BUTTON' || event.target.tagName == 'TEXTAREA') return true; this.style.display='none'; document.getElementById('optionsbtn').style.display='inline'; document.getElementById('view-canvas').focus();" style="display: none;">
       <p>Click to close.</p>
 
-      <h2>Save/Load</h2>
+      <h2>Load/Save</h2>
       
-      <form onsubmit="return false;" action=""  style="text-align: center">
-        <p id="local-save-controls">
-          <button onclick="
-            localStorage.setItem('world', JSON.stringify(cyclicSerialize(main.getTopWorld()))); return false;
-          ">Save</button>
-          <button onclick="
-            main.setTopWorld(cyclicUnserialize(JSON.parse(localStorage.getItem('world')), World));
-            return false;
-          ">Revert to saved</button>
-        </p>
+      <form onsubmit="return false;" action="" style="text-align: center">
+        <div id="local-save-ok" style="display: none">
+          <div class="optionline">World:</div>
+          <select id="world-select" size="5" style="width: 90%;"><option>not loaded</option></select>
+          <p>Your browser supports local storage. This world will be saved automatically.</p>
+        </div>
         <p id="local-save-warning" style="display: none">
-          Your browser does not appear to support local storage. This world will be lost when you close the page.
+          Your browser does not appear to support local storage. This world will be lost when you close the page unless you export it and save the text.
         </p>
         <p style="">
           <textarea id="loadfield" width="20" height="3" style="width: 80%;"></textarea>
           <br>
           <button onclick="
-            document.getElementById('loadfield').value = JSON.stringify(cyclicSerialize(main.getTopWorld())); return false;
+            document.getElementById('loadfield').value = JSON.stringify(cyclicSerialize(main.getTopWorld(), Persister.types)); return false;
           ">Text Export</button>
           <button onclick="
             while (document.getElementById('load-error').firstChild)
               document.getElementById('load-error').removeChild(
                 document.getElementById('load-error').firstChild);
             try {
-              main.setTopWorld(cyclicUnserialize(JSON.parse(document.getElementById('loadfield').value), World));
+              main.setTopWorld(cyclicUnserialize(JSON.parse(document.getElementById('loadfield').value), Persister.types));
             } catch (e) {
               console.log(e);
               document.getElementById('load-error').appendChild(document.createTextNode(e));
@@ -126,6 +125,8 @@
 
       <form onsubmit="return false;" action="">
         <table class="optionline">
+          <tr><td>Name:<td><input id="generate_name" type="text" value="" style="width: 95%;">
+            <p id="generate-name-conflict" style="display: none;" class="error">Name already in use.</p>
           <tr><td>Shape: 
           <td><select id="generate_shape">
             <option value="fill">Flat-sided</option>
@@ -135,6 +136,7 @@
           <tr><td>Bumpiness:<td><input type="range" step="any" min="0" max="2" value="1" maxlength="4" size="4" id="generate_slope">
           <tr><td>Block res.:<td><input type="number" min="2" value="16" size="3" maxlength="4" step="1" id="generate_tileSize">
         </table>
+        <script>config.generate_name.bindControl("generate_name");</script>
         <script>config.generate_shape.bindControl("generate_shape");</script>
         <script>config.generate_slope.bindControl("generate_slope");</script>
         <script>config.generate_tileSize.bindControl("generate_tileSize");</script>
@@ -150,7 +152,7 @@
         <script>config.generate_wz.bindControl("generate_wz");</script>
         <div style="text-align: center;">
           <button onclick="
-            main.setTopWorld(generateWorlds());
+            main.regenerate();
             return false;
           ">Generate new world</button>
         </div>
