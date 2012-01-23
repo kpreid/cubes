@@ -508,11 +508,11 @@ var WorldRenderer = (function () {
           }
         });
         
-        chunks[xzkey].aabb = [
-          [chunkOriginX, chunkLimitX],
-          [0, world.wy],
-          [chunkOriginZ, chunkLimitZ]
-        ];
+        chunks[xzkey].aabb = new AAB(
+          chunkOriginX, chunkLimitX,
+          0, world.wy,
+          chunkOriginZ, chunkLimitZ
+        );
         
         return false;
       }

@@ -212,7 +212,7 @@ var Player = (function () {
               hitCount++;
             }
           } else {
-            hit[str] = new AAB(x,x+1,y,y+1,z,z+1);
+            hit[str] = AAB.unitCube([x,y,z]);
             hitCount++;
           }
         }

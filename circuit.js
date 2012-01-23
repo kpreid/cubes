@@ -77,13 +77,11 @@ var Circuit = (function () {
     };
     this.add = function (blockVec) {
       blocks.push(blockVec);
+      var blockAAB = AAB.unitCube(blockVec);
       if (aabb == null) {
-        aabb = [[blockVec[0], blockVec[0] + 1],[blockVec[1], blockVec[1] + 1],[blockVec[2], blockVec[2] + 1]];
+        aabb = blockAAB;
       } else {
-        for (var dim = 0; dim < 3; dim++) {
-          aabb[dim][0] = Math.min(aabb[dim][0], blockVec[0]);
-          aabb[dim][1] = Math.max(aabb[dim][1], blockVec[1] + 1);
-        }
+        aabb = aabb.boundingUnion(blockAAB);
       }
     };
     this.getAABB = function () {

@@ -144,6 +144,16 @@ var AAB = (function () {
     return true;
   };
   
+  // The AABB of two AABs
+  AAB.prototype.boundingUnion = function (other) {
+    var out = new AAB();
+    for (var dimb = 0; dimb < 6; dimb += 2) {
+      out[dimb  ] = Math.min(this[dimb  ], other[dimb  ]);
+      out[dimb+1] = Math.max(this[dimb+1], other[dimb+1]);
+    }
+    return out;
+  };
+  
   // Return this AAB translated by the specified offset
   AAB.prototype.translate = function (offset) {
     return new AAB(offset[0] + this[0],
@@ -181,6 +191,13 @@ var AAB = (function () {
     return Math.max(0, Math.min(-this[0], this[1],
                                 -this[2], this[3],
                                 -this[4], this[5]));
+  };
+  
+  // Create the AAB whose negative corner is at the given point.
+  AAB.unitCube = function (point) {
+    return new AAB(point[0], point[0] + 1,
+                   point[1], point[1] + 1,
+                   point[2], point[2] + 1);
   };
   
   return Object.freeze(AAB);

@@ -532,7 +532,7 @@ var Renderer = (function () {
         for (var xb = 0; xb < 2; xb++)
         for (var yb = 0; yb < 2; yb++)
         for (var zb = 0; zb < 2; zb++) {
-          var vec = [aabb[0][xb], aabb[1][yb], aabb[2][zb]];
+          var vec = [aabb.get(0,xb), aabb.get(1,yb), aabb.get(2,zb)];
           if (viewFrustum[i](vec))
             outside = false;
         }
