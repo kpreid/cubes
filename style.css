@@ -160,6 +160,14 @@ html {
   text-align: right;
 }
 
+.sidebar .error {
+  background: #C00;
+  border: 1px solid #F00;
+  color: white;
+  font-weight: bold;
+  margin: 0.2em 0;
+}
+
 /* --- widgets --- */
 
 .progress-bar {

@@ -391,6 +391,12 @@ var CubesMain = (function () {
     };
     
     this.regenerate = function () {
+      if (Persister.has(config.generate_name.get())) {
+        document.getElementById("generate-name-conflict").style.display = "block";
+        return;
+      } else {
+        document.getElementById("generate-name-conflict").style.display = "none";
+      }
       var world = generateWorlds();
       world.persistence.persist(config.generate_name.get());
       this.setTopWorld(world);
