@@ -317,7 +317,7 @@ var Persister = (function () {
   };
   Persister.listen = notifier.listen;
   Persister.available = typeof localStorage !== "undefined";
-  Persister.types = []; // TODO global mutable state
+  Persister.types = {}; // TODO global mutable state
   Persister.status = status.readOnly;
 
   return Object.freeze(Persister);

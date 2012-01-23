@@ -763,7 +763,7 @@ var BlockSet = (function () {
   // This value arises because worlds store blocks as bytes.
   BlockSet.ID_LIMIT = 256;
   
-  Persister.types["BlockSrt"] = BlockSet;
+  Persister.types["BlockSet"] = BlockSet;
   BlockSet.unserialize = function (json, unserialize) {
     if (json.type === "colors") {
       // obsolete serialization type
