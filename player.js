@@ -11,11 +11,11 @@ var Player = (function () {
   var JUMP_SPEED = 8; // cubes/s
   var MAX_STEP_UP = 0.57; // cubes
   
-  var playerAABB = [
-    [-.35, .35], // x
-    [-1.75, .15], // y
-    [-.35, .35], // z
-  ];
+  var playerAABB = new AAB(
+    - .35, .35, // x
+    -1.75, .15, // y
+    - .35, .35 // z
+  );
 
   var PLACEHOLDER_ROTATIONS = [];
   for (var i = 0; i < applyCubeSymmetry.NO_REFLECT_COUNT; i++) {
@@ -98,9 +98,9 @@ var Player = (function () {
           for (var dv = 0; dv < 2; dv++)
           for (var dw = 0; dw < 2; dw++) {
             var p = vec3.create(offset);
-            p[dims[0]] += aabb[dims[0]][du];
-            p[dims[1]] += aabb[dims[1]][dv];
-            p[dims[2]] += aabb[dims[2]][dw];
+            p[dims[0]] += aabb.get(dims[0], du);
+            p[dims[1]] += aabb.get(dims[1], dv);
+            p[dims[2]] += aabb.get(dims[2], dw);
 
             vertices.push(p[0],p[1],p[2]);
             normals.push(0,0,0);
@@ -191,28 +191,28 @@ var Player = (function () {
         var hit = {};
         var hitCount = 0;
         var str;        
-        var hx = Math.floor(aabb[0][1]);
-        var hy = Math.floor(aabb[1][1]);
-        var hz = Math.floor(aabb[2][1]);
-        for (var x = Math.floor(aabb[0][0]); x <= hx; x++)
-        for (var y = Math.floor(aabb[1][0]); y <= hy; y++)
-        for (var z = Math.floor(aabb[2][0]); z <= hz; z++) {
+        var hx = Math.floor(aabb.get(0, 1));
+        var hy = Math.floor(aabb.get(1, 1));
+        var hz = Math.floor(aabb.get(2, 1));
+        for (var x = Math.floor(aabb.get(0, 0)); x <= hx; x++)
+        for (var y = Math.floor(aabb.get(1, 0)); y <= hy; y++)
+        for (var z = Math.floor(aabb.get(2, 0)); z <= hz; z++) {
           var type = iworld.gt(x,y,z);
           if (!type.solid) continue;
           if (ignore[str = x+","+y+","+z]) continue;
           if (!type.opaque && type.world && !iworld.gRot(x,y,z) /* rotating-and-unrotating not yet supported */) {
             var scale = type.world.wx;
             var subhit = intersectWorld(
-                  scaleAABB(scale, offsetAABB([-x, -y, -z], aabb)),
+                  aabb.translate([-x, -y, -z]).scale(scale),
                   type.world);
             if (subhit == null) continue;
             for (var substr in subhit) {
               if (!subhit.hasOwnProperty(substr)) continue;
-              hit[str+":"+substr] = offsetAABB([x, y, z], scaleAABB(1/scale, subhit[substr]));
+              hit[str+":"+substr] = subhit[substr].scale(1/scale).translate([x, y, z]);
               hitCount++;
             }
           } else {
-            hit[str] = [[x,x+1],[y,y+1],[z,z+1]];
+            hit[str] = new AAB(x,x+1,y,y+1,z,z+1);
             hitCount++;
           }
         }
@@ -220,23 +220,23 @@ var Player = (function () {
       }
       
       function intersectPlayerAt(pos, ignore) {
-        return intersectWorld(offsetAABB(pos, playerAABB), world, ignore);
+        return intersectWorld(playerAABB.translate(pos), world, ignore);
       }
       
       function unionHits(hit) {
-        var union = [[Infinity,-Infinity],[Infinity,-Infinity],[Infinity,-Infinity]];
+        var union = [Infinity,-Infinity,Infinity,-Infinity,Infinity,-Infinity];
         for (var k in hit) {
           if (!hit.hasOwnProperty(k)) continue;
           var aabb = hit[k];
           debugHitAABBs.push(aabb); // TODO: misplaced for debug
-          union[0][0] = Math.min(union[0][0], aabb[0][0]);
-          union[0][1] = Math.max(union[0][1], aabb[0][1]);
-          union[1][0] = Math.min(union[1][0], aabb[1][0]);
-          union[1][1] = Math.max(union[1][1], aabb[1][1]);
-          union[2][0] = Math.min(union[2][0], aabb[2][0]);
-          union[2][1] = Math.max(union[2][1], aabb[2][1]);
+          union[0] = Math.min(union[0], aabb[0]);
+          union[1] = Math.max(union[1], aabb[1]);
+          union[2] = Math.min(union[2], aabb[2]);
+          union[3] = Math.max(union[3], aabb[3]);
+          union[4] = Math.min(union[4], aabb[4]);
+          union[5] = Math.max(union[5], aabb[5]);
         }
-        return union;
+        return new AAB(union[0],union[1],union[2],union[3],union[4],union[5]);
       }
       
       debugHitAABBs = [];
@@ -251,7 +251,7 @@ var Player = (function () {
         var dim = [1,0,2][dimi]; // TODO: doing the dims in another order makes the slope walking glitch out, but I don't understand *why*.
         var dir = curVel[dim] >= 0 ? 1 : 0;
         nextPosIncr[dim] = nextPos[dim]; // TODO: Sample multiple times if velocity exceeds 1 block/step
-        //console.log(dir, dim, playerAABB[dim][dir], front, nextPosIncr);
+        //console.log(dir, dim, playerAABB.get(dim, dir), front, nextPosIncr);
         var hit;
         if ((hit = intersectPlayerAt(nextPosIncr, alreadyColliding))) {
           var hitAABB = unionHits(hit);
@@ -259,7 +259,7 @@ var Player = (function () {
             // Walk-up-slopes
             if (dim != 1 /*moving horizontally*/ && currentPlace.standingOn /*not in air*/) {
               var upward = vec3.create(nextPosIncr);
-              upward[1] = hitAABB[1][1] - playerAABB[1][0] + EPSILON;
+              upward[1] = hitAABB.get(1, 1) - playerAABB.get(1,0) + EPSILON;
               var delta = upward[1] - nextPosIncr[1];
               //console.log("upward test", delta, !!intersectPlayerAt(upward));
               if (delta > 0 && delta < MAX_STEP_UP && !intersectPlayerAt(upward)) {
@@ -269,7 +269,7 @@ var Player = (function () {
               }
             }
           
-            var surfaceOffset = hitAABB[dim][1-dir] - (nextPosIncr[dim] + playerAABB[dim][dir]);
+            var surfaceOffset = hitAABB.get(dim, 1-dir) - (nextPosIncr[dim] + playerAABB.get(dim, dir));
             nextPosIncr[dim] += surfaceOffset - (dir ? 1 : -1) * EPSILON;
             curVel[dim] /= 10;
             if (dim == 1 && dir == 0) {
@@ -358,7 +358,7 @@ var Player = (function () {
       while (placeStack.length) placeStack.pop().wrend.deleteResources();
       currentPlace = new Place(world);
       // TODO: move this position downward to free space rather than just imparting velocity
-      this.setPosition([world.wx/2, world.wy - playerAABB[1][0] + EPSILON, world.wz/2]);
+      this.setPosition([world.wx/2, world.wy - playerAABB.get(1, 0) + EPSILON, world.wz/2]);
       vec3.set([0,-120,0], currentPlace.vel);
       notifyChangedPlace();
     };
@@ -429,7 +429,7 @@ var Player = (function () {
 
         currentPlace = new Place(world);
         currentPlace.forBlock = blockID;
-        vec3.set([world.wx/2, world.wy - playerAABB[1][0] + EPSILON, world.wz/2], currentPlace.pos);
+        vec3.set([world.wx/2, world.wy - playerAABB.get(1, 0) + EPSILON, world.wz/2], currentPlace.pos);
         placeStack.push(oldPlace);
         aimChanged();
 
@@ -468,8 +468,8 @@ var Player = (function () {
             // They'll probably end up in the air...
             currentPlace.flying = true;
             // but in the ground would be bad.
-            if (currentPlace.pos[1] + playerAABB[1][0] < 0)
-              currentPlace.pos[1] = -playerAABB[1][0] + EPSILON;
+            if (currentPlace.pos[1] + playerAABB.get(1, 0) < 0)
+              currentPlace.pos[1] = -playerAABB.get(1, 0) + EPSILON;
             
             placeStack.push(oldPlace);
             aimChanged();

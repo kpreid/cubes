@@ -133,10 +133,7 @@ var Renderer = (function () {
       var fov = config.fov.get();
       var aspectRatio = gl.drawingBufferWidth / gl.drawingBufferHeight;
       
-      var nearestApproachToPlayer = Math.min(
-        -Player.aabb[0][0], Player.aabb[0][1],
-        -Player.aabb[1][0], Player.aabb[1][1],
-        -Player.aabb[2][0], Player.aabb[2][1]);
+      var nearestApproachToPlayer = Player.aabb.minimumRadius();
       var nearPlane = nearestApproachToPlayer 
                       / Math.sqrt(1 + Math.pow(Math.tan(fov/180*Math.PI/2), 2)
                                       * (Math.pow(aspectRatio, 2) + 1));

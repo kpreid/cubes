@@ -114,41 +114,77 @@ function prepareProgram(gl, vertexShader, fragmentShader, attribs, uniforms) {
   return program;
 }
 
-function intersectAABB(a1, a2) {
-  for (var dim = 0; dim < 3; dim++)
-    if (a1[dim][1] < a2[dim][0] || a2[dim][1] < a1[dim][0])
-      return false;
-  return true;
-}
+// Axis-Aligned Box data type. (We'd usually say Axis-Aligned Bounding Box, but that's what it's being used for, not what it does.
+var AAB = (function () {
+  "use strict";
 
-function offsetAABB(offset, aabb) {
-  return [[offset[0] + aabb[0][0],
-           offset[0] + aabb[0][1]],
-          [offset[1] + aabb[1][0],
-           offset[1] + aabb[1][1]],
-          [offset[2] + aabb[2][0],
-           offset[2] + aabb[2][1]]];
-}
+  function AAB(lx,hx,ly,hy,lz,hz) {
+    // Data properties are named numerically so that code can be written generically across dimensions.
+    // TODO: Check that l < h? Do we want to require that?
+    this[0] = lx;
+    this[1] = hx;
+    this[2] = ly;
+    this[3] = hy;
+    this[4] = lz;
+    this[5] = hz;
+  }
+  
+  // Convenience for looking up a face by indexes:
+  //   dim -- axis: x=0 y=1 z=2
+  //   dir -- face: low=0 high=1
+  AAB.prototype.get = function (dim, dir) {
+    return this[dim*2+dir];
+  };
+  
+  // Intersection test
+  AAB.prototype.intersects = function (other) {
+    for (var dim = 0; dim < 3; dim++)
+      if (this[dim*2] < other[dim*2+1] || a2[dim*2+1] < a1[dim*2])
+        return false;
+    return true;
+  };
+  
+  // Return this AAB translated by the specified offset
+  AAB.prototype.translate = function (offset) {
+    return new AAB(offset[0] + this[0],
+                   offset[0] + this[1],
+                   offset[1] + this[2],
+                   offset[1] + this[3],
+                   offset[2] + this[4],
+                   offset[2] + this[5]);
+  };
 
-function scaleAABB(scale, aabb) {
-  return  [[scale * aabb[0][0],
-            scale * aabb[0][1]],
-           [scale * aabb[1][0],
-            scale * aabb[1][1]],
-           [scale * aabb[2][0],
-            scale * aabb[2][1]]];
-}
-
-function rotateAABB(rotation, aabb) {
-  var v0 = applyCubeSymmetry(rotation, 0, [aabb[0][0], aabb[1][0], aabb[2][0]]);
-  var v1 = applyCubeSymmetry(rotation, 0, [aabb[0][1], aabb[1][1], aabb[2][1]]);
-  return  [[v0[0],
-            v1[0]],
-           [v0[1],
-            v1[1]],
-           [v0[2],
-            v1[2]]];
-}
+  AAB.prototype.scale = function (scale) {
+    return new AAB(scale * this[0],
+                   scale * this[1],
+                   scale * this[2],
+                   scale * this[3],
+                   scale * this[4],
+                   scale * this[5]);
+  };
+  
+  // TODO: This is not strictly rotation as it includes reflections.
+  AAB.prototype.rotate = function (symmetry) {
+    var v0 = applyCubeSymmetry(rotation, 0, [this[0], this[2], this[4]]);
+    var v1 = applyCubeSymmetry(rotation, 0, [this[1], this[3], this[5]]);
+    return new AAB(v0[0],
+                   v1[0],
+                   v0[1],
+                   v1[1],
+                   v0[2],
+                   v1[2]);
+  };
+  
+  // The distance from the origin to the closest point not in this AAB.
+  // Probably not useful unless this AAB contains the origin.
+  AAB.prototype.minimumRadius = function () {
+    return Math.max(0, Math.min(-this[0], this[1],
+                                -this[2], this[3],
+                                -this[4], this[5]));
+  };
+  
+  return Object.freeze(AAB);
+})();
 
 // Given an element, replace its contents with a text node and return that, so that the element's text can be updated by setting the .data property of the result.
 function dynamicText(elem) {
