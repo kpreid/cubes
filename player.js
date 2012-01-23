@@ -465,11 +465,8 @@ var Player = (function () {
             vec3.scale(currentPlace.vel, tileSize);
             // Same view direction
             currentPlace.yaw = oldPlace.yaw;
-            // They'll probably end up in the air...
+            // And not falling.
             currentPlace.flying = true;
-            // but in the ground would be bad.
-            if (currentPlace.pos[1] + playerAABB.get(1, 0) < 0)
-              currentPlace.pos[1] = -playerAABB.get(1, 0) + EPSILON;
             
             placeStack.push(oldPlace);
             aimChanged();
