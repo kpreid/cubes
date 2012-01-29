@@ -112,7 +112,10 @@ var WorldRenderer = (function () {
           common();
         }
       }
-    });
+    }, {aroundDraw: function (draw) {
+      gl.lineWidth(1);
+      draw();
+    }});
 
     var textureDebugR = new renderer.RenderBundle(gl.TRIANGLE_STRIP,
                                                   function () { return blockSet.getRenderData().texture; },

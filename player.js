@@ -81,6 +81,7 @@ var Player = (function () {
       }
     }, {
       aroundDraw: function (draw) {
+        gl.lineWidth(1);
         gl.disable(gl.DEPTH_TEST);
         draw();
         gl.enable(gl.DEPTH_TEST);
@@ -117,7 +118,6 @@ var Player = (function () {
       if (!config.debugPlayerCollision.get()) return;
       gl.lineWidth(2);
       draw();
-      gl.lineWidth(1); // TODO instead of restoring, make line width garbage-by-default
     }});
   
     function aimChanged() {

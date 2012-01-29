@@ -1,6 +1,22 @@
 // Copyright 2011 Kevin Reid, under the terms of the MIT License as detailed in
 // the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
+/*
+GL/shader state management policies
+-----------------------------------
+
+This is what you can assume:
+  useProgram: Fixed to the one and only program.
+  FRAMEBUFFER: Null.
+  DEPTH_TEST: Enabled.
+  CULL_FACE: Enabled.
+  lineWidth: Undefined.
+  depthMask: True.
+  uParticleMode: False.
+  Viewpoint-related properties (viewport, matrices, fog) are managed as a group by setViewTo*. They may be saved and restored using renderer.saveView.
+  Vertex property arrays are managed as a group by RenderBundle and are otherwise undefined.
+*/
+
 var Renderer = (function () {
   "use strict";
   
