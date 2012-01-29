@@ -40,11 +40,11 @@ var config = {};
 })();
 
 var CubesMain = (function () {
-  var MAX_CATCHUP_MS = 500;
   
   function CubesMain(timestep) {
     var main = this;
     var timestep_ms = timestep*1000;
+    var maxCatchup_ms = timestep_ms*3; // arbitrary/tuned, not magic
     
     // GL objects
     var gl;
@@ -172,8 +172,8 @@ var CubesMain = (function () {
       var now = Date.now();
       if (lastStepTime === null)
         lastStepTime = now;
-      if ((now - lastStepTime) > MAX_CATCHUP_MS)
-        lastStepTime = now - MAX_CATCHUP_MS;
+      if ((now - lastStepTime) > maxCatchup_ms)
+        lastStepTime = now - maxCatchup_ms;
       
       while ((now - lastStepTime) > timestep_ms) {
         doOneStep();
