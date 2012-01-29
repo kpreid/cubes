@@ -87,17 +87,18 @@ var Player = (function () {
       }
     });
     
-    var debugHitAABBs = [];
+    var debugHitAABBs = []; // filled by collision code
+    var axisPermutationsForBoxes = [[0,1,2], [1,2,0], [2,0,1]];
     var aabbR = new renderer.RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
-      // TODO: Would be more efficient to use the modelview matrix than recomputing this?
-      if (!currentPlace) return;
+      if (!(config.debugPlayerCollision.get() && currentPlace)) return;
 
+      var p = vec3.create();
       function renderAABB(offset, aabb, r, g, b) {
-        [[0,1,2], [1,2,0], [2,0,1]].forEach(function (dims) {
+        axisPermutationsForBoxes.forEach(function (dims) {
           for (var du = 0; du < 2; du++)
           for (var dv = 0; dv < 2; dv++)
           for (var dw = 0; dw < 2; dw++) {
-            var p = vec3.create(offset);
+            vec3.set(offset, p);
             p[dims[0]] += aabb.get(dims[0], du);
             p[dims[1]] += aabb.get(dims[1], dv);
             p[dims[2]] += aabb.get(dims[2], dw);
@@ -113,6 +114,7 @@ var Player = (function () {
         renderAABB([0,0,0], aabb, 0,1,0);
       })
     }, {aroundDraw: function (draw) {
+      if (!config.debugPlayerCollision.get()) return;
       gl.lineWidth(2);
       draw();
       gl.lineWidth(1); // TODO instead of restoring, make line width garbage-by-default
