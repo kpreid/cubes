@@ -151,7 +151,7 @@ var Player = (function () {
       if ("" + currentPlace.selection !== "" + newSel) {
         currentPlace.selection = newSel;
         selectionR.recompute();
-        scheduleDraw(); // TODO: global variable 
+        scheduleDraw();
       }
     }
     
@@ -295,7 +295,10 @@ var Player = (function () {
           currentPlace.vel);
         aimChanged();
       }
-      aabbR.recompute();
+      if (config.debugPlayerCollision.get()) {
+        aabbR.recompute();
+        scheduleDraw();
+      }
       
       // TODO this became a mess when AABB-base collision was introduced
       var seen = {};
