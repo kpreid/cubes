@@ -36,46 +36,58 @@ var WorldGen = (function () {
     },
 
     // Generate a blockset containing RGB colors with the specified number of
-    // levels in each channel, and a function from (r,g,b) to block ID.
+    // levels in each channel.
     colorBlocks: function (reds, greens, blues) {
       if (reds*greens*blues >= 256)
         throw new Error("Color resolution would result in " + reds*greens*blues + " > 255 colors.");
     
-      // convert color components in [0,1] to block ID
-      function colorToID(r,g,b) {
-        // || 1 is protection against generating air from invalid input
-        if (r < 0 || g < 0 || b < 0 || r > 1 || g > 1 || b > 1) {
-          throw new Error("bad color " + r + " " + g + " " + b);
-        }
-        var r = 1 +                Math.floor(r*(reds-1))
-                  + reds*(         Math.floor(g*(greens-1))
-                          + greens*Math.floor(b*(blues-1)));
-        if (r < 1 || r > 245) debugger;
-        return r;
-      }
-
-      // convert block ID to RGBA tuple
-      function idToColor(id) {
-        var i = id - 1;
-        return [
+      var colors = [];
+      for (var i = 0; i < reds*greens*blues; i++) {
+        colors.push(new BlockType.Color([
           mod(i, reds) / (reds-1),
           mod(Math.floor(i/reds), greens) / (greens-1),
           mod(Math.floor(i/reds/greens), blues) / (blues-1),
           1
-        ];
+        ]));
       }
-
-      var colors = [];
-      for (var i = 1; i < (reds*greens*blues)+1; i++) {
-        colors.push(new BlockType.Color(idToColor(i)));
+      return new BlockSet(colors);
+    },
+    
+    // Given a blockset, return a function which returns the ID of the nearest color block in the blockset, optionally with random dithering. As the color selection process is expensive, the function is memoized; reusing it is cheaper.
+    //
+    // Colors will be dithered with a variation up to 'dithering' times the distance between the best match and the available color; therefore any value <= 1 means no dithering.
+    colorPicker: function (blockset, dithering) {
+      if ((dithering || 0) < 1) dithering = 1;
+      var count = 0;
+      var table = {};
+      function colorToID(r,g,b) {
+        var key = r+","+g+","+b;
+        if (!(key in table)) {
+          var matches = [];
+          // Compute Euclidean distance for each color in the set.
+          for (var i = blockset.length - 1; i >= 0; i--) {
+            var color = blockset.get(i).color;
+            if (!color || color[3] <= 0.0) continue; // transparent or not a color block
+            var dr = r-color[0];
+            var dg = g-color[1];
+            var db = b-color[2];
+            matches.push([i, Math.sqrt(dr*dr+dg*dg+db*db)]);
+          }
+          // Sort from lowest to highest distance.
+          matches.sort(function (a,b) { return a[1] - b[1]; });
+          // Find the maximum distance allowed for picking dither colors.
+          var ditherBound = matches[0][1] * dithering;
+          // Cut off the match list at that point.
+          for (var ditherCount = 0; ditherCount < matches.length && matches[ditherCount][1] <= ditherBound; ditherCount++);
+          table[key] = matches.slice(0, ditherCount);
+        }
+        
+        var candidates = table[key];
+        // Pick a color randomly from the dither candidates.
+        // TODO: Do the randomization such that the mean color is the desired color.
+        return candidates[Math.floor(Math.random() * candidates.length)][0];
       }
-      var colorSet = new BlockSet(colors);
-
-      return {
-        blockset: colorSet,
-        colorToID: colorToID,
-        idToColor: idToColor
-      };
+      return colorToID;
     },
     
     blockFunctions: function (TS) {
@@ -218,8 +230,9 @@ var WorldGen = (function () {
       var f = WorldGen.blockFunctions(TS);
       
       // appearance utilities
-      var boxColor = baseKit.colorToID(0,1,1);
-      var functionShapeColor = baseKit.colorToID(0.5,0.5,0.5);
+      var colorToID = WorldGen.colorPicker(baseKit.blockset);
+      var boxColor = colorToID(0,1,1);
+      var functionShapeColor = colorToID(0.5,0.5,0.5);
       var functionShapePat = f.flat(functionShapeColor);
       function boxed(insidePat) {
         return function (b) {
@@ -255,7 +268,7 @@ var WorldGen = (function () {
       ids.pad = targetSet.length;
       var specklePat = f.cond(f.speckle,
                               functionShapePat,
-                              f.flat(baseKit.colorToID(0.75,0.75,0.75)));
+                              f.flat(colorToID(0.75,0.75,0.75)));
       type = genedit(f.sphere(TS/2,TS-0.5,TS/2,TS/2,specklePat));
       selfRotating(TL-1);
       type.behavior = Circuit.behaviors.pad;
@@ -265,7 +278,7 @@ var WorldGen = (function () {
       ids.indicator = targetSet.length;
       type = genedit(function (b) {
         return f.rad([b[0],b[1],b[2]]) > TS*6/16 ? 0 :
-               b[1] < TS/2 ? baseKit.colorToID(1,1,1) : baseKit.colorToID(0,0,0);
+               b[1] < TS/2 ? colorToID(1,1,1) : colorToID(0,0,0);
       });
       selfRotating(TS/2-1);
       type.behavior = Circuit.behaviors.indicator;
@@ -294,7 +307,7 @@ var WorldGen = (function () {
       ids.spontaneous = targetSet.length;
       type = genedit(function (b) {
         // TODO: make this look more like a lightning bolt
-        return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 1 ? baseKit.colorToID(1,1,0) : 0;
+        return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 1 ? colorToID(1,1,0) : 0;
       });
       type.behavior = Circuit.behaviors.spontaneous;
 
@@ -362,18 +375,19 @@ function generateWorlds() {
   // --- base blockset ---
   
   // layer 1
-  var pureColors = WorldGen.colorBlocks(7, 7, 5);
+  var pureColors = {blockset: WorldGen.colorBlocks(7, 7, 5)};
   
   // layer 2
-  var baseLogicAndColors = WorldGen.colorBlocks(7, 6, 5);
+  var baseLogicAndColors = {blockset: WorldGen.colorBlocks(7, 6, 5)};
   WorldGen.addLogicBlocks(TS, baseLogicAndColors, pureColors);
   
   // layer 3
-  var fullLogicAndColors = WorldGen.colorBlocks(7, 6, 5);
+  var fullLogicAndColors = {blockset: WorldGen.colorBlocks(6, 6, 6)};
   var onlyColorCount = fullLogicAndColors.blockset.length; // before logic added
   WorldGen.addLogicBlocks(TS, fullLogicAndColors, baseLogicAndColors);
   var colorSet = fullLogicAndColors.blockset;
-  var brgb = fullLogicAndColors.colorToID;
+  var brgb = WorldGen.colorPicker(colorSet, 0);
+  var brgbDither = WorldGen.colorPicker(colorSet, 1.2);
   var ls = fullLogicAndColors.logic;
 
   // --- block world generation utilities ---
@@ -456,7 +470,7 @@ function generateWorlds() {
 
   // pillar thing
   blockset.add(type = genedit(function (b) {
-    return Math.max(Math.abs(b[0] - TS/2), Math.abs(b[2] - TS/2)) <= TS/4 ? brgb(.5,.5,0) : 0;
+    return Math.max(Math.abs(b[0] - TS/2), Math.abs(b[2] - TS/2)) <= TS/4 ? brgbDither(.5,.5,0) : 0;
   }));
   
   // glass sheet for buildings
@@ -471,7 +485,7 @@ function generateWorlds() {
   blockset.add(type = genedit(function (b) {
     var g = Math.pow(f.maxrad(b), 0.25) * 0.7 + f.rad(b)/HALF * 0.1 + normalish() * 0.2;
     g = Math.min(1, g * 0.8);
-    return /* b[2] >= 8 ? 0 : */ brgb(g,g,g);
+    return /* b[2] >= 8 ? 0 : */ brgbDither(g,g,g);
   }));
   
 

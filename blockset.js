@@ -767,7 +767,7 @@ var BlockSet = (function () {
   BlockSet.unserialize = function (json, unserialize) {
     if (json.type === "colors") {
       // obsolete serialization type
-      var colors = WorldGen.colorBlocks(4,4,4).blockset;
+      var colors = WorldGen.colorBlocks(4,4,4);
       var list = colors.getAll().slice(1, colors.length);
       list.push(list.shift());
       return new BlockSet(list);
