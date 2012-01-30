@@ -188,25 +188,26 @@ var Player = (function () {
       
       // --- collision ---
 
-      function intersectWorld(aabb, iworld, ignore) {
+      function intersectWorld(aabb, iworld, ignore, level) {
         ignore = ignore || {};
         var hit = {};
         var hitCount = 0;
         var str;        
-        var hx = Math.floor(aabb.get(0, 1));
-        var hy = Math.floor(aabb.get(1, 1));
-        var hz = Math.floor(aabb.get(2, 1));
-        for (var x = Math.floor(aabb.get(0, 0)); x <= hx; x++)
-        for (var y = Math.floor(aabb.get(1, 0)); y <= hy; y++)
-        for (var z = Math.floor(aabb.get(2, 0)); z <= hz; z++) {
+        var hx = Math.min(iworld.wx - 1, Math.floor(aabb.get(0, 1)));
+        var hy = Math.min(iworld.wy - 1, Math.floor(aabb.get(1, 1)));
+        var hz = Math.min(iworld.wz - 1, Math.floor(aabb.get(2, 1)));
+        for (var x = Math.max(0, Math.floor(aabb.get(0, 0))); x <= hx; x++)
+        for (var y = Math.max(0, Math.floor(aabb.get(1, 0))); y <= hy; y++)
+        for (var z = Math.max(0, Math.floor(aabb.get(2, 0))); z <= hz; z++) {
           var type = iworld.gt(x,y,z);
           if (!type.solid) continue;
           if (ignore[str = x+","+y+","+z]) continue;
-          if (!type.opaque && type.world && !iworld.gRot(x,y,z) /* rotating-and-unrotating not yet supported */) {
+          if (!type.opaque && type.world && !iworld.gRot(x,y,z) /* rotating-and-unrotating not yet supported */ && level == 0) {
             var scale = type.world.wx;
             var subhit = intersectWorld(
                   aabb.translate([-x, -y, -z]).scale(scale),
-                  type.world);
+                  type.world,
+                  level + 1);
             if (subhit == null) continue;
             for (var substr in subhit) {
               if (!subhit.hasOwnProperty(substr)) continue;
@@ -222,7 +223,7 @@ var Player = (function () {
       }
       
       function intersectPlayerAt(pos, ignore) {
-        return intersectWorld(playerAABB.translate(pos), world, ignore);
+        return intersectWorld(playerAABB.translate(pos), world, ignore, 0);
       }
       
       function unionHits(hit) {
