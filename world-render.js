@@ -133,10 +133,10 @@ var WorldRenderer = (function () {
       normals.push(0,0,0);
       normals.push(0,0,0);
 
-      texcoords.push(0, 0);
-      texcoords.push(1, 0);
       texcoords.push(0, 1);
       texcoords.push(1, 1);
+      texcoords.push(0, 0);
+      texcoords.push(1, 0);
     }, {
       aroundDraw: function (draw) {
         var restoreView = renderer.saveView();

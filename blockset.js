@@ -320,15 +320,15 @@ var BlockSet = (function () {
     var tileUVSize = texgen.tileUVSize;
     var texO = flipped ? tileUVSize : 0;
     var texD = flipped ? 0 : tileUVSize;
-    var uo = uv[1];
-    var vo = uv[0];
+    var uo = uv[0];
+    var vo = uv[1];
     return [
       uo + texO, vo + texO,
+      uo + 0, vo + tileUVSize,
       uo + tileUVSize, vo + 0,
-      uo + 0, vo + tileUVSize,
       uo + texD, vo + texD,
-      uo + 0, vo + tileUVSize,
-      uo + tileUVSize, vo + 0
+      uo + tileUVSize, vo + 0,
+      uo + 0, vo + tileUVSize
     ];
   }
   
@@ -427,8 +427,8 @@ var BlockSet = (function () {
       var coords = this.imageCoordsFor(usageIndex);
       var w = self.image.width;
       var data = self.image.data;
-      function pix(x,y) {
-        return (coords[0]+x + w * (coords[1]+y)) * 4;
+      function pix(u,v) {
+        return (coords[0]+u + w * (coords[1]+v)) * 4;
       }
       function copy(dst, src) {
         data[dst] = data[src];
@@ -464,7 +464,7 @@ var BlockSet = (function () {
       tileAllocMap[index] = 0;
     }
     function tileCoords(index) {
-      return [Math.floor(index / tileCountSqrt), mod(index, tileCountSqrt)];
+      return [mod(index, tileCountSqrt), Math.floor(index / tileCountSqrt)];
     }
   }
   
@@ -513,7 +513,7 @@ var BlockSet = (function () {
 
         for (var u = 0; u < tileSize; u++)
         for (var v = 0; v < tileSize; v++) {
-          var c = ((pixu+u) * texWidth + pixv+v) * 4;
+          var c = ((pixv+v) * texWidth + pixu+u) * 4;
           texData[c+0] = r;
           texData[c+1] = g;
           texData[c+2] = b;
@@ -567,7 +567,7 @@ var BlockSet = (function () {
             // extract surface plane of block from world
             for (var u = 0; u < tileSize; u++)
             for (var v = 0; v < tileSize; v++) {
-              var c = ((pixu+u) * texWidth + pixv+v) * 4;
+              var c = ((pixv+v) * texWidth + pixu+u) * 4;
               vec[0] = u; vec[1] = v; vec[2] = layer;
               mat4.multiplyVec3(transform, vec, vec);
           
