@@ -24,6 +24,7 @@ var config = {};
   defineOption("lighting", "boolean", true);
   defineOption("bumpMapping", "boolean", true);
   defineOption("sound", "boolean", true);
+  defineOption("noclip", "boolean", false);
   defineOption("debugTextureAllocation", "boolean", false);
   defineOption("debugForceRender", "boolean", false);
   defineOption("debugPlayerCollision", "boolean", false);

@@ -250,34 +250,39 @@ var Player = (function () {
       var previousStandingOn = currentPlace.standingOn;
       currentPlace.standingOn = null;
       var nextPosIncr = vec3.create(curPos);
-      for (var dimi = 0; dimi < 3; dimi++) {
-        var dim = [1,0,2][dimi]; // TODO: doing the dims in another order makes the slope walking glitch out, but I don't understand *why*.
-        var dir = curVel[dim] >= 0 ? 1 : 0;
-        nextPosIncr[dim] = nextPos[dim]; // TODO: Sample multiple times if velocity exceeds 1 block/step
-        //console.log(dir, dim, playerAABB.get(dim, dir), front, nextPosIncr);
-        var hit;
-        if ((hit = intersectPlayerAt(nextPosIncr, alreadyColliding))) {
-          var hitAABB = unionHits(hit);
-          resolveDirection: {
-            // Walk-up-slopes
-            if (dim != 1 /*moving horizontally*/ && currentPlace.standingOn /*not in air*/) {
-              var upward = vec3.create(nextPosIncr);
-              upward[1] = hitAABB.get(1, 1) - playerAABB.get(1,0) + EPSILON;
-              var delta = upward[1] - nextPosIncr[1];
-              //console.log("upward test", delta, !!intersectPlayerAt(upward));
-              if (delta > 0 && delta < MAX_STEP_UP && !intersectPlayerAt(upward)) {
-                currentPlace.cameraYLag += delta;
-                nextPosIncr = upward;
-                break resolveDirection;
+      if (config.noclip.get()) {
+        nextPosIncr = nextPos;
+        currentPlace.flying = true;
+      } else {
+        for (var dimi = 0; dimi < 3; dimi++) {
+          var dim = [1,0,2][dimi]; // TODO: doing the dims in another order makes the slope walking glitch out, but I don't understand *why*.
+          var dir = curVel[dim] >= 0 ? 1 : 0;
+          nextPosIncr[dim] = nextPos[dim]; // TODO: Sample multiple times if velocity exceeds 1 block/step
+          //console.log(dir, dim, playerAABB.get(dim, dir), front, nextPosIncr);
+          var hit;
+          if ((hit = intersectPlayerAt(nextPosIncr, alreadyColliding))) {
+            var hitAABB = unionHits(hit);
+            resolveDirection: {
+              // Walk-up-slopes
+              if (dim != 1 /*moving horizontally*/ && currentPlace.standingOn /*not in air*/) {
+                var upward = vec3.create(nextPosIncr);
+                upward[1] = hitAABB.get(1, 1) - playerAABB.get(1,0) + EPSILON;
+                var delta = upward[1] - nextPosIncr[1];
+                //console.log("upward test", delta, !!intersectPlayerAt(upward));
+                if (delta > 0 && delta < MAX_STEP_UP && !intersectPlayerAt(upward)) {
+                  currentPlace.cameraYLag += delta;
+                  nextPosIncr = upward;
+                  break resolveDirection;
+                }
               }
-            }
           
-            var surfaceOffset = hitAABB.get(dim, 1-dir) - (nextPosIncr[dim] + playerAABB.get(dim, dir));
-            nextPosIncr[dim] += surfaceOffset - (dir ? 1 : -1) * EPSILON;
-            curVel[dim] /= 10;
-            if (dim == 1 && dir == 0) {
-              currentPlace.standingOn = hit || {};
-              currentPlace.flying = false;
+              var surfaceOffset = hitAABB.get(dim, 1-dir) - (nextPosIncr[dim] + playerAABB.get(dim, dir));
+              nextPosIncr[dim] += surfaceOffset - (dir ? 1 : -1) * EPSILON;
+              curVel[dim] /= 10;
+              if (dim == 1 && dir == 0) {
+                currentPlace.standingOn = hit || {};
+                currentPlace.flying = false;
+              }
             }
           }
         }
