@@ -16,6 +16,7 @@ uniform vec2 uPixelsPerClipUnit;
 
 uniform bool uTextureEnabled;
 uniform sampler2D uSampler;
+uniform samplerCube uSkySampler;
 uniform float uTileSize; // always integer, but used as float
 
 uniform bool uParticleMode;     // flag we're rendering point particles

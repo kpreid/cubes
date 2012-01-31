@@ -12,9 +12,12 @@ This is what you can assume:
   CULL_FACE: Enabled.
   lineWidth: Undefined.
   depthMask: True.
+  activeTexture: Undefined.
   uParticleMode: False.
   Viewpoint-related properties (viewport, matrices, fog) are managed as a group by setViewTo*. They may be saved and restored using renderer.saveView.
   Vertex property arrays are managed as a group by RenderBundle and are otherwise undefined.
+  Texture 0: RenderBundle-associated texture
+  Texture 1: Skybox
 */
 
 var Renderer = (function () {
@@ -47,6 +50,8 @@ var Renderer = (function () {
     // Incremented every time we lose context
     var contextSerial = 0;
     
+    var skyTexture;
+    
     // --- Internals ---
     
     function buildProgram() {
@@ -68,6 +73,8 @@ var Renderer = (function () {
       // Constant program-specific state
       gl.enableVertexAttribArray(attribs.aVertexPosition);
       gl.enableVertexAttribArray(attribs.aVertexNormal);
+
+      gl.uniform1i(uniforms.uSkySampler, 1);
     }
     
     function initContext() {
@@ -81,6 +88,8 @@ var Renderer = (function () {
       
       // Config-based GL state
       sendViewUniforms();
+      
+      generateSkyTexture();
     }
     
     function calculateFrustum() {
@@ -572,6 +581,68 @@ var Renderer = (function () {
     }
     
     // --- Non-core game-specific rendering utilities ---
+
+    function generateSkyTexture() {
+      // Sky texture
+      var skyTexSize = 256;
+      var log = Math.log;
+      var cSky = vec3.create([0.1,0.3,0.5]);
+      var cHorizon = vec3.create([0.7,0.8,1.0]);
+      var cGround = vec3.create([0.5,0.4,0.4]);
+      function clamp(x, low, high) {
+        return Math.min(Math.max(x, low), high);
+      }
+      function mix(a, b, val) {
+        return vec3.add(vec3.scale(a, (1-val), vec3.create()), vec3.scale(b, val, vec3.create()));
+      }
+      function plot(sine) {
+        // Note: this was formerly a GLSL function, which is why it uses the above utilities.
+        // TODO: Try out doing this as render-to-texture
+        return sine < 0.0
+            ? mix(cHorizon, cGround, clamp(log(1.0 + -sine * 120.0), 0.0, 1.0))
+            : mix(cHorizon, cSky, clamp(log(1.0 + sine * 2.0), 0.0, 1.0));
+      }
+      function proceduralImage(f) {
+        var image = document.createElement("canvas").getContext("2d")
+          .createImageData(skyTexSize, skyTexSize);
+        var data = image.data;
+        for (var x = 0; x < skyTexSize; x++)
+        for (var y = 0; y < skyTexSize; y++) {
+          var base = (x + y*skyTexSize)*4;
+          var ncx = x/skyTexSize-0.5;
+          var ncy = y/skyTexSize-0.5;
+          var ncz = 0.5;
+          var color = f(image.data,base,ncx,ncy,ncz);
+          data[base]   = color[0]*255;
+          data[base+1] = color[1]*255;
+          data[base+2] = color[2]*255;
+          data[base+3] = 255;
+        }
+        return image;
+      }
+      var side = proceduralImage(function (array,base,x,y,z) {
+        return plot(-y / Math.sqrt(x*x+y*y+z*z));
+      });
+      var top = proceduralImage(function (array,base,x,y,z) {
+        return plot(z / Math.sqrt(x*x+y*y+z*z));
+      });
+      var bottom = proceduralImage(function (array,base,x,y,z) {
+        return plot(-z / Math.sqrt(x*x+y*y+z*z));
+      });
+      skyTexture = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyTexture);
+      gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, side);
+      gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, top);
+      gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, side);
+      gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, side);
+      gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bottom);
+      gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, side);
+      gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    }
     
     var skyboxR = new RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {
       // abstracted in case this becomes useful elsewhere ...

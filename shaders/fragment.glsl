@@ -1,6 +1,3 @@
-const vec4 cSky = vec4(0.1,0.3,0.5,1.0);   
-const vec4 cHorizon = vec4(0.7,0.8,1.0,1.0);  
-const vec4 cGround = vec4(0.5,0.4,0.4,1.0);
 const float cModEpsilon = 1e-20;
 const float cTileCurvature = 0.2;
 const float cTileBumpDistance = 2.0;
@@ -61,10 +58,7 @@ void main(void) {
     
     color = vec4(spill(vec3(color)), color.a);
 
-    float elevationSine = vFixedOrientationPosition.y / length(vFixedOrientationPosition);
-    vec4 fogColor = elevationSine < 0.0
-      ? mix(cHorizon, cGround, clamp(log(1.0 + -elevationSine * 120.0), 0.0, 1.0))
-      : mix(cHorizon, cSky, clamp(log(1.0 + elevationSine * 2.0), 0.0, 1.0));
+    vec4 fogColor = textureCube(uSkySampler, normalize(vFixedOrientationPosition));
     gl_FragColor = color * (1.0-vFog) + fogColor * vFog;
     
     if (!uFocusCue) {
