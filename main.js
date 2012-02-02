@@ -361,7 +361,7 @@ var CubesMain = (function () {
           }
           if (!world) {
             world = generateWorlds();
-            world.persistence.persist("Default");
+            if (Persister.available) world.persistence.persist("Default");
           }
           main.setTopWorld(world);
         },
