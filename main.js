@@ -336,7 +336,7 @@ var CubesMain = (function () {
           gl = renderer.context;
         },
         function () {
-          startupMessage(Persister.has("world")
+          startupMessage(Persister.has(config.currentTopWorld.get())
               ? "Loading saved worlds..."
               : "Creating worlds...");
         },
