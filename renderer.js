@@ -5,8 +5,8 @@
 GL/shader state management policies
 -----------------------------------
 
-This is what you can assume:
-  useProgram: Fixed to the one and only program.
+This is what you can assume/should do:
+  useProgram: Do not use directly; use switchProgram().
   FRAMEBUFFER: Null.
   DEPTH_TEST: Enabled.
   CULL_FACE: Enabled.
@@ -25,6 +25,15 @@ var Renderer = (function () {
   
   var DEBUG_GL = false;
   
+  // Attributes which are bound in order to give consistent locations across all shader programs.
+  // The numbers are arbitrary.
+  var permanentAttribs = {
+    aVertexPosition: 0,
+    aVertexNormal: 1,
+    aTextureCoord: 2,
+    aVertexColor: 3
+  };
+  
   function Renderer(canvas, shaders, scheduleDraw) {
     //canvas = WebGLDebugUtils.makeLostContextSimulatingCanvas(canvas);
     //canvas.loseContextInNCalls(5000);
@@ -41,10 +50,19 @@ var Renderer = (function () {
     var mvMatrix = mat4.create();
     var viewPosition = vec3.create();
     var viewFrustum = {}; // computed
+    
+    // Other globals (uniforms)
+    var fogDistance = 0;
+    var stipple = 0;
+    var tileSize = 1;
+    var focusCue = false;
 
-    // prepareProgram fills in these with the locations of the shader program variables
-    var attribs = {};
-    var uniforms = {};
+    // Shader programs, and attrib and uniform locations
+    var blockProgramSetup = null;
+    var particleProgramSetup = null;
+  
+    var currentProgramSetup = null;
+    var attribs, uniforms;
     
     var contextLost = false;
     // Incremented every time we lose context
@@ -64,23 +82,33 @@ var Renderer = (function () {
         BUMP_MAPPING: config.bumpMapping.get()
       };
       
-      var program = prepareProgram(gl,
-                     prepareShader(gl, gl.VERTEX_SHADER, [shaders.common, shaders.vertex], decls),
-                     prepareShader(gl, gl.FRAGMENT_SHADER, [shaders.common, shaders.fragment], decls),
-                     attribs, uniforms);          
-      gl.useProgram(program);
- 
-      // Constant program-specific state
-      gl.enableVertexAttribArray(attribs.aVertexPosition);
-      gl.enableVertexAttribArray(attribs.aVertexNormal);
+      blockProgramSetup = prepareProgram(gl, decls, permanentAttribs,
+        [shaders.common, shaders.vertex_common, shaders.vertex_block],
+        [shaders.common, shaders.fragment]);
+      particleProgramSetup = prepareProgram(gl, decls, permanentAttribs,
+        [shaders.common, shaders.vertex_common, shaders.vertex_particle],
+        [shaders.common, shaders.fragment]);
 
+      // initialize common constant uniforms. TODO: Do this more cleanly
+      switchProgram(particleProgramSetup);
       gl.uniform1i(uniforms.uSkySampler, 1);
+      switchProgram(blockProgramSetup); // leave this as first program
+      gl.uniform1i(uniforms.uSkySampler, 1);
+    }
+    
+    function switchProgram(newP) {
+      gl.useProgram(newP.program);
+      attribs = newP.attribs;
+      uniforms = newP.uniforms;
     }
     
     function initContext() {
       contextSerial++;
       
       buildProgram();
+      
+      gl.enableVertexAttribArray(permanentAttribs.aVertexPosition);
+      gl.enableVertexAttribArray(permanentAttribs.aVertexNormal);
       
       // Mostly-constant GL state
       gl.enable(gl.DEPTH_TEST);
@@ -148,8 +176,7 @@ var Renderer = (function () {
       }
       
       gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-      gl.uniform2f(uniforms.uPixelsPerClipUnit, gl.drawingBufferWidth / 2,
-                                                gl.drawingBufferHeight / 2);
+      sendPixels();
 
       updateProjection();
     }
@@ -169,15 +196,16 @@ var Renderer = (function () {
                        config.renderDistance.get(),
                        pMatrix);
       
-      gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
+      sendProjection();
       // uFogDistance is handled by drawScene because it is changed.
     }
     
     function sendViewUniforms() {
       // TODO: We used to be able to avoid sending the projection matrix when only the view changed. Re-add that, if worthwhile.
-      gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
+      sendProjection();
       gl.uniformMatrix4fv(uniforms.uMVMatrix, false, mvMatrix);
       gl.uniform3fv(uniforms.uViewPosition, viewPosition);
+      gl.uniform1i(uniforms.uFocusCue, focusCue);
       calculateFrustum();
     }
 
@@ -190,6 +218,35 @@ var Renderer = (function () {
       contextLost = false;
       initContext();
       scheduleDraw();
+    }
+    
+    // --- Uniform variable senders ---
+    
+    // Due to program switching, we need to be able to resend all of the uniforms to the new program.
+    
+    function sendPixels() {
+      gl.uniform2f(uniforms.uPixelsPerClipUnit, gl.drawingBufferWidth / 2,
+                                                gl.drawingBufferHeight / 2);
+    }
+    
+    function sendTileSize() {
+      gl.uniform1f(uniforms.uTileSize, tileSize);
+    }
+    
+    function sendStipple() {
+      gl.uniform1i(uniforms.uStipple, stipple);
+    }
+    
+    function sendProjection() {
+      gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
+      gl.uniform1f(uniforms.uFogDistance, fogDistance);
+    }
+    
+    function sendAllUniforms() {
+      sendPixels();
+      sendTileSize();
+      sendProjection();
+      sendViewUniforms();
     }
 
     // --- Config bindings ---
@@ -271,21 +328,21 @@ var Renderer = (function () {
       mat4.identity(mvMatrix);
       playerRender.applyViewRot(mvMatrix);
       viewPosition = [0,0,0];
+      fogDistance = 1; // 0 would be div-by-0
+      focusCue = focus;
       sendViewUniforms();
-      gl.uniform1f(uniforms.uFogDistance, 1); // 0 would be div-by-0
       gl.disable(gl.DEPTH_TEST);
-      gl.uniform1f(uniforms.uFocusCue, focus);
     }
     this.setViewToSkybox = setViewToSkybox;
     function setViewToEye(playerRender, focus) {
       gl.enable(gl.DEPTH_TEST);
       viewPosition = playerRender.getPosition();
       playerRender.applyViewTranslation(mvMatrix);
-
-      gl.uniform1f(uniforms.uFogDistance, config.renderDistance.get());
-      gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
+      
+      fogDistance = config.renderDistance.get();
+      focusCue = focus;
+      sendProjection();
       sendViewUniforms();
-      gl.uniform1f(uniforms.uFocusCue, focus);
     }
     this.setViewToEye = setViewToEye;
     function setViewToBlock() { // Ortho view of block at 0,0,0
@@ -294,12 +351,11 @@ var Renderer = (function () {
       mat4.rotate(mvMatrix, Math.PI/4 * 0.555, [0, 1, 0]);
       mat4.translate(mvMatrix, [-0.5,-0.5,-0.5]);
 
-      gl.uniform1f(uniforms.uFogDistance, 100);
-      gl.uniformMatrix4fv(uniforms.uPMatrix, false,
-        mat4.ortho(-0.8, 0.8, -0.8, 0.8, -1, 1, pMatrix));
-      gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
+      fogDistance = 100;
+      focusCue = true;
+      mat4.ortho(-0.8, 0.8, -0.8, 0.8, -1, 1, pMatrix);
+      sendProjection();
       sendViewUniforms();
-      gl.uniform1f(uniforms.uFocusCue, true);
     }
     this.setViewToBlock = setViewToBlock;
     function setViewTo2D() { // 2D view with coordinates in [-1..1]
@@ -315,8 +371,8 @@ var Renderer = (function () {
       
       mat4.ortho(-w, w, -h, h, -1, 1, pMatrix);
       mat4.identity(mvMatrix);
+      focusCue = true;
       sendViewUniforms();
-      gl.uniform1f(uniforms.uFocusCue, true);
     }
     this.setViewTo2D = setViewTo2D;
     function saveView() {
@@ -328,19 +384,21 @@ var Renderer = (function () {
         pMatrix = savedPMatrix;
         viewPosition = savedView;
 
-        gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
+        sendProjection();
         sendViewUniforms();
       };
     }
     this.saveView = saveView;
     
     function setStipple(val) {
-      gl.uniform1i(uniforms.uStipple, val ? 1 : 0);
+      stipple = val ? 1 : 0;
+      sendStipple();
     }
     this.setStipple = setStipple;
     
     function setTileSize(val) {
-      gl.uniform1f(uniforms.uTileSize, val);
+      tileSize = val;
+      sendTileSize();
     }
     this.setTileSize = setTileSize;
     
@@ -439,29 +497,30 @@ var Renderer = (function () {
           mustRebuild = currentContextTicket();
         }
         
-        v.attrib(attribs.aVertexPosition);
-        n.attrib(attribs.aVertexNormal);
+        v.attrib(permanentAttribs.aVertexPosition);
+        n.attrib(permanentAttribs.aVertexNormal);
         
         gl.uniform1i(uniforms.uTextureEnabled, optGetTexture ? 1 : 0);
 
         if (optGetTexture) {
-          gl.enableVertexAttribArray(attribs.aTextureCoord);
-          gl.disableVertexAttribArray(attribs.aVertexColor);
+          gl.enableVertexAttribArray(permanentAttribs.aTextureCoord);
+          gl.disableVertexAttribArray(permanentAttribs.aVertexColor);
           
-          t.attrib(attribs.aTextureCoord);
+          t.attrib(permanentAttribs.aTextureCoord);
   
           gl.activeTexture(gl.TEXTURE0);
           gl.bindTexture(gl.TEXTURE_2D, optGetTexture());
           gl.uniform1i(uniforms.uSampler, 0);
         } else {
-          gl.disableVertexAttribArray(attribs.aTextureCoord);
-          gl.enableVertexAttribArray(attribs.aVertexColor);
+          gl.disableVertexAttribArray(permanentAttribs.aTextureCoord);
+          gl.enableVertexAttribArray(permanentAttribs.aVertexColor);
 
-          c.attrib(attribs.aVertexColor);
+          c.attrib(permanentAttribs.aVertexColor);
         }
         var count = v.countVertices();
         renderer.verticesDrawn += count;
         gl.drawArrays(primitive, 0, count);
+        
       }
       this.draw = options.aroundDraw ? function () { options.aroundDraw(draw); } : draw;
       
@@ -514,11 +573,12 @@ var Renderer = (function () {
         }
       }, {
         aroundDraw: function (draw) {
-          gl.uniform1i(uniforms.uParticleMode, 1);
+          switchProgram(particleProgramSetup);
+          sendAllUniforms();
           gl.uniform1i(uniforms.uParticleExplode, destroyMode ? 1 : 0);
           gl.uniform1f(uniforms.uParticleInterp, t());
           draw();
-          gl.uniform1i(uniforms.uParticleMode, 0);
+          switchProgram(blockProgramSetup);
         }
       });
       
@@ -574,11 +634,6 @@ var Renderer = (function () {
       mat4.multiplyVec4(pMatrix, vec);
     }
     this.transformPoint = transformPoint;
-    
-    this.setFocusCue = function (v) {
-      gl.uniform1i(uniforms.uFocusCue, v ? 1 : 0);
-      scheduleDraw();
-    }
     
     // --- Non-core game-specific rendering utilities ---
 
@@ -688,7 +743,9 @@ var Renderer = (function () {
   Renderer.fetchShaders = function (callback) {
     var table = {
       common: undefined,
-      vertex: undefined,
+      vertex_common: undefined,
+      vertex_block: undefined,
+      vertex_particle: undefined,
       fragment: undefined
     };
     var names = Object.keys(table);

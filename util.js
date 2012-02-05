@@ -90,28 +90,51 @@ function prepareShader(gl, type, sources, declarations) {
   return shader;
 }
 
-function prepareProgram(gl, vertexShader, fragmentShader, attribs, uniforms) {
+function prepareProgram(gl, declarations, boundAttribLocations, vertexSources, fragmentSources) {
   // See note in license statement at the top of this file.  
   "use strict";
+  
+  var vertexShader = prepareShader(gl, gl.VERTEX_SHADER, vertexSources, declarations);
+  var fragmentShader = prepareShader(gl, gl.FRAGMENT_SHADER, fragmentSources, declarations);
+  
   var program = gl.createProgram();
+
   gl.attachShader(program, vertexShader);
   gl.attachShader(program, fragmentShader);
-  gl.linkProgram(program);
 
+  for (var attribName in boundAttribLocations) {
+    var index = boundAttribLocations[attribName];
+    if (typeof index === "number") {
+      gl.bindAttribLocation(program, index, attribName);
+    } else {
+      if (typeof console !== "undefined") {
+        console.warn("Enumerable non-number", attribName, "in boundAttribLocations object", boundAttribLocations);
+      }
+    }
+  }
+  
+  gl.linkProgram(program);
+  
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
     throw new Error(gl.getProgramInfoLog(program));
   }
-
+  
+  var attribs = Object.create(boundAttribLocations);
   for (var i = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES) - 1; i >= 0; i--) {
     var name = gl.getActiveAttrib(program, i).name;
     attribs[name] = gl.getAttribLocation(program, name);
   }
+  var uniforms = {};
   for (var i = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS) - 1; i >= 0; i--) {
     var name = gl.getActiveUniform(program, i).name;
     uniforms[name] = gl.getUniformLocation(program, name);
   }
   
-  return program;
+  return {
+    program: program,
+    attribs: attribs,
+    uniforms: uniforms
+  };
 }
 
 // Axis-Aligned Box data type. (We'd usually say Axis-Aligned Bounding Box, but that's what it's being used for, not what it does.

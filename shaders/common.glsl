@@ -19,9 +19,5 @@ uniform sampler2D uSampler;
 uniform samplerCube uSkySampler;
 uniform float uTileSize; // always integer, but used as float
 
-uniform bool uParticleMode;     // flag we're rendering point particles
-uniform float uParticleInterp;  // particle system evolution time, [0.0, 1.0]
-uniform bool uParticleExplode; // particles explode or appear/fade?
-
 uniform bool uStipple;
 uniform bool uFocusCue;
