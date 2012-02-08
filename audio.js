@@ -1,3 +1,6 @@
+// Copyright 2011 Kevin Reid, under the terms of the MIT License as detailed in
+// the accompanying file README.md or <http://opensource.org/licenses/MIT>.
+
 var CubesAudio = (function () {
   var audioSupported = typeof webkitAudioContext !== 'undefined';
   var context;
