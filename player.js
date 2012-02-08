@@ -33,7 +33,7 @@ var Player = (function () {
       this.pos = vec3.create([0,0,0]);
       this.vel = vec3.create([0,0,0]);
       this.yaw = Math.PI/4 * 5;
-      this.standingOn = [];
+      this.standingOn = null;
       this.flying = false;
       this.cameraYLag = 0;
 
@@ -191,10 +191,7 @@ var Player = (function () {
       // --- collision ---
 
       function intersectWorld(aabb, iworld, ignore, level) {
-        ignore = ignore || {};
-        var hit = {};
-        var hitCount = 0;
-        var str;        
+        var hit = new IntVectorMap();
         var hx = Math.min(iworld.wx - 1, Math.floor(aabb.get(0, 1)));
         var hy = Math.min(iworld.wy - 1, Math.floor(aabb.get(1, 1)));
         var hz = Math.min(iworld.wz - 1, Math.floor(aabb.get(2, 1)));
@@ -203,36 +200,32 @@ var Player = (function () {
         for (var z = Math.max(0, Math.floor(aabb.get(2, 0))); z <= hz; z++) {
           var type = iworld.gt(x,y,z);
           if (!type.solid) continue;
-          if (ignore[str = x+","+y+","+z]) continue;
+          var pos = [x, y, z];
+          if (ignore.get(pos)) continue;
           if (!type.opaque && type.world && !iworld.gRot(x,y,z) /* rotating-and-unrotating not yet supported */ && level == 0) {
             var scale = type.world.wx;
             var subhit = intersectWorld(
                   aabb.translate([-x, -y, -z]).scale(scale),
                   type.world,
+                  IntVectorMap.empty,
                   level + 1);
-            if (subhit == null) continue;
-            for (var substr in subhit) {
-              if (!subhit.hasOwnProperty(substr)) continue;
-              hit[str+":"+substr] = subhit[substr].scale(1/scale).translate([x, y, z]);
-              hitCount++;
-            }
+            if (subhit) subhit.forEach(function (subHitAAB, subPos) {
+              hit.set(pos.concat(subPos), subHitAAB.scale(1/scale).translate([x, y, z]));
+            });
           } else {
-            hit[str] = AAB.unitCube([x,y,z]);
-            hitCount++;
+            hit.set(pos, AAB.unitCube(pos));
           }
         }
-        return hitCount > 0 ? hit : null;
+        return hit.length ? hit : null;
       }
       
       function intersectPlayerAt(pos, ignore) {
-        return intersectWorld(playerAABB.translate(pos), world, ignore, 0);
+        return intersectWorld(playerAABB.translate(pos), world, ignore || IntVectorMap.empty, 0);
       }
       
       function unionHits(hit) {
         var union = [Infinity,-Infinity,Infinity,-Infinity,Infinity,-Infinity];
-        for (var k in hit) {
-          if (!hit.hasOwnProperty(k)) continue;
-          var aabb = hit[k];
+        hit.forEach(function (aabb) {
           debugHitAABBs.push(aabb); // TODO: misplaced for debug
           union[0] = Math.min(union[0], aabb[0]);
           union[1] = Math.max(union[1], aabb[1]);
@@ -240,7 +233,7 @@ var Player = (function () {
           union[3] = Math.max(union[3], aabb[3]);
           union[4] = Math.min(union[4], aabb[4]);
           union[5] = Math.max(union[5], aabb[5]);
-        }
+        });
         return new AAB(union[0],union[1],union[2],union[3],union[4],union[5]);
       }
       
@@ -282,7 +275,16 @@ var Player = (function () {
               nextPosIncr[dim] += surfaceOffset - (dir ? 1 : -1) * EPSILON;
               curVel[dim] /= 10;
               if (dim === 1 && dir === 0) {
-                currentPlace.standingOn = hit || {};
+                if (hit) {
+                  // TODO: eliminate the need for this copy
+                  var standingOnMap = new IntVectorMap();
+                  hit.forEach(function (aab, cube) {
+                    standingOnMap.set(cube.slice(0, 3), true);
+                  });
+                  currentPlace.standingOn = standingOnMap;
+                } else {
+                  currentPlace.standingOn = null;
+                }
                 currentPlace.flying = false;
               }
             }
@@ -308,23 +310,15 @@ var Player = (function () {
         scheduleDraw();
       }
       
-      // TODO this became a mess when AABB-base collision was introduced
-      var seen = {};
-      for (var k in currentPlace.standingOn || {}) {
-        if (!currentPlace.standingOn.hasOwnProperty(k)) { continue; }
-        var cubeStr = k.split(":")[0].split(",");
-        var cube = [parseInt(cubeStr[0],10), parseInt(cubeStr[1],10), parseInt(cubeStr[2],10)];
-        seen[cube] = true;
+      var currentStandingOn = currentPlace.standingOn || IntVectorMap.empty;
+      currentStandingOn.forEach(function (aab, cube) {
         world.setStandingOn(cube, true);
-      }
-      for (var k in previousStandingOn || {}) {
-        if (!previousStandingOn.hasOwnProperty(k)) { continue; }
-        var cubeStr = k.split(":")[0].split(",");
-        var cube = [parseInt(cubeStr[0],10), parseInt(cubeStr[1],10), parseInt(cubeStr[2],10)];
-        if (!seen[cube]) {
+      });
+      if (previousStandingOn) previousStandingOn.forEach(function (aab, cube) {
+        if (!currentStandingOn.has(cube)) {
           world.setStandingOn(cube, false);
         }
-      }
+      });
     }
     
     this.stepYourselfAndWorld = function (timestep) {

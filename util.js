@@ -265,6 +265,63 @@ function nearestCubeSymmetry(direction, cubeVec, symmetries) {
   return best;
 }
 
+// A map from keys of the form [i, j, ...], which may be Arrays or typed arrays.
+var IntVectorMap = (function () {
+  "use strict";
+  var hop = Object.prototype.hasOwnProperty;
+  var join = Array.prototype.join;
+  var tag = " ";
+  var tagLength = tag.length;
+  var sep = ",";
+  function IntVectorMap() {
+    var table = {};
+    var count = 0;
+    
+    this.get = function (key) {
+      var skey = tag + join.call(key, sep);
+      return table[skey];
+    };
+    this.set = function (key, value) {
+      var skey = tag + join.call(key, sep);
+      if (!hop.call(table, skey)) count++;
+      table[skey] = value;
+    };
+    this.has = function (key) {
+      var skey = tag + join.call(key, sep);
+      return hop.call(table, skey);
+    };
+    this.delete = function (key) {
+      var skey = tag + join.call(key, sep);
+      if (hop.call(table, skey)) count--;
+      delete table[skey];
+    };
+    this.forEach = function (f) {
+      for (var skey in table) {
+        if (!hop.call(table, skey)) continue;
+        // TODO profile and figure out whether it'd be better to store the keys
+        // (note that the above passed-in key might be mutated)
+        var key = skey.substring(tagLength).split(sep);
+        for (var i = key.length - 1; i >= 0; i--) {
+          key[i] = parseInt(key[i], 10);
+        }
+        f(table[skey], key);
+      }
+    };
+    Object.defineProperty(this, "length", {
+      get: function () { return count; }
+    });
+  }
+  
+  IntVectorMap.empty = {
+    get: function () { return undefined; },
+    has: function () { return false; },
+    length: 0,
+    forEach: function (f) { }
+  };
+  
+  return Object.freeze(IntVectorMap);
+}());
+
 // Utility for change/event listeners.
 // Each listener function must return true/false indicating whether it wants further events.
 // TODO: Add prompt removal
