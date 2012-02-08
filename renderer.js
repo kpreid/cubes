@@ -123,8 +123,8 @@ var Renderer = (function () {
     }
     
     function updateViewport() {
-      var pagePixelWidth = parseInt(window.getComputedStyle(canvas,null).width);
-      var pagePixelHeight = parseInt(window.getComputedStyle(canvas,null).height);
+      var pagePixelWidth = parseInt(window.getComputedStyle(canvas,null).width, 10);
+      var pagePixelHeight = parseInt(window.getComputedStyle(canvas,null).height, 10);
       
       // Specify canvas resolution
       canvas.width = pagePixelWidth;

@@ -434,7 +434,7 @@ World.unserialize = function (json, unserialize) {
     var i, match;
     for (i = 0; (match = pat.exec(str)) && i < length;) {
       var blockID = match[1].charCodeAt(0) - base;
-      var limit = Math.min(length, i + parseInt(match[2]));
+      var limit = Math.min(length, i + parseInt(match[2], 10));
       for (; i < limit; i++) {
         array[i] = blockID;
       }

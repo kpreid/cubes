@@ -148,8 +148,8 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
     if (mousePos == null) return;
 
     var cs = window.getComputedStyle(eventReceiver, null);
-    var w = parseInt(cs.width);
-    var h = parseInt(cs.height);
+    var w = parseInt(cs.width, 10);
+    var h = parseInt(cs.height, 10);
 
     var swingY = mousePos[1] / (h*0.5) - 1;
     var swingX = mousePos[0] / (w*0.5) - 1;
