@@ -128,29 +128,28 @@ var CubesMain = (function () {
         }
         
         // Per-frame debug/stats info
-        var text = "";
+        frameDesc = "";
         {
           var pp = player.render.getPosition();
           var d = 2;
-          text += "XYZ: " + pp[0].toFixed(d) + "," + pp[1].toFixed(d) + "," + pp[2].toFixed(d) + "\n";
+          frameDesc += "XYZ: " + pp[0].toFixed(d) + "," + pp[1].toFixed(d) + "," + pp[2].toFixed(d) + "\n";
         }
         if (errs.length) {
           lastGLErrors = errs;
-          text += "GL errors:";
+          frameDesc += "GL errors:";
           errs.forEach(function (e) {
-            text += " " + WebGLDebugUtils.glEnumToString(e);
+            frameDesc += " " + WebGLDebugUtils.glEnumToString(e);
           });
-          text += "\n";
+          frameDesc += "\n";
         } else if (lastGLErrors.length) {
-          text += "Previous GL errors:";
+          frameDesc += "Previous GL errors:";
           lastGLErrors.forEach(function (e) {
-            text += " " + WebGLDebugUtils.glEnumToString(e);
+            frameDesc += " " + WebGLDebugUtils.glEnumToString(e);
           });
-          text += "\n";
+          frameDesc += "\n";
         }
-        text += renderer.verticesDrawn + " vertices\n";
-        text += fpsDesc + "\n";
-        sceneInfo.data = text;
+        frameDesc += renderer.verticesDrawn + " vertices\n";
+        updateInfoText();
         
         chunkProgressBar.setByTodoCount(wrend.chunkRendersToDo());
         audioProgressBar.setByTodoCount(BlockType.audioRendersToDo());
@@ -160,7 +159,7 @@ var CubesMain = (function () {
         renderCount++;
     }
     
-    var fpsDesc = "", stepCount = 0, renderCount = 0, chunkRenders = 0;
+    var fpsDesc = "", frameDesc = "", stepCount = 0, renderCount = 0, chunkRenders = 0;
     
     var lastStepTime = null;
     function doOneStep() {
@@ -204,6 +203,7 @@ var CubesMain = (function () {
     setInterval(function () {
       fpsDesc = stepCount + " steps/s, " + renderCount + " frames/s, " + chunkRenders + " chunk rebuilds";
       stepCount = renderCount = chunkRenders = 0;
+      updateInfoText();
       
       // audio spatial test
       //var world = player.getWorld();
@@ -211,6 +211,11 @@ var CubesMain = (function () {
       //CubesAudio.play(b, world.blockSet.get(2));
       //player.render.getWorldRenderer().renderCreateBlock(b);
     }, 1000);
+    function updateInfoText() {
+      if (readyToDraw) {
+        sceneInfo.data = frameDesc + fpsDesc;
+      }
+    }
     
     var t0 = undefined;
     function startupMessage(text) {
