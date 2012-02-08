@@ -9,6 +9,11 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   var keymap = {};
   var mouselookMode = true;
 
+  var mousePos = null;
+
+  var quickSlots;
+  var quickSlotLRU;
+
   // --- Utilities ---
 
   function evalVel(pos, neg) {
@@ -145,7 +150,7 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
       playerInput.mousePos = mousePos;
     }
     
-    if (mousePos == null) return;
+    if (mousePos === null) { return; }
 
     var cs = window.getComputedStyle(eventReceiver, null);
     var w = parseInt(cs.width, 10);
@@ -171,7 +176,6 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
     return true;
   });
   
-  var mousePos = null;
   function updateMouseFromEvent(event) {
     mousePos = [event.clientX, event.clientY];
     applyMousePosition();
@@ -213,7 +217,7 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   // --- Stepping ---
   
   function step(timestep) {
-    if (dx != 0) {
+    if (dx !== 0) {
       playerInput.yaw += dx*timestep;
     }
   }
@@ -225,8 +229,6 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   var menuItemsByBlockId;
   var hintTextsByBlockId;
   var blockSetInMenu;
-  var quickSlots;
-  var quickSlotLRU;
 
   function deferrer(func) {
     var set = false;
@@ -326,7 +328,7 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
           return false;
         };
         canvas.onmouseout = function () {
-          item.className = "menu-item " + (i == playerInput.tool ? " selectedTool" : "");
+          item.className = "menu-item " + (i === playerInput.tool ? " selectedTool" : "");
           return true;
         };
       })(item,canvas,i);
@@ -373,7 +375,7 @@ function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
   function updateMenuSelection() {
     var tool = playerInput.tool;
     forAllMenuBlocks(function (i, item) {
-      item.className = i == tool ? "menu-item selectedTool" : "menu-item";
+      item.className = i === tool ? "menu-item selectedTool" : "menu-item";
     });
   }
 

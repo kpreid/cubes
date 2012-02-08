@@ -102,8 +102,8 @@ function World(sizes, blockSet) {
                        blockCircuits[[x+1,y,z]], blockCircuits[[x,y+1,z]], blockCircuits[[x,y,z+1]]];
     var circuit = null;
     adjCircuits.forEach(function (c) {
-      if (c == null) return;
-      if (circuit == null) {
+      if (c === null) return;
+      if (circuit === null) {
         circuit = c;
       }
     });

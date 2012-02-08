@@ -84,5 +84,5 @@ function BlockRenderer(blockSet, renderer) {
       gl.deleteFramebuffer(rttFramebuffer);
       singleBlockR.deleteResources();
     }
-  }
+  };
 }

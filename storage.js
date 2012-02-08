@@ -321,4 +321,4 @@ var Persister = (function () {
   Persister.status = status.readOnly;
 
   return Object.freeze(Persister);
-})();
+}());

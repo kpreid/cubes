@@ -22,8 +22,9 @@ var BlockType = (function () {
   }
   
   function _BlockTypeSuper() {
-    if (!(this instanceof BlockType))
+    if (!(this instanceof BlockType)) {
       throw new Error("bad constructor call");
+    }
     
     var n = new Notifier("BlockType");
     this._notify = n.notify; // should be private
@@ -49,7 +50,7 @@ var BlockType = (function () {
     if (this.behavior && this.behavior.name)
       json.behavior = this.behavior.name;
     return json;
-  }
+  };
   
   BlockType.World = function (world) {
     _BlockTypeSuper.call(this);
@@ -145,7 +146,7 @@ var BlockType = (function () {
     function f() {
       self.sound = CubesAudio.synthBlock(self.world);
     }
-    f.toString = function () { return ""+self._serial; }; // TODO KLUDGE we should use something other than DirtyQueue, or extend it to have 'values as well as keys'
+    f.toString = function () { return String(self._serial); }; // TODO KLUDGE we should use something other than DirtyQueue, or extend it to have 'values as well as keys'
     soundRenderQueue.enqueue(f);
   }
   
@@ -227,7 +228,7 @@ var BlockType = (function () {
   };
   
   return Object.freeze(BlockType);
-})();
+}());
 
 var BlockSet = (function () {
   "use strict";
@@ -257,7 +258,7 @@ var BlockSet = (function () {
       1, 0, 0, 0,
       0, 1, 0, 0,
       0, 0, 0, 1
-    ])],
+    ])]
   ];
 
   var EMPTY_GEOMETRY = {vertices: [], texcoords: []};
@@ -323,12 +324,12 @@ var BlockSet = (function () {
     var uo = uv[0];
     var vo = uv[1];
     return [
-      uo + texO, vo + texO,
-      uo + 0, vo + tileUVSize,
-      uo + tileUVSize, vo + 0,
-      uo + texD, vo + texD,
-      uo + tileUVSize, vo + 0,
-      uo + 0, vo + tileUVSize
+      uo + texO,       vo + texO,
+      uo,              vo + tileUVSize,
+      uo + tileUVSize, vo,
+      uo + texD,       vo + texD,
+      uo + tileUVSize, vo,
+      uo,              vo + tileUVSize
     ];
   }
   
@@ -513,7 +514,7 @@ var BlockSet = (function () {
         for (var u = 0; u < tileSize; u++)
         for (var v = 0; v < tileSize; v++) {
           var c = ((pixv+v) * texWidth + pixu+u) * 4;
-          texData[c+0] = r;
+          texData[c  ] = r;
           texData[c+1] = g;
           texData[c+2] = b;
           texData[c+3] = a;
@@ -566,13 +567,13 @@ var BlockSet = (function () {
             // extract surface plane of block from world
             for (var u = 0; u < tileSize; u++)
             for (var v = 0; v < tileSize; v++) {
-              var c = ((pixv+v) * texWidth + pixu+u) * 4;
+              var texelBase = ((pixv+v) * texWidth + pixu+u) * 4;
               vec[0] = u; vec[1] = v; vec[2] = layer;
               mat4.multiplyVec3(transform, vec, vec);
           
-              world.gt(vec[0],vec[1],vec[2]).writeColor(255, texData, c);
+              world.gt(vec[0],vec[1],vec[2]).writeColor(255, texData, texelBase);
 
-              if (texData[c+3] > 0) {
+              if (texData[texelBase+3] > 0) {
                 // A layer has significant content only if there is an UNOBSCURED opaque pixel.
                 // If a layer is "empty" in this sense, it is not rendered.
                 // If it is empty from both directions, then it is deallocated.
@@ -592,10 +593,10 @@ var BlockSet = (function () {
               texgen.completed(usageIndex);
               
               // If the layer has unobscured content, and it is not an interior surface of an opaque block, then add it to rendering. Note that the TILE_MAPPINGS loop skips slicing interiors of opaque blocks, but they still need to have the last layer excluded because the choice of call to sliceWorld does not express that.
-              if (thisLayerNotEmptyL && (!blockType.opaque || layer == 0)) {
+              if (thisLayerNotEmptyL && (!blockType.opaque || layer === 0)) {
                 pushQuad(verticesL, texcoordsL, false, transform, layer/tileSize, usageIndex);
               }
-              if (thisLayerNotEmptyH && (!blockType.opaque || layer == tileLastIndex)) {
+              if (thisLayerNotEmptyH && (!blockType.opaque || layer === tileLastIndex)) {
                 pushQuad(verticesH, texcoordsH, true, transform, (layer+1)/tileSize, usageIndex);
               }
             }
@@ -629,7 +630,7 @@ var BlockSet = (function () {
           for (var rot = 0; rot < applyCubeSymmetry.COUNT; rot++) {
             rotatedFaceData[rot] = rotateFaceData(rot, faceData);
           }
-        })();
+        }());
       } else {
         throw new Error("Don't know how to render the BlockType");
       }
@@ -787,4 +788,4 @@ var BlockSet = (function () {
   };
 
   return Object.freeze(BlockSet);
-})();
+}());

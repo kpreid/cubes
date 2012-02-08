@@ -38,7 +38,7 @@ var config = {};
   defineOption("generate_name", "string", "Untitled");
 
   defineOption("currentTopWorld", "string", "Untitled");
-})();
+}());
 
 var CubesMain = (function () {
   
@@ -86,7 +86,7 @@ var CubesMain = (function () {
         player.render.selectionRender.draw();
         
         var e, errs = [];
-        while ((e = gl.getError()) && e != gl.CONTEXT_LOST_WEBGL) {
+        while ((e = gl.getError()) !== gl.NO_ERROR && e !== gl.CONTEXT_LOST_WEBGL) {
           errs.push(e);
         }
         // Note: The above comparison is an != rather than !== because webgl-debug.js's wrapped context returns numeric strings (!) instead of numbers for error enums. TODO: File bug.
@@ -94,7 +94,7 @@ var CubesMain = (function () {
         // Selection info
         cursorInfo.data = "";
         var sel = player.getSelection();
-        if (sel != null) {
+        if (sel !== null) {
           var sx = Infinity;
           var sy = -Infinity;
           var cube = sel.cube;
@@ -235,11 +235,11 @@ var CubesMain = (function () {
         } else {
           setTimeout(function () {
             var a = actions[i];
-            if (typeof a == 'string') {
+            if (typeof a === "string") {
               startupMessage(a);
             } else {
               try {
-                if (actions[i](function () { sub(i+1); }) === ABORT) return;
+                if (a(function () { sub(i+1); }) === ABORT) { return; }
               } catch (e) {
                 catcher(e);
               }
@@ -391,7 +391,7 @@ var CubesMain = (function () {
       ], function (exception) {
         startupMessage(exception);
         document.getElementById("load-error-notice").style.removeProperty("display");
-        document.getElementById("load-error-text").appendChild(document.createTextNode("" + exception));
+        document.getElementById("load-error-text").appendChild(document.createTextNode(String(exception)));
         throw exception; // propagate to browser console
       });
     };
@@ -423,4 +423,4 @@ var CubesMain = (function () {
   }
   
   return CubesMain;
-})();
+}());

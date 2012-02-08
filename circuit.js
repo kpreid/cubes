@@ -12,7 +12,7 @@ var Circuit = (function () {
     Array.prototype.slice.call(UNIT_PZ),
     Array.prototype.slice.call(UNIT_NX),
     Array.prototype.slice.call(UNIT_NY),
-    Array.prototype.slice.call(UNIT_NZ),
+    Array.prototype.slice.call(UNIT_NZ)
   ]);
   
   var directionsPretty = Object.freeze({
@@ -78,7 +78,7 @@ var Circuit = (function () {
     this.add = function (blockVec) {
       blocks.push(blockVec);
       var blockAAB = AAB.unitCube(blockVec);
-      if (aabb == null) {
+      if (aabb === null) {
         aabb = blockAAB;
       } else {
         aabb = aabb.boundingUnion(blockAAB);
@@ -99,7 +99,7 @@ var Circuit = (function () {
       cEdges = [];
       blocks.forEach(function (block) {
         var beh = getBehavior(block);
-        if (beh && beh != Circuit.behaviors.wire) {
+        if (beh && beh !== Circuit.behaviors.wire) {
           // Initialize state
           cGraph[block] = {};
           
@@ -123,7 +123,7 @@ var Circuit = (function () {
           var comingFrom = vec3.negate(direction, []);
           if (!bnBeh) {
             return; // not a circuit element
-          } else if (bnBeh == Circuit.behaviors.wire) {
+          } else if (bnBeh === Circuit.behaviors.wire) {
             continue; // pass-through
           } else if (cGraph[bn][comingFrom] && cGraph[bn][comingFrom] !== net) {
             throw new Error("met different net!");
@@ -145,7 +145,7 @@ var Circuit = (function () {
       function traceIntoNode(net, block, comingFrom) {
         if (DEBUG_WIRE) console.group("traceIntoNode " + net + " " + block + ":" + getBehavior(block) + " " + comingFrom);
         DIRECTIONS.forEach(function (direction) {
-          if (""+direction === ""+comingFrom) {
+          if (String(direction) === String(comingFrom)) {
             // don't look backward
             return;
           }
@@ -171,24 +171,24 @@ var Circuit = (function () {
           net["has" + beh.faces[direction]] = true;
           traceNet(net, block, direction);
         });
-        if (DEBUG_WIRE) console.groupEnd();
+        if (DEBUG_WIRE) { console.groupEnd(); }
       }
       nodes.forEach(function (block) {
-        if (DEBUG_WIRE) console.group("root " + block + ":" + getBehavior(block));
-        if (getBehavior(block) == Circuit.behaviors.junction) {
+        if (DEBUG_WIRE) { console.group("root " + block + ":" + getBehavior(block)); }
+        if (getBehavior(block) === Circuit.behaviors.junction) {
           // do not trace from junctions (not implemented yet)
-          if (DEBUG_WIRE) console.groupEnd();
+          if (DEBUG_WIRE) { console.groupEnd(); }
           return;
         }
         traceIntoNode(null, block, null);
-        if (DEBUG_WIRE) console.groupEnd();
+        if (DEBUG_WIRE) { console.groupEnd(); }
       });
       
       // Delete useless nets and record useful ones.
       // A net is useful if has both an input and an output, or if it has a junction.
       // Useless nets are either straight line o/o or i/i connections, or are when traceNet didn't find something.
       nets.forEach(function (net) {
-        if (!(net.hasIN && net.hasOUT || net.hasINOUT)) {
+        if (!((net.hasIN && net.hasOUT) || net.hasINOUT)) {
           net.forEach(function (record) {
             delete cGraph[record[0]][record[1]];
           });
@@ -203,14 +203,15 @@ var Circuit = (function () {
       
       //var opush = evaluators.push;
       //evaluators.push = function (f) {
-      //  if (player && world == player.getWorld()) 
+      //  if (player && world === player.getWorld()) {
       //    console.log("adding evaluator: " + f);
+      //  }
       //  opush.call(this, f);
       //}
       
       function blockEvaluator(block, faceDirection) {
         compile(block);
-        var key = ""+block+"/"+faceDirection;
+        var key = block+"/"+faceDirection;
         return function (state) { return state[key]; };
       }
       
@@ -251,8 +252,8 @@ var Circuit = (function () {
       }
       
       function compile(block, caller) {
-        var blockKey = ""+block;
-        if (seen[blockKey]) return;
+        var blockKey = String(block);
+        if (seen[blockKey]) { return; }
         seen[blockKey] = true;
 
         //console.group("compiling block " + block);
@@ -302,7 +303,7 @@ var Circuit = (function () {
       var graph = cGraph[block];
       if (!graph) return "Wire";
       var s = "";
-      if (getBehavior(block) == Circuit.behaviors.junction) {
+      if (getBehavior(block) === Circuit.behaviors.junction) {
         // junctions are symmetric, so don't be redundant
         var net = graph["1,0,0"];
         if (net) {
@@ -315,7 +316,7 @@ var Circuit = (function () {
             s += "\n" + directionsPretty[direction] + " (" + net.serial + ")";
             switch (getBehavior(block).faces[direction]) {
               case OUT: 
-                s += " ← " + localState[block+"/"+direction];
+                s += " \u2190 " + localState[block+"/"+direction];
                 break;
               case IN:
                 s += " = " + localState[net.serial];
@@ -325,11 +326,11 @@ var Circuit = (function () {
         });
       }
       return s;
-    }
+    };
     
     this.setStandingOn = function (cube, value) {
       getBehavior(cube).standingOn(this, cube, value);
-    }
+    };
     
     Object.freeze(this);
   }
@@ -362,7 +363,7 @@ var Circuit = (function () {
           flag = flag || f(state);
         });
         return flag;
-      }
+      };
     }
     
     var protobehavior = {};
@@ -388,7 +389,8 @@ var Circuit = (function () {
       };
     };
     pad.standingOn = function (circuit, cube, value) {
-      if (!circuit.world.gSub(cube[0],cube[1],cube[2]) != !value) {
+      value = value ? 1 : 0;
+      if (circuit.world.gSub(cube[0],cube[1],cube[2]) !== value) {
         circuit.world.sSub(cube[0],cube[1],cube[2],value);
         circuit.refreshLocal();
       }
@@ -398,10 +400,10 @@ var Circuit = (function () {
     indicator.compile = function (world, block, inputs) {
       var input = combineInputs(inputs, DIRECTIONS);
       return function (state) {
-        var flag = input(state);
-        //if (player && world == player.getWorld()) console.log("evaluating indicator", block, inputs, "got", flag);
+        var flag = !!input(state);
+        //if (player && world === player.getWorld()) { console.log("evaluating indicator", block, inputs, "got", flag); }
         var cur = world.gSub(block[0],block[1],block[2]);
-        if (!flag != !cur && state.allowWorldEdit) {
+        if (flag !== cur && state.allowWorldEdit) {
           world.sSub(block[0],block[1],block[2], flag ? 1 : 0);
         }
       };
@@ -472,8 +474,9 @@ var Circuit = (function () {
       var input = combineInputs(inputs, DIRECTIONS);
       return function (state) {
         var i = input(state);
-        if (typeof i === 'number')
+        if (typeof i === "number") {
           state.blockOut_become = Math.floor(mod(i, 256));
+        }
       };
     };
     
@@ -483,7 +486,7 @@ var Circuit = (function () {
       return function (state) {
         state.blockOut_output = input(state);
       };
-    }
+    };
   
     // This behavior evaluates a block's inner circuit.
     // TODO: Add input and non-uniform support
@@ -513,10 +516,10 @@ var Circuit = (function () {
           }
         });
       };
-    }
+    };
     
     Object.freeze(behaviors);
-  })();
+  }());;
   
   Circuit.executeCircuitInBlock = function (blockWorld, outerWorld, cube, subDatum, extraState) {
     var circuits = blockWorld.getCircuits();
@@ -545,4 +548,4 @@ var Circuit = (function () {
   };
   
   return Object.freeze(Circuit);
-})();
+}());;

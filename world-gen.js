@@ -355,7 +355,7 @@ var WorldGen = (function () {
   };
   
   return Object.freeze(WorldGen);
-})();
+}());
   
 // TODO: refactor this into WorldGen methods
 function generateWorlds() {
@@ -803,7 +803,7 @@ function generateWorlds() {
     topWorld.s(x+2,y,z+3,l.nor);
     topWorld.s(x+3,y,z+3,l.wire);
     topWorld.s(x+4,y,z+3,l.pad);
-  })();
+  }());
   
   return topWorld;
 }

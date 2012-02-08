@@ -118,7 +118,7 @@ var Renderer = (function () {
         makeHalfSpaceTest(ltn, ltf, rtf), // top
         makeHalfSpaceTest(rbn, rbf, lbf), // bottom
         makeHalfSpaceTest(lbn, ltn, rtn), // near
-        makeHalfSpaceTest(lbf, rbf, ltf), // far
+        makeHalfSpaceTest(lbf, rbf, ltf)  // far
       ];
     }
     
@@ -133,7 +133,7 @@ var Renderer = (function () {
       // WebGL is not guaranteed to give us that resolution; instead, what it
       // can supply is returned in .drawingBuffer{Width,Height}. However, those
       // properties are not supported by, at least, Firefox 6.0.2.
-      if (!("drawingBufferWidth" in gl)) {
+      if (typeof gl.drawingBufferWidth !== "number") {
         gl.drawingBufferWidth = pagePixelWidth;
         gl.drawingBufferHeight = pagePixelHeight;
       }
@@ -311,17 +311,17 @@ var Renderer = (function () {
     }
     this.setViewTo2D = setViewTo2D;
     function saveView() {
-      var saveMVMatrix = mvMatrix; mvMatrix = mat4.create();
-      var savePMatrix = pMatrix;  pMatrix = mat4.create();
-      var saveView = viewPosition;
+      var savedMVMatrix = mvMatrix; mvMatrix = mat4.create();
+      var savedPMatrix = pMatrix;  pMatrix = mat4.create();
+      var savedView = viewPosition;
       return function () {
-        mvMatrix = saveMVMatrix;
-        pMatrix = savePMatrix;
-        viewPosition = saveView;
+        mvMatrix = savedMVMatrix;
+        pMatrix = savedPMatrix;
+        viewPosition = savedView;
 
         gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
         sendViewUniforms();
-      }
+      };
     }
     this.saveView = saveView;
     
@@ -378,7 +378,7 @@ var Renderer = (function () {
       if (optGetTexture) var t = new BufferAndArray(2);
       var mustRebuild = currentContextTicket();
       
-      if (calcFunc != null) {
+      if (calcFunc !== null) {
         this.recompute = function () {
           var vertices = [];
           var normals = [];
@@ -453,7 +453,7 @@ var Renderer = (function () {
         var count = v.countVertices();
         renderer.verticesDrawn += count;
         gl.drawArrays(primitive, 0, count);
-      };
+      }
       this.draw = options.aroundDraw ? function () { options.aroundDraw(draw); } : draw;
       
       this.deleteResources = function () {
@@ -470,37 +470,38 @@ var Renderer = (function () {
       var k = 2;
       var t0 = Date.now();
       var rb = new renderer.RenderBundle(gl.POINTS, null, function (vertices, normals, colors) {
-        for (var x = 0; x < tileSize; x++) {
-          for (var y = 0; y < tileSize; y++) {
-            for (var z = 0; z < tileSize; z++) {
-              if (!destroyMode) {
-                if (!(x < k || x >= tileSize-k || y < k || y >= tileSize-k || z < k || z >= tileSize-k))
-                  continue;
-                var c = 1.0 - Math.random() * 0.04;
-                colors.push(c,c,c,1);
-              } else if (blockWorld) {
-                blockWorld.gt(x,y,z).writeColor(1, colors, colors.length);
-                if (colors[colors.length - 1] <= 0.0) {
-                  // transparent, skip
-                  colors.length -= 4;
-                  continue;
-                }
-              } else if (blockType.color) {
-                // destroy mode for color cubes
-                blockType.writeColor(1, colors, colors.length);
-              }
-              var v = applyCubeSymmetry(symm, 1, [
-                (x+0.5)/tileSize,
-                (y+0.5)/tileSize,
-                (z+0.5)/tileSize
-              ]);
-              
-              vertices.push(location[0]+v[0],
-                            location[1]+v[1],
-                            location[2]+v[2]);
-              normals.push(0,0,0); // disable lighting
+        for (var x = 0; x < tileSize; x++)
+        for (var y = 0; y < tileSize; y++)
+        for (var z = 0; z < tileSize; z++) {
+          if (!destroyMode) {
+            if (!(x < k || x >= tileSize-k ||
+                  y < k || y >= tileSize-k ||
+                  z < k || z >= tileSize-k)) {
+              continue;
             }
+            var c = 1.0 - Math.random() * 0.04;
+            colors.push(c,c,c,1);
+          } else if (blockWorld) {
+            blockWorld.gt(x,y,z).writeColor(1, colors, colors.length);
+            if (colors[colors.length - 1] <= 0.0) {
+              // transparent, skip
+              colors.length -= 4;
+              continue;
+            }
+          } else if (blockType.color) {
+            // destroy mode for color cubes
+            blockType.writeColor(1, colors, colors.length);
           }
+          var v = applyCubeSymmetry(symm, 1, [
+            (x+0.5)/tileSize,
+            (y+0.5)/tileSize,
+            (z+0.5)/tileSize
+          ]);
+          
+          vertices.push(location[0]+v[0],
+                        location[1]+v[1],
+                        location[2]+v[2]);
+          normals.push(0,0,0); // disable lighting
         }
       }, {
         aroundDraw: function (draw) {
@@ -640,4 +641,4 @@ var Renderer = (function () {
   };
   
   return Object.freeze(Renderer);
-})();
+}());

@@ -201,7 +201,7 @@ var AAB = (function () {
   };
   
   return Object.freeze(AAB);
-})();
+}());
 
 // Given an element, replace its contents with a text node and return that, so that the element's text can be updated by setting the .data property of the result.
 function dynamicText(elem) {

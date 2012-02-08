@@ -296,7 +296,7 @@ var WorldRenderer = (function () {
       // Determine if chunks' visibility to the player has changed
       var newPlayerChunk = [place.pos[0] - mod(place.pos[0], CHUNKSIZE),
                             place.pos[2] - mod(place.pos[2], CHUNKSIZE)];
-      if (playerChunk == null || newPlayerChunk[0] != playerChunk[0] || newPlayerChunk[1] != playerChunk[1]) {
+      if (playerChunk === null || newPlayerChunk[0] !== playerChunk[0] || newPlayerChunk[1] !== playerChunk[1]) {
         //console.log("nPC ", newPlayerChunk[0], newPlayerChunk[1]);
         
         playerChunk = newPlayerChunk;
@@ -641,5 +641,5 @@ var WorldRenderer = (function () {
   }
 
   return WorldRenderer;
-})();
+}());;
 

@@ -135,4 +135,4 @@ var CubesAudio = (function () {
       source.noteOn(0);
     }
   });
-})();
+}());

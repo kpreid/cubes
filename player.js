@@ -12,9 +12,9 @@ var Player = (function () {
   var MAX_STEP_UP = 0.57; // cubes
   
   var playerAABB = new AAB(
-    - .35, .35, // x
-    -1.75, .15, // y
-    - .35, .35 // z
+    -0.35, 0.35, // x
+    -1.75, 0.15, // y
+    -0.35, 0.35 // z
   );
 
   var PLACEHOLDER_ROTATIONS = [];
@@ -23,7 +23,6 @@ var Player = (function () {
   }
   
   function Player(initialWorld, renderer, scheduleDraw) {
-    "use strict";
     var player = this;
     var gl = renderer.context;
     
@@ -69,10 +68,11 @@ var Player = (function () {
         var qr = [-qp[1], -qp[2], -qp[0]]; // first perpendicular vector 
         var qs = vec3.cross(qp, qr, vec3.create()); // second perpendicular vector
         
-        if (qp[0]+qp[1]+qp[2] > 0)
+        if (qp[0]+qp[1]+qp[2] > 0) {
           vec3.subtract(p, qr);
-        else
+        } else {
           vec3.subtract(p, qp);
+        }
         
         colors.push(1,1,1,1); normals.push(0,0,0); vertices.push(p[0],p[1],p[2]);
         colors.push(1,1,1,1); normals.push(0,0,0); vertices.push(p[0]+qr[0],p[1]+qr[1],p[2]+qr[2]);
@@ -138,17 +138,18 @@ var Player = (function () {
         // then that can be done by noting the last cube the raycast hit.
       }
       
+      var newSel;
       if (foundCube !== null) {
-        var newSel = Object.freeze({
+        newSel = Object.freeze({
           cube: foundCube,
           face: foundFace,
           toString: function () { return this.cube + ";" + this.face; }
         });
       } else {
-        var newSel = null;
+        newSel = null;
       }
       
-      if ("" + currentPlace.selection !== "" + newSel) {
+      if (String(currentPlace.selection) !== String(newSel)) {
         currentPlace.selection = newSel;
         selectionR.recompute();
         scheduleDraw();
@@ -169,8 +170,9 @@ var Player = (function () {
       if (currentPlace.flying) {
         currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * 0.4;
       } else {
-        if (movAdj[1] != 0)
+        if (movAdj[1] !== 0) {
           currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * 0.4 + timestep * GRAVITY;
+        }
       }
       currentPlace.vel[2] += (movAdj[2] - currentPlace.vel[2]) * 0.4;
       
@@ -259,12 +261,12 @@ var Player = (function () {
           var dir = curVel[dim] >= 0 ? 1 : 0;
           nextPosIncr[dim] = nextPos[dim]; // TODO: Sample multiple times if velocity exceeds 1 block/step
           //console.log(dir, dim, playerAABB.get(dim, dir), front, nextPosIncr);
-          var hit;
-          if ((hit = intersectPlayerAt(nextPosIncr, alreadyColliding))) {
+          var hit = intersectPlayerAt(nextPosIncr, alreadyColliding);
+          if (hit) {
             var hitAABB = unionHits(hit);
             resolveDirection: {
               // Walk-up-slopes
-              if (dim != 1 /*moving horizontally*/ && currentPlace.standingOn /*not in air*/) {
+              if (dim !== 1 /*moving horizontally*/ && currentPlace.standingOn /*not in air*/) {
                 var upward = vec3.create(nextPosIncr);
                 upward[1] = hitAABB.get(1, 1) - playerAABB.get(1,0) + EPSILON;
                 var delta = upward[1] - nextPosIncr[1];
@@ -279,7 +281,7 @@ var Player = (function () {
               var surfaceOffset = hitAABB.get(dim, 1-dir) - (nextPosIncr[dim] + playerAABB.get(dim, dir));
               nextPosIncr[dim] += surfaceOffset - (dir ? 1 : -1) * EPSILON;
               curVel[dim] /= 10;
-              if (dim == 1 && dir == 0) {
+              if (dim === 1 && dir === 0) {
                 currentPlace.standingOn = hit || {};
                 currentPlace.flying = false;
               }
@@ -309,26 +311,26 @@ var Player = (function () {
       // TODO this became a mess when AABB-base collision was introduced
       var seen = {};
       for (var k in currentPlace.standingOn || {}) {
-        if (!currentPlace.standingOn.hasOwnProperty(k)) continue;
+        if (!currentPlace.standingOn.hasOwnProperty(k)) { continue; }
         var cubeStr = k.split(":")[0].split(",");
         var cube = [parseInt(cubeStr[0],10), parseInt(cubeStr[1],10), parseInt(cubeStr[2],10)];
         seen[cube] = true;
         world.setStandingOn(cube, true);
       }
       for (var k in previousStandingOn || {}) {
-        if (!previousStandingOn.hasOwnProperty(k)) continue;
+        if (!previousStandingOn.hasOwnProperty(k)) { continue; }
         var cubeStr = k.split(":")[0].split(",");
         var cube = [parseInt(cubeStr[0],10), parseInt(cubeStr[1],10), parseInt(cubeStr[2],10)];
         if (!seen[cube]) {
           world.setStandingOn(cube, false);
         }
       }
-    };
+    }
     
     this.stepYourselfAndWorld = function (timestep) {
       stepPlayer(timestep);
       currentPlace.world.step(timestep);
-    }
+    };
     
     // --- The facet for rendering ---
     
@@ -390,7 +392,7 @@ var Player = (function () {
             var face = currentPlace.selection.face;
             var x = cube[0]+face[0], y = cube[1]+face[1], z = cube[2]+face[2];
             var type = currentPlace.world.blockSet.get(currentPlace.tool);
-            if (currentPlace.world.g(x,y,z) == 0) {
+            if (currentPlace.world.g(x,y,z) === 0) {
               // TODO: rotation on create should be more programmable.
               var raypts = renderer.getAimRay(mousePos, player.render); // TODO depend on player orientation instead?
               var symm = nearestCubeSymmetry(vec3.subtract(raypts[0], raypts[1]), [0,0,1], type.automaticRotations);
@@ -407,7 +409,7 @@ var Player = (function () {
         if (currentPlace.selection !== null) {
           var cube = currentPlace.selection.cube;
           var x = cube[0], y = cube[1], z = cube[2];
-          if (currentPlace.world.g(x,y,z) != 0 /* i.e. would destruction do anything */) { 
+          if (currentPlace.world.g(x,y,z) !== 0 /* i.e. would destruction do anything */) { 
             var value = currentPlace.world.g(x,y,z);
             currentPlace.wrend.renderDestroyBlock(cube);
             currentPlace.world.s(x, y, z, 0);
@@ -417,24 +419,29 @@ var Player = (function () {
         }
       },
       get blockSet () { return currentPlace.world.blockSet; },
-      set movement (vec) { 
-        vec3.set(vec, movement);
-        if (movement[1] > 0) currentPlace.flying = true;
+      set blockSet (value) { throw new TypeError("player.input.blockSet read-only"); },
+      get movement () { throw new TypeError("player.input.movement write-only"); },
+      set movement (value) { 
+        vec3.set(value, movement);
+        if (movement[1] > 0) {
+          currentPlace.flying = true;
+        }
       },
-      set mousePos (vec) { mousePos = vec; aimChanged(); },
+      get mousePos () { throw new TypeError("player.input.mousePos write-only"); },
+      set mousePos (value) { mousePos = value; aimChanged(); },
       get pitch () { return pitch; },
-      set pitch (angle) { pitch = angle; aimChanged(); },
+      set pitch (value) { pitch = value; aimChanged(); },
       get yaw () { return currentPlace.yaw; },
-      set yaw (angle) { currentPlace.yaw = angle; aimChanged(); },
+      set yaw (value) { currentPlace.yaw = value; aimChanged(); },
       get tool () { return currentPlace.tool; },
-      set tool (id) { 
-        currentPlace.tool = id; 
+      set tool (value) { 
+        currentPlace.tool = value; 
         inputNotifier.notify("changedTool");
       },
       enterWorld: function (blockID) {
         var world = currentPlace.world.blockSet.get(blockID).world;
 
-        if (!world) return; // TODO: UI message about this
+        if (!world) { return; } // TODO: UI message about this
 
         var oldPlace = currentPlace;
 
@@ -518,4 +525,4 @@ var Player = (function () {
   Player.aabb = playerAABB;
   
   return Player;
-})();
+}());;
