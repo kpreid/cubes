@@ -377,7 +377,6 @@ var BlockSet = (function () {
         .createImageData(textureSize, textureSize);
       
       // tile position allocator
-      // TODO this wastes space because we're not using the texturePOTSize benefit
       tileAllocMap = new Uint8Array(tileCountSqrt*tileCountSqrt);
       freePointer = 0;
       
