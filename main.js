@@ -25,6 +25,7 @@ var config = {};
   defineOption("bumpMapping", "boolean", true);
   defineOption("sound", "boolean", true);
   defineOption("noclip", "boolean", false);
+  defineOption("alwaysGenerateWorld", "boolean", false);
   defineOption("debugTextureAllocation", "boolean", false);
   defineOption("debugForceRender", "boolean", false);
   defineOption("debugPlayerCollision", "boolean", false);
@@ -302,6 +303,7 @@ var CubesMain = (function () {
         added: updateWorldList,
         deleted: updateWorldList
       });
+      var shallLoadWorld = !config.alwaysGenerateWorld.get() && Persister.has(config.currentTopWorld.get());
 
       // Main startup sequence
       sequence([
@@ -340,11 +342,7 @@ var CubesMain = (function () {
           }
           gl = renderer.context;
         },
-        function () {
-          startupMessage(Persister.has(config.currentTopWorld.get())
-              ? "Loading saved worlds..."
-              : "Creating worlds...");
-        },
+        shallLoadWorld ? "Loading saved worlds..." : "Creating worlds...",
         function () {
           // Save-on-exit
           window.addEventListener("unload", function () {
@@ -353,7 +351,7 @@ var CubesMain = (function () {
           }, false);
           
           var world;
-          if (Persister.available) {
+          if (shallLoadWorld) {
             try {
               world = Persister.get(config.currentTopWorld.get());
             } catch (e) {
@@ -361,12 +359,15 @@ var CubesMain = (function () {
                 console.error(e);
               alert("Failed to load saved world!");
             }
-          } else {
+          } else if (!Persister.available) {
             console.warn("localStorage not available; world will not be saved.");
           }
           if (!world) {
             world = generateWorlds();
-            if (Persister.available) world.persistence.persist("Default");
+            if (Persister.available && !config.alwaysGenerateWorld.get()) {
+              // TODO this crashes if "Default" exists but config.currentTopWorld doesn't.
+              world.persistence.persist("Default");
+            }
           }
           main.setTopWorld(world);
         },
