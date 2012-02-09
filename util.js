@@ -322,6 +322,50 @@ var IntVectorMap = (function () {
   return Object.freeze(IntVectorMap);
 }());
 
+// Note: This is an independent reimplementation of the interface provided by the StringMap designed and implemented by Mark S. Miller. Its purpose is to allow operation 
+var StringMap = (function () {
+  "use strict";
+  var hop = Object.prototype.hasOwnProperty;
+  var tag = " ";
+  function StringMap() {
+    var table = {};
+    
+    this.get = function (key) {
+      if (typeof key !== "string") throw new TypeError("non-string on StringMap");
+      // If we were running in a secured environment we could have the guarantee that there are no unreasonable names on Object.prototype, and could skip this hasOwnProperty check, but we don't.
+      var prop = tag + key;
+      return hop.call(table, prop) ? table[prop] : undefined;
+    };
+    this.set = function (key, value) {
+      if (typeof key !== "string") throw new TypeError("non-string on StringMap");
+      table[tag + key] = value;
+    };
+    this.has = function (key, value) {
+      if (typeof key !== "string") throw new TypeError("non-string on StringMap");
+      return hop.call(table, tag + key);
+    };
+    this.delete = function (key) {
+      if (typeof key !== "string") throw new TypeError("non-string on StringMap");
+      delete table[tag + key];
+    };
+    this.forEach = function (func) { // extension
+      for (var prop in table) {
+        if (hop.call(table, prop)) {
+          func(prop.substring(tag.length), table[prop]);
+        }
+      }
+    };
+  }
+  
+  StringMap.empty = Object.freeze({
+    get: function () { return undefined; },
+    has: function () { return false; },
+    forEach: function (func) { }
+  });
+  
+  return Object.freeze(StringMap);
+})();
+
 // Utility for change/event listeners.
 // Each listener function must return true/false indicating whether it wants further events.
 // TODO: Add prompt removal

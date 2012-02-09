@@ -336,7 +336,8 @@ var BlockSet = (function () {
     // Size of an actual tile in the texture, with borders
     var /*constant*/ borderTileSize = tileSize + 2;
 
-    var textureSize = 128; // initial allocation; gets multiplied by 2 on initial enlargeTexture()
+    // Pixel size of texture. Chosen so that current example world data does not need reallocation
+    var textureSize = 1024;
     
     // Values computed from the texture size
     var borderTileUVSize; // Size of one tile, including border, in the texture in UV coordinates
@@ -358,9 +359,8 @@ var BlockSet = (function () {
     var freePointer;
     var usageMap;
     this.textureLost = false;
-    function enlargeTexture() {
-      textureSize *= 2;
-      
+    
+    function initForSize() {
       self.tileUVSize = tileSize/textureSize;
       borderUVOffset = 1/textureSize;
       borderTileUVSize = borderTileSize/textureSize;
@@ -380,7 +380,7 @@ var BlockSet = (function () {
       // Flag indicating reallocation
       self.textureLost = true;
     }
-    enlargeTexture();
+    initForSize();
     
     this.allocationFor = function (usageIndex) {
       if (self.textureLost) {
@@ -445,7 +445,8 @@ var BlockSet = (function () {
         if ((++n) >= tileAllocMap.length) {
           if (typeof console !== 'undefined') 
             console.info("Enlarging block texture to hold", (tileAllocMap.length + 1));
-          enlargeTexture();
+          textureSize *= 2;
+          initForSize();
           return 0;
         }
         freePointer = mod(freePointer + 1, tileAllocMap.length);
