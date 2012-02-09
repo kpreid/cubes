@@ -413,7 +413,6 @@ function World(sizes, blockSet) {
   this.notifyRawEdit = notifyRawEdit;
   this.raycast = raycast;
   this.getCircuits = function () { return circuits; }; // TODO should be read-only interface
-  this.getCircuitsByBlock = function () { return blockCircuits; }; // TODO should be read-only interface
   this.getCircuit = function (block) { return blockCircuits.get(block) || null; }
   this.edit = edit;
   this.step = step;

@@ -34,13 +34,19 @@ var WorldRenderer = (function () {
   function renderDistanceInfo() {
     var newRenderDistance = config.renderDistance.get();
     if (newRenderDistance !== lastSeenRenderDistance) {
+      // The distance in chunk-lengths at which chunks are visible
+      var chunkDistance = Math.ceil(newRenderDistance/CHUNKSIZE);
+      
+      // The squared distance at which chunks should be included.
+      // The offset of CHUNKSIZE is to account for the origin of a chunk being at one corner.
+      var boundSquared = Math.pow(newRenderDistance + CHUNKSIZE, 2);
+      distanceInfoCache.addChunkDistanceSquared = boundSquared;
+
       // The distance at which invisible chunks are dropped from memory. Semi-arbitrary figure...
       distanceInfoCache.dropChunkDistanceSquared = Math.pow(newRenderDistance + 2*CHUNKSIZE, 2);
 
       // A static table of the offsets of the chunks visible from the player location
       var nearChunkOrder = [];
-      var chunkDistance = Math.ceil(newRenderDistance/CHUNKSIZE);
-      var boundSquared = Math.pow(newRenderDistance + CHUNKSIZE, 2);
       for (var x = -chunkDistance-1; x <= chunkDistance; x++)
       for (var z = -chunkDistance-1; z <= chunkDistance; z++) {
         var v = [x*CHUNKSIZE,z*CHUNKSIZE];
@@ -269,7 +275,11 @@ var WorldRenderer = (function () {
       if (!isAlive()) return false;
       var o = circuit.getOrigin();
       var r = circuitRenderers.get(o);
-      if (r) r.recompute();
+      if (r) {
+        r.recompute();
+      } else {
+        addCircuits();
+      }
       return true;
     }
     
@@ -285,6 +295,18 @@ var WorldRenderer = (function () {
       dirtyCircuit: dirtyCircuit,
       deletedCircuit: deletedCircuit,
     };
+    
+    function addCircuits() {
+      // Add circuits which are in viewing distance.
+      // Note: This enumerates every circuit in the world. Currently, this is more efficient than the alternatives because there are not many circuits in typical data. When that changes, we should revisit this and use some type of spatial index to make it efficient. Testing per-block is *not* efficient.
+      world.getCircuits().forEach(function (circuit, origin) {
+        if (dist2sq([origin[0]-playerChunk[0],origin[2]-playerChunk[1]]) < renderDistanceInfo().addChunkDistanceSquared) {
+          if (!circuitRenderers.get(origin)) {
+            circuitRenderers.set(origin, makeCircuitRenderer(circuit));
+          }
+        }
+      });
+    }
     
     function updateSomeChunks() {
       // Determine if chunks' visibility to the player has changed
@@ -311,6 +333,8 @@ var WorldRenderer = (function () {
             chunks.delete(xz);
           }
         });
+        
+        addCircuits();
         
         // Drop now-invisible circuits
         // TODO: This works off the origin, but circuits can be arbitrarily large so we should test against their AABB
@@ -438,7 +462,6 @@ var WorldRenderer = (function () {
           renderData = blockSet.getRenderData();
           var rotatedBlockFaceData = renderData.rotatedBlockFaceData;
           var BOGUS_BLOCK_DATA = rotatedBlockFaceData.bogus;
-          var rawCircuits = world.getCircuitsByBlock();
           var types = blockSet.getAll();
 
           // these variables are used by face() and written by the loop
@@ -483,14 +506,6 @@ var WorldRenderer = (function () {
             face(rot.px, faceData.hx);
             face(rot.py, faceData.hy);
             face(rot.pz, faceData.hz);
-            var circuit = rawCircuits.get([x,y,z]); // TODO: replace this with some other spatial indexing scheme so we don't have to check per-every-block
-            if (circuit) {
-              var o = circuit.getOrigin();
-              var r = circuitRenderers.get(o);
-              if (!r) {
-                circuitRenderers.set(o, makeCircuitRenderer(circuit));
-              }
-            }
           }
         });
         
