@@ -499,12 +499,10 @@ var Circuit = (function () {
           console.warn("IC behavior applied to non-world block type!");
         return;
       }
-      var circuits = type.world.getCircuits();
       var circuitsArr = [];
-      for (var ck in circuits) {
-        if (!circuits.hasOwnProperty(ck)) continue;
-        circuitsArr.push(circuits[ck]);
-      }
+      type.world.getCircuits().forEach(function (circuit) {
+        circuitsArr.push(circuit);
+      });
       var out = compileOutput(block, DIRECTIONS);
       return function (state) {
         circuitsArr.forEach(function (circuit) {
@@ -522,14 +520,11 @@ var Circuit = (function () {
   }());;
   
   Circuit.executeCircuitInBlock = function (blockWorld, outerWorld, cube, subDatum, extraState) {
-    var circuits = blockWorld.getCircuits();
-    for (var ck in circuits) {
-      if (!circuits.hasOwnProperty(ck)) continue;
-      
+    blockWorld.getCircuits().forEach(function (circuit) {
       var state = Object.create(extraState);
       state.blockIn_subDatum = subDatum;
       
-      circuits[ck].evaluate(state);
+      circuit.evaluate(state);
       
       if ("blockOut_become" in state) {
         var blockID = state.blockOut_become;
@@ -544,7 +539,7 @@ var Circuit = (function () {
             = state.blockOut_rotation;
         }
       }
-    }
+    });
   };
   
   return Object.freeze(Circuit);

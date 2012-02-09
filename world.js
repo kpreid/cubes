@@ -21,11 +21,11 @@ function World(sizes, blockSet) {
   var rotations = new Uint8Array(wx*wy*wz);
   var subData = new Uint8Array(wx*wy*wz);
   
-  // Maps from "x,y,z" to circuit object
-  var blockCircuits = {};
+  // Maps from cube to its circuit object if any
+  var blockCircuits = new IntVectorMap();
   
-  // Maps from an arbitrary block "x,y,z" to circuit object (no duplicate circuits)
-  var circuits = {};
+  // Maps from an arbitrary cube in each circuit to that circuit (no duplicates)
+  var circuits = new IntVectorMap();
   
   var spontaneousBaseRate = 0.0003; // probability of block spontaneous effect call per block per second
   var numToDisturbPerSec = wx*wy*wz * spontaneousBaseRate;
@@ -53,8 +53,8 @@ function World(sizes, blockSet) {
   
   function deleteCircuit(circuit) {
     circuit.blocks.forEach(function (block) {
-      delete circuits[block];
-      delete blockCircuits[block];
+      circuits.delete(block);
+      blockCircuits.delete(block);
     });
 
     notifier.notify("deletedCircuit", circuit);
@@ -68,14 +68,14 @@ function World(sizes, blockSet) {
     var block;
     while (block = q.pop()) {
       if (isCircuitPart(gt(block[0],block[1],block[2]))) {
-        var existing = blockCircuits[block];
+        var existing = blockCircuits.get(block);
         if (existing === circuit) {
           continue; // don't add and don't traverse
         } else if (existing !== circuit && existing !== undefined) {
           deleteCircuit(existing);
         }
         circuit.add(block);
-        blockCircuits[block] = circuit;
+        blockCircuits.set(block, circuit);
 
         for (var dim = 0; dim < 3; dim++) {
           var b2 = block.slice();
@@ -98,8 +98,12 @@ function World(sizes, blockSet) {
     var y = block[1];
     var z = block[2];
 
-    var adjCircuits = [blockCircuits[[x-1,y,z]], blockCircuits[[x,y-1,z]], blockCircuits[[x,y,z-1]],
-                       blockCircuits[[x+1,y,z]], blockCircuits[[x,y+1,z]], blockCircuits[[x,y,z+1]]];
+    var adjCircuits = [blockCircuits.get([x-1,y,z]),
+                       blockCircuits.get([x,y-1,z]),
+                       blockCircuits.get([x,y,z-1]),
+                       blockCircuits.get([x+1,y,z]),
+                       blockCircuits.get([x,y+1,z]),
+                       blockCircuits.get([x,y,z+1])];
     var circuit = null;
     adjCircuits.forEach(function (c) {
       if (c === null) return;
@@ -109,7 +113,7 @@ function World(sizes, blockSet) {
     });
     if (!circuit) {
       circuit = new Circuit(self);
-      circuits[block] = circuit;
+      circuits.set(block, circuit);
     }
     floodCircuit(circuit, block);
   }
@@ -160,11 +164,11 @@ function World(sizes, blockSet) {
 
     // Update circuits
     var cp = isCircuitPart(newType);
-    if (cp && !blockCircuits[vec]) {
+    if (cp && !blockCircuits.has(vec)) {
       becomeCircuit(vec);
-    } else if (!cp && blockCircuits[vec]) {
+    } else if (!cp && blockCircuits.has(vec)) {
       // No longer a circuit part.
-      deleteCircuit(blockCircuits[vec]);
+      deleteCircuit(blockCircuits.get(vec));
       [[x-1,y,z], [x,y-1,z], [x,y,z-1], [x+1,y,z], [x,y+1,z], [x,y,z+1]].forEach(function (neighbor) {
         if (isCircuitPart(gt(neighbor[0],neighbor[1],neighbor[2]))) becomeCircuit(neighbor);
       })
@@ -298,8 +302,8 @@ function World(sizes, blockSet) {
     notifier.notify("dirtyAll");
     self.persistence.dirty();
 
-    blockCircuits = {};
-    circuits = {};
+    blockCircuits = new IntVectorMap(); // TODO clear op instead of replacing objects?
+    circuits = new IntVectorMap();
     var types = blockSet.getAll();
     var vec = [0,0,0];
     for (var x = 0; x < wx; x++) {
@@ -312,9 +316,9 @@ function World(sizes, blockSet) {
           vec[2] = z;
           var value = blocks[ybase + z];
           
-          if (isCircuitPart(types[value]) && !blockCircuits[vec]) {
+          if (isCircuitPart(types[value]) && !blockCircuits.get(vec)) {
             var circuit = new Circuit(self);
-            circuits[vec] = circuit;
+            circuits.set(vec, circuit);
             floodCircuit(circuit, vec);
           }
           
@@ -348,7 +352,7 @@ function World(sizes, blockSet) {
   }
   
   function setStandingOn(cube, value) {
-    var circuit = blockCircuits[cube];
+    var circuit = blockCircuits.get(cube);
     if (circuit) {
       circuit.setStandingOn(cube, value);
     }
@@ -410,7 +414,7 @@ function World(sizes, blockSet) {
   this.raycast = raycast;
   this.getCircuits = function () { return circuits; }; // TODO should be read-only interface
   this.getCircuitsByBlock = function () { return blockCircuits; }; // TODO should be read-only interface
-  this.getCircuit = function (block) { return blockCircuits[block] || null; }
+  this.getCircuit = function (block) { return blockCircuits.get(block) || null; }
   this.edit = edit;
   this.step = step;
   this.setStandingOn = setStandingOn;

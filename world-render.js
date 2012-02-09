@@ -500,7 +500,7 @@ var WorldRenderer = (function () {
             face(rot.px, faceData.hx);
             face(rot.py, faceData.hy);
             face(rot.pz, faceData.hz);
-            var circuit = rawCircuits[x+","+y+","+z]; // TODO: replace this with some other spatial indexing scheme so we don't have to check per-every-block
+            var circuit = rawCircuits.get([x,y,z]); // TODO: replace this with some other spatial indexing scheme so we don't have to check per-every-block
             if (circuit) {
               var o = circuit.getOrigin();
               var r = circuitRenderers[o];

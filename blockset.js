@@ -68,14 +68,7 @@ var BlockType = (function () {
       return true;
     }
     function checkCircuits() {
-      self.hasCircuits = false;
-      var c = self.world.getCircuits();
-      for (var k in c) {
-        if (c.hasOwnProperty(k)) {
-          self.hasCircuits = true;
-          return true;
-        }
-      }
+      self.hasCircuits = self.world.getCircuits().length > 0;
       return true;
     }
     world.listen({
