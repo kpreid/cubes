@@ -59,8 +59,8 @@ var WorldRenderer = (function () {
   function WorldRenderer(world, place, renderer, scheduleDraw, showBoundaries) {
     var gl = renderer.context;
     
-    // Object holding all world rendering chunks which have RenderBundles created, indexed by "<x>,<z>" where x and z are the low coordinates (i.e. divisible by CHUNKSIZE).
-    var chunks = {};
+    // Table of all world rendering chunks which have RenderBundles created, indexed by [x,z] where x and z are the low-side coordinates (i.e. divisible by CHUNKSIZE).
+    var chunks = new IntVectorMap();
 
     function compareByPlayerDistance(a,b) {
       return dist2sq([a[0]-playerChunk[0], a[1]-playerChunk[1]]) 
@@ -156,15 +156,14 @@ var WorldRenderer = (function () {
     // --- methods, internals ---
     
     function deleteChunks() {
-      for (var index in chunks) {
-        if (!chunks.hasOwnProperty(index)) continue;
-        chunks[index].deleteResources();
-      }
+      chunks.forEach(function (chunk) {
+        chunk.deleteResources();
+      });
       circuitRenderers.forEach(function (cr) {
         cr.deleteResources();
       });
       
-      chunks = {};
+      chunks = new IntVectorMap();
       circuitRenderers = new IntVectorMap();
       dirtyChunks.clear();
       addChunks.clear();
@@ -172,14 +171,10 @@ var WorldRenderer = (function () {
     
     function rerenderChunks() {
       dirtyChunks.clear();
-      for (var index in chunks) {
-        if (!chunks.hasOwnProperty(index)) continue;
-        chunks[index].dirtyChunk = true;
-        var indexparts = index.split(",");
-        dirtyChunks.enqueue([parseInt(indexparts[0],10),
-                             parseInt(indexparts[1],10)],
-                            chunks[index]);
-      }
+      chunks.forEach(function (chunk, coords) {
+        chunk.dirtyChunk = true;
+        dirtyChunks.enqueue(coords, chunk);
+      });
     }
     
     var listenerB = {
@@ -231,12 +226,12 @@ var WorldRenderer = (function () {
     function setDirtyChunk(x, z) {
       var k = [x, z];
       if (!chunkIntersectsWorld(k)) return;
-      var c = chunks[k];
-      if (c) {
+      var chunk = chunks.get(k);
+      if (chunk) {
         // This routine is used only for "this block changed", so if there is
         // not already a chunk, we don't create it.
-        c.dirtyChunk = true;
-        dirtyChunks.enqueue(k, chunks[k]);
+        chunk.dirtyChunk = true;
+        dirtyChunks.enqueue(k, chunk);
       }
     }
 
@@ -303,23 +298,19 @@ var WorldRenderer = (function () {
         // Add chunks which are in viewing distance.
         renderDistanceInfo().nearChunkOrder.forEach(function (offset) {
           var chunkKey = [playerChunk[0] + offset[0], playerChunk[1] + offset[1]];
-          if (!chunks[chunkKey] && chunkIntersectsWorld(chunkKey)) {
-            addChunks.enqueue(chunkKey, chunks[chunkKey]);
+          if (!chunks.has(chunkKey) && chunkIntersectsWorld(chunkKey)) {
+            addChunks.enqueue(chunkKey, chunks.get(chunkKey));
           }
         });
 
         // Drop now-invisible chunks. Has a higher boundary so that we're not constantly reloading chunks if the player is moving back and forth.
         var dds = renderDistanceInfo().dropChunkDistanceSquared;
-        for (var key in chunks) {
-          if (!chunks.hasOwnProperty(key)) continue;
-          var xz = key.split(",");
-          if (xz.length != 2) continue;
-          
+        chunks.forEach(function (chunk, xz) {
           if (dist2sq([xz[0]-playerChunk[0],xz[1]-playerChunk[1]]) > dds) {
-            chunks[key].deleteResources();
-            delete chunks[key];
+            chunk.deleteResources();
+            chunks.delete(xz);
           }
-        }
+        });
         
         // Drop now-invisible circuits
         // TODO: This works off the origin, but circuits can be arbitrarily large so we should test against their AABB
@@ -373,12 +364,10 @@ var WorldRenderer = (function () {
     function draw() {
       // Draw chunks.
       renderer.setTileSize(blockSet.tileSize);
-      for (var index in chunks) {
-        if (!chunks.hasOwnProperty(index)) continue;
-        var chunk = chunks[index];
+      chunks.forEach(function (chunk) {
         if (renderer.aabbInView(chunk.aabb))
           chunk.draw();
-      }
+      });
       
       // Draw circuits.
       renderer.setStipple(true);
@@ -423,7 +412,7 @@ var WorldRenderer = (function () {
     // returns whether no work was done
     function calcChunk(xzkey) {
       // This would call scheduleDraw() to render the revised chunks, except that calcChunk is only called within a draw. Therefore, the calls are commented out (to be reenabled if the architecture changes).
-      var c = chunks[xzkey];
+      var c = chunks.get(xzkey);
       if (c) {
         if (c.dirtyChunk) {
           c.dirtyChunk = false;
@@ -443,9 +432,9 @@ var WorldRenderer = (function () {
         var chunkOriginZ = xzkey[1];
         var chunkLimitX = Math.min(wx, xzkey[0] + CHUNKSIZE);
         var chunkLimitZ = Math.min(wz, xzkey[1] + CHUNKSIZE);
-        chunks[xzkey] = new renderer.RenderBundle(gl.TRIANGLES,
-                                         function () { return renderData.texture; },
-                                         function (vertices, normals, texcoords) {
+        var chunk = new renderer.RenderBundle(gl.TRIANGLES,
+                                              function () { return renderData.texture; },
+                                              function (vertices, normals, texcoords) {
           renderData = blockSet.getRenderData();
           var rotatedBlockFaceData = renderData.rotatedBlockFaceData;
           var BOGUS_BLOCK_DATA = rotatedBlockFaceData.bogus;
@@ -505,11 +494,13 @@ var WorldRenderer = (function () {
           }
         });
         
-        chunks[xzkey].aabb = new AAB(
+        chunk.aabb = new AAB(
           chunkOriginX, chunkLimitX,
           0, world.wy,
           chunkOriginZ, chunkLimitZ
         );
+        
+        chunks.set(xzkey, chunk);
         
         return false;
       }
