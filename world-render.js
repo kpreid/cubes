@@ -77,7 +77,7 @@ var WorldRenderer = (function () {
     var playerChunk = null;
     
     // Like chunks, but for circuits. Indexed by the circuit origin block.
-    var circuitRenderers = {};
+    var circuitRenderers = new IntVectorMap();
 
     var blockSet = world.blockSet;
     
@@ -160,13 +160,12 @@ var WorldRenderer = (function () {
         if (!chunks.hasOwnProperty(index)) continue;
         chunks[index].deleteResources();
       }
-      for (var index in circuitRenderers) {
-        if (!circuitRenderers.hasOwnProperty(index)) continue;
-        circuitRenderers[index].deleteResources();
-      }
+      circuitRenderers.forEach(function (cr) {
+        cr.deleteResources();
+      });
       
       chunks = {};
-      circuitRenderers = {};
+      circuitRenderers = new IntVectorMap();
       dirtyChunks.clear();
       addChunks.clear();
     }
@@ -274,14 +273,14 @@ var WorldRenderer = (function () {
     function dirtyCircuit(circuit) {
       if (!isAlive()) return false;
       var o = circuit.getOrigin();
-      var r = circuitRenderers[o];
+      var r = circuitRenderers.get(o);
       if (r) r.recompute();
       return true;
     }
     
     function deletedCircuit(circuit) {
       if (!isAlive()) return false;
-      delete circuitRenderers[circuit.getOrigin()];
+      circuitRenderers.delete(circuit.getOrigin());
       return true;
     }
 
@@ -324,16 +323,12 @@ var WorldRenderer = (function () {
         
         // Drop now-invisible circuits
         // TODO: This works off the origin, but circuits can be arbitrarily large so we should test against their AABB
-        for (var key in circuitRenderers) {
-          if (!circuitRenderers.hasOwnProperty(key)) continue;
-          var xyz = key.split(",");
-          if (xyz.length != 3) continue;
-          
-          if (dist2sq([xyz[0]-playerChunk[0],xyz[2]-playerChunk[1]]) > dds) {
-            circuitRenderers[key].deleteResources();
-            delete circuitRenderers[key];
+        circuitRenderers.forEach(function (cr, cube) {
+          if (dist2sq([cube[0]-playerChunk[0],cube[2]-playerChunk[1]]) > dds) {
+            cr.deleteResources();
+            circuitRenderers.delete(cube);
           }
-        }
+        });
         
       }
 
@@ -387,10 +382,9 @@ var WorldRenderer = (function () {
       
       // Draw circuits.
       renderer.setStipple(true);
-      for (var index in circuitRenderers) {
-        if (!circuitRenderers.hasOwnProperty(index)) continue;
-        circuitRenderers[index].draw();
-      }
+      circuitRenderers.forEach(function (cr) {
+        cr.draw();
+      });
       renderer.setStipple(false);
       
       
@@ -503,9 +497,9 @@ var WorldRenderer = (function () {
             var circuit = rawCircuits.get([x,y,z]); // TODO: replace this with some other spatial indexing scheme so we don't have to check per-every-block
             if (circuit) {
               var o = circuit.getOrigin();
-              var r = circuitRenderers[o];
+              var r = circuitRenderers.get(o);
               if (!r) {
-                circuitRenderers[o] = makeCircuitRenderer(circuit);
+                circuitRenderers.set(o, makeCircuitRenderer(circuit));
               }
             }
           }
