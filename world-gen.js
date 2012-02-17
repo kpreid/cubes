@@ -785,7 +785,7 @@ function generateWorlds() {
   // circuit test;
   
   (function () {
-    var x = 182/400*wx, y = Math.floor(wy/2)+3, z = 191/400*wx;
+    var x = Math.floor(182/400*wx), y = Math.floor(wy/2)+3, z = Math.floor(191/400*wx);
     topWorld.s(x+0,y,z+1,l.pad);
     topWorld.s(x+0,y,z+2,l.wire);
     topWorld.s(x+0,y,z+3,l.indicator);                    
