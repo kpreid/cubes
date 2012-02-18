@@ -488,6 +488,21 @@ function generateWorlds(config) {
     return /* b[2] >= 8 ? 0 : */ brgbDither(g,g,g);
   }));
   
+  var roundMaterial = brgb(.2,.2,.2);
+  
+  // quarter-round (edge) block
+  ids.qround = blockset.length;
+  blockset.add(type = genedit(function (b) {
+    return b[0]*b[0]+b[2]*b[2] <= TS*TS ? roundMaterial : 0;
+  }));
+  addRotation(type);
+
+  // eighth-round (corner) block
+  ids.eround = blockset.length;
+  blockset.add(type = genedit(function (b) {
+    return b[0]*b[0]+b[1]*b[1]+b[2]*b[2] <= TS*TS ? roundMaterial : 0;
+  }));
+  addRotation(type);  
 
   // random block types
   ids.firstRandom = blockset.length;
