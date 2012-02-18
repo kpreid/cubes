@@ -300,28 +300,64 @@ var CubesMain = (function () {
         });
       }());
       
-      // World list
-      if (pageElements.worldSelect) {
-        var worldSelect = pageElements.worldSelect;
-        function updateWorldList() {
-          while (worldSelect.firstChild) worldSelect.removeChild(worldSelect.firstChild);
+      // Object list
+      if (pageElements.objectList) {
+        var objectList = pageElements.objectList;
+        function updateObjectList() {
+          while (objectList.firstChild) objectList.removeChild(objectList.firstChild);
           persistencePool.forEach(function (name, type) {
-            if (Object.create(type.prototype) instanceof World) {
-              var c = document.createElement("option");
-              c.appendChild(document.createTextNode(name));
-              if (config.currentTopWorld.get() === name) c.selected = true;
-              worldSelect.appendChild(c);
+            var row = document.createElement("tr");
+            objectList.appendChild(row);
+            var typeCell = document.createElement("td");
+            var nameCell = document.createElement("td");
+            row.appendChild(typeCell);
+            row.appendChild(nameCell);
+            switch (type) {
+              case World: typeCell.textContent = "world"; break;
+              case BlockSet: typeCell.textContent = "block set"; break;
+              case BlockType: typeCell.textContent = "block type"; break;
+              default: typeCell.textContent = "???"; break;
             }
+            nameCell.textContent = name;
+            if (persistencePool.getIfLive(name) === worldH) row.className += " selected";
+            
+            row.addEventListener("click", function () {
+              var obj = persistencePool.get(name);
+              if (obj instanceof World) {
+                main.setTopWorld(obj);
+              }
+            });
+            
+            var controlsArea = document.createElement("td");
+            row.appendChild(controlsArea);
+            
+            function addControl(label, fn) {
+              var b = document.createElement("button");
+              b.textContent = label;
+              controlsArea.appendChild(b);
+              b.addEventListener("click", fn, false);
+            }
+            
+            addControl("Delete", function () {
+              if (window.confirm("Really delete “" + name + "”?")) {
+                // TODO unnecessary unserialization - change pool interface
+                persistencePool.get(name).persistence.ephemeralize();
+              }
+            });
+            
+            //addControl("Export", function () {
+            //  // TODO put serialization text up in a dialog box. (Also add "Export Current World")
+            //});
+            
+            // TODO: add rename
           });
           return true;
         }
-        worldSelect.addEventListener("change", function () {
-          main.setTopWorld(persistencePool.get(worldSelect.value));
-        });
-        updateWorldList();
+        updateObjectList();
+        config.currentTopWorld.whenChanged(updateObjectList); // TODO wrong listener (should be noting changes to worldH) and also unnecessarily rebuilding the list
         persistencePool.listen({
-          added: updateWorldList,
-          deleted: updateWorldList
+          added: updateObjectList,
+          deleted: updateObjectList
         });
       }
 

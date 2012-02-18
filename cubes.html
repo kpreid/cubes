@@ -56,7 +56,7 @@
     sceneInfoOverlay: id("scene-info-overlay"),
     cursorInfoOverlay: id("cursor-info"),
     saveButton: id("save-button"),
-    worldSelect: id("world-select"),
+    objectList: id("object-list"),
     // TODO combine error cases?
     webglError: [id("webgl-error-notice")],
     featureError: [id("feature-error-notice"), id("feature-error-text")],
@@ -96,51 +96,31 @@
 
 <div id="toggles">
   <button id="save-button" onclick="main.save(); document.getElementById('view-canvas').focus(); return false;">Save</button>
+   <button id="objectsbtn" onclick="this.style.display='none'; document.getElementById('objects').style.display='block'; document.getElementById('view-canvas').focus();">Worlds</button>
   <button id="optionsbtn" onclick="this.style.display='none'; document.getElementById('options').style.display='block'; document.getElementById('view-canvas').focus();">Options</button>
   <button id="helpbtn" onclick="this.style.display='none'; document.getElementById('help').style.display='block'; document.getElementById('view-canvas').focus();">Help</button>
 </div>
 
-<div id="options" class="sidebar" onclick="if (event.target.tagName == 'INPUT' || event.target.tagName == 'LABEL' || event.target.tagName == 'BUTTON' || event.target.tagName == 'TEXTAREA') return true; this.style.display='none'; document.getElementById('optionsbtn').style.display='inline'; document.getElementById('view-canvas').focus();" style="display: none;">
-  <p>Click to close.</p>
+<div id="objects" class="sidebar" onclick="if (event.target.tagName == 'INPUT' || event.target.tagName == 'LABEL' || event.target.tagName == 'BUTTON' || event.target.tagName == 'TEXTAREA') return true; this.style.display='none'; document.getElementById('objectsbtn').style.display='inline'; document.getElementById('view-canvas').focus();" style="display: none;">
+  <h2>Saved Items</h2>
+
+  <div id="local-save-ok" style="display: none">
+    <table>
+      <thead>
+        <tr><th>Type<th>Name</tr>
+      </thead>
+      <tbody id="object-list"></tbody>
+    </table>
+  </div>
+  <p id="local-save-warning" style="display: none">
+    Your browser does not appear to support local storage. This world will be lost when you close the page unless you export it and save the text.
+  </p>
+  <script>
+    document.getElementById("local-save-ok").style.display = main.pool.available ? 'block' : 'none';
+    document.getElementById("local-save-warning").style.display = !main.pool.available ? 'block' : 'none';
+  </script>
   
-  <h2>Load/Save</h2>
-  
-  <form onsubmit="return false;" style="text-align: center">
-    <div id="local-save-ok" style="display: none">
-      <div class="optionline">World:</div>
-      <select id="world-select" size="5" style="width: 90%;"><option>not loaded</option></select>
-      <p>Your browser supports local storage. This world will be saved automatically.</p>
-    </div>
-    <p id="local-save-warning" style="display: none">
-      Your browser does not appear to support local storage. This world will be lost when you close the page unless you export it and save the text.
-    </p>
-    <script>
-      document.getElementById("local-save-ok").style.display = main.pool.available ? 'block' : 'none';
-      document.getElementById("local-save-warning").style.display = !main.pool.available ? 'block' : 'none';
-    </script>
-    <p>
-      <textarea id="loadfield" cols="20" rows="3" style="width: 80%;"></textarea>
-      <br>
-      <button onclick="
-        document.getElementById('loadfield').value = JSON.stringify(cyclicSerialize(main.getTopWorld(), Persister.types)); return false;
-      ">Text Export</button>
-      <button onclick="
-        while (document.getElementById('load-error').firstChild)
-          document.getElementById('load-error').removeChild(
-            document.getElementById('load-error').firstChild);
-        try {
-          main.setTopWorld(cyclicUnserialize(JSON.parse(document.getElementById('loadfield').value), Persister.types));
-        } catch (e) {
-          console.log(e);
-          document.getElementById('load-error').appendChild(document.createTextNode(e));
-        }
-        return false;
-      ">Text Import</button>
-    </p>
-    <p id="load-error" style="text-shadow: 0 0 .3em red;"></p>
-  </form>
-  
-  <h2>World</h2>
+  <h2>New World</h2>
   
   <form onsubmit="return false;">
     <table class="optionline">
@@ -183,6 +163,35 @@
       </script>
     </div>
   </form>
+  
+  <h2>Import/Export</h2>
+  
+  <form onsubmit="return false;" style="text-align: center">
+    <p>
+      <textarea id="loadfield" cols="20" rows="3" style="width: 80%;"></textarea>
+      <br>
+      <button onclick="
+        document.getElementById('loadfield').value = JSON.stringify(cyclicSerialize(main.getTopWorld(), Persister.types)); return false;
+      ">Text Export</button>
+      <button onclick="
+        while (document.getElementById('load-error').firstChild)
+          document.getElementById('load-error').removeChild(
+            document.getElementById('load-error').firstChild);
+        try {
+          main.setTopWorld(cyclicUnserialize(JSON.parse(document.getElementById('loadfield').value), Persister.types));
+        } catch (e) {
+          console.log(e);
+          document.getElementById('load-error').appendChild(document.createTextNode(e));
+        }
+        return false;
+      ">Text Import</button>
+    </p>
+    <p id="load-error" style="text-shadow: 0 0 .3em red;"></p>
+  </form>
+</div>
+
+<div id="options" class="sidebar" onclick="if (event.target.tagName == 'INPUT' || event.target.tagName == 'LABEL' || event.target.tagName == 'BUTTON' || event.target.tagName == 'TEXTAREA') return true; this.style.display='none'; document.getElementById('optionsbtn').style.display='inline'; document.getElementById('view-canvas').focus();" style="display: none;">
+  <p>Click to close.</p>
   
   <h2>Options</h2>
   

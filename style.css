@@ -153,6 +153,19 @@ html {
 .sidebar table.fancy > tbody > tr.spanned {
   border-width: 0 0 0 0;
 }
+.sidebar table > tbody > .selected {
+  background: gray;
+  background: rgba(255,255,255,0.1);
+}
+
+#objects table {
+  width: 100%;
+  margin: 0 0 1em 0;
+  padding: 0;
+}
+#objects td {
+  padding: 0.05em 0.3em;
+}
 
 .optionline input[type="range"] {
   vertical-align: middle;

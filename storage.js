@@ -254,6 +254,9 @@ function PersistencePool(storage, objectPrefix) {
       return object;
     }
   };
+  this.getIfLive = function (name) {
+    return hop.call(currentlyLiveObjects, name) ? currentlyLiveObjects[name] : null;
+  }
   this.has = function (name) {
     return this.available &&
         (hop.call(currentlyLiveObjects, name) || storage.getItem(objectPrefix + name) !== null);
