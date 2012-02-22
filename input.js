@@ -6,6 +6,7 @@ function Input(config, eventReceiver, playerInput, menuElement, renderer, focusC
 
   var keymap = {};
   var mouselookMode = true;
+  var useLockMovement = false;
 
   var mousePos = null;
 
@@ -21,6 +22,7 @@ function Input(config, eventReceiver, playerInput, menuElement, renderer, focusC
   function setMouselook(value) {
     mouselookMode = value;
     menuElement.style.visibility = mouselookMode ? 'hidden' : 'visible';
+    twiddlePointerLock();
     applyMousePosition();
   }
   
@@ -177,20 +179,73 @@ function Input(config, eventReceiver, playerInput, menuElement, renderer, focusC
   });
   
   function updateMouseFromEvent(event) {
+    if (useLockMovement) return;
     mousePos = [event.clientX, event.clientY];
     applyMousePosition();
   }
   
   eventReceiver.addEventListener("mousemove", function (event) {
     updateMouseFromEvent(event);
-    return true;
+    
+    if (mouselookMode && useLockMovement) {
+      var my = event.movementY/*shimmed*/;
+      var mx = event.movementX/*shimmed*/;
+      mx = mx || 0; // TODO Why are movement* sometimes undefined?
+      my = my || 0;
+      
+      var swingY = -Math.PI/2 * my / 300; // TODO user config
+      var swingX = -Math.PI/2 * mx / 300;
+
+      playerInput.pitch = Math.min(Math.PI/2, Math.max(-Math.PI/2, playerInput.pitch + swingY));
+      playerInput.yaw += swingX;
+    }
   }, false);
   eventReceiver.addEventListener("mouseout", function (event) {
     mousePos = null;
     applyMousePosition();
     return true;
   }, false);
-
+  
+  // --- Mouse lock ---
+  
+  // This code supports the experimental Chrome/Firefox mouse lock feature.
+  var fullScreenElement = document.body;
+  var twiddlePointerLock;
+  
+  console.log("Pointer lock supported:", GameShim.supports.pointerLock);
+  if (GameShim.supports.pointerLock) { (function () {
+    function fullScreenChangeListener(event) {
+      var isFullScreen = document.fullscreenEnabled/*shimmed*/;
+      console.info("Fullscreen change", isFullScreen, document.fullscreenElement/*shimmed*/);
+      twiddlePointerLock();
+    }
+    function fullScreenErrorListener(event) {
+      console.info("Fullscreen entry error",event);
+    }
+    document.addEventListener("fullscreenchange"/*shimmed*/, fullScreenChangeListener, false);
+    document.addEventListener("fullscreenerror"/*shimmed*/, fullScreenErrorListener, false);
+    //fullScreenChangeListener(); // note initial state
+    
+    this.requestFullScreen = function () {
+      console.log("attempting full screen");
+      fullScreenElement.requestFullScreen/*shimmed*/(Element.ALLOW_KEYBOARD_INPUT /* TODO this is a webkitism */);
+      console.log("attempted full screen");
+    };
+    twiddlePointerLock = function () {
+      if (mouselookMode && document.fullscreenEnabled) {
+        eventReceiver.requestPointerLock/*shimmed*/();
+        console.info("After pointer lock request:", document.pointerLockEnabled, document.pointerLockElement, navigator.pointer.isLocked);
+        useLockMovement = document.pointerLockEnabled;
+        useLockMovement = true;
+      } else {
+        document.exitPointerLock();
+        useLockMovement = false;
+      }
+    };
+  }.call(this)); } else {
+    twiddlePointerLock = function () {};
+  }
+  
   // --- Clicks ---
   
   // Note: this has the side effect of inhibiting text selection on drag

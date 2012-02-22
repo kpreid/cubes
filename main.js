@@ -515,6 +515,10 @@ var CubesMain = (function () {
     this.config = config;
     this.pool = persistencePool;
     this.player = null;
+
+    this.requestFullScreen = function () {
+      input.requestFullScreen();
+    };
   }
   
   return CubesMain;

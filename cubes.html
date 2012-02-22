@@ -97,7 +97,8 @@
 
 <div id="toggles">
   <button id="save-button" onclick="main.save(); document.getElementById('view-canvas').focus(); return false;">Save</button>
-   <button id="objectsbtn" onclick="this.style.display='none'; document.getElementById('objects').style.display='block'; document.getElementById('view-canvas').focus();">Worlds</button>
+  <button onclick="main.requestFullScreen(); document.getElementById('view-canvas').focus(); return false;">Fullscreen</button>
+  <button id="objectsbtn" onclick="this.style.display='none'; document.getElementById('objects').style.display='block'; document.getElementById('view-canvas').focus();">Worlds</button>
   <button id="optionsbtn" onclick="this.style.display='none'; document.getElementById('options').style.display='block'; document.getElementById('view-canvas').focus();">Options</button>
   <button id="helpbtn" onclick="this.style.display='none'; document.getElementById('help').style.display='block'; document.getElementById('view-canvas').focus();">Help</button>
 </div>
