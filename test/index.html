@@ -1,0 +1,66 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+  "http://www.w3.org/TR/html4/loose.dtd">
+<!-- This file is derived from the Jasmine test framework examples -->
+<html><head>
+  <base href="../">
+  <title>Jasmine Spec Runner</title>
+
+  <link rel="stylesheet" type="text/css" href="deps/jasmine/lib/jasmine-core/jasmine.css">
+  <script type="text/javascript" src="deps/jasmine/lib/jasmine-core/jasmine.js"></script>
+  <script type="text/javascript" src="deps/jasmine/lib/jasmine-core/jasmine-html.js"></script>
+
+  <!-- include spec files here... -->
+
+  <!-- include source files here... -->
+  <!-- Cubes note: The canonical order and notes for these files are given in cubes.html. -->
+  <script type="text/javascript" src="deps/webgl-debug.js"></script>
+  <script type="text/javascript" src="deps/webgl-utils.js"></script>
+  <script type="text/javascript" src="deps/glMatrix.js"></script>
+  <script type="text/javascript" src="util.js"></script>
+  <script type="text/javascript" src="storage.js"></script>
+  <script type="text/javascript" src="main.js"></script>
+  <script type="text/javascript" src="blockset.js"></script>
+  <script type="text/javascript" src="world.js"></script>
+  <script type="text/javascript" src="world-gen.js"></script>
+  <script type="text/javascript" src="circuit.js"></script>
+  <script type="text/javascript" src="renderer.js"></script>
+  <script type="text/javascript" src="world-render.js"></script>
+  <script type="text/javascript" src="block-render.js"></script>
+  <script type="text/javascript" src="player.js"></script>
+  <script type="text/javascript" src="input.js"></script>
+  <script type="text/javascript" src="audio.js"></script>
+  
+  <script type="text/javascript">
+    (function() {
+      var jasmineEnv = jasmine.getEnv();
+      jasmineEnv.updateInterval = 1000;
+
+      var trivialReporter = new jasmine.TrivialReporter();
+
+      jasmineEnv.addReporter(trivialReporter);
+
+      jasmineEnv.specFilter = function(spec) {
+        return trivialReporter.specFilter(spec);
+      };
+
+      var currentWindowOnload = window.onload;
+
+      window.onload = function() {
+        if (currentWindowOnload) {
+          currentWindowOnload();
+        }
+        execJasmine();
+      };
+
+      function execJasmine() {
+        jasmineEnv.execute();
+      }
+
+    })();
+  </script>
+
+</head><body>
+
+<p>Foo</p>
+
+</body></html>
