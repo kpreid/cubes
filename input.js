@@ -3,7 +3,7 @@
 
 // TODO: explicitly connect global vars
 
-function Input(eventReceiver, playerInput, menuElement, renderer, focusCell) {
+function Input(config, eventReceiver, playerInput, menuElement, renderer, focusCell) {
   "use strict";
 
   var keymap = {};

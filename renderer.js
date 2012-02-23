@@ -34,7 +34,7 @@ var Renderer = (function () {
     aVertexColor: 3
   };
   
-  function Renderer(canvas, shaders, scheduleDraw) {
+  function Renderer(config, canvas, shaders, scheduleDraw) {
     //canvas = WebGLDebugUtils.makeLostContextSimulatingCanvas(canvas);
     //canvas.loseContextInNCalls(5000);
     //canvas.setRestoreTimeout(2000);
@@ -731,6 +731,8 @@ var Renderer = (function () {
     });
     
     this.skybox = skyboxR;
+
+    this.config = config; // TODO eliminate this; it is used only for WorldRenderer getting the render distance (which we should provide directly) and for the texture debug (which should not be done by WorldRenderer since it leaks into block renders)
     
     Object.seal(this); // TODO freeze all but verticesDrawn
   }

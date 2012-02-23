@@ -25,8 +25,6 @@
   <script type="text/javascript" src="util.js"></script>
   <script type="text/javascript" src="storage.js"></script>
   
-  <script type="text/javascript" src="main.js"></script> <!-- before other stuff because of config global — TODO fix -->
-  
   <!-- Game components -->
   <script type="text/javascript" src="blockset.js"></script>
   <script type="text/javascript" src="world.js"></script>
@@ -38,6 +36,7 @@
   <script type="text/javascript" src="player.js"></script>
   <script type="text/javascript" src="input.js"></script>
   <script type="text/javascript" src="audio.js"></script>
+  <script type="text/javascript" src="main.js"></script>
   
   <!-- Create game
     This does not actually hook up the game to the UI or load the world; that is done by main.start() which is done onload.
@@ -155,10 +154,10 @@
       <tr><td>Bumpiness:<td><input type="range" step="any" min="0" max="2" value="1" maxlength="4" size="4" id="generate_slope">
       <tr><td>Block res.:<td><input type="number" min="2" value="16" size="3" maxlength="4" step="1" id="generate_tileSize">
     </table>
-    <script>config.generate_name.bindControl("generate_name");</script>
-    <script>config.generate_shape.bindControl("generate_shape");</script>
-    <script>config.generate_slope.bindControl("generate_slope");</script>
-    <script>config.generate_tileSize.bindControl("generate_tileSize");</script>
+    <script>main.config.generate_name.bindControl("generate_name");</script>
+    <script>main.config.generate_shape.bindControl("generate_shape");</script>
+    <script>main.config.generate_slope.bindControl("generate_slope");</script>
+    <script>main.config.generate_tileSize.bindControl("generate_tileSize");</script>
     <table class="optionline" style="text-align: center;">
       <tr><td>Size: 
       <td><input type="number" min="1" max="9999" value="400" maxlength="4" size="4" id="generate_wx">
@@ -166,9 +165,9 @@
       <td><input type="number" min="1" max="9999" value="400" maxlength="4" size="4" id="generate_wz">
       <tr><th><th>W<th>H<th>L
     </table>
-    <script>config.generate_wx.bindControl("generate_wx");</script>
-    <script>config.generate_wy.bindControl("generate_wy");</script>
-    <script>config.generate_wz.bindControl("generate_wz");</script>
+    <script>main.config.generate_wx.bindControl("generate_wx");</script>
+    <script>main.config.generate_wy.bindControl("generate_wy");</script>
+    <script>main.config.generate_wz.bindControl("generate_wz");</script>
     <div style="text-align: center;">
       <button onclick="
         main.regenerate();
@@ -181,35 +180,35 @@
   
   <form onsubmit="return false;" action="">
     <div class="optionline">Field of view: <input type="range" step="any" min="45" max="140" value="60" maxlength="4" size="4" id="fov"></div>
-    <script>config.fov.bindControl("fov");</script>
+    <script>main.config.fov.bindControl("fov");</script>
     <div class="optionline">Draw distance: <input type="range" step="any" min="10" max="500" value="100" size="4" id="renderDistance"></div>
-    <script>config.renderDistance.bindControl("renderDistance");</script>
+    <script>main.config.renderDistance.bindControl("renderDistance");</script>
     <div class="optionline">Turn rate: <input type="range" step="any" min="0" max="10" value="5" size="4" id="mouseTurnRate"></div>
-    <script>config.mouseTurnRate.bindControl("mouseTurnRate");</script>
+    <script>main.config.mouseTurnRate.bindControl("mouseTurnRate");</script>
     <div class="optionline"><label><input type="checkbox" id="lighting"> Lighting</label></div>
-    <script>config.lighting.bindControl("lighting");</script>
+    <script>main.config.lighting.bindControl("lighting");</script>
     <div class="optionline"><label><input type="checkbox" id="bumpMapping"> Bump mapping</label></div>
-    <script>config.bumpMapping.bindControl("bumpMapping");</script>
+    <script>main.config.bumpMapping.bindControl("bumpMapping");</script>
     <div class="optionline"><label><input type="checkbox" id="enableSound"> Sound</label></div>
     <script>
       document.getElementById("enableSound").disabled = !CubesAudio.supported;
-      config.sound.bindControl("enableSound");
+      main.config.sound.bindControl("enableSound");
     </script>
     
     <h3>Debug</h3>
     
     <div class="optionline"><label><input type="checkbox" id="debugForceRender"> Always render frames</label></div>
-    <script>config.debugForceRender.bindControl("debugForceRender");</script>
+    <script>main.config.debugForceRender.bindControl("debugForceRender");</script>
     <div class="optionline"><label><input type="checkbox" id="debugTextureAllocation"> Show block texture</label></div>
-    <script>config.debugTextureAllocation.bindControl("debugTextureAllocation");</script>
+    <script>main.config.debugTextureAllocation.bindControl("debugTextureAllocation");</script>
     <div class="optionline"><label><input type="checkbox" id="debugPlayerCollision"> Show collision volumes</label></div>
-    <script>config.debugPlayerCollision.bindControl("debugPlayerCollision");</script>
+    <script>main.config.debugPlayerCollision.bindControl("debugPlayerCollision");</script>
     <div class="optionline"><label><input type="checkbox" id="alwaysGenerateWorld"> Regenerate world on reload</label></div>
-    <script>config.alwaysGenerateWorld.bindControl("alwaysGenerateWorld");</script>
+    <script>main.config.alwaysGenerateWorld.bindControl("alwaysGenerateWorld");</script>
     <div class="optionline"><label><input type="checkbox" id="noclip"> Noclip</label></div>
-    <script>config.noclip.bindControl("noclip");</script>
+    <script>main.config.noclip.bindControl("noclip");</script>
     
-    <p><button onclick="config.resetAllOptions(); return false;">Reset to defaults</button></p>
+    <p><button onclick="main.config.resetAllOptions(); return false;">Reset to defaults</button></p>
   </form>
 </div>
 

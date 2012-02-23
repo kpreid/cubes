@@ -9,42 +9,44 @@
 
 // Main loop scheduling, scene drawing, performance statistics, etc.
 
-// TODO: Eliminate this global variable...if it seems appropriate.
-var config = {};
-(function () {
-  function defineOption(name, type, value) {
-    config[name] = new PersistentCell("cubes.option." + name, type, value);
-  }
-  Object.defineProperty(config, "resetAllOptions", {value: function () {
-    Object.keys(config).forEach(function (k) { config[k].setToDefault(); });
-  }});
-  defineOption("fov", "number", 60);
-  defineOption("renderDistance", "number", 100);
-  defineOption("mouseTurnRate", "number", 4); // radians/second/half-screen-width
-  defineOption("lighting", "boolean", true);
-  defineOption("bumpMapping", "boolean", true);
-  defineOption("sound", "boolean", true);
-  defineOption("noclip", "boolean", false);
-  defineOption("alwaysGenerateWorld", "boolean", false);
-  defineOption("debugTextureAllocation", "boolean", false);
-  defineOption("debugForceRender", "boolean", false);
-  defineOption("debugPlayerCollision", "boolean", false);
-
-  defineOption("generate_wx", "number", 400);
-  defineOption("generate_wy", "number", 128);
-  defineOption("generate_wz", "number", 400);
-  defineOption("generate_shape", "string", "fill");
-  defineOption("generate_slope", "number", 0.9);
-  defineOption("generate_tileSize", "number", 16);
-  defineOption("generate_name", "string", "Untitled");
-
-  defineOption("currentTopWorld", "string", "Untitled");
-}());
-
 var CubesMain = (function () {
-  
   function CubesMain(timestep) {
     var main = this;
+    
+    // configuration
+    var config = {};
+    (function () {
+      function defineOption(name, type, value) {
+        config[name] = new PersistentCell("cubes.option." + name, type, value);
+      }
+      Object.defineProperty(config, "resetAllOptions", {value: function () {
+        Object.keys(config).forEach(function (k) { config[k].setToDefault(); });
+      }});
+      defineOption("fov", "number", 60);
+      defineOption("renderDistance", "number", 100);
+      defineOption("mouseTurnRate", "number", 4); // radians/second/half-screen-width
+      defineOption("lighting", "boolean", true);
+      defineOption("bumpMapping", "boolean", true);
+      defineOption("sound", "boolean", true);
+      defineOption("noclip", "boolean", false);
+      defineOption("alwaysGenerateWorld", "boolean", false);
+      defineOption("debugTextureAllocation", "boolean", false);
+      defineOption("debugForceRender", "boolean", false);
+      defineOption("debugPlayerCollision", "boolean", false);
+
+      defineOption("generate_wx", "number", 400);
+      defineOption("generate_wy", "number", 128);
+      defineOption("generate_wz", "number", 400);
+      defineOption("generate_shape", "string", "fill");
+      defineOption("generate_slope", "number", 0.9);
+      defineOption("generate_tileSize", "number", 16);
+      defineOption("generate_name", "string", "Untitled");
+
+      defineOption("currentTopWorld", "string", "Untitled");
+    }());
+
+    
+    // time parameters
     var timestep_ms = timestep*1000;
     var maxCatchup_ms = timestep_ms*3; // arbitrary/tuned, not magic
     
@@ -52,6 +54,8 @@ var CubesMain = (function () {
     var gl;
     var theCanvas;
     var renderer;
+    
+    var audio = new CubesAudio(config);
     
     var sceneInfo;
     var cursorInfoElem;
@@ -342,7 +346,7 @@ var CubesMain = (function () {
         function () {
           theCanvas = pageElements.viewCanvas;
           try {
-          renderer = main.renderer = new Renderer(theCanvas, shaders, scheduleDraw);
+          renderer = main.renderer = new Renderer(config, theCanvas, shaders, scheduleDraw);
           } catch (e) {
             if (e instanceof Renderer.NoWebGLError) {
               pageElements.webglError[0].style.removeProperty("display");
@@ -374,7 +378,7 @@ var CubesMain = (function () {
             console.warn("localStorage not available; world will not be saved.");
           }
           if (!world) {
-            world = generateWorlds();
+            world = generateWorlds(config);
             if (Persister.available && !config.alwaysGenerateWorld.get()) {
               // TODO this crashes if "Default" exists but config.currentTopWorld doesn't.
               world.persistence.persist("Default");
@@ -384,7 +388,7 @@ var CubesMain = (function () {
         },
         "Creating your avatar...",
         function () {
-          player = new Player(worldH, renderer/*TODO facet? */, audio/*TODO facet? */, scheduleDraw);
+          player = new Player(config, worldH, renderer/*TODO facet? */, audio/*TODO facet? */, scheduleDraw);
         },
         "Painting blocks...",
         function () {
@@ -393,7 +397,7 @@ var CubesMain = (function () {
         },
         "Finishing...",
         function () {
-          input = new Input(theCanvas, player.input, pageElements.menu, renderer, focusCell);
+          input = new Input(config, theCanvas, player.input, pageElements.menu, renderer, focusCell);
           theCanvas.focus();
           readyToDraw = true;
 
@@ -418,7 +422,7 @@ var CubesMain = (function () {
       } else {
         pageElements.nameConflict.style.display = "none";
       }
-      var world = generateWorlds();
+      var world = generateWorlds(config);
       world.persistence.persist(config.generate_name.get());
       this.setTopWorld(world);
     };
@@ -435,6 +439,8 @@ var CubesMain = (function () {
     this.save = function () {
       Persister.flushAsync();
     };
+    
+    this.config = config;
   }
   
   return CubesMain;

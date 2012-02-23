@@ -358,7 +358,7 @@ var WorldGen = (function () {
 }());
   
 // TODO: refactor this into WorldGen methods
-function generateWorlds() {
+function generateWorlds(config) {
   "use strict";
 
   // Given an object facing the +z direction, these will rotate that face to...

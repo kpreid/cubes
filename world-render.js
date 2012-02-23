@@ -31,8 +31,8 @@ var WorldRenderer = (function () {
   }
 
   var distanceInfoCache = {}, lastSeenRenderDistance = null;
-  function renderDistanceInfo() {
-    var newRenderDistance = config.renderDistance.get();
+  function renderDistanceInfo(newRenderDistance) {
+    // TODO add some visibility into whether this one-element cache is thrashing
     if (newRenderDistance !== lastSeenRenderDistance) {
       // The distance in chunk-lengths at which chunks are visible
       var chunkDistance = Math.ceil(newRenderDistance/CHUNKSIZE);
@@ -64,6 +64,7 @@ var WorldRenderer = (function () {
   
   function WorldRenderer(world, place, renderer, audio, scheduleDraw, showBoundaries) {
     var gl = renderer.context;
+    var config = renderer.config; // TODO eliminate need for this
     
     // Table of all world rendering chunks which have RenderBundles created, indexed by [x,z] where x and z are the low-side coordinates (i.e. divisible by CHUNKSIZE).
     var chunks = new IntVectorMap();
@@ -305,8 +306,9 @@ var WorldRenderer = (function () {
     function addCircuits() {
       // Add circuits which are in viewing distance.
       // Note: This enumerates every circuit in the world. Currently, this is more efficient than the alternatives because there are not many circuits in typical data. When that changes, we should revisit this and use some type of spatial index to make it efficient. Testing per-block is *not* efficient.
+      var rdi = renderDistanceInfo(config.renderDistance.get());
       world.getCircuits().forEach(function (circuit, origin) {
-        if (dist2sq([origin[0]-playerChunk[0],origin[2]-playerChunk[1]]) < renderDistanceInfo().addChunkDistanceSquared) {
+        if (dist2sq([origin[0]-playerChunk[0],origin[2]-playerChunk[1]]) < rdi.addChunkDistanceSquared) {
           if (!circuitRenderers.get(origin)) {
             circuitRenderers.set(origin, makeCircuitRenderer(circuit));
           }
@@ -316,6 +318,7 @@ var WorldRenderer = (function () {
     
     function updateSomeChunks() {
       // Determine if chunks' visibility to the player has changed
+      var rdi = renderDistanceInfo(config.renderDistance.get());
       var newPlayerChunk = [place.pos[0] - mod(place.pos[0], CHUNKSIZE),
                             place.pos[2] - mod(place.pos[2], CHUNKSIZE)];
       if (playerChunk === null || newPlayerChunk[0] !== playerChunk[0] || newPlayerChunk[1] !== playerChunk[1]) {
@@ -324,7 +327,7 @@ var WorldRenderer = (function () {
         playerChunk = newPlayerChunk;
         
         // Add chunks which are in viewing distance.
-        renderDistanceInfo().nearChunkOrder.forEach(function (offset) {
+        rdi.nearChunkOrder.forEach(function (offset) {
           var chunkKey = [playerChunk[0] + offset[0], playerChunk[1] + offset[1]];
           if (!chunks.has(chunkKey) && chunkIntersectsWorld(chunkKey)) {
             addChunks.enqueue(chunkKey, chunks.get(chunkKey));
@@ -332,7 +335,7 @@ var WorldRenderer = (function () {
         });
 
         // Drop now-invisible chunks. Has a higher boundary so that we're not constantly reloading chunks if the player is moving back and forth.
-        var dds = renderDistanceInfo().dropChunkDistanceSquared;
+        var dds = rdi.dropChunkDistanceSquared;
         chunks.forEach(function (chunk, xz) {
           if (dist2sq([xz[0]-playerChunk[0],xz[1]-playerChunk[1]]) > dds) {
             chunk.deleteResources();

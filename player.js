@@ -22,7 +22,7 @@ var Player = (function () {
     PLACEHOLDER_ROTATIONS.push(i);
   }
   
-  function Player(initialWorld, renderer, audio, scheduleDraw) {
+  function Player(config, initialWorld, renderer, audio, scheduleDraw) {
     var player = this;
     var gl = renderer.context;
     
