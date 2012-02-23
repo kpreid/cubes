@@ -44,20 +44,30 @@
 </head>
 
 
-<body onload="main.start();">
+<body onload='(function () {
+  var id = document.getElementById.bind(document);
+  main.start({
+    viewCanvas: id("view-canvas"),
+    menu: id("menu"),
+    sceneInfoOverlay: id("scene-info-overlay"),
+    cursorInfoOverlay: id("cursor-info"),
+    saveButton: id("save-button"),
+    worldSelect: id("world-select"),
+    // TODO combine error cases?
+    webglError: [id("webgl-error-notice")],
+    featureError: [id("feature-error-notice"), id("feature-error-text")],
+    loadError: [id("load-error-notice"), id("load-error-text")],
+    nameConflict: id("generate-name-conflict")
+  });
+}());'>
     <div class="overlay-bounds">
       <canvas id="view-canvas" tabindex="0" class="viewport" width="640" height="480">
         <div class="error-notice">
           <p>Sorry, but the web browser you are using does not appear to support WebGL (or even Canvas).</p>
         </div>
       </canvas>
-      <div id="scene-info-overlay" class="overlay">
-        <pre id="scene-info-text">Not ready...</pre>
-        <div class="progress-bar" id="chunks-progress-bar" style="width: 20em;"></div>
-        <div class="progress-bar" id="audio-progress-bar" style="width: 20em;"></div>
-        <div class="progress-bar" id="persistence-progress-bar" style="width: 20em;"></div>
-      </div>
-      <pre id="cursor-info" class="overlay"></pre>
+      <div id="scene-info-overlay" class="overlay"></div>
+      <div id="cursor-info" class="overlay"></div>
       <div id="menu-container">
         <div id="menu">
           <!-- dynamic content -->
@@ -99,6 +109,10 @@
         <p id="local-save-warning" style="display: none">
           Your browser does not appear to support local storage. This world will be lost when you close the page unless you export it and save the text.
         </p>
+        <script>
+          document.getElementById("local-save-ok").style.display = Persister.available ? 'block' : 'none';
+          document.getElementById("local-save-warning").style.display = !Persister.available ? 'block' : 'none';
+        </script>
         <p style="">
           <textarea id="loadfield" width="20" height="3" style="width: 80%;"></textarea>
           <br>

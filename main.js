@@ -252,65 +252,83 @@ var CubesMain = (function () {
       sub(0);
     }
     
-    this.start = function () {
-      // Miscellaneous references
-      sceneInfo = dynamicText(document.getElementById("scene-info-text"));
-      cursorInfoElem = document.getElementById("cursor-info");
-      cursorInfo = dynamicText(cursorInfoElem);
-      chunkProgressBar = new ProgressBar(document.getElementById("chunks-progress-bar"));
-      audioProgressBar = new ProgressBar(document.getElementById("audio-progress-bar"));
-      persistenceProgressBar = new ProgressBar(document.getElementById("persistence-progress-bar"));
-
+    this.start = function (pageElements) {
+      var sceneInfoOverlay = pageElements.sceneInfoOverlay;
+      
+      // Overall info overlay
+      var sceneInfoTextElem = document.createElement("pre");
+      sceneInfoOverlay.appendChild(sceneInfoTextElem);
+      sceneInfo = dynamicText(sceneInfoTextElem);
+      
+      // Progress bars
+      chunkProgressBar = new ProgressBar();
+      audioProgressBar = new ProgressBar();
+      persistenceProgressBar = new ProgressBar();
+      sceneInfoOverlay.appendChild(chunkProgressBar.element);
+      sceneInfoOverlay.appendChild(audioProgressBar.element);
+      sceneInfoOverlay.appendChild(persistenceProgressBar.element);
+      
+      // Info that follows the cursor
+      cursorInfoElem = pageElements.cursorInfoOverlay;
+      var cursorInfoTextElem = document.createElement("pre");
+      cursorInfoElem.appendChild(cursorInfoTextElem);
+      cursorInfo = dynamicText(cursorInfoTextElem);
+      
       var shaders;
 
-      document.getElementById('local-save-ok').style.display = Persister.available ? 'block' : 'none';
-      document.getElementById('local-save-warning').style.display = !Persister.available ? 'block' : 'none';
-
       // Save button
-      var saveButton = document.getElementById("save-button");
-      var saveButtonText = dynamicText(saveButton);
-      var lastSavedTime = Date.now();
-      Persister.status.nowAndWhenChanged(function (count) {
-        if (count === 0) {
-          lastSavedTime = Date.now();
-          saveButton.style.visibility = "hidden";
-        } else {
-          saveButton.style.visibility = "visible";
-          saveButtonText.data = "Save (last " + Math.round((Date.now() - lastSavedTime) / (1000*60)) + " min ago)";
-        }
-        return true;
-      });
+      if (pageElements.saveButton) (function () {
+        var saveButton = pageElements.saveButton;
+        var originalUIText = saveButton.textContent;
+        var saveButtonText = dynamicText(saveButton);
+        var lastSavedTime = Date.now();
+        Persister.status.nowAndWhenChanged(function (count) {
+          if (count === 0) {
+            lastSavedTime = Date.now();
+            saveButton.style.visibility = "hidden";
+          } else {
+            saveButton.style.visibility = "visible";
+            saveButtonText.data = originalUIText + " (last " + Math.round((Date.now() - lastSavedTime) / (1000*60)) + " min ago)";
+          }
+          return true;
+        });
+      }());
       
       // World list
-      var worldSelect = document.getElementById("world-select");
-      function updateWorldList() {
-        while (worldSelect.firstChild) worldSelect.removeChild(worldSelect.firstChild);
-        Persister.forEach(function (name, type) {
-          if (Object.create(type.prototype) instanceof World) {
-            var c = document.createElement("option");
-            c.appendChild(document.createTextNode(name));
-            if (config.currentTopWorld.get() === name) c.selected = true;
-            worldSelect.appendChild(c);
-          }
+      if (pageElements.worldSelect) {
+        var worldSelect = pageElements.worldSelect;
+        function updateWorldList() {
+          while (worldSelect.firstChild) worldSelect.removeChild(worldSelect.firstChild);
+          Persister.forEach(function (name, type) {
+            if (Object.create(type.prototype) instanceof World) {
+              var c = document.createElement("option");
+              c.appendChild(document.createTextNode(name));
+              if (config.currentTopWorld.get() === name) c.selected = true;
+              worldSelect.appendChild(c);
+            }
+          });
+          return true;
+        }
+        worldSelect.addEventListener("change", function () {
+          main.setTopWorld(Persister.get(worldSelect.value));
         });
-        return true;
+        updateWorldList();
+        Persister.listen({
+          added: updateWorldList,
+          deleted: updateWorldList
+        });
       }
-      worldSelect.addEventListener("change", function () {
-        main.setTopWorld(Persister.get(worldSelect.value));
-      });
-      updateWorldList();
-      Persister.listen({
-        added: updateWorldList,
-        deleted: updateWorldList
-      });
+
       var shallLoadWorld = !config.alwaysGenerateWorld.get() && Persister.has(config.currentTopWorld.get());
 
       // Main startup sequence
       sequence([
         function () {
           if (typeof testSettersWork === 'undefined' || !testSettersWork()) {
-            document.getElementById("feature-error-notice").style.removeProperty("display");
-            document.getElementById("feature-error-text").appendChild(document.createTextNode("ECMAScript 5 property accessors on frozen objects"));
+            var notice = pageElements.featureError[0];
+            var text   = pageElements.featureError[1];
+            notice.style.removeProperty("display");
+            text.appendChild(document.createTextNode("ECMAScript 5 property accessors on frozen objects"));
           }
         },
         "Downloading resources...",
@@ -318,8 +336,10 @@ var CubesMain = (function () {
           Renderer.fetchShaders(function (s) {
             if (s === null) {
               // TODO abstract error handling; this duplicates the sequence catcher
-              document.getElementById("load-error-notice").style.removeProperty("display");
-              document.getElementById("load-error-text").appendChild(document.createTextNode("Failed to download shader files."));
+              var notice = pageElements.loadError[0];
+              var text   = pageElements.loadError[1];
+              notice.style.removeProperty("display");
+              text.appendChild(document.createTextNode("Failed to download shader files."));
               return;
             }
             shaders = s;
@@ -329,12 +349,12 @@ var CubesMain = (function () {
         },
         "Setting up WebGL...",
         function () {
-          theCanvas = document.getElementById('view-canvas');
+          theCanvas = pageElements.viewCanvas;
           try {
           renderer = main.renderer = new Renderer(theCanvas, shaders, scheduleDraw);
           } catch (e) {
             if (e instanceof Renderer.NoWebGLError) {
-              document.getElementById("webgl-error-notice").style.removeProperty("display");
+              pageElements.webglError[0].style.removeProperty("display");
               return ABORT;
             } else {
               throw e;
@@ -382,7 +402,7 @@ var CubesMain = (function () {
         },
         "Finishing...",
         function () {
-          input = new Input(theCanvas, player.input, document.getElementById("menu"), renderer, focusCell);
+          input = new Input(theCanvas, player.input, pageElements.menu, renderer, focusCell);
           theCanvas.focus();
           readyToDraw = true;
 
@@ -391,18 +411,21 @@ var CubesMain = (function () {
         "Ready!"
       ], function (exception) {
         startupMessage(exception);
-        document.getElementById("load-error-notice").style.removeProperty("display");
-        document.getElementById("load-error-text").appendChild(document.createTextNode(String(exception)));
+        var notice = pageElements.loadError[0];
+        var text   = pageElements.loadError[1];
+        notice.style.removeProperty("display");
+        text.appendChild(document.createTextNode(String(exception)));
         throw exception; // propagate to browser console
       });
     };
     
     this.regenerate = function () {
       if (Persister.has(config.generate_name.get())) {
-        document.getElementById("generate-name-conflict").style.display = "block";
+        // TODO pass through pageElements or refactor; this is excessive coupling
+        pageElements.nameConflict.style.display = "block";
         return;
       } else {
-        document.getElementById("generate-name-conflict").style.display = "none";
+        pageElements.nameConflict.style.display = "none";
       }
       var world = generateWorlds();
       world.persistence.persist(config.generate_name.get());

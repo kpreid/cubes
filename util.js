@@ -479,6 +479,11 @@ function DirtyQueue(optCompareFunc) {
 
 function ProgressBar(rootElem) {
   "use strict";
+  
+  if (!rootElem) {
+    rootElem = document.createElement("div");
+  }
+  this.element = rootElem;
 
   rootElem.className += " progress-bar";
   var fill = document.createElement("div");
@@ -487,7 +492,7 @@ function ProgressBar(rootElem) {
   
   this.set = function (value) {
     rootElem.style.display = value < 1 && value > 0 ? "block" : "none";
-    fill.style.width = value * 100 + "%";
+    fill.style.width = (value * 100).toFixed(2) + "%";
   };
   
   this.set(0);

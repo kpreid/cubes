@@ -180,3 +180,7 @@ html {
   height: 100%;
   background: white;
 }
+.overlay .progress-bar {
+  /* arbitrary fixed length for this use case */
+  width: 20em;
+}
