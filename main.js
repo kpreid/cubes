@@ -398,7 +398,7 @@ var CubesMain = (function () {
         "Painting blocks...",
         function () {
           // force lazy init to happen now rather than on first frame
-          player.getWorld().blockSet.getRenderData();
+          player.getWorld().blockSet.getRenderData(renderer/*TODO facet?*/);
         },
         "Finishing...",
         function () {

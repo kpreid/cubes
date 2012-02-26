@@ -345,6 +345,38 @@ var IntVectorMap = (function () {
   return Object.freeze(IntVectorMap);
 }());
 
+// A map from objects to objects. This is a substitute for the future feature WeakMap <http://wiki.ecmascript.org/doku.php?id=harmony:weak_maps>. Unlike the real thing, it has O(n) lookup and keeps garbage around.
+var ObjectMap = (function () {
+  if (typeof WeakMap !== "undefined") return WeakMap;
+  
+  var warned = false;
+  
+  function ObjectMap() {
+    var keys = [];
+    var values = [];
+    this.get = function (keyObj) {
+      return values[keys.indexOf(keyObj)];
+    };
+    this.has = function (keyObj) {
+      return keys.indexOf(keyObj) in values;
+    };
+    this.set = function (keyObj, value) {
+      var index = keys.indexOf(keyObj);
+      if (index == -1) {
+        index = keys.length;
+        keys.push(keyObj);
+        if (index >= 20 && !warned && typeof console !== "undefined") {
+          warned = true;
+          console.warn("ObjectMap got more than 20 keys; time to fix the implementation?");
+        }
+      }
+      values[index] = value;
+    };
+  }
+  
+  return ObjectMap;
+}());
+
 // Utility for change/event listeners.
 // Each listener function must return true/false indicating whether it wants further events.
 // TODO: Add prompt removal
@@ -475,6 +507,55 @@ function DirtyQueue(optCompareFunc) {
   });
   
   return self;
+}
+
+// Queue data structure which can have multiple readers at different positions. Unlike DirtyQueue, does not deduplicate. A new reader (getHead()) always sees the most-recent (empty) view.
+function CatchupQueue() {
+  "use strict";
+  
+  function makeLink() {
+    var head = {};
+    var value, next;
+    Object.defineProperties(head, {
+      available: {
+        enumerable: true,
+        get: function () { return !!next; }
+      },
+      value: {
+        enumerable: true,
+        get: function () {
+          if (!next) throw new Error("not yet resolved");
+          return value;
+        }
+      },
+      next: {
+        enumerable: true,
+        get: function () {
+          if (!next) throw new Error("not yet resolved");
+          return next;
+        }
+      },
+    });
+    function resolve(v, n) {
+      value = v;
+      next = n;
+    }
+    return {head: head, resolve: resolve};
+  }
+  
+  var l = makeLink();
+  
+  function enqueue(value) {
+    var nextLink = makeLink();
+    l.resolve(value, nextLink.head);
+    l = nextLink;
+  }
+  
+  function getHead() {
+    return l.head;
+  }
+  
+  return {getHead: getHead, enqueue: enqueue};
 }
 
 function ProgressBar(rootElem) {

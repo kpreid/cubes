@@ -77,7 +77,7 @@ var BlockType = (function () {
       dirtyCircuit: checkCircuits,
       deletedCircuit: checkCircuits
     });
-
+    
     recomputeWorldBlockProperties.call(this);
     checkCircuits();
     
@@ -326,8 +326,7 @@ var BlockSet = (function () {
     ];
   }
   
-  function Texgen(tileSize) {
-    var renderer = main.renderer; // TODO global variable -- the problem being that BlockSets are not (and should not be) parameterized w/ a renderer.
+  function Texgen(tileSize, renderer) {
     var self = this;
     var gl = renderer.context;
     
@@ -467,16 +466,137 @@ var BlockSet = (function () {
 
     // All block sets unconditionally have the standard empty block at ID 0.
     var types = [BlockType.air];
-    var rotatedBlockFaceData = [EMPTY_BLOCKRENDER];
+    
+    var renderDataTable = new ObjectMap(); // per-GL-context
+    
+    var notifier = new Notifier("BlockSet");
+    
+    var appearanceChangedQueue = new CatchupQueue();
+    
+    var self = Object.freeze({
+      get tileSize () {
+        // If tile size is undefined because we have only color blocks, then we treat it as 1
+        return isNaN(tileSize) ? 1 : tileSize;
+      }, 
+      get length () { return types.length; },
+      
+      add: function (newBlockType) {
+        var newID = types.length;
+        types.push(newBlockType);
+        newBlockType.listen({
+          appearanceChanged: function () {
+            appearanceChangedQueue.enqueue(newID);
+            notifier.notify("texturingChanged", newID);
+            return true;
+          }
+        });
+        appearanceChangedQueue.enqueue(newID);
+        
+        // TODO: This is not correct if BlockTypes are allowed to change their worlds
+        if (newBlockType.world) {
+          var ts = newBlockType.world.wx; // assuming cubicality
+          if (tileSize == ts || isNaN(tileSize)) {
+            tileSize = ts;
+          } else {
+            if (typeof console !== "undefined")
+              console.warn("Inconsistent tile size for blockset; set has", tileSize, "and new type has", ts);
+          }
+        }
+
+        notifier.notify("tableChanged", newID);
+      },
+      
+      get: function (blockID) {
+        return types[blockID] || types[BlockSet.ID_BOGUS] || types[BlockSet.ID_EMPTY];
+      },
+      
+      // Return an ID_LIMIT-element array snapshotting the results of get().
+      getAll: function () {
+        var array = types.slice();
+        var bogus = types[BlockSet.ID_BOGUS] || types[BlockSet.ID_EMPTY];
+        for (var i = array.length; i < BlockSet.ID_LIMIT; i++) {
+          array[i] = bogus;
+        }
+        return array;
+      },
+      
+      // Listener protocol:
+      // tableChanged(id) -- the given id has a different block type associated with it
+      // texturingChanged(id) -- the render data for the given id has changed
+      listen: notifier.listen,
+      
+      // Return the data required to render blocks, updating if it is out of date.
+      getRenderData: function (renderer) {
+        var rdf = renderDataTable.get(renderer);
+        if (!rdf) {
+          renderDataTable.set(renderer, rdf = new BlockSetRenderDataGenerator(this, renderer, notifier, appearanceChangedQueue));
+        }
+        return rdf();
+      },
+      worldFor: function (blockID) {
+        return types[blockID] ? types[blockID].world : null;
+      },
+      serialize: function (serialize) {
+        var json = {
+          type: "types",
+          types: types.slice(1).map(function (type) { return serialize(type); })
+        };
+        serialize.setUnserializer(json, BlockSet);
+        return json;
+      }
+    });
+    
+    initialTypes.forEach(self.add);
+    
+    return self;
+  }
+  
+  // This block ID is always empty air.
+  BlockSet.ID_EMPTY = 0;
+  
+  // This block ID is used when an invalid block ID is met
+  BlockSet.ID_BOGUS = 1;
+  
+  // The maximum number of possible block types.
+  // This value arises because worlds store blocks as bytes.
+  BlockSet.ID_LIMIT = 256;
+  
+  Persister.types["BlockSet"] = BlockSet;
+  BlockSet.unserialize = function (json, unserialize) {
+    if (json.type === "colors") {
+      // obsolete serialization type
+      var colors = WorldGen.colorBlocks(4,4,4);
+      var list = colors.getAll().slice(1, colors.length);
+      list.push(list.shift());
+      return new BlockSet(list);
+    } else if (json.type === "textured") {
+      // obsolete serialization type
+      var blockTypes = json.worlds.map(function (world) {
+        return new BlockType.World(unserialize(world, World));
+      });
+      return new BlockSet(blockTypes);
+    } else if (json.type === "types") {
+      var blockTypes = json.types.map(function (type) {
+        return unserialize(type, BlockType);
+      });
+      return new BlockSet(blockTypes);
+    } else {
+      throw new Error("unknown BlockSet serialization type");
+    }
+  };
+  
+  function BlockSetRenderDataGenerator(blockSet, renderer, notifier /* TODO make this arg unnecessary */, appearanceChangedQueue) {
+    var toRerender = appearanceChangedQueue.getHead();
     
     var texgen = null;
-    var typesToRerender = new DirtyQueue();
+    var rotatedBlockFaceData = [EMPTY_BLOCKRENDER];
     
     function rebuildOne(blockID) {
+      //if (typeof console !== "undefined") console.info("Rendering block type", blockID);
       var tileSize = texgen.tileSize; // shadowing
       var tileLastIndex = tileSize - 1;
-      var blockType = types[blockID];
-      var rotatedFaceData = rotatedBlockFaceData[blockID];
+      var blockType = blockSet.get(blockID);
+      var rotatedFaceData = rotatedBlockFaceData[blockID] || (rotatedBlockFaceData[blockID] = {});
       
       var texWidth = texgen.image.width;
       var texData = texgen.image.data;
@@ -504,7 +624,7 @@ var BlockSet = (function () {
         var g = 255 * color[1];
         var b = 255 * color[2];
         var a = 255 * color[3];
-
+        
         for (var u = 0; u < tileSize; u++)
         for (var v = 0; v < tileSize; v++) {
           var c = ((pixv+v) * texWidth + pixu+u) * 4;
@@ -564,9 +684,9 @@ var BlockSet = (function () {
               var texelBase = ((pixv+v) * texWidth + pixu+u) * 4;
               vec[0] = u; vec[1] = v; vec[2] = layer;
               mat4.multiplyVec3(transform, vec, vec);
-          
+              
               world.gt(vec[0],vec[1],vec[2]).writeColor(255, texData, texelBase);
-
+              
               if (texData[texelBase+3] > 0) {
                 // A layer has significant content only if there is an UNOBSCURED opaque pixel.
                 // If a layer is "empty" in this sense, it is not rendered.
@@ -635,20 +755,21 @@ var BlockSet = (function () {
     function freshenTexture() {
       var upload = false;
       var allChanged = false;
-      var l = self.length;
+      var l = blockSet.length;
       if (!texgen || texgen.mustRebuild()) {
-        texgen = new Texgen(self.tileSize);
+        texgen = new Texgen(blockSet.tileSize, renderer);
       }
       while (texgen.textureLost) {
-        //console.info("Performing full block texture rebuild.");
+        //if (typeof console !== "undefined") console.info("Performing full block texture rebuild.");
         texgen.textureLost = false;
         for (var id = BlockSet.ID_EMPTY + 1; id < l && !texgen.textureLost; id++)
           rebuildOne(id);
         upload = true;
         allChanged = true;
+        toRerender = appearanceChangedQueue.getHead(); // we're caught up by definition
       }
-      while (typesToRerender.size()) {
-        rebuildOne(typesToRerender.dequeue());
+      for (; toRerender.available; toRerender = toRerender.next) {
+        rebuildOne(toRerender.value);
         upload = true;
       }
       if (allChanged) {
@@ -663,123 +784,15 @@ var BlockSet = (function () {
         gl.bindTexture(gl.TEXTURE_2D, null);
       }
     }
-    
-    var notifier = new Notifier("BlockSet");
-    
-    var self = Object.freeze({
-      get tileSize () {
-        // If tile size is undefined because we have only color blocks, then we treat it as 1
-        return isNaN(tileSize) ? 1 : tileSize;
-      }, 
-      get length () { return types.length; },
-      
-      add: function (newBlockType) {
-        var newID = types.length;
-        types.push(newBlockType);
-        rotatedBlockFaceData.push({});
-        typesToRerender.enqueue(newID);
-        newBlockType.listen({
-          appearanceChanged: function () {
-            // TODO: notify applicable world renderers promptly
-            typesToRerender.enqueue(newID);
-            notifier.notify("texturingChanged", newID);
-            return true;
-          }
-        });
-        
-        // TODO: This is not correct if BlockTypes are allowed to change their worlds
-        if (newBlockType.world) {
-          var ts = newBlockType.world.wx; // assuming cubicality
-          if (tileSize == ts || isNaN(tileSize)) {
-            tileSize = ts;
-          } else {
-            if (typeof console !== "undefined")
-              console.warn("Inconsistent tile size for blockset; set has", tileSize, "and new type has", ts);
-          }
-        }
-
-        notifier.notify("tableChanged", newID);
-      },
-      
-      get: function (blockID) {
-        return types[blockID] || types[BlockSet.ID_BOGUS] || types[BlockSet.ID_EMPTY];
-      },
-      
-      // Return an ID_LIMIT-element array snapshotting the results of get().
-      getAll: function () {
-        var array = types.slice();
-        var bogus = types[BlockSet.ID_BOGUS] || types[BlockSet.ID_EMPTY];
-        for (var i = array.length; i < BlockSet.ID_LIMIT; i++) {
-          array[i] = bogus;
-        }
-        return array;
-      },
-      
-      // Listener protocol:
-      // tableChanged(id) -- the given id has a different block type associated with it
-      // texturingChanged(id) -- the render data for the given id has changed
-      listen: notifier.listen,
-      
-      // Return the data required to render blocks, updating if it is out of date.
-      getRenderData: function () {
-        freshenTexture();
-        rotatedBlockFaceData.bogus = rotatedBlockFaceData[BlockSet.ID_BOGUS] || EMPTY_BLOCKRENDER;
-        return {
-          texture: texgen.texture,
-          rotatedBlockFaceData: rotatedBlockFaceData
-        };
-      },
-      worldFor: function (blockID) {
-        return types[blockID] ? types[blockID].world : null;
-      },
-      serialize: function (serialize) {
-        var json = {
-          type: "types",
-          types: types.slice(1).map(function (type) { return serialize(type); })
-        };
-        serialize.setUnserializer(json, BlockSet);
-        return json;
-      }
-    });
-    
-    initialTypes.forEach(self.add);
-    
-    return self;
+    return function () {
+      freshenTexture();
+      rotatedBlockFaceData.bogus = rotatedBlockFaceData[BlockSet.ID_BOGUS] || EMPTY_BLOCKRENDER;
+      return {
+        texture: texgen.texture,
+        rotatedBlockFaceData: rotatedBlockFaceData
+      };
+    }
   }
   
-  // This block ID is always empty air.
-  BlockSet.ID_EMPTY = 0;
-  
-  // This block ID is used when an invalid block ID is met
-  BlockSet.ID_BOGUS = 1;
-  
-  // The maximum number of possible block types.
-  // This value arises because worlds store blocks as bytes.
-  BlockSet.ID_LIMIT = 256;
-  
-  Persister.types["BlockSet"] = BlockSet;
-  BlockSet.unserialize = function (json, unserialize) {
-    if (json.type === "colors") {
-      // obsolete serialization type
-      var colors = WorldGen.colorBlocks(4,4,4);
-      var list = colors.getAll().slice(1, colors.length);
-      list.push(list.shift());
-      return new BlockSet(list);
-    } else if (json.type === "textured") {
-      // obsolete serialization type
-      var blockTypes = json.worlds.map(function (world) {
-        return new BlockType.World(unserialize(world, World));
-      });
-      return new BlockSet(blockTypes);
-    } else if (json.type === "types") {
-      var blockTypes = json.types.map(function (type) {
-        return unserialize(type, BlockType);
-      });
-      return new BlockSet(blockTypes);
-    } else {
-      throw new Error("unknown BlockSet serialization type");
-    }
-  };
-
   return Object.freeze(BlockSet);
 }());

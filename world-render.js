@@ -123,9 +123,10 @@ var WorldRenderer = (function () {
       draw();
     }});
 
-    var textureDebugR = new renderer.RenderBundle(gl.TRIANGLE_STRIP,
-                                                  function () { return blockSet.getRenderData().texture; },
-                                                  function (vertices, normals, texcoords) {
+    var textureDebugR = new renderer.RenderBundle(
+        gl.TRIANGLE_STRIP,
+        function () { return blockSet.getRenderData(renderer).texture; },
+        function (vertices, normals, texcoords) {
       var x = 1;
       var y = 1;
       var z = 0;
@@ -459,7 +460,7 @@ var WorldRenderer = (function () {
         var chunk = new renderer.RenderBundle(gl.TRIANGLES,
                                               function () { return renderData.texture; },
                                               function (vertices, normals, texcoords) {
-          renderData = blockSet.getRenderData();
+          renderData = blockSet.getRenderData(renderer);
           var rotatedBlockFaceData = renderData.rotatedBlockFaceData;
           var BOGUS_BLOCK_DATA = rotatedBlockFaceData.bogus;
           var types = blockSet.getAll();
