@@ -57,7 +57,6 @@ var CubesMain = (function () {
     var cursorInfoElem;
     var cursorInfo;
     var chunkProgressBar;
-    var audioProgressBar;
     var persistenceProgressBar;
     
     var focusCell = new Cell("focus", false);
@@ -70,6 +69,7 @@ var CubesMain = (function () {
     var player;
     var worldH;
     var input;
+    var audio = new CubesAudio(config);
     
     var readyToDraw = false;
     
@@ -153,7 +153,6 @@ var CubesMain = (function () {
         updateInfoText();
         
         chunkProgressBar.setByTodoCount(wrend.chunkRendersToDo());
-        audioProgressBar.setByTodoCount(BlockType.audioRendersToDo());
         persistenceProgressBar.setByTodoCount(Persister.status.get());
         
         renderer.verticesDrawn = 0;
@@ -205,12 +204,6 @@ var CubesMain = (function () {
       fpsDesc = stepCount + " steps/s, " + renderCount + " frames/s, " + chunkRenders + " chunk rebuilds";
       stepCount = renderCount = chunkRenders = 0;
       updateInfoText();
-      
-      // audio spatial test
-      //var world = player.getWorld();
-      //var b = [world.wx/2, world.wy/2+10, world.wz/2];
-      //CubesAudio.play(b, world.blockSet.get(2));
-      //player.render.getWorldRenderer().renderCreateBlock(b);
     }, 1000);
     function updateInfoText() {
       if (readyToDraw) {
@@ -262,10 +255,8 @@ var CubesMain = (function () {
       
       // Progress bars
       chunkProgressBar = new ProgressBar();
-      audioProgressBar = new ProgressBar();
       persistenceProgressBar = new ProgressBar();
       sceneInfoOverlay.appendChild(chunkProgressBar.element);
-      sceneInfoOverlay.appendChild(audioProgressBar.element);
       sceneInfoOverlay.appendChild(persistenceProgressBar.element);
       
       // Info that follows the cursor
@@ -393,7 +384,7 @@ var CubesMain = (function () {
         },
         "Creating your avatar...",
         function () {
-          player = new Player(worldH, renderer/*TODO facet? */, scheduleDraw);
+          player = new Player(worldH, renderer/*TODO facet? */, audio/*TODO facet? */, scheduleDraw);
         },
         "Painting blocks...",
         function () {

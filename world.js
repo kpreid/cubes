@@ -358,6 +358,10 @@ function World(sizes, blockSet) {
     }
   }
   
+  function audioEvent(cube, mode) {
+    notifier.notify("audioEvent", vec3.add([0.5,0.5,0.5], cube), gt(cube[0],cube[1],cube[2]), mode);
+  }
+  
   var RLE_BASE = 0xA1;
   function rleBytes(bytes) {
     var ser = [];
@@ -417,6 +421,7 @@ function World(sizes, blockSet) {
   this.edit = edit;
   this.step = step;
   this.setStandingOn = setStandingOn;
+  this.audioEvent = audioEvent;
   this.listen = notifier.listen;
   this.serialize = serialize;
   

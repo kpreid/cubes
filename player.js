@@ -22,7 +22,7 @@ var Player = (function () {
     PLACEHOLDER_ROTATIONS.push(i);
   }
   
-  function Player(initialWorld, renderer, scheduleDraw) {
+  function Player(initialWorld, renderer, audio, scheduleDraw) {
     var player = this;
     var gl = renderer.context;
     
@@ -44,7 +44,7 @@ var Player = (function () {
       this.tool = 2; // first non-bogus block id
 
       // must happen late
-      this.wrend = new WorldRenderer(world, this /* TODO: facet */, renderer, scheduleDraw, true);
+      this.wrend = new WorldRenderer(world, this /* TODO: facet */, renderer, audio, scheduleDraw, true);
 
     }
 
@@ -299,7 +299,7 @@ var Player = (function () {
       
       if (vec3.length(vec3.subtract(nextPosIncr, currentPlace.pos, vec3.create())) >= EPSILON) {
         vec3.set(nextPosIncr, currentPlace.pos);
-        CubesAudio.setListener(
+        audio.setListener(
           currentPlace.pos,
           [-Math.sin(currentPlace.yaw), 0, -Math.cos(currentPlace.yaw)],
           currentPlace.vel);
@@ -393,8 +393,8 @@ var Player = (function () {
               currentPlace.world.s(x,y,z, currentPlace.tool, symm);
               
               currentPlace.wrend.renderCreateBlock([x,y,z]);
+              currentPlace.world.audioEvent([x,y,z], "create");
               aimChanged();
-              CubesAudio.play(vec3.add([0.5,0.5,0.5], cube), type, "create");
             }
           }
         }
@@ -406,9 +406,9 @@ var Player = (function () {
           if (currentPlace.world.g(x,y,z) !== 0 /* i.e. would destruction do anything */) { 
             var value = currentPlace.world.g(x,y,z);
             currentPlace.wrend.renderDestroyBlock(cube);
+            currentPlace.world.audioEvent(cube, "destroy");
             currentPlace.world.s(x, y, z, 0);
             aimChanged();
-            CubesAudio.play(vec3.add([0.5,0.5,0.5], cube), currentPlace.world.blockSet.get(value), "destroy");
           }
         }
       },

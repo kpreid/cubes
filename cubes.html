@@ -192,7 +192,7 @@
     <script>config.bumpMapping.bindControl("bumpMapping");</script>
     <div class="optionline"><label><input type="checkbox" id="enableSound"> Sound</label></div>
     <script>
-      document.getElementById("enableSound").disabled = !CubesAudio.audioSupported;
+      document.getElementById("enableSound").disabled = !CubesAudio.supported;
       config.sound.bindControl("enableSound");
     </script>
     

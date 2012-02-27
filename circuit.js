@@ -528,11 +528,10 @@ var Circuit = (function () {
       
       if ("blockOut_become" in state) {
         var blockID = state.blockOut_become;
-        var type = outerWorld.blockSet.get(blockID);
         outerWorld.s(cube[0],cube[1],cube[2],
           blockID,
           outerWorld.gSub(cube[0],cube[1],cube[2]));
-        CubesAudio.play(vec3.add([0.5,0.5,0.5], cube), type, "create");
+        outerWorld.audioEvent(cube, "create");
       } else {
         if ("blockOut_rotation" in state) {
           outerWorld.rawRotations[cube[0]*outerWorld.wy*outerWorld.wz+cube[1]*outerWorld.wz+cube[2]] // TODO KLUDGE

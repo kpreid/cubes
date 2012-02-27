@@ -4,16 +4,6 @@
 var BlockType = (function () {
   "use strict";
   
-  // TODO KLUDGE: The scope of this seems wrong; it should be either an more global "unimportant things to do" queue or a more narrow driven-by-the-game-loop thing.
-  var soundRenderQueue = new DirtyQueue();
-  
-  setTimeout(function () { // TODO global variable config (which is the only reason this is deferred)
-    config.sound.nowAndWhenChanged(function (enabled) {
-      soundRenderQueue.setBackgroundFlusher(enabled ? function (f) { f(); } : null);
-      return true;
-    });
-  }, 0);
-  
   // Global non-persistent serial numbers for block types, used in the sound render queue.
   var nextBlockTypeSerial = 0;
   
@@ -75,7 +65,8 @@ var BlockType = (function () {
       dirtyBlock: rebuild,
       dirtyAll: rebuild,
       dirtyCircuit: checkCircuits,
-      deletedCircuit: checkCircuits
+      deletedCircuit: checkCircuits,
+      audioEvent: function () {return true;}
     });
     
     recomputeWorldBlockProperties.call(this);
@@ -133,14 +124,6 @@ var BlockType = (function () {
     }
     this.opaque = opaque;
     this._color = vec3.scale(color, 1/colorCount); // TODO make property private
-    
-    // Schedule audio synthesis.
-    var self = this;
-    function f() {
-      self.sound = CubesAudio.synthBlock(self.world);
-    }
-    f.toString = function () { return String(self._serial); }; // TODO KLUDGE we should use something other than DirtyQueue, or extend it to have 'values as well as keys'
-    soundRenderQueue.enqueue(f);
   }
   
   BlockType.World.prototype.serialize = function (serialize) {
@@ -213,11 +196,6 @@ var BlockType = (function () {
           ? Circuit.behaviors[json.behavior] : null;
     
     return self;
-  };
-  
-  BlockType.audioRendersToDo = function () {
-    // TODO global variable main
-    return config.sound.get() ? soundRenderQueue.size() : 0;
   };
   
   return Object.freeze(BlockType);

@@ -62,7 +62,7 @@ var WorldRenderer = (function () {
     return distanceInfoCache;
   }
   
-  function WorldRenderer(world, place, renderer, scheduleDraw, showBoundaries) {
+  function WorldRenderer(world, place, renderer, audio, scheduleDraw, showBoundaries) {
     var gl = renderer.context;
     
     // Table of all world rendering chunks which have RenderBundles created, indexed by [x,z] where x and z are the low-side coordinates (i.e. divisible by CHUNKSIZE).
@@ -295,6 +295,11 @@ var WorldRenderer = (function () {
       dirtyAll: dirtyAll,
       dirtyCircuit: dirtyCircuit,
       deletedCircuit: deletedCircuit,
+      audioEvent: function (position, type, kind) {
+        if (!isAlive()) return false;
+        audio.play(position, type, kind);
+        return true;
+      }
     };
     
     function addCircuits() {
@@ -385,6 +390,8 @@ var WorldRenderer = (function () {
         world.gRot(block[0],block[1],block[2])));
     }
     this.renderCreateBlock = renderCreateBlock;
+    
+    
 
     function draw() {
       // Draw chunks.
