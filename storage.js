@@ -91,7 +91,7 @@ Cell.prototype.nowAndWhenChanged = function (func) {
   this.whenChanged(func)();
 };
 
-function PersistentCell(storageName, type, defaultValue) {
+function PersistentCell(storage, storageName, type, defaultValue) {
   "use strict";
   Cell.call(this, storageName, defaultValue);
   
@@ -99,11 +99,11 @@ function PersistentCell(storageName, type, defaultValue) {
   var bareSet = this.set;
   this.set = function (newV) {
     bareSet(newV);
-    localStorage.setItem(storageName, JSON.stringify(newV));
+    storage.setItem(storageName, JSON.stringify(newV));
   }
   this.setToDefault = function () { this.set(defaultValue); };
   
-  var valueString = localStorage.getItem(storageName);
+  var valueString = storage.getItem(storageName);
   if (valueString !== null) {
     var value;
     try {
@@ -184,89 +184,30 @@ PersistentCell.prototype.bindControl = function (id) {
   listener(this.get());
 };
 
-var Persister = (function () {
+function PersistencePool(storage, objectPrefix) {
+  "use strict";
+  var pool = this;
+  
   // constants
   var hop = Object.prototype.hasOwnProperty;
-  var objectPrefix = "cubes.object."; // TODO not hardcoded
   
   // global state
   var currentlyLiveObjects = {};
   var dirtyQueue = new DirtyQueue();
   var notifier = new Notifier();
   
-  var status = new Cell("Persister.status", 0);
+  var status = new Cell("PersistencePool("+objectPrefix+").status", 0);
   function updateStatus() {
     status.set(dirtyQueue.size());
   }
   
   function handleDirty(name) {
     if (hop.call(currentlyLiveObjects, name)) {
-      currentlyLiveObjects[name].persistence.commit(); // TODO: spoofable (safely)
+      currentlyLiveObjects[name].persistence.commit(); // TODO: spoofable (harmlessly)
     }
   }
   
-  function Persister(object) {
-    var persister = this;
-    var name = null;
-    var dirty = false;
-    
-    this._registerName = function (newName) { // TODO internal
-      if (!Persister.available) {
-        throw new Error("localStorage not supported by this browser; persistence not available");
-      }
-      if (name === newName) {
-        return;
-      }
-      if (name !== null) {
-        throw new Error("This object already has the name " + name);
-      }
-      name = newName;
-      currentlyLiveObjects[name] = object;
-      console.log("Persister: persisted", name, ":", object);
-    };
-    this.getName = function () { return name; };
-    this.persist = function (newName) {
-      if (Persister.has(newName)) {
-        throw new Error("The name " + newName + " is already in use.");
-      }
-      persister._registerName(newName);
-      persister.dirty();
-      persister.commit(); // TODO all we really need to do here is ensure that it appears in the forEach list; this is just a kludge for that.
-      notifier.notify("added", name);
-    };
-    this.ephemeralize = function () {
-      if (name) {
-        console.log("Persister: ephemeralized", name);
-        localStorage.removeItem(objectPrefix + name);
-        delete currentlyLiveObjects[name];
-        name = null;
-        notifier.notify("deleted", name);
-      }
-    }
-    this.dirty = function () {
-      if (name !== null && !dirty) {
-        console.log("Persister: dirtied", name);
-        dirty = true;
-        dirtyQueue.enqueue(name);
-        updateStatus();
-      }
-    };
-    this.commit = function () {
-      if (name === null) return;
-      if (!dirty) {
-        console.log("Persister: not writing clean", name);
-        return;
-      } else {
-        console.log("Persister: writing dirty", name);
-        localStorage.setItem(
-          // TODO prefix should be configurable
-          objectPrefix + name,
-          JSON.stringify(cyclicSerialize(object, Persister.types)));
-        dirty = false;
-      }
-    };
-  }
-  Persister.flushAsync = function () {
+  this.flushAsync = function () {
     function loop() {
       var name = dirtyQueue.dequeue();
       if (name !== null) {
@@ -277,48 +218,127 @@ var Persister = (function () {
     }
     setTimeout(loop, 0);
   };
-  Persister.flushNow = function () {
+  this.flushNow = function () {
     var name;
     while ((name = dirtyQueue.dequeue()) !== null) {
       handleDirty(name);
     }
     updateStatus();
   };
-  Persister.get = function (name) {
-    // TODO: Don't multiply instantiate the same object
+  this.get = function (name) {
     if (hop.call(currentlyLiveObjects, name)) {
       console.log("Persister: already live", name);
       return currentlyLiveObjects[name];
     }
-    var data = localStorage.getItem(objectPrefix + name);
+    var data = storage.getItem(objectPrefix + name);
     if (data === null) {
       console.log("Persister: no object for", name);
       return null;
     } else {
       console.log("Persister: retrieving", name);
       var object = cyclicUnserialize(JSON.parse(data), Persister.types);
-      object.persistence._registerName(name);
+      pool._persist(object, name);
       return object;
     }
   };
-  Persister.has = function (name) {
-    return Persister.available &&
-        (hop.call(currentlyLiveObjects, name) || localStorage.getItem(objectPrefix + name) !== null);
+  this.has = function (name) {
+    return this.available &&
+        (hop.call(currentlyLiveObjects, name) || storage.getItem(objectPrefix + name) !== null);
   };
-  Persister.forEach = function (f) {
+  this.forEach = function (f) {
     // TODO Instead of this expensive unserialize-and-inspect, examine the db on startup and cache
-    for (var i = localStorage.length - 1; i >= 0; i--) {
-      var key = localStorage.key(i);
+    for (var i = storage.length - 1; i >= 0; i--) {
+      var key = storage.key(i);
       if (key.length >= objectPrefix.length && key.substring(0, objectPrefix.length) == objectPrefix) {
         f(key.substring(objectPrefix.length),
-          Persister.types[JSON.parse(localStorage.getItem(key))[SERIAL_TYPE_NAME]]);
+          Persister.types[JSON.parse(storage.getItem(key))[SERIAL_TYPE_NAME]]);
       }
     }
   };
-  Persister.listen = notifier.listen;
-  Persister.available = typeof localStorage !== "undefined";
-  Persister.types = {}; // TODO global mutable state
-  Persister.status = status.readOnly;
+  this._persist = function (object, name) { // TODO internal
+    if (!pool.available) {
+      throw new Error("localStorage not supported by this browser; persistence not available");
+    }
+    if (object.persistence.getName() === name) {
+      return;
+    }
+    if (object.persistence.getName() !== null) {
+      throw new Error("This object already has the name " + name);
+    }
+    // TODO should take the persister, not the object
+    object.persistence._registerName(pool, name);
+    currentlyLiveObjects[name] = object;
+    object.persistence.dirty();
+    object.persistence.commit(); // TODO all we really need to do here is ensure that it appears in the forEach list; this is just a kludge for that.
+    notifier.notify("added", name);
+    console.log("Persister: persisted", name, ":", object);
+  };
+  this._write = function (name, data) { // TODO internal
+    storage.setItem(objectPrefix + name, data);
+  };
+  this._ephemeralize = function (name) { // TODO internal
+    console.log("Persister: ephemeralized", name);
+    storage.removeItem(objectPrefix + name);
+    delete currentlyLiveObjects[name];
+    name = null;
+    notifier.notify("deleted", name);
+  };
+  this._dirty = function (name) {
+    dirtyQueue.enqueue(name);
+    updateStatus();
+  }
+  this.listen = notifier.listen;
+  this.available = !!storage;
+  this.status = status.readOnly;
 
-  return Object.freeze(Persister);
-}());
+  Object.freeze(this);
+}
+
+// TODO: Refactor Persister and PersistencePool so that they don't need to call back and forth so much. .persist should probably go on the pool.
+
+function Persister(object) {
+  "use strict";
+  
+  var persister = this;
+  var pool = null;
+  var name = null;
+  var dirty = false;
+  
+  this._registerName = function (newPool, newName) { // TODO internal, should not be published
+    pool = newPool;
+    name = newName;
+  };
+  this.getName = function () { return name; };
+  this.persist = function (newPool, newName) {
+    if (newPool.has(newName)) {
+      throw new Error("The name " + newName + " is already in use.");
+    }
+    newPool._persist(object, newName);
+  };
+  this.ephemeralize = function () {
+    if (name) {
+      pool._ephemeralize(name);
+      name = null;
+      pool = null;
+    }
+  }
+  this.dirty = function () {
+    if (name !== null && !dirty) {
+      console.log("Persister: dirtied", name);
+      dirty = true;
+      pool._dirty(name);
+    }
+  };
+  this.commit = function () {
+    if (name === null) return;
+    if (!dirty) {
+      console.log("Persister: not writing clean", name);
+      return;
+    } else {
+      console.log("Persister: writing dirty", name);
+      pool._write(name, JSON.stringify(cyclicSerialize(object, Persister.types)));
+      dirty = false;
+    }
+  };
+}
+Persister.types = {}; // TODO global mutable state

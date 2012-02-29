@@ -42,7 +42,7 @@
     This does not actually hook up the game to the UI or load the world; that is done by main.start() which is done onload.
   -->
   <script type="text/javascript">
-    var main = new CubesMain(1/60 /* timestep */);
+    var main = new CubesMain(1/60 /* timestep */, localStorage);
   </script>
 </head>
 <body onload='(function () {
@@ -113,8 +113,8 @@
       Your browser does not appear to support local storage. This world will be lost when you close the page unless you export it and save the text.
     </p>
     <script>
-      document.getElementById("local-save-ok").style.display = Persister.available ? 'block' : 'none';
-      document.getElementById("local-save-warning").style.display = !Persister.available ? 'block' : 'none';
+      document.getElementById("local-save-ok").style.display = main.pool.available ? 'block' : 'none';
+      document.getElementById("local-save-warning").style.display = !main.pool.available ? 'block' : 'none';
     </script>
     <p style="">
       <textarea id="loadfield" width="20" height="3" style="width: 80%;"></textarea>

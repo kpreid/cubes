@@ -1,9 +1,7 @@
 // Copyright 2011 Kevin Reid, under the terms of the MIT License as detailed in
 // the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
-// TODO: explicitly connect global vars
-
-function Input(config, eventReceiver, playerInput, menuElement, renderer, focusCell) {
+function Input(config, eventReceiver, playerInput, menuElement, renderer, focusCell, save) {
   "use strict";
 
   var keymap = {};
@@ -51,7 +49,7 @@ function Input(config, eventReceiver, playerInput, menuElement, renderer, focusC
       
       if (!value) {
         // Blur is probably a good time to autosave
-        Persister.flushAsync();
+        save();
       }
     }, 0);
     return true;

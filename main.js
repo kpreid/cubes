@@ -10,14 +10,14 @@
 // Main loop scheduling, scene drawing, performance statistics, etc.
 
 var CubesMain = (function () {
-  function CubesMain(timestep) {
+  function CubesMain(timestep, storage) {
     var main = this;
     
     // configuration
     var config = {};
     (function () {
       function defineOption(name, type, value) {
-        config[name] = new PersistentCell("cubes.option." + name, type, value);
+        config[name] = new PersistentCell(storage, "cubes.option." + name, type, value);
       }
       Object.defineProperty(config, "resetAllOptions", {value: function () {
         Object.keys(config).forEach(function (k) { config[k].setToDefault(); });
@@ -44,7 +44,8 @@ var CubesMain = (function () {
 
       defineOption("currentTopWorld", "string", "Untitled");
     }());
-
+    
+    var persistencePool = new PersistencePool(storage, "cubes.object."); // note: storage may be undefined, pool  will be a stub
     
     // time parameters
     var timestep_ms = timestep*1000;
@@ -157,7 +158,7 @@ var CubesMain = (function () {
         updateInfoText();
         
         chunkProgressBar.setByTodoCount(wrend.chunkRendersToDo());
-        persistenceProgressBar.setByTodoCount(Persister.status.get());
+        persistenceProgressBar.setByTodoCount(persistencePool.status.get());
         
         renderer.verticesDrawn = 0;
         renderCount++;
@@ -277,7 +278,7 @@ var CubesMain = (function () {
         var originalUIText = saveButton.textContent;
         var saveButtonText = dynamicText(saveButton);
         var lastSavedTime = Date.now();
-        Persister.status.nowAndWhenChanged(function (count) {
+        persistencePool.status.nowAndWhenChanged(function (count) {
           if (count === 0) {
             lastSavedTime = Date.now();
             saveButton.style.visibility = "hidden";
@@ -294,7 +295,7 @@ var CubesMain = (function () {
         var worldSelect = pageElements.worldSelect;
         function updateWorldList() {
           while (worldSelect.firstChild) worldSelect.removeChild(worldSelect.firstChild);
-          Persister.forEach(function (name, type) {
+          persistencePool.forEach(function (name, type) {
             if (Object.create(type.prototype) instanceof World) {
               var c = document.createElement("option");
               c.appendChild(document.createTextNode(name));
@@ -305,16 +306,16 @@ var CubesMain = (function () {
           return true;
         }
         worldSelect.addEventListener("change", function () {
-          main.setTopWorld(Persister.get(worldSelect.value));
+          main.setTopWorld(persistencePool.get(worldSelect.value));
         });
         updateWorldList();
-        Persister.listen({
+        persistencePool.listen({
           added: updateWorldList,
           deleted: updateWorldList
         });
       }
 
-      var shallLoadWorld = !config.alwaysGenerateWorld.get() && Persister.has(config.currentTopWorld.get());
+      var shallLoadWorld = !config.alwaysGenerateWorld.get() && persistencePool.has(config.currentTopWorld.get());
 
       // Main startup sequence
       sequence([
@@ -361,27 +362,27 @@ var CubesMain = (function () {
         function () {
           // Save-on-exit
           window.addEventListener("unload", function () {
-            Persister.flushNow();
+            persistencePool.flushNow();
             return true;
           }, false);
           
           var world;
           if (shallLoadWorld) {
             try {
-              world = Persister.get(config.currentTopWorld.get());
+              world = persistencePool.get(config.currentTopWorld.get());
             } catch (e) {
               if (typeof console !== 'undefined')
                 console.error(e);
               alert("Failed to load saved world!");
             }
-          } else if (!Persister.available) {
+          } else if (!persistencePool.available) {
             console.warn("localStorage not available; world will not be saved.");
           }
           if (!world) {
             world = generateWorlds(config);
-            if (Persister.available && !config.alwaysGenerateWorld.get()) {
+            if (persistencePool.available && !config.alwaysGenerateWorld.get()) {
               // TODO this crashes if "Default" exists but config.currentTopWorld doesn't.
-              world.persistence.persist("Default");
+              world.persistence.persist(persistencePool, "Default");
             }
           }
           main.setTopWorld(world);
@@ -397,7 +398,7 @@ var CubesMain = (function () {
         },
         "Finishing...",
         function () {
-          input = new Input(config, theCanvas, player.input, pageElements.menu, renderer, focusCell);
+          input = new Input(config, theCanvas, player.input, pageElements.menu, renderer, focusCell, main.save.bind(main));
           theCanvas.focus();
           readyToDraw = true;
 
@@ -415,7 +416,7 @@ var CubesMain = (function () {
     };
     
     this.regenerate = function () {
-      if (Persister.has(config.generate_name.get())) {
+      if (persistencePool.has(config.generate_name.get())) {
         // TODO pass through pageElements or refactor; this is excessive coupling
         pageElements.nameConflict.style.display = "block";
         return;
@@ -423,7 +424,7 @@ var CubesMain = (function () {
         pageElements.nameConflict.style.display = "none";
       }
       var world = generateWorlds(config);
-      world.persistence.persist(config.generate_name.get());
+      world.persistence.persist(persistencePool, config.generate_name.get());
       this.setTopWorld(world);
     };
     
@@ -437,10 +438,11 @@ var CubesMain = (function () {
     this.getTopWorld = function () { return worldH; };
     
     this.save = function () {
-      Persister.flushAsync();
+      persistencePool.flushAsync();
     };
     
     this.config = config;
+    this.pool = persistencePool;
   }
   
   return CubesMain;
