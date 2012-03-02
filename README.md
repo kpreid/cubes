@@ -17,7 +17,7 @@ For controls see the “Help” button in-game.
 License
 -------
 
-Except as otherwise noted in individual files, all source code and other materials are Copyright © 2011 Kevin Reid, and licensed under the MIT License as follows:
+Except as otherwise noted in individual files, all source code and other materials are Copyright © 2011-2012 Kevin Reid, and licensed under the MIT License as follows:
 
 > Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 > 

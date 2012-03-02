@@ -1,5 +1,5 @@
-// Copyright 2011 Kevin Reid, under the terms of the MIT License as detailed in
-// the accompanying file README.md or <http://opensource.org/licenses/MIT>.
+// Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
+// in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
 function Input(config, eventReceiver, playerInput, menuElement, renderer, focusCell, save) {
   "use strict";

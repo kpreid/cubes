@@ -1,6 +1,6 @@
 // Except as noted,
-// Copyright 2011 Kevin Reid, under the terms of the MIT License as detailed in
-// the accompanying file README.md or <http://opensource.org/licenses/MIT>.
+// Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
+// in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 //
 // Exception: The code of prepareShader and prepareProgram is derived from
 // the Learning WebGL lessons, at http://learningwebgl.com/blog/?p=1786 (as of
