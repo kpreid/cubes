@@ -269,7 +269,7 @@ var Renderer = (function () {
 
     // --- Initialization ---
     
-    gl = canvas.getContext("experimental-webgl", {
+    gl = WebGLUtils.create3DContext(canvas, {
       // Reduces fillrate cost (which is a problem due to the layered block rendering), and also avoids MSAA problems with the meetings of subcube edges. (TODO: Try to fix that in the fragment shader by enlarging the texture.)
       antialias: false
     });
