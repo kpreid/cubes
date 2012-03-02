@@ -572,6 +572,11 @@ function ProgressBar(rootElem) {
   rootElem.appendChild(fill);
   
   this.set = function (value) {
+    if (value !== value /* NaN test */) {
+      value = 0.5; // obviously bogus
+    } else {
+      value = Math.min(1, Math.max(0, value));
+    }
     rootElem.style.display = value < 1 && value > 0 ? "block" : "none";
     fill.style.width = (value * 100).toFixed(2) + "%";
   };
@@ -585,10 +590,11 @@ ProgressBar.prototype.setByTodoCount = function (count) {
 
   if (count === 0) {
     this._rangeEstimate = 0;
+    this.set(1);
   } else {
     this._rangeEstimate = Math.max(count, (this._rangeEstimate || 0));
+    this.set(1 - count/this._rangeEstimate);
   }
-  this.set(1 - count/this._rangeEstimate); // if this produces +Infinity that's fine
 };
 
 // 'type' is an xhr.responseType value such as 'text' or 'arraybuffer'
