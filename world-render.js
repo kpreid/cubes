@@ -470,6 +470,7 @@ var WorldRenderer = (function () {
         var chunk = new renderer.RenderBundle(gl.TRIANGLES,
                                               function () { return renderData.texture; },
                                               function (vertices, normals, texcoords) {
+          measuring.chunk.start();
           renderData = blockSet.getRenderData(renderer);
           var rotatedBlockFaceData = renderData.rotatedBlockFaceData;
           var BOGUS_BLOCK_DATA = rotatedBlockFaceData.bogus;
@@ -518,6 +519,7 @@ var WorldRenderer = (function () {
             face(rot.py, faceData.hy);
             face(rot.pz, faceData.hz);
           }
+          measuring.chunk.end();
         });
         
         chunk.aabb = new AAB(

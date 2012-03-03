@@ -58,11 +58,13 @@ var CubesMain = (function () {
     
     var audio = new CubesAudio(config);
     
+    // HTML elements and other UI pieces
     var sceneInfo;
     var cursorInfoElem;
     var cursorInfo;
     var chunkProgressBar;
     var persistenceProgressBar;
+    var measureDisplay;
     
     var focusCell = new Cell("focus", false);
     focusCell.whenChanged(function () {
@@ -168,8 +170,10 @@ var CubesMain = (function () {
     
     var lastStepTime = null;
     function doOneStep() {
+      measuring.sim.start();
       player.stepYourselfAndWorld(timestep);
       input.step(timestep);
+      measuring.sim.end();
       stepCount++;
     }
     function doStep() {
@@ -195,7 +199,9 @@ var CubesMain = (function () {
           // done here because chunk updating should be deprioritized at the same time drawing would be
           chunkRenders += player.render.getWorldRenderer().updateSomeChunks();
 
+          measuring.frame.start();
           drawScene(player.render);
+          measuring.frame.end();
 
           if (config.debugForceRender.get()) scheduleDraw();
         }, theCanvas);
@@ -206,13 +212,14 @@ var CubesMain = (function () {
 
     // statistics are reset once per second
     setInterval(function () {
-      fpsDesc = stepCount + " steps/s, " + renderCount + " frames/s, " + chunkRenders + " chunk rebuilds";
+      fpsDesc = stepCount + " steps/s, " + renderCount + " frames/s, " + chunkRenders + " chunk rebuilds" + "\n";
       stepCount = renderCount = chunkRenders = 0;
       updateInfoText();
     }, 1000);
     function updateInfoText() {
       if (readyToDraw) {
         sceneInfo.data = frameDesc + fpsDesc;
+        measureDisplay.update();
       }
     }
     
@@ -257,6 +264,8 @@ var CubesMain = (function () {
       var sceneInfoTextElem = document.createElement("pre");
       sceneInfoOverlay.appendChild(sceneInfoTextElem);
       sceneInfo = dynamicText(sceneInfoTextElem);
+      measureDisplay = measuring.all.createDisplay(document);
+      sceneInfoOverlay.appendChild(measureDisplay.element);
       
       // Progress bars
       chunkProgressBar = new ProgressBar();
