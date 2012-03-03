@@ -250,7 +250,7 @@ var CubesMain = (function () {
       sub(0);
     }
     
-    this.start = function (pageElements) {
+    this.start = function (pageElements, callback) {
       var sceneInfoOverlay = pageElements.sceneInfoOverlay;
       
       // Overall info overlay
@@ -403,6 +403,8 @@ var CubesMain = (function () {
           readyToDraw = true;
 
           setInterval(doStep, timestep_ms);
+          
+          callback(null);
         },
         "Ready!"
       ], function (exception) {
@@ -411,6 +413,7 @@ var CubesMain = (function () {
         var text   = pageElements.loadError[1];
         notice.style.removeProperty("display");
         text.appendChild(document.createTextNode(String(exception)));
+        callback(exception);
         throw exception; // propagate to browser console
       });
     };
