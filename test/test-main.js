@@ -33,9 +33,14 @@ describe("CubesMain", function() {
   
   it("should startup successfully", function() {
     // successful startup
-    runs(function () {
-      expect(done).toEqual([null]);
-      expect(parts.loadError[1].textContent).toEqual("");
-    });
+    expect(done).toEqual([null]);
+    expect(parts.loadError[1].textContent).toEqual("");
+  });
+
+  it("should support world regeneration", function () {
+    var oldWorld = main.getTopWorld();
+    main.config.generate_name.set("foofoo");
+    main.regenerate();
+    expect(main.getTopWorld()).not.toBe(oldWorld);
   });
 });
