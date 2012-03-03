@@ -309,6 +309,7 @@ var BlockSet = (function () {
     var gl = renderer.context;
     
     this.tileSize = tileSize;
+    this.context = gl;
 
     // Size of an actual tile in the texture, with borders
     var /*constant*/ borderTileSize = tileSize + 2;
@@ -756,7 +757,7 @@ var BlockSet = (function () {
           notifier.notify("texturingChanged", id);
       }
       if (upload) {
-        var gl = main.renderer.context; // TODO global variable
+        var gl = texgen.context;
         gl.bindTexture(gl.TEXTURE_2D, texgen.texture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texgen.image);
         gl.bindTexture(gl.TEXTURE_2D, null);
