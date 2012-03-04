@@ -271,7 +271,10 @@ function applyCubeSymmetry(which, size, vec) {
    return vec;
 }
 applyCubeSymmetry.isReflection = function (symmetry) { return !!(symmetry & 32); };
-applyCubeSymmetry.COUNT = 60;
+applyCubeSymmetry.reduce = function (number) {
+  return mod(number, 64);
+}
+applyCubeSymmetry.COUNT = 64; // contains some duplicates due to "120-ness" having 3 possibilities in 2 bits
 applyCubeSymmetry.NO_REFLECT_COUNT = 27;
 
 // Find the cube symmetry (as in 'applyCubeSymmetry') which minimizes the angle between the rotation of the vector 'cubeVec' and the vector 'direction', among those listed in 'symmetries'.
