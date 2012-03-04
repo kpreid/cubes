@@ -415,7 +415,7 @@ function Notifier(label) {
   this.listen = function (f) {
     listeners.push(f);
     if (listeners.length > 50 && typeof console !== "undefined") {
-      console.warn("Notifier", this, "has over 50 listeners. Leak?");
+      console.warn("Notifier", label, "has over 50 listeners. Leak?");
     }
   };
   this.listen.cancel = function (f) {
