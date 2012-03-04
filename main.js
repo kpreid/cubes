@@ -136,7 +136,7 @@ var CubesMain = (function () {
         }
         
         // Per-frame debug/stats info
-        frameDesc = "";
+        var frameDesc = "";
         {
           var pp = player.render.getPosition();
           var d = 2;
@@ -156,17 +156,17 @@ var CubesMain = (function () {
           });
           frameDesc += "\n";
         }
-        updateInfoText();
+        sceneInfo.data = frameDesc;
         
         chunkProgressBar.setByTodoCount(wrend.chunkRendersToDo());
         persistenceProgressBar.setByTodoCount(persistencePool.status.get());
         
+        measuring.frameCount.inc();
         measuring.vertices.inc(renderer.verticesDrawn);
         renderer.verticesDrawn = 0;
-        renderCount++;
     }
     
-    var fpsDesc = "", frameDesc = "", stepCount = 0, renderCount = 0, chunkRenders = 0;
+    var frameDesc = "";
     
     var lastStepTime = null;
     function doOneStep() {
@@ -174,7 +174,7 @@ var CubesMain = (function () {
       player.stepYourselfAndWorld(timestep);
       input.step(timestep);
       measuring.sim.end();
-      stepCount++;
+      measuring.simCount.inc();
     }
     function doStep() {
       // perform limited catch-up
@@ -197,7 +197,8 @@ var CubesMain = (function () {
           animFrameWasRequested = false;
 
           // done here because chunk updating should be deprioritized at the same time drawing would be
-          chunkRenders += player.render.getWorldRenderer().updateSomeChunks();
+          var count = player.render.getWorldRenderer().updateSomeChunks();
+          measuring.chunkCount.inc(count);
 
           measuring.frame.start();
           drawScene(player.render);
@@ -212,17 +213,12 @@ var CubesMain = (function () {
     config.debugForceRender.listen({changed: function () { scheduleDraw(); return true; }});
 
     // statistics are reset once per second
+    measuring.second.start();
     setInterval(function () {
-      fpsDesc = stepCount + " steps/s, " + renderCount + " frames/s, " + chunkRenders + " chunk rebuilds" + "\n";
-      stepCount = renderCount = chunkRenders = 0;
-      updateInfoText();
+      measuring.second.end();
+      measuring.second.start();
       measureDisplay.update();
     }, 1000);
-    function updateInfoText() {
-      if (readyToDraw) {
-        sceneInfo.data = frameDesc + fpsDesc;
-      }
-    }
     
     var t0 = undefined;
     function startupMessage(text) {
@@ -265,6 +261,8 @@ var CubesMain = (function () {
       var sceneInfoTextElem = document.createElement("pre");
       sceneInfoOverlay.appendChild(sceneInfoTextElem);
       sceneInfo = dynamicText(sceneInfoTextElem);
+      
+      // Performance info
       measureDisplay = measuring.all.createDisplay(document, "cubes.measurement-ui");
       sceneInfoOverlay.appendChild(measureDisplay.element);
       

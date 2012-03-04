@@ -132,6 +132,11 @@ var measuring = (function () {
   TaskGroup.prototype = Object.create(ViewGroup.prototype);
   
   measuring.all = new ViewGroup("Performance", [
+    measuring.second = new ViewGroup("Per second", [
+      measuring.simCount = new Counter("Steps"),
+      measuring.frameCount = new Counter("Frames"),
+      measuring.chunkCount = new Counter("Chunk calcs"),
+    ]),
     measuring.sim = new TaskGroup("Simulation", []),
     measuring.chunk = new TaskGroup("Chunk calc", []),
     measuring.frame = new TaskGroup("Frame", [
