@@ -1,0 +1,46 @@
+// Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
+// in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
+
+describe("Circuit", function() {
+  
+  // TODO: This code is duplicative of generateWorlds.
+  var TS = 8;
+  var blockset, ls;
+  it("<dummy for initialization>", function () {
+    // layer 1
+    var pureColors = {blockset: WorldGen.colorBlocks(4, 4, 4)};
+
+    // layer 2
+    var baseLogicAndColors = {blockset: WorldGen.colorBlocks(4, 4, 4)};
+    WorldGen.addLogicBlocks(TS, baseLogicAndColors, pureColors);
+
+    // layer 3
+    var fullLogicAndColors = {blockset: WorldGen.colorBlocks(4, 4, 4)};
+    WorldGen.addLogicBlocks(TS, fullLogicAndColors, baseLogicAndColors);
+    blockset = fullLogicAndColors.blockset;
+    ls = fullLogicAndColors.logic;
+  });
+
+  it("should indicate 0", function () {
+    var world = new World([4, 4, 4], blockset);
+    world.s(1,1,1, ls.emitConstant, 0);
+    world.s(1,1,2, ls.indicator);
+    expect(world.gRot(1,1,2)).toEqual(0);
+  });
+
+  it("should indicate 1", function () {
+    var world = new World([4, 4, 4], blockset);
+    world.s(1,1,1, ls.emitConstant, 42);
+    world.s(1,1,2, ls.indicator);
+    expect(world.gRot(1,1,2)).toEqual(1);
+  });
+
+  it("should reevaluate on subdata updates", function () {
+    var world = new World([4, 4, 4], blockset);
+    world.s(1,1,1, ls.emitConstant, 0);
+    world.s(1,1,2, ls.indicator);
+    expect(world.gRot(1,1,2)).toEqual(0);
+    world.s(1,1,1, ls.emitConstant, 42);
+    expect(world.gRot(1,1,2)).toEqual(1);
+  });
+});
