@@ -205,7 +205,7 @@ var CubesMain = (function () {
           drawScene(player.render);
           measuring.frame.end();
           measureDisplay.update();
-
+          
           if (config.debugForceRender.get()) scheduleDraw();
         }, theCanvas);
         animFrameWasRequested = true;
@@ -265,7 +265,7 @@ var CubesMain = (function () {
       
       // Performance info
       measureDisplay = measuring.all.createDisplay(document, "cubes.measurement-ui");
-      sceneInfoOverlay.appendChild(measureDisplay.element);
+      // Inserted later once startup is finished.
       
       // Progress bars
       chunkProgressBar = new ProgressBar();
@@ -409,13 +409,14 @@ var CubesMain = (function () {
         function () {
           input = new Input(config, theCanvas, player.input, pageElements.menu, renderer, focusCell, main.save.bind(main));
           theCanvas.focus();
-          readyToDraw = true;
-
-          setInterval(doStep, timestep_ms);
-          
-          callback(null);
         },
-        "Ready!"
+        "Ready!",
+        function () {
+          readyToDraw = true;
+          sceneInfoOverlay.insertBefore(measureDisplay.element, sceneInfoTextElem.nextSibling);
+          setInterval(doStep, timestep_ms);
+          callback(null);
+        }
       ], function (exception) {
         startupMessage(exception);
         var notice = pageElements.loadError[0];
