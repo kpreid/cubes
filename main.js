@@ -10,7 +10,8 @@
 // Main loop scheduling, scene drawing, performance statistics, etc.
 
 var CubesMain = (function () {
-  function CubesMain(timestep, storage) {
+  // rootURL should be the directory containing this script (unfortunately not directly available).
+  function CubesMain(rootURL, timestep, storage) {
     var main = this;
     
     // configuration
@@ -338,7 +339,7 @@ var CubesMain = (function () {
         },
         "Downloading resources...",
         function (cont) {
-          Renderer.fetchShaders(function (s) {
+          Renderer.fetchShaders(rootURL, function (s) {
             if (s === null) {
               // TODO abstract error handling; this duplicates the sequence catcher
               var notice = pageElements.loadError[0];

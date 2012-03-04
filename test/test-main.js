@@ -35,7 +35,7 @@ describe("CubesMain", function() {
   };
 
   it("should be instantiable", function () {
-    main = new CubesMain(1/60, sessionStorage);
+    main = new CubesMain(TEST_URL_ROOT, 1/60, sessionStorage);
 
     main.start(parts, function (optError) {
       done = [optError];

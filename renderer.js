@@ -742,7 +742,7 @@ var Renderer = (function () {
   };
   Renderer.NoWebGLError.prototype = Object.create(Error.prototype);
   
-  Renderer.fetchShaders = function (callback) {
+  Renderer.fetchShaders = function (directory, callback) {
     var table = {
       common: undefined,
       vertex_common: undefined,
@@ -753,7 +753,7 @@ var Renderer = (function () {
     var names = Object.keys(table);
     
     names.forEach(function (filename) {
-      fetchResource("shaders/"+filename+".glsl", "text", function (data) { 
+      fetchResource(directory+"shaders/"+filename+".glsl", "text", function (data) { 
         table[filename] = data;
         check();
       });

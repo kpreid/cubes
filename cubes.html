@@ -45,7 +45,7 @@
     This does not actually hook up the game to the UI or load the world; that is done by main.start() which is done onload.
   -->
   <script type="text/javascript">
-    var main = new CubesMain(1/60 /* timestep */, localStorage);
+    var main = new CubesMain("./", 1/60 /* timestep */, localStorage);
   </script>
 </head>
 <body onload='(function () {
