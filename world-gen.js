@@ -113,6 +113,9 @@ var WorldGen = (function () {
           Math.abs(b[2]-HALF)
         )/HALF;
       }
+      function depth(b) { // pixel-count depth from outer surfaces - inverse of maxrad with different scale
+        return Math.min(b[0],b[1],b[2],TL-b[0],TL-b[2],TL-b[2]);
+      }
       
       // condition functions
       function te(b) { return b[1] == TL ?1:0; }
@@ -190,7 +193,8 @@ var WorldGen = (function () {
         s: s,
         rad: rad,
         maxrad: maxrad,
-
+        depth: depth,
+        
         te: te,
         tp: tp,
         be: be,
@@ -428,6 +432,7 @@ function generateWorlds(config) {
             f.tp(b) ? f.flat(brgb(1,.34,.34)) :
             f.cond(f.speckle, f.flat(brgb(.34,0,0)), f.flat(brgb(0,0,0))))(b);
   }));
+  var ground = type.world;
   
   // ground block #2
   blockset.add(type = genedit(function (b) {
@@ -437,7 +442,7 @@ function generateWorlds(config) {
   }));
   
   // pyramid thing
-  var pyr1 = blockset.length;
+  var pyr1 = ids.pyramid = blockset.length;
   blockset.add(type = genedit(function (b) {
     if (Math.abs(b[0] - HALF) + Math.abs(b[1] - HALF) > (TS-0.5)-b[2])
       return 0;
@@ -457,6 +462,12 @@ function generateWorlds(config) {
   addSpontaneousConversion(blockset.get(pyr1), pyr2);
   addSpontaneousConversion(blockset.get(pyr2), pyr1);
   
+  // low ground bump
+  ids.bump = blockset.length;
+  blockset.add(type = genedit(function (b) {
+    return ground.g(b[0],b[1]+Math.max(TS/2, TS-2*f.depth([b[0],TS/2,b[2]])),b[2]);
+  }));
+
   // leaves/hedge
   ids.greenery = blockset.length;
   blockset.add(type = genedit(function (b) {
@@ -555,7 +566,10 @@ function generateWorlds(config) {
                        altitude > 1 ? 0 :
                        altitude < 0 ? 1 :
                        altitude == 0 ? 2 :
-                       /* altitude == 1 */ random() > 0.99 ? (rawSubData[index] = 4, 4) : 0;
+                       /* altitude == 1 */
+                       random() > 0.99 ? (rawSubData[index] = 4, ids.pyramid) :
+                       random() > 0.99 ? ids.bump :
+                       0;
         }
       }
     }
