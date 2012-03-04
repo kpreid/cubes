@@ -86,6 +86,7 @@ var measuring = (function () {
     
     // sparkline
     var sparkCanvas = document.createElement("canvas");
+    sparkCanvas.className = "measuring-sparkline";
     var sparkLength = this.history.length;
     sparkCanvas.width = sparkLength;
     sparkCanvas.height = 9; // TODO magic number
@@ -105,27 +106,27 @@ var measuring = (function () {
         if (sparkCanvas.offsetWidth > 0 /* element is visible */
             && lastUpdateIndex !== indexOffset /* there is new data */) {
           lastUpdateIndex = indexOffset;
+          var history = this.history;
           
           sparkContext.fillStyle = window.getComputedStyle(sparkCanvas, null).color;
           sparkContext.clearRect(0, 0, sparkCanvas.width, sparkCanvas.height);
-          var history = this.history;
-          var miny = Infinity;
+
+          // Find maximum and minimum of graph
+          var miny = 0 /* Infinity */; // assume 0 is a meaningful minimum
           var maxy = -Infinity;
           for (var i = sparkLength - 1; i >= 0; i--) {
             var y = history[i];
             miny = Math.min(y, miny);
             maxy = Math.max(y, maxy);
           }
-          if (miny == maxy) {
-            miny -= 1;
-            maxy += 1;
-          }
-          var viewOffset = -maxy;
-          var viewScale = (sparkCanvas.height - 1)/(miny - maxy);
+          
+          // Establish viewport of graph. The maximum zoom is 1 value unit = 1px.
+          var viewScale = -Math.min(1, (sparkCanvas.height - 1)/(maxy - miny));
+          var viewOffset = -miny * viewScale + sparkCanvas.height - 1;
 
           for (var i = sparkLength - 1; i >= 0; i--) {
             var y = history[(i + indexOffset) % sparkLength];
-            var scaley = (viewOffset + y) * viewScale;
+            var scaley = y * viewScale + viewOffset;
             sparkContext.fillRect(i, scaley, 1, 1);
           }
         }

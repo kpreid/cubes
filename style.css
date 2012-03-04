@@ -224,3 +224,6 @@ ul.measuring-group-contents, ol.measuring-group-contents {
   padding: 0 0 0 1em;
   list-style-type: none;
 }
+.measuring-sparkline {
+  vertical-align: baseline;
+}
