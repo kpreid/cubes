@@ -61,13 +61,6 @@ var Circuit = (function () {
     
     var evaluate = function (state) {throw new Error("uncompiled");};
     
-    function refreshLocal() {
-      localState = {
-        allowWorldEdit: true
-      };
-      evaluate(localState);
-    }
-    
     // --- Methods ---
     
     this.world = world;
@@ -281,8 +274,6 @@ var Circuit = (function () {
         if (!state) state = {};
         evaluators.forEach(function (f) { f(state); });
       };
-      
-      //refreshLocal(); // TODO: do later, in case of inf update loops
     };
     this.evaluate = function (state) {
       evaluate(state);
@@ -392,7 +383,6 @@ var Circuit = (function () {
       value = value ? 1 : 0;
       if (circuit.world.gSub(cube[0],cube[1],cube[2]) !== value) {
         circuit.world.sSub(cube[0],cube[1],cube[2],value);
-        circuit.refreshLocal();
       }
     };
     

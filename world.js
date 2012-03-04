@@ -164,8 +164,14 @@ function World(sizes, blockSet) {
 
     // Update circuits
     var cp = isCircuitPart(newType);
-    if (cp && !blockCircuits.has(vec)) {
-      becomeCircuit(vec);
+    if (cp) {
+      var circuit = blockCircuits.get(vec);
+      if (circuit) {
+        // TODO: If we changed *type* then the circuit must be rebuilt, not just reevaluated
+        circuit.refreshLocal();
+      } else {
+        becomeCircuit(vec);
+      }
     } else if (!cp && blockCircuits.has(vec)) {
       // No longer a circuit part.
       deleteCircuit(blockCircuits.get(vec));
