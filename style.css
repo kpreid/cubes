@@ -22,6 +22,7 @@ html {
 
 .overlay {
   position: absolute;
+  font-weight: bold;
   color: white;
   text-shadow: 0 0 .3em #000;
   margin: 0 0;
@@ -188,17 +189,34 @@ html {
 /* --- performance measurement widgets --- */
 
 .measuring-item {
+  display: table;
+  font-family: "Geneva", "Verdana", sans-serif;
+  font-size: 9px;
+  color: white;
+
+  /* root-only styles */
   background: black;
   background: rgba(80,80,80,0.5);
-  font-family: "Monaco", monospace;
-  font-size: 9px;
+  padding: 3px;
 }
 .measuring-item .measuring-item {
-  background: transparent; /* don't double-blend */
+  /* non-roots */
+  padding: 0;
+  background: none; 
 }
-.measuring-item {
+.measuring-label {
+  display: inline-block;
+  min-width: 16ex;
+  text-align: left;
+}
+.measuring-value {
+  display: inline-block;
+  min-width: 13ex;
+  text-align: right;
 }
 .measuring-group-header {
+  background: none;
+  color: #CCC;
   font-weight: bold;
 }
 ul.measuring-group-contents, ol.measuring-group-contents {

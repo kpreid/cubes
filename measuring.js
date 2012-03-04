@@ -5,6 +5,11 @@ var measuring = (function () {
   "use strict";
   var measuring = {};
   
+  function numberWithCommas(x) {
+    // source: http://stackoverflow.com/a/2901298/99692
+    return (+x).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }
+  
   function ViewGroup(label, elements) {
     this.label = label;
     this.elements = elements;
@@ -66,11 +71,17 @@ var measuring = (function () {
     this.label = label;
   }
   Quantity.prototype.createDisplay = function (document, stateContext) {
-    var container = document.createElement("pre");
+    var container = document.createElement("div");
     container.className = "measuring-item measuring-quantity";
+    var labelElem = document.createElement("span");
+    labelElem.className = "measuring-label";
+    labelElem.textContent = this.label + ": ";
+    var valueElem = document.createElement("span");
+    valueElem.className = "measuring-value";
     var valueText = document.createTextNode("");
-    container.appendChild(document.createTextNode(this.label + ": "));
-    container.appendChild(valueText);
+    valueElem.appendChild(valueText);
+    container.appendChild(labelElem);
+    container.appendChild(valueElem);
     return {
       element: container,
       update: function () {
@@ -91,7 +102,7 @@ var measuring = (function () {
       value = t1 - t0;
     };
     this.get = function () {
-      return value;
+      return value + " ms";
     };
   }
   Timer.prototype = Object.create(Quantity.prototype);
@@ -111,7 +122,7 @@ var measuring = (function () {
       value = counter;
     };
     this.get = function () {
-      return value;
+      return numberWithCommas(value);
     };
   }
   Counter.prototype = Object.create(Quantity.prototype);
