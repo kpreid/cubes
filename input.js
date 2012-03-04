@@ -109,6 +109,8 @@ function Input(config, eventReceiver, playerInput, menuElement, renderer, focusC
       case "R": playerInput.changeWorld(1);  return false;
       case "\x1B"/*Esc*/:
       case "F": playerInput.changeWorld(-1); return false;
+      case "Z": playerInput.tweakSubdata(-1); return false;
+      case "X": playerInput.tweakSubdata(1);  return false;
       case " ": playerInput.jump(); return false;
     }
 
