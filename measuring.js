@@ -9,24 +9,42 @@ var measuring = (function () {
     this.label = label;
     this.elements = elements;
   }
-  ViewGroup.prototype.createDisplay = function (document) {
+  ViewGroup.prototype.createDisplay = function (document, stateContext) {
+    var subContext = stateContext + "." + this.label;
     var container = document.createElement("div");
     container.className = "measuring-item measuring-group";
-    if (this.label) {
-      var heading = document.createElement("strong"); // TODO block elem
-      heading.className = "measuring-group-header";
-      heading.appendChild(document.createTextNode(this.label));
-      container.appendChild(heading);
-    }
     var list = document.createElement("ul");
     list.className = "measuring-group-contents";
+    if (this.label) {
+      var header = document.createElement("div");
+      header.className = "measuring-group-header";
+      var toggleState = new PersistentCell(localStorage, subContext + ".visible", "boolean", true);
+      var toggler = document.createElement("a");
+      toggleState.nowAndWhenChanged(function (v) {
+        if (v) {
+          list.style.removeProperty("display");
+          toggler.textContent = "[-]";
+        } else {
+          list.style.display = "none";
+          toggler.textContent = "[+]";
+        }
+        return true;
+      });
+      toggler.addEventListener("click", function () {
+        toggleState.set(!toggleState.get());
+        return false;
+      }, false);
+      header.appendChild(toggler);
+      header.appendChild(document.createTextNode(" " + this.label));
+      container.appendChild(header);
+    }
     container.appendChild(list);
     var updaters = [];
     this.elements.forEach(function (thing) {
       var elem = document.createElement("li");
       elem.className = "measuring-group-element";
       list.appendChild(elem);
-      var subdisplay = thing.createDisplay(document);
+      var subdisplay = thing.createDisplay(document, subContext);
       elem.appendChild(subdisplay.element);
       updaters.push(subdisplay.update);
     });
@@ -47,7 +65,7 @@ var measuring = (function () {
   function Quantity(label) {
     this.label = label;
   }
-  Quantity.prototype.createDisplay = function (document) {
+  Quantity.prototype.createDisplay = function (document, stateContext) {
     var container = document.createElement("pre");
     container.className = "measuring-item measuring-quantity";
     var valueText = document.createTextNode("");
@@ -113,7 +131,7 @@ var measuring = (function () {
   }
   TaskGroup.prototype = Object.create(ViewGroup.prototype);
   
-  measuring.all = new ViewGroup(null, [
+  measuring.all = new ViewGroup("Performance", [
     measuring.sim = new TaskGroup("Simulation", []),
     measuring.chunk = new TaskGroup("Chunk calc", []),
     measuring.frame = new TaskGroup("Frame", [

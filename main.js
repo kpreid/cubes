@@ -265,7 +265,7 @@ var CubesMain = (function () {
       var sceneInfoTextElem = document.createElement("pre");
       sceneInfoOverlay.appendChild(sceneInfoTextElem);
       sceneInfo = dynamicText(sceneInfoTextElem);
-      measureDisplay = measuring.all.createDisplay(document);
+      measureDisplay = measuring.all.createDisplay(document, "cubes.measurement-ui");
       sceneInfoOverlay.appendChild(measureDisplay.element);
       
       // Progress bars
