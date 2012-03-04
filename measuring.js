@@ -11,16 +11,20 @@ var measuring = (function () {
   }
   ViewGroup.prototype.createDisplay = function (document) {
     var container = document.createElement("div");
+    container.className = "measuring-item measuring-group";
     if (this.label) {
       var heading = document.createElement("strong"); // TODO block elem
+      heading.className = "measuring-group-header";
       heading.appendChild(document.createTextNode(this.label));
       container.appendChild(heading);
     }
     var list = document.createElement("ul");
+    list.className = "measuring-group-contents";
     container.appendChild(list);
     var updaters = [];
     this.elements.forEach(function (thing) {
       var elem = document.createElement("li");
+      elem.className = "measuring-group-element";
       list.appendChild(elem);
       var subdisplay = thing.createDisplay(document);
       elem.appendChild(subdisplay.element);
@@ -45,6 +49,7 @@ var measuring = (function () {
   }
   Quantity.prototype.createDisplay = function (document) {
     var container = document.createElement("pre");
+    container.className = "measuring-item measuring-quantity";
     var valueText = document.createTextNode("");
     container.appendChild(document.createTextNode(this.label + ": "));
     container.appendChild(valueText);

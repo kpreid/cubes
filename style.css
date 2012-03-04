@@ -184,3 +184,25 @@ html {
   /* arbitrary fixed length for this use case */
   width: 20em;
 }
+
+/* --- performance measurement widgets --- */
+
+.measuring-item {
+  background: black;
+  background: rgba(80,80,80,0.5);
+  font-family: "Monaco", monospace;
+  font-size: 9px;
+}
+.measuring-item .measuring-item {
+  background: transparent; /* don't double-blend */
+}
+.measuring-item {
+}
+.measuring-group-header {
+  font-weight: bold;
+}
+ul.measuring-group-contents, ol.measuring-group-contents {
+  margin: 0 0 0 0;
+  padding: 0 0 0 1em;
+  list-style-type: none;
+}
