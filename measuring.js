@@ -204,7 +204,9 @@ var measuring = (function () {
       measuring.frameCount = new Counter("Frames"),
       measuring.chunkCount = new Counter("Chunk calcs"),
     ]),
-    measuring.sim = new TaskGroup("Simulation", []),
+    measuring.sim = new TaskGroup("Simulation", [
+      measuring.collisionTests = new Counter("Collision tests")
+    ]),
     measuring.chunk = new TaskGroup("Chunk calc", []),
     measuring.frame = new TaskGroup("Frame", [
       measuring.vertices = new Counter("Vertices")

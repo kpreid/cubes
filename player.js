@@ -192,12 +192,16 @@ var Player = (function () {
 
       function intersectWorld(aabb, iworld, ignore, level) {
         var hit = new IntVectorMap();
+        var lx = Math.max(0, Math.floor(aabb.get(0, 0)));
+        var ly = Math.max(0, Math.floor(aabb.get(1, 0)));
+        var lz = Math.max(0, Math.floor(aabb.get(2, 0)));
         var hx = Math.min(iworld.wx - 1, Math.floor(aabb.get(0, 1)));
         var hy = Math.min(iworld.wy - 1, Math.floor(aabb.get(1, 1)));
         var hz = Math.min(iworld.wz - 1, Math.floor(aabb.get(2, 1)));
-        for (var x = Math.max(0, Math.floor(aabb.get(0, 0))); x <= hx; x++)
-        for (var y = Math.max(0, Math.floor(aabb.get(1, 0))); y <= hy; y++)
-        for (var z = Math.max(0, Math.floor(aabb.get(2, 0))); z <= hz; z++) {
+        measuring.collisionTests.inc((hx-lx+1)*(hy-ly+1)*(hz-lz+1));
+        for (var x = lx; x <= hx; x++)
+        for (var y = ly; y <= hy; y++)
+        for (var z = lz; z <= hz; z++) {
           var type = iworld.gt(x,y,z);
           if (!type.solid) continue;
           var pos = [x, y, z];
