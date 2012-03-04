@@ -188,6 +188,7 @@ var CubesMain = (function () {
         doOneStep();
         lastStepTime += timestep_ms;
       }
+      measureDisplay.update();
     }
     
     var animFrameWasRequested = false;

@@ -69,6 +69,9 @@ var measuring = (function () {
   
   function Quantity(label) {
     this.label = label;
+    this.value = null;
+    this.history = new Float32Array(100); // TODO magic number
+    this.historyIndex = 0;
   }
   Quantity.prototype.createDisplay = function (document, stateContext) {
     var container = document.createElement("div");
@@ -80,52 +83,105 @@ var measuring = (function () {
     valueElem.className = "measuring-value";
     var valueText = document.createTextNode("");
     valueElem.appendChild(valueText);
+    
+    // sparkline
+    var sparkCanvas = document.createElement("canvas");
+    var sparkLength = this.history.length;
+    sparkCanvas.width = sparkLength;
+    sparkCanvas.height = 9; // TODO magic number
+    var sparkContext = sparkCanvas.getContext("2d");
+    var lastUpdateIndex = 0;
+
     container.appendChild(labelElem);
     container.appendChild(valueElem);
+    container.appendChild(sparkCanvas);
+    
     return {
       element: container,
       update: function () {
-        valueText.data = String(this.get());
+        valueText.data = String(this.show());
+        
+        var indexOffset = this.historyIndex;
+        if (sparkCanvas.offsetWidth > 0 /* element is visible */
+            && lastUpdateIndex !== indexOffset /* there is new data */) {
+          lastUpdateIndex = indexOffset;
+          
+          sparkContext.fillStyle = window.getComputedStyle(sparkCanvas, null).color;
+          sparkContext.clearRect(0, 0, sparkCanvas.width, sparkCanvas.height);
+          var history = this.history;
+          var miny = Infinity;
+          var maxy = -Infinity;
+          for (var i = sparkLength - 1; i >= 0; i--) {
+            var y = history[i];
+            miny = Math.min(y, miny);
+            maxy = Math.max(y, maxy);
+          }
+          if (miny == maxy) {
+            miny -= 1;
+            maxy += 1;
+          }
+          var viewOffset = -maxy;
+          var viewScale = (sparkCanvas.height - 1)/(miny - maxy);
+
+          for (var i = sparkLength - 1; i >= 0; i--) {
+            var y = history[(i + indexOffset) % sparkLength];
+            var scaley = (viewOffset + y) * viewScale;
+            sparkContext.fillRect(i, scaley, 1, 1);
+          }
+        }
       }.bind(this)
     };
   }
+  Quantity.prototype.start = function () {};
+  Quantity.prototype.end = function () {
+    var hi = this.historyIndex;
+    this.history[hi] = this.value;
+    this.historyIndex = mod(hi + 1, this.history.length);
+  };
+  
   
   function Timer(label) {
     Quantity.call(this, label);
+    var souper = Object.getPrototypeOf(this);
     
-    var t0 = null, value = null;
+    var t0 = null;
     this.start = function () {
       t0 = Date.now();
+      souper.start.call(this);
     };
     this.end = function () {
       var t1 = Date.now();
-      value = t1 - t0;
-    };
-    this.get = function () {
-      return value + " ms";
+      this.value = t1 - t0;
+      souper.end.call(this);
     };
   }
   Timer.prototype = Object.create(Quantity.prototype);
+  Timer.prototype.show = function () {
+    return this.value + " ms";
+  };
   
   function Counter(label) {
     Quantity.call(this, label);
+    var souper = Object.getPrototypeOf(this);
     
-    var counter = 0, value = null;
+    var counter = 0;
     this.inc = function (amount) {
       if (amount === undefined) amount = 1;
       counter += amount;
     };
     this.start = function () {
       counter = 0;
+      souper.start.call(this);
     };
     this.end = function () {
-      value = counter;
-    };
-    this.get = function () {
-      return numberWithCommas(value);
+      this.value = counter;
+      souper.end.call(this);
     };
   }
   Counter.prototype = Object.create(Quantity.prototype);
+  Counter.prototype.show = function () {
+    return numberWithCommas(this.value);
+  };
   
   function TaskGroup(label, elements) {
     var timer = new Timer("Time");
