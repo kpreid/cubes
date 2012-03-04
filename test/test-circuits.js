@@ -3,10 +3,11 @@
 
 describe("Circuit", function() {
   
-  // TODO: This code is duplicative of generateWorlds.
   var TS = 8;
   var blockset, ls;
-  it("<dummy for initialization>", function () {
+  beforeEach(function () {
+    // TODO: This code is duplicative of generateWorlds.
+    if (blockset) return;
     // layer 1
     var pureColors = {blockset: WorldGen.colorBlocks(4, 4, 4)};
 
