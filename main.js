@@ -419,17 +419,21 @@ var CubesMain = (function () {
     };
     
     this.regenerate = function () {
-      if (persistencePool.has(config.generate_name.get())) {
-        // TODO pass through pageElements or refactor; this is excessive coupling
-        pageElements.nameConflict.style.display = "block";
-        return;
-      } else {
-        pageElements.nameConflict.style.display = "none";
-      }
       var world = generateWorlds(config);
       world.persistence.persist(persistencePool, config.generate_name.get());
       this.setTopWorld(world);
     };
+    var genOKCell = new Cell("main.regenerateOK", false);
+    this.regenerateOK = genOKCell.readOnly;
+    function recalcGenOK() {
+      genOKCell.set(!persistencePool.has(config.generate_name.get()));
+      return true;
+    }
+    config.generate_name.whenChanged(recalcGenOK);
+    persistencePool.listen({
+      added: recalcGenOK,
+      deleted: recalcGenOK
+    });
     
     this.setTopWorld = function (world) {
       worldH = world;

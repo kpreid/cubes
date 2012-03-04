@@ -59,8 +59,7 @@
     // TODO combine error cases?
     webglError: [id("webgl-error-notice")],
     featureError: [id("feature-error-notice"), id("feature-error-text")],
-    loadError: [id("load-error-notice"), id("load-error-text")],
-    nameConflict: id("generate-name-conflict")
+    loadError: [id("load-error-notice"), id("load-error-text")]
   }, function (optError) {});
 }());'>
 
@@ -171,10 +170,17 @@
     <script>main.config.generate_wy.bindControl("generate_wy");</script>
     <script>main.config.generate_wz.bindControl("generate_wz");</script>
     <div style="text-align: center;">
-      <button onclick="
+      <button id="generate-button" onclick="
         main.regenerate();
         return false;
       ">Generate new world</button>
+      <script>
+        main.regenerateOK.whenChanged(function (ok) {
+          document.getElementById("generate-name-conflict").style.display = ok ? "none" : "block";
+          document.getElementById("generate-button").disabled = !ok;
+          return true;
+        });
+      </script>
     </div>
   </form>
   
