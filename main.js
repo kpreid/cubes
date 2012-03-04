@@ -156,12 +156,12 @@ var CubesMain = (function () {
           });
           frameDesc += "\n";
         }
-        frameDesc += renderer.verticesDrawn + " vertices\n";
         updateInfoText();
         
         chunkProgressBar.setByTodoCount(wrend.chunkRendersToDo());
         persistenceProgressBar.setByTodoCount(persistencePool.status.get());
         
+        measuring.vertices.inc(renderer.verticesDrawn);
         renderer.verticesDrawn = 0;
         renderCount++;
     }
@@ -202,6 +202,7 @@ var CubesMain = (function () {
           measuring.frame.start();
           drawScene(player.render);
           measuring.frame.end();
+          measureDisplay.update();
 
           if (config.debugForceRender.get()) scheduleDraw();
         }, theCanvas);
@@ -215,11 +216,11 @@ var CubesMain = (function () {
       fpsDesc = stepCount + " steps/s, " + renderCount + " frames/s, " + chunkRenders + " chunk rebuilds" + "\n";
       stepCount = renderCount = chunkRenders = 0;
       updateInfoText();
+      measureDisplay.update();
     }, 1000);
     function updateInfoText() {
       if (readyToDraw) {
         sceneInfo.data = frameDesc + fpsDesc;
-        measureDisplay.update();
       }
     }
     
