@@ -2,9 +2,23 @@
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
 describe("CubesMain", function() {
+  var main, done;
+
   beforeEach(function () {
     // We are using sessionStorage as a temporary Storage object for testing.
     sessionStorage.clear();
+    
+    if (main) {
+      var config = main.config;
+
+      // Disable sound during tests
+      config.sound.set(false);
+      
+      // Use a small world to speed up tests. (This figure is currently arbitrary.)
+      config.generate_wx.set(40);
+      config.generate_wy.set(40);
+      config.generate_wz.set(40);
+    }
   });
   
   function stubElem() { 
@@ -20,7 +34,6 @@ describe("CubesMain", function() {
     loadError: [stubElem(), stubElem()]
   };
 
-  var main, done;
   it("should be instantiable", function () {
     main = new CubesMain(1/60, sessionStorage);
 
