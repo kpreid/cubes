@@ -198,7 +198,9 @@ var Player = (function () {
         var hx = Math.min(iworld.wx - 1, Math.floor(aabb.get(0, 1)));
         var hy = Math.min(iworld.wy - 1, Math.floor(aabb.get(1, 1)));
         var hz = Math.min(iworld.wz - 1, Math.floor(aabb.get(2, 1)));
-        measuring.collisionTests.inc((hx-lx+1)*(hy-ly+1)*(hz-lz+1));
+        measuring.collisionTests.inc(Math.max(0, hx-lx+1) *
+                                     Math.max(0, hy-ly+1) *
+                                     Math.max(0, hz-lz+1));
         for (var x = lx; x <= hx; x++)
         for (var y = ly; y <= hy; y++)
         for (var z = lz; z <= hz; z++) {
