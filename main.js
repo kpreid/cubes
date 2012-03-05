@@ -189,7 +189,7 @@ var CubesMain = (function () {
         doOneStep();
         lastStepTime += timestep_ms;
       }
-      measureDisplay.update();
+      measureDisplay.updateIfVisible();
     }
     
     var animFrameWasRequested = false;
@@ -205,7 +205,7 @@ var CubesMain = (function () {
           measuring.frame.start();
           drawScene(player.render);
           measuring.frame.end();
-          measureDisplay.update();
+          measureDisplay.updateIfVisible();
           
           if (config.debugForceRender.get()) scheduleDraw();
         }, theCanvas);
@@ -219,7 +219,7 @@ var CubesMain = (function () {
     setInterval(function () {
       measuring.second.end();
       measuring.second.start();
-      measureDisplay.update();
+      measureDisplay.updateIfVisible();
     }, 1000);
     
     var t0 = undefined;

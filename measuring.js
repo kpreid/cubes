@@ -10,6 +10,12 @@ var measuring = (function () {
     return (+x).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   }
   
+  // Tests whether an element may be visible to the user.
+  function elementIsVisible(element) {
+    // Note: The offsetWidth test tests for display:none; it does not test for obscuration.
+    return element.offsetWidth > 0;
+  }
+  
   function ViewGroup(label, elements) {
     this.label = label;
     this.elements = elements;
@@ -51,14 +57,27 @@ var measuring = (function () {
       list.appendChild(elem);
       var subdisplay = thing.createDisplay(document, subContext);
       elem.appendChild(subdisplay.element);
-      updaters.push(subdisplay.update);
+      updaters.push(subdisplay.update.bind(subdisplay));
     });
+
+    var animFrameWasRequested = false;
     return {
       element: container,
       update: function () {
-        updaters.forEach(function (f) { f(); });
+        if (elementIsVisible(list)) {
+          updaters.forEach(function (f) { f(); });
+        }
+      },
+      updateIfVisible: function () {
+        if (!animFrameWasRequested) {
+          window.requestAnimFrame(function () {
+            animFrameWasRequested = false;
+            this.update();
+          }.bind(this), container);
+          animFrameWasRequested = true;
+        }
       }
-    }
+    };
   }
   ViewGroup.prototype.start = function () {
     this.elements.forEach(function (e) { e.start(); });
@@ -103,7 +122,7 @@ var measuring = (function () {
         valueText.data = String(this.show());
         
         var indexOffset = this.historyIndex;
-        if (sparkCanvas.offsetWidth > 0 /* element is visible */
+        if (elementIsVisible(sparkCanvas)
             && lastUpdateIndex !== indexOffset /* there is new data */) {
           lastUpdateIndex = indexOffset;
           var history = this.history;
