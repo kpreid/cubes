@@ -1,3 +1,4 @@
+<!doctype html>
 <!--
    Except as noted,
    // Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
@@ -11,7 +12,6 @@
    stated on that site, but I (Kevin Reid) believe that it is obviously the
    authors' intent to make this code free to use.
 -->
-<!doctype html>
 <html><head>
   <title>Cubes</title>
   <meta http-equiv="content-type" content="text/html; charset=UTF-8">
@@ -82,11 +82,11 @@
 <div id="error-notices">
   <div id="load-error-notice" class="error-notice" style="display: none;">
     <p>Sorry, but there was an unexpected error while loading the game.</p>
-    <p><pre id="load-error-text" style="white-space: pre-wrap;"></pre></p>
+    <pre id="load-error-text" style="white-space: pre-wrap;"></pre>
   </div>
   <div id="feature-error-notice" class="error-notice" style="display: none;">
     <p>Sorry, the browser you are using does not support some required features. These problems were detected:</p>
-    <p><pre id="feature-error-text" style="white-space: pre-wrap;"></pre></p>
+    <pre id="feature-error-text" style="white-space: pre-wrap;"></pre>
     <p>If you are looking for a compatible browser, I recommend Google Chrome.</p>
   </div>
   <div id="webgl-error-notice" class="error-notice" style="display: none;">
@@ -105,7 +105,7 @@
   
   <h2>Load/Save</h2>
   
-  <form onsubmit="return false;" action="" style="text-align: center">
+  <form onsubmit="return false;" style="text-align: center">
     <div id="local-save-ok" style="display: none">
       <div class="optionline">World:</div>
       <select id="world-select" size="5" style="width: 90%;"><option>not loaded</option></select>
@@ -118,8 +118,8 @@
       document.getElementById("local-save-ok").style.display = main.pool.available ? 'block' : 'none';
       document.getElementById("local-save-warning").style.display = !main.pool.available ? 'block' : 'none';
     </script>
-    <p style="">
-      <textarea id="loadfield" width="20" height="3" style="width: 80%;"></textarea>
+    <p>
+      <textarea id="loadfield" cols="20" rows="3" style="width: 80%;"></textarea>
       <br>
       <button onclick="
         document.getElementById('loadfield').value = JSON.stringify(cyclicSerialize(main.getTopWorld(), Persister.types)); return false;
@@ -136,14 +136,13 @@
         }
         return false;
       ">Text Import</button>
-      <br>
-      <div id="load-error" style="text-shadow: 0 0 .3em red;"></div>
     </p>
+    <p id="load-error" style="text-shadow: 0 0 .3em red;"></p>
   </form>
   
   <h2>World</h2>
   
-  <form onsubmit="return false;" action="">
+  <form onsubmit="return false;">
     <table class="optionline">
       <tr><td>Name:<td><input id="generate_name" type="text" value="" style="width: 95%;">
         <p id="generate-name-conflict" style="display: none;" class="error">Name already in use.</p>
@@ -153,8 +152,8 @@
         <option value="island">Floating island</option>
         <option value="city">City</option>
       </select>
-      <tr><td>Bumpiness:<td><input type="range" step="any" min="0" max="2" value="1" maxlength="4" size="4" id="generate_slope">
-      <tr><td>Block res.:<td><input type="number" min="2" value="16" size="3" maxlength="4" step="1" id="generate_tileSize">
+      <tr><td>Bumpiness:<td><input type="range" step="any" min="0" max="2" value="1" size="4" id="generate_slope">
+      <tr><td>Block res.:<td><input type="number" min="2" value="16" size="3" step="1" id="generate_tileSize">
     </table>
     <script>main.config.generate_name.bindControl("generate_name");</script>
     <script>main.config.generate_shape.bindControl("generate_shape");</script>
@@ -162,9 +161,9 @@
     <script>main.config.generate_tileSize.bindControl("generate_tileSize");</script>
     <table class="optionline" style="text-align: center;">
       <tr><td>Size: 
-      <td><input type="number" min="1" max="9999" value="400" maxlength="4" size="4" id="generate_wx">
-      <td><input type="number" min="1" max="512" value="128" maxlength="3" size="3" id="generate_wy">
-      <td><input type="number" min="1" max="9999" value="400" maxlength="4" size="4" id="generate_wz">
+      <td><input type="number" min="1" max="9999" value="400" size="4" id="generate_wx">
+      <td><input type="number" min="1" max="512" value="128" size="3" id="generate_wy">
+      <td><input type="number" min="1" max="9999" value="400" size="4" id="generate_wz">
       <tr><th><th>W<th>H<th>L
     </table>
     <script>main.config.generate_wx.bindControl("generate_wx");</script>
@@ -187,8 +186,8 @@
   
   <h2>Options</h2>
   
-  <form onsubmit="return false;" action="">
-    <div class="optionline">Field of view: <input type="range" step="any" min="45" max="140" value="60" maxlength="4" size="4" id="fov"></div>
+  <form onsubmit="return false;">
+    <div class="optionline">Field of view: <input type="range" step="any" min="45" max="140" value="60" size="4" id="fov"></div>
     <script>main.config.fov.bindControl("fov");</script>
     <div class="optionline">Draw distance: <input type="range" step="any" min="10" max="500" value="100" size="4" id="renderDistance"></div>
     <script>main.config.renderDistance.bindControl("renderDistance");</script>
