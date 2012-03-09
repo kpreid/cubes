@@ -106,15 +106,16 @@ var measuring = (function () {
     // sparkline
     var sparkCanvas = document.createElement("canvas");
     sparkCanvas.className = "measuring-sparkline";
-    var sparkLength = this.history.length;
-    sparkCanvas.width = sparkLength;
-    sparkCanvas.height = 9; // TODO magic number
+    var sparkLength = sparkCanvas.width  = this.history.length;
+    var sparkHeight = sparkCanvas.height = 9; // TODO magic number
     var sparkContext = sparkCanvas.getContext("2d");
     var lastUpdateIndex = 0;
 
     container.appendChild(labelElem);
     container.appendChild(valueElem);
     container.appendChild(sparkCanvas);
+
+    var fillColor = "rgba(127,127,127,0.5)";
     
     return {
       element: container,
@@ -125,10 +126,11 @@ var measuring = (function () {
         if (elementIsVisible(sparkCanvas)
             && lastUpdateIndex !== indexOffset /* there is new data */) {
           lastUpdateIndex = indexOffset;
+
           var history = this.history;
+          var fgColor = window.getComputedStyle(sparkCanvas, null).color;
           
-          sparkContext.fillStyle = window.getComputedStyle(sparkCanvas, null).color;
-          sparkContext.clearRect(0, 0, sparkCanvas.width, sparkCanvas.height);
+          sparkContext.clearRect(0, 0, sparkLength, sparkHeight);
 
           // Find maximum and minimum of graph
           var miny = 0 /* Infinity */; // assume 0 is a meaningful minimum
@@ -140,12 +142,18 @@ var measuring = (function () {
           }
           
           // Establish viewport of graph. The maximum zoom is 1 value unit = 1px.
-          var viewScale = -Math.min(1, (sparkCanvas.height - 1)/(maxy - miny));
-          var viewOffset = -miny * viewScale + sparkCanvas.height - 1;
+          var viewScale = -Math.min(1, (sparkHeight - 1)/(maxy - miny));
+          var viewOffset = -miny * viewScale + sparkHeight - 1;
 
+          // Draw graph: first background fill, then line
+          sparkContext.fillStyle = fillColor;
           for (var i = sparkLength - 1; i >= 0; i--) {
-            var y = history[(i + indexOffset) % sparkLength];
-            var scaley = y * viewScale + viewOffset;
+            var scaley = history[(i + indexOffset) % sparkLength] * viewScale + viewOffset;
+            sparkContext.fillRect(i, scaley, 1, sparkHeight);
+          }
+          sparkContext.fillStyle = fgColor;
+          for (var i = sparkLength - 1; i >= 0; i--) {
+            var scaley = history[(i + indexOffset) % sparkLength] * viewScale + viewOffset;
             sparkContext.fillRect(i, scaley, 1, 1);
           }
         }
