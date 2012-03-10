@@ -16,10 +16,10 @@ describe("CubeRotation", function() {
   });
   
   it("should preserve a vector rotated by the identity", function () {
-    expect(CubeRotation.byCode[0].transformVector([0.1,0.2,0.3])).toEqualVector([0.1,0.2,0.3]);
+    expect(CubeRotation.identity.transformVector([0.1,0.2,0.3])).toEqualVector([0.1,0.2,0.3]);
   });
   it("should preserve a point rotated by the identity", function () {
-    expect(CubeRotation.byCode[0].transformPoint([0.1,0.2,0.3])).toEqualVector([0.1,0.2,0.3]);
+    expect(CubeRotation.identity.transformPoint([0.1,0.2,0.3])).toEqualVector([0.1,0.2,0.3]);
   });
   it("should reflect a vector", function () {
     expect(CubeRotation.byCode[1].transformVector([0.1,0.2,0.3])).toEqualVector([-0.1,-0.2,0.3]);
@@ -50,4 +50,21 @@ describe("CubeRotation", function() {
       });
     });
   });
+  
+  function testNamedRot(name, output) {
+    it("should correctly rotate by " + name, function () {
+      expect(CubeRotation[name].transformVector([1,2,3])).toEqualVector(output);
+    });
+  }
+  testNamedRot("identity", [1,2,3]);
+  testNamedRot("x90",      [1,-3,2]);
+  testNamedRot("x180",     [1,-2,-3]);
+  testNamedRot("x270",     [1,3,-2]);
+  testNamedRot("y90",      [3,2,-1]);
+  testNamedRot("y180",     [-1,2,-3]);
+  testNamedRot("y270",     [-3,2,1]);
+  testNamedRot("z90",      [-2,1,3]);
+  testNamedRot("z180",     [-1,-2,3]);
+  testNamedRot("z270",     [2,-1,3]);
+  
 });

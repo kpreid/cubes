@@ -359,6 +359,18 @@ var CubeRotation = (function () {
   CubeRotation.count = lastSeenUnique + 1;
   CubeRotation.countWithoutReflections = 27;
   
+  // rotations are named according to the right-hand rule (counterclockwise looking opposite the named axis)
+  CubeRotation.identity = table[0];
+  CubeRotation.x90  = table[16+4  ];
+  CubeRotation.x180 = table[     2];
+  CubeRotation.x270 = table[16+4+2];
+  CubeRotation.y90  = table[16+8+3];
+  CubeRotation.y180 = table[     3];
+  CubeRotation.y270 = table[16+8  ];
+  CubeRotation.z90  = table[16  +3];
+  CubeRotation.z180 = table[     1];
+  CubeRotation.z270 = table[16  +2];
+  
   return CubeRotation;
 }());
 
