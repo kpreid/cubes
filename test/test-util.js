@@ -40,4 +40,14 @@ describe("CubeRotation", function() {
       expect(rot.inverse.transformVector(rot.transformVector(vec))).toEqualVector(vec);
     });
   });
+
+  it("should have correct compositions", function () {
+    CubeRotation.byCode.forEach(function (rot1) {
+      CubeRotation.byCode.forEach(function (rot2) {
+        var vec = [1,2,3];
+        expect(rot2.after(rot1).transformVector(vec))
+            .toEqualVector(rot2.transformVector(rot1.transformVector(vec)));
+      });
+    });
+  });
 });

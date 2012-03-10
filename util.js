@@ -278,6 +278,7 @@ var CubeRotation = (function () {
   function CubeRotation(code) {
     this.code = code;
     this.isReflection = code & 32;
+    this._compositions = [];
     
     // Pre-rotated unit vectors
     this.px = this.transformVector(UNIT_PX);
@@ -287,6 +288,9 @@ var CubeRotation = (function () {
     this.ny = this.transformVector(UNIT_NY);
     this.nz = this.transformVector(UNIT_NZ);
   }
+  CubeRotation.prototype.after = function (firstRotation) {
+    return this._compositions[firstRotation.code];
+  };
   CubeRotation.prototype.transformVector = function (vec) {
     return computeSymmetry(this.code, 0, vec);
   };
@@ -295,8 +299,10 @@ var CubeRotation = (function () {
   };
   
   // "Static methods"
-  CubeRotation.reduceCode = function (code) {
-    return mod(code, RANGE);
+  CubeRotation.canonicalCode = function (code) {
+    code = mod(code | 0, RANGE);
+    if ((code & (4+8)) >> 2 === 3) code &= ~(4+8); // remove nonexistent 4th case
+    return code;
   };
   // Among the specified rotations, choose the one which minimizes the angle between the rotated 'toRotate' and 'direction'.
   CubeRotation.nearestToDirection = function (target, toRotate, rotations) {
@@ -314,36 +320,43 @@ var CubeRotation = (function () {
   
   // Precompute all rotations
   var table = [];
+  var lastSeenUnique;
   for (var i = 0; i < RANGE; i++) {
-    // TODO: Canonicalize multiple codes for the same rotation.
-    table[i] = new CubeRotation(i);
+    var reduced = CubeRotation.canonicalCode(i);
+    if (reduced !== i) {
+      table[i] = table[reduced];
+    } else {
+      table[i] = new CubeRotation(i);
+      lastSeenUnique = i;
+    }
   }
   CubeRotation.byCode = table;
   
-  // Compute inverses
-  // This does it by brute force, rather than inverting the process in computeSymmetry. However, this has the advantage that it does not depend on the details of the coding scheme.
-  for (var i = 0; i < RANGE; i++) {
-    var rot = table[i];
-    if (rot.inverse !== undefined) continue;
-    
-    testing: for (var j = 0; j < RANGE; j++) {
-      var rot2 = table[j];
-      if (rot2.inverse !== undefined) continue;
-      
-      for (var k = 0; k < 3; k++) {
-        var vec = [0,0,0];
-        vec[k] = 1;
-        vec = rot2.transformVector(rot.transformVector(vec));
-        if (vec[k] < 0.9) continue testing;
-      }
-      rot.inverse = rot2;
-      rot2.inverse = rot;
-      break;
-    }
+  function similarVector(a,b) {
+    return vec3.length(vec3.subtract(a, b, vec3.create())) < 1e-3;
   }
   
+  // Compute compositions and inverses
+  var exampleVec = [1,2,3];
+  table.forEach(function (rot1) {
+    table.forEach(function (rot2) {
+      var compResult = rot2.transformVector(rot1.transformVector(exampleVec));
+      testing: for (var k = 0; k < RANGE; k++) {
+        var candidate = table[k];
+        if (similarVector(candidate.transformVector(exampleVec), compResult)) {
+          rot2._compositions[rot1.code] = candidate;
+          if (similarVector(exampleVec, compResult)) { // found an inverse
+            rot1.inverse = rot2;
+            rot2.inverse = rot1;
+          }
+          break testing;
+        }
+      }
+    });
+  });
+  
   CubeRotation.codeRange = RANGE;
-  CubeRotation.count = 60; // 1 + the last code which is not redundant
+  CubeRotation.count = lastSeenUnique + 1;
   CubeRotation.countWithoutReflections = 27;
   
   return CubeRotation;
