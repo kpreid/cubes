@@ -208,15 +208,25 @@ var Player = (function () {
           if (!type.solid) continue;
           var pos = [x, y, z];
           if (ignore.get(pos)) continue;
-          if (!type.opaque && type.world && !iworld.gRot(x,y,z) /* rotating-and-unrotating not yet supported */ && level == 0) {
+          if (!type.opaque && type.world && level == 0) {
             var scale = type.world.wx;
+            var rotCode = iworld.gRot(x,y,z);
+            if (rotCode === 0) {
+              var rot = null;
+              var scaledCollideAABB = aabb.translate([-x, -y, -z]).scale(scale);
+            } else {
+              var rot = CubeRotation.byCode[rotCode];
+              var scaledCollideAABB = aabb.translate([-x, -y, -z]).rotate(rot.inverse).scale(scale);
+            }
             var subhit = intersectWorld(
-                  aabb.translate([-x, -y, -z]).scale(scale),
+                  scaledCollideAABB,
                   type.world,
                   IntVectorMap.empty,
                   level + 1);
             if (subhit) subhit.forEach(function (subHitAAB, subPos) {
-              hit.set(pos.concat(subPos), subHitAAB.scale(1/scale).translate([x, y, z]));
+              hit.set(pos.concat(subPos), 
+                rot ? subHitAAB.scale(1/scale).rotate(rot).translate([x, y, z])
+                    : subHitAAB.scale(1/scale)            .translate([x, y, z]));
             });
           } else {
             hit.set(pos, AAB.unitCube(pos));

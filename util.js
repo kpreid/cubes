@@ -196,16 +196,15 @@ var AAB = (function () {
                    scale * this[5]);
   };
   
-  // TODO: This is not strictly rotation as it includes reflections.
-  AAB.prototype.rotate = function (robj) {
+  AAB.prototype.rotate = function (rot) {
     var v0 = rot.transformPoint([this[0], this[2], this[4]]);
     var v1 = rot.transformPoint([this[1], this[3], this[5]]);
-    return new AAB(v0[0],
-                   v1[0],
-                   v0[1],
-                   v1[1],
-                   v0[2],
-                   v1[2]);
+    return new AAB(Math.min(v0[0], v1[0]),
+                   Math.max(v0[0], v1[0]),
+                   Math.min(v0[1], v1[1]),
+                   Math.max(v0[1], v1[1]),
+                   Math.min(v0[2], v1[2]),
+                   Math.max(v0[2], v1[2]));
   };
   
   // The distance from the origin to the closest point not in this AAB.
