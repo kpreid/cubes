@@ -27,4 +27,17 @@ describe("CubeRotation", function() {
   it("should reflect a point", function () {
     expect(CubeRotation.byCode[1].transformPoint([0.1,0.2,0.3])).toEqualVector([0.9,0.8,0.3]);
   });
+  
+  it("should have paired inverses", function () {
+    CubeRotation.byCode.forEach(function (rot) {
+      expect(rot.inverse.inverse).toBe(rot);
+    });
+  });
+
+  it("should have correct inverses", function () {
+    CubeRotation.byCode.forEach(function (rot) {
+      var vec = [1,2,3];
+      expect(rot.inverse.transformVector(rot.transformVector(vec))).toEqualVector(vec);
+    });
+  });
 });

@@ -316,9 +316,32 @@ var CubeRotation = (function () {
   // Precompute all rotations
   var table = [];
   for (var i = 0; i < RANGE; i++) {
+    // TODO: Canonicalize multiple codes for the same rotation.
     table[i] = new CubeRotation(i);
   }
   CubeRotation.byCode = table;
+  
+  // Compute inverses
+  // This does it by brute force, rather than inverting the process in computeSymmetry. However, this has the advantage that it does not depend on the details of the coding scheme.
+  for (var i = 0; i < RANGE; i++) {
+    var rot = table[i];
+    if (rot.inverse !== undefined) continue;
+    
+    testing: for (var j = 0; j < RANGE; j++) {
+      var rot2 = table[j];
+      if (rot2.inverse !== undefined) continue;
+      
+      for (var k = 0; k < 3; k++) {
+        var vec = [0,0,0];
+        vec[k] = 1;
+        vec = rot2.transformVector(rot.transformVector(vec));
+        if (vec[k] < 0.9) continue testing;
+      }
+      rot.inverse = rot2;
+      rot2.inverse = rot;
+      break;
+    }
+  }
   
   CubeRotation.codeRange = RANGE;
   CubeRotation.count = 60; // 1 + the last code which is not redundant
