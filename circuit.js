@@ -525,7 +525,7 @@ var Circuit = (function () {
       } else {
         if ("blockOut_rotation" in state) {
           outerWorld.rawRotations[cube[0]*outerWorld.wy*outerWorld.wz+cube[1]*outerWorld.wz+cube[2]] // TODO KLUDGE
-            = applyCubeSymmetry.reduce(state.blockOut_rotation);
+            = CubeRotation.reduceCode(state.blockOut_rotation);
         }
       }
     });

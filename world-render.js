@@ -15,20 +15,7 @@ var WorldRenderer = (function () {
     return v[0]*v[0]+v[1]*v[1];
   }
 
-  // Block rotation precalculations
-  var ROT_DATA = [];
-  for (var i = 0; i < applyCubeSymmetry.COUNT; i++) {
-    ROT_DATA.push({
-      pos:  applyCubeSymmetry(i, 1, [1,1,1]),
-      zero: applyCubeSymmetry(i, 1, [0,0,0]),
-      nx:   applyCubeSymmetry(i, 0, UNIT_NX),
-      ny:   applyCubeSymmetry(i, 0, UNIT_NY),
-      nz:   applyCubeSymmetry(i, 0, UNIT_NZ),
-      px:   applyCubeSymmetry(i, 0, UNIT_PX),
-      py:   applyCubeSymmetry(i, 0, UNIT_PY),
-      pz:   applyCubeSymmetry(i, 0, UNIT_PZ)
-    });
-  }
+  var rotationsByCode = CubeRotation.byCode;
 
   var distanceInfoCache = {}, lastSeenRenderDistance = null;
   function renderDistanceInfo(newRenderDistance) {
@@ -507,7 +494,7 @@ var WorldRenderer = (function () {
             if (value === ID_EMPTY) continue;
 
             var rotIndex = rawRotations[rawIndex];
-            var rot = ROT_DATA[rotIndex];
+            var rot = rotationsByCode[rotIndex];
             var btype = types[value];
             var faceData = (rotatedBlockFaceData[value] || BOGUS_BLOCK_DATA)[rotIndex];
             thisOpaque = btype.opaque;

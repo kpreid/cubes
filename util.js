@@ -197,9 +197,9 @@ var AAB = (function () {
   };
   
   // TODO: This is not strictly rotation as it includes reflections.
-  AAB.prototype.rotate = function (symmetry) {
-    var v0 = applyCubeSymmetry(rotation, 0, [this[0], this[2], this[4]]);
-    var v1 = applyCubeSymmetry(rotation, 0, [this[1], this[3], this[5]]);
+  AAB.prototype.rotate = function (robj) {
+    var v0 = rot.transformPoint([this[0], this[2], this[4]]);
+    var v1 = rot.transformPoint([this[1], this[3], this[5]]);
     return new AAB(v0[0],
                    v1[0],
                    v0[1],
@@ -236,60 +236,96 @@ function dynamicText(elem) {
   return textNode;
 }
 
-function applyCubeSymmetry(which, size, vec) {
-  // Contributed by Jack Schmidt; see:
-  // <http://math.stackexchange.com/questions/78573/what-is-a-natural-way-to-enumerate-the-symmetries-of-a-cube>
+// Utilities for working with those rotations (and improper rotations) which
+// are symmetries of the cube.
+var CubeRotation = (function () {
   "use strict";
   
-  var x = vec[0];
-  var y = vec[1];
-  var z = vec[2];
+  var RANGE = 64; // contains some duplicates due to "120-ness" having 3 possibilities in 2 bits
   
-   var t;
-   // Peel off the "are we a reflection?" bit
-   if( which & 32 ) { t=x; x=y; y=t; }
-   // Peel off the "do we swap the tetrahedrons?" bit
-   if( which & 16 ) { t=x; x=y; y=t; z=size-z; }
-   // Now we are in tetrahedral group, peel off the "120-ness"
-   switch( (which & (4+8) ) >> 2 ) {
-     case 0: break;
-     case 1: t=x; x=y; y=z; z=t; break;
-     case 2: t=z; z=y; y=x; x=t; break;
-     case 3: /* redundant w/ 0 */ break;
-   }
-   // Now we are in the Klein four group, peel off the "180-ness"
-   switch( which & (1+2) ) {
-     case 0: break;
-     case 1: x=size-x; y=size-y; break;
-     case 2: y=size-y; z=size-z; break;
-     case 3: z=size-z; x=size-x; break;
-   }
-   vec = vec3.create();
-   vec[0] = x;
-   vec[1] = y;
-   vec[2] = z;
-   return vec;
-}
-applyCubeSymmetry.isReflection = function (symmetry) { return !!(symmetry & 32); };
-applyCubeSymmetry.reduce = function (number) {
-  return mod(number, 64);
-}
-applyCubeSymmetry.COUNT = 64; // contains some duplicates due to "120-ness" having 3 possibilities in 2 bits
-applyCubeSymmetry.NO_REFLECT_COUNT = 27;
+  function computeSymmetry(code, size, vec) {
+    // Contributed by Jack Schmidt; see: <http://math.stackexchange.com/questions/78573/what-is-a-natural-way-to-enumerate-the-symmetries-of-a-cube>
 
-// Find the cube symmetry (as in 'applyCubeSymmetry') which minimizes the angle between the rotation of the vector 'cubeVec' and the vector 'direction', among those listed in 'symmetries'.
-function nearestCubeSymmetry(direction, cubeVec, symmetries) {
-  var cosine = -Infinity;
-  var best = null;
-  for (var i = 0; i < symmetries.length; i++) {
-    var ia = vec3.dot(direction, applyCubeSymmetry(symmetries[i], 0, cubeVec));
-    if (ia > cosine) {
-      cosine = ia;
-      best = symmetries[i];
-    }
+    var x = vec[0];
+    var y = vec[1];
+    var z = vec[2];
+
+     var t;
+     // Peel off the "are we a reflection?" bit
+     if( code & 32 ) { t=x; x=y; y=t; }
+     // Peel off the "do we swap the tetrahedrons?" bit
+     if( code & 16 ) { t=x; x=y; y=t; z=size-z; }
+     // Now we are in tetrahedral group, peel off the "120-ness"
+     switch( (code & (4+8) ) >> 2 ) {
+       case 0: break;
+       case 1: t=x; x=y; y=z; z=t; break;
+       case 2: t=z; z=y; y=x; x=t; break;
+       case 3: /* redundant w/ 0 */ break;
+     }
+     // Now we are in the Klein four group, peel off the "180-ness"
+     switch( code & (1+2) ) {
+       case 0: break;
+       case 1: x=size-x; y=size-y; break;
+       case 2: y=size-y; z=size-z; break;
+       case 3: z=size-z; x=size-x; break;
+     }
+     vec = vec3.create();
+     vec[0] = x;
+     vec[1] = y;
+     vec[2] = z;
+     return vec;
   }
-  return best;
-}
+  
+  function CubeRotation(code) {
+    this.code = code;
+    this.isReflection = code & 32;
+    
+    // Pre-rotated unit vectors
+    this.px = this.transformVector(UNIT_PX);
+    this.py = this.transformVector(UNIT_PY);
+    this.pz = this.transformVector(UNIT_PZ);
+    this.nx = this.transformVector(UNIT_NX);
+    this.ny = this.transformVector(UNIT_NY);
+    this.nz = this.transformVector(UNIT_NZ);
+  }
+  CubeRotation.prototype.transformVector = function (vec) {
+    return computeSymmetry(this.code, 0, vec);
+  };
+  CubeRotation.prototype.transformPoint = function (vec) {
+    return computeSymmetry(this.code, 1, vec);
+  };
+  
+  // "Static methods"
+  CubeRotation.reduceCode = function (code) {
+    return mod(code, RANGE);
+  };
+  // Among the specified rotations, choose the one which minimizes the angle between the rotated 'toRotate' and 'direction'.
+  CubeRotation.nearestToDirection = function (target, toRotate, rotations) {
+    var cosine = -Infinity;
+    var best = null;
+    for (var i = 0; i < rotations.length; i++) {
+      var ia = vec3.dot(target, rotations[i].transformVector(toRotate));
+      if (ia > cosine) {
+        cosine = ia;
+        best = rotations[i];
+      }
+    }
+    return best;
+  };
+  
+  // Precompute all rotations
+  var table = [];
+  for (var i = 0; i < RANGE; i++) {
+    table[i] = new CubeRotation(i);
+  }
+  CubeRotation.byCode = table;
+  
+  CubeRotation.codeRange = RANGE;
+  CubeRotation.count = 60; // 1 + the last code which is not redundant
+  CubeRotation.countWithoutReflections = 27;
+  
+  return CubeRotation;
+}());
 
 // A map from keys of the form [i, j, ...], which may be Arrays or typed arrays.
 var IntVectorMap = (function () {

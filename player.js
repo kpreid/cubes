@@ -18,7 +18,7 @@ var Player = (function () {
   );
 
   var PLACEHOLDER_ROTATIONS = [];
-  for (var i = 0; i < applyCubeSymmetry.NO_REFLECT_COUNT; i++) {
+  for (var i = 0; i < CubeRotation.countWithoutReflections; i++) {
     PLACEHOLDER_ROTATIONS.push(i);
   }
   
@@ -395,8 +395,12 @@ var Player = (function () {
             if (currentPlace.world.g(x,y,z) === 0) {
               // TODO: rotation on create should be more programmable.
               var raypts = renderer.getAimRay(mousePos, player.render); // TODO depend on player orientation instead?
-              var symm = nearestCubeSymmetry(vec3.subtract(raypts[0], raypts[1]), [0,0,1], type.automaticRotations);
-              currentPlace.world.s(x,y,z, currentPlace.tool, symm);
+              var rotation = CubeRotation.nearestToDirection(
+                  vec3.subtract(raypts[0], raypts[1]),
+                  [0,0,1],
+                  type.automaticRotations.map(
+                      function (code) { return CubeRotation.byCode[code]; }));
+              currentPlace.world.s(x,y,z, currentPlace.tool, rotation.code);
               
               currentPlace.wrend.renderCreateBlock([x,y,z]);
               currentPlace.world.audioEvent([x,y,z], "create");

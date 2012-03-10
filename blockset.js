@@ -240,7 +240,7 @@ var BlockSet = (function () {
     EMPTY_FACES["h" + dimName] = EMPTY_GEOMETRY;
   });
   var EMPTY_BLOCKRENDER = [];
-  for (var rot = 0; rot < applyCubeSymmetry.COUNT; rot++) {
+  for (var rot = 0; rot < CubeRotation.codeRange; rot++) {
     EMPTY_BLOCKRENDER.push(EMPTY_FACES);
   }
   
@@ -251,14 +251,14 @@ var BlockSet = (function () {
   
   function rotateVertices(rot, vertices) {
     var out = [];
-    if (applyCubeSymmetry.isReflection(rot)) {
+    if (rot.isReflection) {
       for (var i = vertices.length - 3; i >= 0; i -= 3) {
-        var t = applyCubeSymmetry(rot, 1, [vertices[i], vertices[i+1], vertices[i+2]]);
+        var t = rot.transformPoint([vertices[i], vertices[i+1], vertices[i+2]]);
         out.push(t[0],t[1],t[2]);
       }
     } else {
       for (var i = 0; i < vertices.length; i += 3) {
-        var t = applyCubeSymmetry(rot, 1, [vertices[i], vertices[i+1], vertices[i+2]]);
+        var t = rot.transformPoint([vertices[i], vertices[i+1], vertices[i+2]]);
         out.push(t[0],t[1],t[2]);
       }
     }
@@ -266,7 +266,7 @@ var BlockSet = (function () {
   }
   
   function rotateTexcoords(rot, texcoords) {
-    if (applyCubeSymmetry.isReflection(rot)) {
+    if (rot.isReflection) {
       var out = [];
       for (var i = texcoords.length - 2; i >= 0; i -= 2) {
         out.push(texcoords[i],texcoords[i+1]);
@@ -627,7 +627,7 @@ var BlockSet = (function () {
           faceData["l" + dimName] = {vertices: verticesL, texcoords: texcoords};
           faceData["h" + dimName] = {vertices: verticesH, texcoords: texcoords};
         });
-        for (var i = 0; i < applyCubeSymmetry.COUNT; i++) {
+        for (var i = 0; i < CubeRotation.codeRange; i++) {
           rotatedFaceData[i] = faceData;
         }
       } else if (blockType.world) {
@@ -720,9 +720,9 @@ var BlockSet = (function () {
             faceData["h" + dimName] = {vertices: verticesH, texcoords: texcoordsH};
           });
           // TODO: texcoords are copied and reversed for every reflection; it would be more memory-efficient to arrange to have only one reversed set
-          for (var rot = 0; rot < applyCubeSymmetry.COUNT; rot++) {
-            rotatedFaceData[rot] = rotateFaceData(rot, faceData);
-          }
+          CubeRotation.byCode.forEach(function (rot) {
+            rotatedFaceData[rot.code] = rotateFaceData(rot, faceData);
+          });
         }());
       } else {
         throw new Error("Don't know how to render the BlockType");

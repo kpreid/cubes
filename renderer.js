@@ -560,7 +560,7 @@ var Renderer = (function () {
             // destroy mode for color cubes
             blockType.writeColor(1, colors, colors.length);
           }
-          var v = applyCubeSymmetry(symm, 1, [
+          var v = CubeRotation.byCode[symm].transformPoint([
             (x+0.5)/tileSize,
             (y+0.5)/tileSize,
             (z+0.5)/tileSize

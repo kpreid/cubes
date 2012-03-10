@@ -682,8 +682,8 @@ function generateWorlds(config) {
           function (p) { return topWorld.g(p[0],p[1],p[2]) == ground; }, 
           function (pos) {
         var perp = counterclockwise(vel);
-        setvec(maddy(pos, 1, perp, -width-1), ids.greenery, Math.floor(Math.random()*applyCubeSymmetry.COUNT));
-        setvec(maddy(pos, 1, perp, +width+1), ids.greenery, Math.floor(Math.random()*applyCubeSymmetry.COUNT));
+        setvec(maddy(pos, 1, perp, -width-1), ids.greenery, Math.floor(Math.random()*CubeRotation.count));
+        setvec(maddy(pos, 1, perp, +width+1), ids.greenery, Math.floor(Math.random()*CubeRotation.count));
         fill(madd(pos, perp, -width), madd(pos, perp, width), road);
         return [];
       });
