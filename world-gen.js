@@ -355,6 +355,169 @@ var WorldGen = (function () {
 
       targetKit.logic = ids;
       return ids;
+    },
+
+    newDefaultBlockset: function (TS) {
+      // Given an object facing the +z direction, these will rotate that face to...
+      var sixFaceRotations = [0/*+z*/, 2/*-z*/, 4/*+y*/, 4+2/*-y*/, 16+8/*-x*/, 16+11/*+x*/];
+
+      var TL = TS - 1;
+      var HALF = TL/2;
+
+      function normalish() {
+        return (Math.random()+Math.random()+Math.random()+Math.random()+Math.random()+Math.random()) / 6 - 0.5;
+      }
+
+      // --- base blockset ---
+
+      // layer 1
+      var pureColors = {blockset: WorldGen.colorBlocks(7, 7, 5)};
+
+      // layer 2
+      var baseLogicAndColors = {blockset: WorldGen.colorBlocks(7, 6, 5)};
+      WorldGen.addLogicBlocks(TS, baseLogicAndColors, pureColors);
+
+      // layer 3
+      var fullLogicAndColors = {blockset: WorldGen.colorBlocks(6, 6, 6)};
+      var onlyColorCount = fullLogicAndColors.blockset.length; // before logic added
+      WorldGen.addLogicBlocks(TS, fullLogicAndColors, baseLogicAndColors);
+      var colorSet = fullLogicAndColors.blockset;
+      var brgb = WorldGen.colorPicker(colorSet, 0);
+      var brgbDither = WorldGen.colorPicker(colorSet, 1.2);
+      var ls = fullLogicAndColors.logic;
+
+      // --- block world generation utilities ---
+
+      function genedit(patfunc) {
+        return WorldGen.newProceduralBlockType(TS, colorSet, patfunc);
+      }
+      var f = WorldGen.blockFunctions(TS);
+
+      function rgbPat(b) { return brgb(b[0]/TL,b[1]/TL,b[2]/TL); }
+
+      function addSpontaneousConversion(type, targetID) {
+        if (!ls.emitConstant) throw new Error("don't have constant block available");
+        type.world.s(1,1,1, ls.emitConstant, targetID);
+        type.world.s(2,1,1, ls.gate);  type.world.s(2,1,2, ls.spontaneous);
+        type.world.s(3,1,1, ls.become);
+      }
+      function addRotation(type) {
+        type.world.s(1,3,0, ls.getSubDatum);
+        type.world.s(1,4,0, ls.setRotation);
+        type.automaticRotations = sixFaceRotations;
+      }
+
+      // --- default block worlds and block set ---
+
+      var type;
+      var blockset = new BlockSet([]);
+      var ids = {};
+
+      // color cube - world base and bogus-placeholder
+      blockset.add(type = genedit(function (b) {
+        return rgbPat(b);
+      }));
+
+      // ground block
+      blockset.add(type = genedit(function (b) {
+        return (f.te(b) ? f.cond(f.speckle, f.flat(brgb(.67,.34,.34)), f.flat(brgb(.67,0,0))) :
+                f.tp(b) ? f.flat(brgb(1,.34,.34)) :
+                f.cond(f.speckle, f.flat(brgb(.34,0,0)), f.flat(brgb(0,0,0))))(b);
+      }));
+      var ground = type.world;
+
+      // ground block #2
+      blockset.add(type = genedit(function (b) {
+        return (f.te(b) ? f.cond(f.speckle, f.flat(brgb(.34,.67,.34)), f.flat(brgb(0,.34,0))) :
+                f.tp(b) ? f.flat(brgb(.34,1,.34)) :
+                f.cond(f.speckle, f.flat(brgb(0,.34,0)), f.flat(brgb(0,1,1))))(b);
+      }));
+
+      // pyramid thing
+      var pyr1 = ids.pyramid = blockset.length;
+      blockset.add(type = genedit(function (b) {
+        if (Math.abs(b[0] - HALF) + Math.abs(b[1] - HALF) > (TS-0.5)-b[2])
+          return 0;
+        return brgb(mod((b[2]+2)/(TS/2), 1), Math.floor((b[2]+2)/(TS/2))*0.5, 0);
+      }));
+      addRotation(type);
+
+      // pyramid thing variant
+      var pyr2 = blockset.length;
+      blockset.add(type = genedit(function (b) {
+        if (Math.abs(b[0] - HALF) + Math.abs(b[1] - HALF) > (TS-0.5)-b[2])
+          return 0;
+        return brgb(0, mod((b[2]+2)/(TS/2), 1), Math.floor((b[2]+2)/(TS/2))*0.5);
+      }));
+      addRotation(type);
+
+      addSpontaneousConversion(blockset.get(pyr1), pyr2);
+      addSpontaneousConversion(blockset.get(pyr2), pyr1);
+
+      // low ground bump
+      ids.bump = blockset.length;
+      blockset.add(type = genedit(function (b) {
+        return ground.g(b[0],b[1]+Math.max(TS/2, TS-2*f.depth([b[0],TS/2,b[2]])),b[2]);
+      }));
+
+      // leaves/hedge
+      ids.greenery = blockset.length;
+      blockset.add(type = genedit(function (b) {
+        var edgeness = f.maxrad(b);
+        if (Math.random() >= edgeness*0.2) return 0;
+        var green = Math.random() * 0.75 + 0.25;
+        var notgreen = Math.random() * green*0.3 + green*0.25;
+        return brgb(notgreen,green*edgeness,notgreen*(1-edgeness));
+      }));
+      addRotation(type); // allows random orientation to reduce uniformity
+
+      // pillar thing
+      blockset.add(type = genedit(function (b) {
+        return Math.max(Math.abs(b[0] - TS/2), Math.abs(b[2] - TS/2)) <= TS/4 ? brgbDither(.5,.5,0) : 0;
+      }));
+
+      // glass sheet for buildings
+      ids.glass = blockset.length;
+      blockset.add(type = genedit(function (b) {
+        return (f.xe(b) || f.te(b) || f.be(b)) && b[2] == TL ? brgb(.9,.9,.9) : 0;
+      }));
+      addRotation(type);
+
+      // "big chunk of stone" block
+      ids.slab = blockset.length;
+      blockset.add(type = genedit(function (b) {
+        var g = Math.pow(f.maxrad(b), 0.25) * 0.7 + f.rad(b)/HALF * 0.1 + normalish() * 0.2;
+        g = Math.min(1, g * 0.8);
+        return /* b[2] >= 8 ? 0 : */ brgbDither(g,g,g);
+      }));
+
+      var roundMaterial = brgb(.2,.2,.2);
+
+      // quarter-round (edge) block
+      ids.qround = blockset.length;
+      blockset.add(type = genedit(function (b) {
+        return b[0]*b[0]+b[2]*b[2] <= TS*TS ? roundMaterial : 0;
+      }));
+      addRotation(type);
+
+      // eighth-round (corner) block
+      ids.eround = blockset.length;
+      blockset.add(type = genedit(function (b) {
+        return b[0]*b[0]+b[1]*b[1]+b[2]*b[2] <= TS*TS ? roundMaterial : 0;
+      }));
+      addRotation(type);  
+
+      // random block types
+      ids.firstRandom = blockset.length;
+      ids.lastRandom = ids.firstRandom + 3;
+      while (blockset.length <= ids.lastRandom) {
+        blockset.add(WorldGen.newRandomBlockType(TS, colorSet));
+      }
+
+      var result = {blockset: blockset};
+      WorldGen.addLogicBlocks(TS, result, fullLogicAndColors);
+      result.defaultWorldBlocks = ids;
+      return result;
     }
   };
   
@@ -365,168 +528,10 @@ var WorldGen = (function () {
 function generateWorlds(config) {
   "use strict";
 
-  // Given an object facing the +z direction, these will rotate that face to...
-  var sixFaceRotations = [0/*+z*/, 2/*-z*/, 4/*+y*/, 4+2/*-y*/, 16+8/*-x*/, 16+11/*+x*/];
-
-  var TS = Math.round(config.generate_tileSize.get());
-  var TL = TS - 1;
-  var HALF = TL/2;
-
-  function normalish() {
-    return (Math.random()+Math.random()+Math.random()+Math.random()+Math.random()+Math.random()) / 6 - 0.5;
-  }
-  
-  // --- base blockset ---
-  
-  // layer 1
-  var pureColors = {blockset: WorldGen.colorBlocks(7, 7, 5)};
-  
-  // layer 2
-  var baseLogicAndColors = {blockset: WorldGen.colorBlocks(7, 6, 5)};
-  WorldGen.addLogicBlocks(TS, baseLogicAndColors, pureColors);
-  
-  // layer 3
-  var fullLogicAndColors = {blockset: WorldGen.colorBlocks(6, 6, 6)};
-  var onlyColorCount = fullLogicAndColors.blockset.length; // before logic added
-  WorldGen.addLogicBlocks(TS, fullLogicAndColors, baseLogicAndColors);
-  var colorSet = fullLogicAndColors.blockset;
-  var brgb = WorldGen.colorPicker(colorSet, 0);
-  var brgbDither = WorldGen.colorPicker(colorSet, 1.2);
-  var ls = fullLogicAndColors.logic;
-
-  // --- block world generation utilities ---
-  
-  function genedit(patfunc) {
-    return WorldGen.newProceduralBlockType(TS, colorSet, patfunc);
-  }
-  var f = WorldGen.blockFunctions(TS);
-
-  function rgbPat(b) { return brgb(b[0]/TL,b[1]/TL,b[2]/TL); }
-  
-  function addSpontaneousConversion(type, targetID) {
-    if (!ls.emitConstant) throw new Error("don't have constant block available");
-    type.world.s(1,1,1, ls.emitConstant, targetID);
-    type.world.s(2,1,1, ls.gate);  type.world.s(2,1,2, ls.spontaneous);
-    type.world.s(3,1,1, ls.become);
-  }
-  function addRotation(type) {
-    type.world.s(1,3,0, ls.getSubDatum);
-    type.world.s(1,4,0, ls.setRotation);
-    type.automaticRotations = sixFaceRotations;
-  }
-  
-  // --- default block worlds and block set ---
-
-  var type;
-  var blockset = new BlockSet([]);
-  var ids = {};
-
-  // color cube - world base and bogus-placeholder
-  blockset.add(type = genedit(function (b) {
-    return rgbPat(b);
-  }));
-  
-  // ground block
-  blockset.add(type = genedit(function (b) {
-    return (f.te(b) ? f.cond(f.speckle, f.flat(brgb(.67,.34,.34)), f.flat(brgb(.67,0,0))) :
-            f.tp(b) ? f.flat(brgb(1,.34,.34)) :
-            f.cond(f.speckle, f.flat(brgb(.34,0,0)), f.flat(brgb(0,0,0))))(b);
-  }));
-  var ground = type.world;
-  
-  // ground block #2
-  blockset.add(type = genedit(function (b) {
-    return (f.te(b) ? f.cond(f.speckle, f.flat(brgb(.34,.67,.34)), f.flat(brgb(0,.34,0))) :
-            f.tp(b) ? f.flat(brgb(.34,1,.34)) :
-            f.cond(f.speckle, f.flat(brgb(0,.34,0)), f.flat(brgb(0,1,1))))(b);
-  }));
-  
-  // pyramid thing
-  var pyr1 = ids.pyramid = blockset.length;
-  blockset.add(type = genedit(function (b) {
-    if (Math.abs(b[0] - HALF) + Math.abs(b[1] - HALF) > (TS-0.5)-b[2])
-      return 0;
-    return brgb(mod((b[2]+2)/(TS/2), 1), Math.floor((b[2]+2)/(TS/2))*0.5, 0);
-  }));
-  addRotation(type);
-
-  // pyramid thing variant
-  var pyr2 = blockset.length;
-  blockset.add(type = genedit(function (b) {
-    if (Math.abs(b[0] - HALF) + Math.abs(b[1] - HALF) > (TS-0.5)-b[2])
-      return 0;
-    return brgb(0, mod((b[2]+2)/(TS/2), 1), Math.floor((b[2]+2)/(TS/2))*0.5);
-  }));
-  addRotation(type);
-
-  addSpontaneousConversion(blockset.get(pyr1), pyr2);
-  addSpontaneousConversion(blockset.get(pyr2), pyr1);
-  
-  // low ground bump
-  ids.bump = blockset.length;
-  blockset.add(type = genedit(function (b) {
-    return ground.g(b[0],b[1]+Math.max(TS/2, TS-2*f.depth([b[0],TS/2,b[2]])),b[2]);
-  }));
-
-  // leaves/hedge
-  ids.greenery = blockset.length;
-  blockset.add(type = genedit(function (b) {
-    var edgeness = f.maxrad(b);
-    if (Math.random() >= edgeness*0.2) return 0;
-    var green = Math.random() * 0.75 + 0.25;
-    var notgreen = Math.random() * green*0.3 + green*0.25;
-    return brgb(notgreen,green*edgeness,notgreen*(1-edgeness));
-  }));
-  addRotation(type); // allows random orientation to reduce uniformity
-
-  // pillar thing
-  blockset.add(type = genedit(function (b) {
-    return Math.max(Math.abs(b[0] - TS/2), Math.abs(b[2] - TS/2)) <= TS/4 ? brgbDither(.5,.5,0) : 0;
-  }));
-  
-  // glass sheet for buildings
-  ids.glass = blockset.length;
-  blockset.add(type = genedit(function (b) {
-    return (f.xe(b) || f.te(b) || f.be(b)) && b[2] == TL ? brgb(.9,.9,.9) : 0;
-  }));
-  addRotation(type);
-  
-  // "big chunk of stone" block
-  ids.slab = blockset.length;
-  blockset.add(type = genedit(function (b) {
-    var g = Math.pow(f.maxrad(b), 0.25) * 0.7 + f.rad(b)/HALF * 0.1 + normalish() * 0.2;
-    g = Math.min(1, g * 0.8);
-    return /* b[2] >= 8 ? 0 : */ brgbDither(g,g,g);
-  }));
-  
-  var roundMaterial = brgb(.2,.2,.2);
-  
-  // quarter-round (edge) block
-  ids.qround = blockset.length;
-  blockset.add(type = genedit(function (b) {
-    return b[0]*b[0]+b[2]*b[2] <= TS*TS ? roundMaterial : 0;
-  }));
-  addRotation(type);
-
-  // eighth-round (corner) block
-  ids.eround = blockset.length;
-  blockset.add(type = genedit(function (b) {
-    return b[0]*b[0]+b[1]*b[1]+b[2]*b[2] <= TS*TS ? roundMaterial : 0;
-  }));
-  addRotation(type);  
-
-  // random block types
-  ids.firstRandom = blockset.length;
-  ids.lastRandom = ids.firstRandom + 3;
-  while (blockset.length <= ids.lastRandom) {
-    blockset.add(WorldGen.newRandomBlockType(TS, colorSet));
-  }
-
-  var l = WorldGen.addLogicBlocks(TS, {blockset: blockset}, fullLogicAndColors);
-  
-  
-  // --- big world ---
-  
+  var blockKit = WorldGen.newDefaultBlockset(Math.round(config.generate_tileSize.get()));
+  var blockset = blockKit.blockset;
+  var ids = blockKit.defaultWorldBlocks
+  var l = blockKit.logic;
 
   var topWorld = new World([
     config.generate_wx.get(),
