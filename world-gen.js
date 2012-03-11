@@ -305,15 +305,23 @@ var WorldGen = (function () {
 
       // get-subdata block
       type = genedit(function (b) {
-        return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 1 ? functionShapeColor : 0;
+        return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 2 ? functionShapeColor : 0;
       });
       type.behavior = Circuit.behaviors.getSubDatum;
       type.name = "logic.getSubDatum";
 
+      // getNeighborID
+      type = genedit(f.union(function (b) {
+        return Math.abs(Math.sqrt(Math.pow(b[1]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - (TS-b[0])) <= 2 ? functionShapeColor : 0;
+      }, f.cube(0,TS/2,TS/2,TS/4,functionShapePat)));
+      selfRotating(0);
+      type.behavior = Circuit.behaviors.getNeighborID;
+      type.name = "logic.getNeighborID";
+
       // spontaneous event detector block
       type = genedit(function (b) {
         // TODO: make this look more like a lightning bolt
-        return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 1 ? colorToID(1,1,0) : 0;
+        return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 2 ? colorToID(1,1,0) : 0;
       });
       type.behavior = Circuit.behaviors.spontaneous;
       type.name = "logic.spontaneous";

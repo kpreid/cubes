@@ -447,7 +447,31 @@ var Circuit = (function () {
     getSubDatum.compile = function (world, block, inputs) {
       var out = compileOutput(world, block, DIRECTIONS);
       return function (state) {
-        out(state, state.blockIn_subDatum);
+        if (state.blockIn_world) {
+          var bic = state.blockIn_cube;
+          out(state, state.blockIn_world.gSub(bic[0],bic[1],bic[2]));
+        } else {
+          out(state, null);
+        }
+      };
+    };
+    
+    // Get the ID of the block in the -X direction, either inner or outer
+    var getNeighborID = nb("getNeighborID", outputOnlyBeh);
+    getNeighborID.compile = function (world, block, inputs) {
+      var out = compileOutput(world, block, DIRECTIONS);
+      var neighborInner = vec3.add(getRot(world, block).transformVector(UNIT_NX), block);
+      return function (state) {
+        var nworld, ncube;
+        if (state.blockIn_world) {
+          nworld = state.blockIn_world;
+          ncube = vec3.add(getRot(state.blockIn_world, state.blockIn_cube).transformVector(UNIT_NX),
+                              state.blockIn_cube);
+        } else {
+          nworld = world;
+          ncube = neighborInner;
+        }
+        out(state, nworld.g(ncube[0],ncube[1],ncube[2]));
       };
     };
     
@@ -508,7 +532,10 @@ var Circuit = (function () {
       var out = compileOutput(world, block, DIRECTIONS);
       return function (state) {
         circuitsArr.forEach(function (circuit) {
-          var subState = {blockIn_subDatum: world.gSub(block[0],block[1],block[2])};
+          var subState = {
+            blockIn_world: world,
+            blockIn_cube: block
+          };
           circuit.evaluate(subState);
           if ("blockOut_output" in subState) {
             // TODO: detect conflicts among multiple outputs
@@ -524,7 +551,8 @@ var Circuit = (function () {
   Circuit.executeCircuitInBlock = function (blockWorld, outerWorld, cube, subDatum, extraState) {
     blockWorld.getCircuits().forEach(function (circuit) {
       var state = extraState ? Object.create(extraState) : {};
-      state.blockIn_subDatum = subDatum;
+      state.blockIn_world = outerWorld;
+      state.blockIn_cube = cube;
       
       circuit.evaluate(state);
       

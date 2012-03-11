@@ -162,6 +162,7 @@ function World(sizes, blockSet) {
     subData[index] = subdatum;
     
     var vec = [x,y,z];
+    var neighbors = [[x-1,y,z], [x,y-1,z], [x,y,z-1], [x+1,y,z], [x,y+1,z], [x,y,z+1]];
 
     var newType = blockSet.get(val);
     reeval(vec, newType);
@@ -178,10 +179,21 @@ function World(sizes, blockSet) {
     } else if (!cp && blockCircuits.has(vec)) {
       // No longer a circuit part.
       deleteCircuit(blockCircuits.get(vec));
-      [[x-1,y,z], [x,y-1,z], [x,y,z-1], [x+1,y,z], [x,y+1,z], [x,y,z+1]].forEach(function (neighbor) {
+      neighbors.forEach(function (neighbor) {
         if (isCircuitPart(gt(neighbor[0],neighbor[1],neighbor[2]))) becomeCircuit(neighbor);
       })
     }
+    
+    // Update neighbors
+    neighbors.forEach(function (neighbor) {
+      reeval(neighbor, gt(neighbor[0],neighbor[1],neighbor[2]));
+      
+      // note: this duplicates work if the same circuit neighbors this block more than once
+      var circuit = blockCircuits.get(neighbor);
+      if (circuit) {
+        circuit.refreshLocal();
+      }
+    });
 
     notifier.notify("dirtyBlock", vec);
     self.persistence.dirty();
