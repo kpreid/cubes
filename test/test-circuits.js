@@ -9,17 +9,19 @@ describe("Circuit", function() {
     // TODO: This code is duplicative of generateWorlds.
     if (blockset) return;
     // layer 1
-    var pureColors = {blockset: WorldGen.colorBlocks(4, 4, 4)};
+    var pureColors = WorldGen.colorBlocks(4, 4, 4);
 
     // layer 2
-    var baseLogicAndColors = {blockset: WorldGen.colorBlocks(4, 4, 4)};
+    var baseLogicAndColors = WorldGen.colorBlocks(4, 4, 4);
     WorldGen.addLogicBlocks(TS, baseLogicAndColors, pureColors);
 
     // layer 3
-    var fullLogicAndColors = {blockset: WorldGen.colorBlocks(4, 4, 4)};
-    WorldGen.addLogicBlocks(TS, fullLogicAndColors, baseLogicAndColors);
-    blockset = fullLogicAndColors.blockset;
-    ls = fullLogicAndColors.logic;
+    blockset = WorldGen.colorBlocks(4, 4, 4);
+    WorldGen.addLogicBlocks(TS, blockset, baseLogicAndColors);
+    ls = {};
+    for (var i = 0; i < blockset.length; i++) {
+      ls[(blockset.get(i).name || "").replace(/^logic\./, "")] = i;
+    }
   });
 
   it("should indicate 0", function () {

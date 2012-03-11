@@ -225,16 +225,18 @@ var WorldGen = (function () {
       });
     },
     
-    addLogicBlocks: function (TS, targetKit, baseKit) {
-      var ids = {};
+    addLogicBlocks: function (TS, targetSet, baseSet) {
       var type;
-      var targetSet = targetKit.blockset;
       var TL = TS-1;
       var HALF = TL/2;
       var f = WorldGen.blockFunctions(TS);
       
+      var baseGetSubDatum = baseSet.lookup("logic.getSubDatum");
+      var baseSetRotation = baseSet.lookup("logic.setRotation");
+      var baseEmitUniform = baseSet.lookup("logic.emitUniform");
+      
       // appearance utilities
-      var colorToID = WorldGen.colorPicker(baseKit.blockset);
+      var colorToID = WorldGen.colorPicker(baseSet);
       var boxColor = colorToID(0,1,1);
       var functionShapeColor = colorToID(0.5,0.5,0.5);
       var functionShapePat = f.flat(functionShapeColor);
@@ -244,7 +246,7 @@ var WorldGen = (function () {
         };
       }
       function genedit(pattern) {
-        var type = WorldGen.newProceduralBlockType(TS, baseKit.blockset, boxed(pattern));
+        var type = WorldGen.newProceduralBlockType(TS, baseSet, boxed(pattern));
         type.solid = false;
         targetSet.add(type);
         return type;
@@ -252,71 +254,70 @@ var WorldGen = (function () {
 
       // Add a rotate-based-on-subdata circuit
       function selfRotating(y) {
-        if (baseKit.logic) {
-          type.world.s(TS/2,y,TS/2, baseKit.logic.getSubDatum);
-          type.world.s(TS/2,y,TS/2-1, baseKit.logic.setRotation);
+        if (baseSetRotation !== null) {
+          type.world.s(TS/2,y,TS/2, baseGetSubDatum);
+          type.world.s(TS/2,y,TS/2-1, baseSetRotation);
         }
       }
       
       // wire
-      ids.wire = targetSet.length;
       type = genedit(f.flat(0));
       type.behavior = Circuit.behaviors.wire;
+      type.name = "logic.wire";
 
       // junction block
-      ids.junction = targetSet.length;
       type = genedit(f.sphere(TS/2,TS/2,TS/2, TS*3/16, functionShapePat));
       type.behavior = Circuit.behaviors.junction;
+      type.name = "logic.junction";
 
       // step pad block
-      ids.pad = targetSet.length;
       var specklePat = f.cond(f.speckle,
                               functionShapePat,
                               f.flat(colorToID(0.75,0.75,0.75)));
       type = genedit(f.sphere(TS/2,TS-0.5,TS/2,TS/2,specklePat));
       selfRotating(TL-1);
       type.behavior = Circuit.behaviors.pad;
+      type.name = "logic.pad";
       type.solid = true; // override circuit-block default
 
       // indicator block
-      ids.indicator = targetSet.length;
       type = genedit(function (b) {
         return f.rad([b[0],b[1],b[2]]) > TS*6/16 ? 0 :
                b[1] < TS/2 ? colorToID(1,1,1) : colorToID(0,0,0);
       });
       selfRotating(TS/2-1);
       type.behavior = Circuit.behaviors.indicator;
+      type.name = "logic.indicator";
 
       // nor block
-      ids.nor = targetSet.length;
       type = genedit(f.union(f.sphere(TS/2-TS*.2,TS/2,TS/2, TS*3/16, functionShapePat),
                              f.sphere(TS/2+TS*.2,TS/2,TS/2, TS*3/16, functionShapePat)));
       type.behavior = Circuit.behaviors.nor;
+      type.name = "logic.nor";
 
       // gate block
-      ids.gate = targetSet.length;
       type = genedit(f.subtract(f.plane(0, TS/2-1, TS/2+1,
                                         f.sphere(TS/2,TS/2,TS/2, TS/2, functionShapePat)),
                                 f.sphere(TS/2,TS/2,TS/2, TS*3/16, functionShapePat)));
       type.behavior = Circuit.behaviors.gate;
+      type.name = "logic.gate";
 
       // get-subdata block
-      ids.getSubDatum = targetSet.length;
       type = genedit(function (b) {
         return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 1 ? functionShapeColor : 0;
       });
       type.behavior = Circuit.behaviors.getSubDatum;
+      type.name = "logic.getSubDatum";
 
       // spontaneous event detector block
-      ids.spontaneous = targetSet.length;
       type = genedit(function (b) {
         // TODO: make this look more like a lightning bolt
         return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 1 ? colorToID(1,1,0) : 0;
       });
       type.behavior = Circuit.behaviors.spontaneous;
+      type.name = "logic.spontaneous";
 
       // set-rotation block
-      ids.setRotation = targetSet.length;
       type = genedit(f.intersection(
         f.subtract(
           f.sphere(TS/2,TS/2,TS/2, TS/2, functionShapePat),
@@ -327,34 +328,32 @@ var WorldGen = (function () {
             f.plane(1, TS/2-1, TS/2+1, functionShapePat),
             f.plane(2, TS/2-1, TS/2+1, functionShapePat)))))
       type.behavior = Circuit.behaviors.setRotation;
+      type.name = "logic.setRotation";
 
       // set-block-id block
-      ids.become = targetSet.length;
       type = genedit(f.cube(TS/2,TS/2,TS/2, TS/4, functionShapePat));
       type.behavior = Circuit.behaviors.become;
+      type.name = "logic.become";
 
       // emit-value block
-      ids.emitUniform = targetSet.length;
       type = genedit(function (b) {
         return Math.abs(b[0]-HALF)+Math.abs(b[1]-HALF)+Math.abs(b[2]-HALF) < TS/2+0.5 ? functionShapeColor : 0;
       });
       type.behavior = Circuit.behaviors.emitUniform;
+      type.name = "logic.emitUniform";
 
       // IC blocks (require logic blocks on the next level down)
-      if (baseKit.logic) {
-        ids.emitConstant = targetSet.length;
+      if (baseEmitUniform !== null) {
         type = genedit(function (b) {
           var r = f.rad(b);
           return r < TS/2 && r > HALF && f.plane(0, TS/2-1, TS/2+1, function(){return true;})(b) && Math.abs(b[1]-HALF) > (b[2]-HALF) ? functionShapeColor : 0;
         });
-        type.world.s(1,1,1, baseKit.logic.getSubDatum);
-        type.world.s(1,1,2, baseKit.logic.emitUniform);
+        type.world.s(1,1,1, baseGetSubDatum);
+        type.world.s(1,1,2, baseEmitUniform);
         type.automaticRotations = [0,1,2,3,4,5,6,7]; // TODO kludge
         type.behavior = Circuit.behaviors.ic;
+        type.name = "logic.emitConstant";
       }
-
-      targetKit.logic = ids;
-      return ids;
     },
 
     newDefaultBlockset: function (TS) {
@@ -371,20 +370,19 @@ var WorldGen = (function () {
       // --- base blockset ---
 
       // layer 1
-      var pureColors = {blockset: WorldGen.colorBlocks(7, 7, 5)};
+      var pureColors = WorldGen.colorBlocks(7, 7, 5);
 
       // layer 2
-      var baseLogicAndColors = {blockset: WorldGen.colorBlocks(7, 6, 5)};
+      var baseLogicAndColors = WorldGen.colorBlocks(7, 6, 5);
       WorldGen.addLogicBlocks(TS, baseLogicAndColors, pureColors);
 
       // layer 3
-      var fullLogicAndColors = {blockset: WorldGen.colorBlocks(6, 6, 6)};
-      var onlyColorCount = fullLogicAndColors.blockset.length; // before logic added
+      var fullLogicAndColors = WorldGen.colorBlocks(6, 6, 6);
+      var onlyColorCount = fullLogicAndColors.length; // before logic added
       WorldGen.addLogicBlocks(TS, fullLogicAndColors, baseLogicAndColors);
-      var colorSet = fullLogicAndColors.blockset;
+      var colorSet = fullLogicAndColors; // TODO dup
       var brgb = WorldGen.colorPicker(colorSet, 0);
       var brgbDither = WorldGen.colorPicker(colorSet, 1.2);
-      var ls = fullLogicAndColors.logic;
 
       // --- block world generation utilities ---
 
@@ -396,14 +394,20 @@ var WorldGen = (function () {
       function rgbPat(b) { return brgb(b[0]/TL,b[1]/TL,b[2]/TL); }
 
       function addSpontaneousConversion(type, targetID) {
-        if (!ls.emitConstant) throw new Error("don't have constant block available");
-        type.world.s(1,1,1, ls.emitConstant, targetID);
-        type.world.s(2,1,1, ls.gate);  type.world.s(2,1,2, ls.spontaneous);
-        type.world.s(3,1,1, ls.become);
+        var emitConstant = colorSet.lookup("logic.emitConstant");
+        var gate = colorSet.lookup("logic.gate");
+        var spontaneous = colorSet.lookup("logic.spontaneous");
+        var become = colorSet.lookup("logic.become");
+        if (!emitConstant) throw new Error("don't have constant block available");
+        type.world.s(1,1,1, emitConstant, targetID);
+        type.world.s(2,1,1, gate);  type.world.s(2,1,2, spontaneous);
+        type.world.s(3,1,1, become);
       }
       function addRotation(type) {
-        type.world.s(1,3,0, ls.getSubDatum);
-        type.world.s(1,4,0, ls.setRotation);
+        var getSubDatum = colorSet.lookup("logic.getSubDatum");
+        var setRotation = colorSet.lookup("logic.setRotation");
+        type.world.s(1,3,0, getSubDatum);
+        type.world.s(1,4,0, setRotation);
         type.automaticRotations = sixFaceRotations;
       }
 
@@ -434,12 +438,13 @@ var WorldGen = (function () {
       }));
 
       // pyramid thing
-      var pyr1 = ids.pyramid = blockset.length;
+      var pyr1 = blockset.length;
       blockset.add(type = genedit(function (b) {
         if (Math.abs(b[0] - HALF) + Math.abs(b[1] - HALF) > (TS-0.5)-b[2])
           return 0;
         return brgb(mod((b[2]+2)/(TS/2), 1), Math.floor((b[2]+2)/(TS/2))*0.5, 0);
       }));
+      type.name = "pyramid";
       addRotation(type);
 
       // pyramid thing variant
@@ -455,13 +460,12 @@ var WorldGen = (function () {
       addSpontaneousConversion(blockset.get(pyr2), pyr1);
 
       // low ground bump
-      ids.bump = blockset.length;
       blockset.add(type = genedit(function (b) {
         return ground.g(b[0],b[1]+Math.max(TS/2, TS-2*f.depth([b[0],TS/2,b[2]])),b[2]);
       }));
+      type.name = "bump";
 
       // leaves/hedge
-      ids.greenery = blockset.length;
       blockset.add(type = genedit(function (b) {
         var edgeness = f.maxrad(b);
         if (Math.random() >= edgeness*0.2) return 0;
@@ -469,6 +473,7 @@ var WorldGen = (function () {
         var notgreen = Math.random() * green*0.3 + green*0.25;
         return brgb(notgreen,green*edgeness,notgreen*(1-edgeness));
       }));
+      type.name = "greenery";
       addRotation(type); // allows random orientation to reduce uniformity
 
       // pillar thing
@@ -477,47 +482,47 @@ var WorldGen = (function () {
       }));
 
       // glass sheet for buildings
-      ids.glass = blockset.length;
       blockset.add(type = genedit(function (b) {
         return (f.xe(b) || f.te(b) || f.be(b)) && b[2] == TL ? brgb(.9,.9,.9) : 0;
       }));
+      type.name = "glass";
       addRotation(type);
 
       // "big chunk of stone" block
-      ids.slab = blockset.length;
       blockset.add(type = genedit(function (b) {
         var g = Math.pow(f.maxrad(b), 0.25) * 0.7 + f.rad(b)/HALF * 0.1 + normalish() * 0.2;
         g = Math.min(1, g * 0.8);
         return /* b[2] >= 8 ? 0 : */ brgbDither(g,g,g);
       }));
+      type.name = "slab";
 
       var roundMaterial = brgb(.2,.2,.2);
 
       // quarter-round (edge) block
-      ids.qround = blockset.length;
       blockset.add(type = genedit(function (b) {
         return b[0]*b[0]+b[2]*b[2] <= TS*TS ? roundMaterial : 0;
       }));
+      type.name = "qround";
       addRotation(type);
 
       // eighth-round (corner) block
-      ids.eround = blockset.length;
       blockset.add(type = genedit(function (b) {
         return b[0]*b[0]+b[1]*b[1]+b[2]*b[2] <= TS*TS ? roundMaterial : 0;
       }));
+      type.name = "eround";
       addRotation(type);  
 
       // random block types
-      ids.firstRandom = blockset.length;
-      ids.lastRandom = ids.firstRandom + 3;
+      var firstRandom = blockset.length;
+      var lastRandom = ids.firstRandom + 3;
       while (blockset.length <= ids.lastRandom) {
         blockset.add(WorldGen.newRandomBlockType(TS, colorSet));
       }
+      blockset.get(firstRandom).name = "random.first";
+      blockset.get(lastRandom).name = "random.last";
 
-      var result = {blockset: blockset};
-      WorldGen.addLogicBlocks(TS, result, fullLogicAndColors);
-      result.defaultWorldBlocks = ids;
-      return result;
+      WorldGen.addLogicBlocks(TS, blockset, fullLogicAndColors);
+      return blockset;
     }
   };
   
@@ -528,10 +533,7 @@ var WorldGen = (function () {
 function generateWorlds(config) {
   "use strict";
 
-  var blockKit = WorldGen.newDefaultBlockset(Math.round(config.generate_tileSize.get()));
-  var blockset = blockKit.blockset;
-  var ids = blockKit.defaultWorldBlocks
-  var l = blockKit.logic;
+  var blockset = WorldGen.newDefaultBlockset(Math.round(config.generate_tileSize.get()));
 
   var topWorld = new World([
     config.generate_wx.get(),
@@ -551,7 +553,13 @@ function generateWorlds(config) {
   function generateSimpleBumpy(bottomFunc) {
     // The constant is the maximum slope of the 'terrain' function; therefore generate_slope is the maximum slope of the returned terrain.
     var slopeScaled = config.generate_slope.get() / 0.904087;
-
+    
+    var air = 0;
+    var bedrock = 1;
+    var ground = 2;
+    var pyramid = blockset.lookup("pyramid");
+    var bump = blockset.lookup("bump");
+    
     // Using raw array access because it lets us cache the altitude computation by iterating over y last, not because the overhead of .edit() is especially high.
     var raw = topWorld.raw;
     var rawSubData = topWorld.rawSubData;
@@ -567,13 +575,13 @@ function generateWorlds(config) {
         for (var y = 0; y < wy; y++) {
           var index = xbase + y*wz + z;
           var altitude = y - top;
-          raw[index] = y < bottom ? 0 :
-                       altitude > 1 ? 0 :
-                       altitude < 0 ? 1 :
-                       altitude == 0 ? 2 :
+          raw[index] = y < bottom ? air :
+                       altitude > 1 ? air :
+                       altitude < 0 ? bedrock :
+                       altitude == 0 ? ground :
                        /* altitude == 1 */
-                       random() > 0.99 ? (rawSubData[index] = 4, ids.pyramid) :
-                       random() > 0.99 ? ids.bump :
+                       random() > 0.99 ? (rawSubData[index] = 4, pyramid) :
+                       random() > 0.99 ? bump :
                        0;
         }
       }
@@ -820,23 +828,30 @@ function generateWorlds(config) {
   
   (function () {
     var x = Math.floor(182/400*wx), y = Math.floor(wy/2)+3, z = Math.floor(191/400*wx);
-    topWorld.s(x+0,y,z+1,l.pad);
-    topWorld.s(x+0,y,z+2,l.wire);
-    topWorld.s(x+0,y,z+3,l.indicator);                    
-    topWorld.s(x+0,y,z+4,l.wire);
-    topWorld.s(x+0,y,z+5,l.nor);
-    
-    topWorld.s(x-1,y,z+5,l.wire);
-    topWorld.s(x-2,y,z+5,l.gate);
-    topWorld.s(x-3,y,z+5,l.emitConstant,42);
-    topWorld.s(x-2,y,z+4,l.pad);
-
-    topWorld.s(x+1,y,z+5,l.wire);
-    topWorld.s(x+2,y,z+5,l.junction);
-    topWorld.s(x+2,y,z+4,l.wire);
-    topWorld.s(x+2,y,z+3,l.nor);
-    topWorld.s(x+3,y,z+3,l.wire);
-    topWorld.s(x+4,y,z+3,l.pad);
+    var emitConstant = blockset.lookup("logic.emitConstant");
+    var gate = blockset.lookup("logic.gate");
+    var indicator = blockset.lookup("logic.indicator");
+    var junction = blockset.lookup("logic.junction");
+    var nor = blockset.lookup("logic.nor");
+    var pad = blockset.lookup("logic.pad");
+    var wire = blockset.lookup("logic.wire");
+    topWorld.s(x+0,y,z+1,pad);
+    topWorld.s(x+0,y,z+2,wire);
+    topWorld.s(x+0,y,z+3,indicator);                    
+    topWorld.s(x+0,y,z+4,wire);
+    topWorld.s(x+0,y,z+5,nor);
+                         
+    topWorld.s(x-1,y,z+5,wire);
+    topWorld.s(x-2,y,z+5,gate);
+    topWorld.s(x-3,y,z+5,emitConstant,42);
+    topWorld.s(x-2,y,z+4,pad);
+                         
+    topWorld.s(x+1,y,z+5,wire);
+    topWorld.s(x+2,y,z+5,junction);
+    topWorld.s(x+2,y,z+4,wire);
+    topWorld.s(x+2,y,z+3,nor);
+    topWorld.s(x+3,y,z+3,wire);
+    topWorld.s(x+4,y,z+3,pad);
   }());
   
   return topWorld;
