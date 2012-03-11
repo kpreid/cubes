@@ -238,7 +238,7 @@ function PersistencePool(storage, objectPrefix) {
     }
     updateStatus();
   };
-  var get = this.get = function (name) {
+  this.get = function (name) {
     if (hop.call(currentlyLiveObjects, name)) {
       console.log("Persister: already live", name);
       return currentlyLiveObjects[name];
@@ -249,7 +249,14 @@ function PersistencePool(storage, objectPrefix) {
       return null;
     } else {
       console.log("Persister: retrieving", name);
-      var object = cyclicUnserialize(JSON.parse(data), Persister.types, get);
+      var object = cyclicUnserialize(JSON.parse(data), Persister.types, function (name) {
+        var obj = pool.get(name);
+        if (obj) {
+          return obj;
+        } else {
+          throw new Error("Serialized object contained reference to missing object: " + name);
+        }
+      });
       pool._persist(object, name);
       return object;
     }

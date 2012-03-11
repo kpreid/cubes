@@ -530,10 +530,8 @@ var WorldGen = (function () {
 }());
   
 // TODO: refactor this into WorldGen methods
-function generateWorlds(config) {
+function generateWorlds(config, blockset) {
   "use strict";
-
-  var blockset = WorldGen.newDefaultBlockset(Math.round(config.generate_tileSize.get()));
 
   var topWorld = new World([
     config.generate_wx.get(),

@@ -42,6 +42,7 @@ var CubesMain = (function () {
       defineOption("generate_slope", "number", 0.9);
       defineOption("generate_tileSize", "number", 16);
       defineOption("generate_name", "string", "Untitled");
+      defineOption("generate_blockset", "string", "Default Blockset"); // TODO UI for this
 
       defineOption("currentTopWorld", "string", "Untitled");
     }());
@@ -80,6 +81,32 @@ var CubesMain = (function () {
     var audio = new CubesAudio(config);
     
     var readyToDraw = false;
+    
+    function getOrDefaultOrMake(selection, defaultName, maker) {
+      if (persistencePool.has(selection)) {
+        try {
+          return persistencePool.get(selection);
+        } catch (exception) {
+          // TODO: Propagate this to the UI; the user should know of data loss
+          if (typeof console !== "undefined") console.log("Failed to load selected:", exception);
+        }
+      }
+      
+      if (persistencePool.has(defaultName)) {
+        try {
+          return persistencePool.get(defaultName);
+        } catch (exception) {
+          // TODO: Propagate this to the UI; the user should know of data loss
+          if (typeof console !== "undefined") console.log("Failed to load default:", exception);
+        }
+      }
+      
+      var obj = maker();
+      if (persistencePool.available && !config.alwaysGenerateWorld.get() && !persistencePool.has(defaultName)) {
+        obj.persistence.persist(persistencePool, defaultName);
+      }
+      return obj;
+    }
     
     var lastGLErrors = [];
     function drawScene(playerRender) {
@@ -314,7 +341,7 @@ var CubesMain = (function () {
             row.appendChild(nameCell);
             switch (type) {
               case World: typeCell.textContent = "world"; break;
-              case BlockSet: typeCell.textContent = "block set"; break;
+              case BlockSet: typeCell.textContent = "blockset"; break;
               case BlockType: typeCell.textContent = "block type"; break;
               default: typeCell.textContent = "???"; break;
             }
@@ -412,25 +439,13 @@ var CubesMain = (function () {
             return true;
           }, false);
           
-          var world;
-          if (shallLoadWorld) {
-            try {
-              world = persistencePool.get(config.currentTopWorld.get());
-            } catch (e) {
-              if (typeof console !== 'undefined')
-                console.error(e);
-              alert("Failed to load saved world!");
-            }
-          } else if (!persistencePool.available) {
-            console.warn("localStorage not available; world will not be saved.");
-          }
-          if (!world) {
-            world = generateWorlds(config);
-            if (persistencePool.available && !config.alwaysGenerateWorld.get()) {
-              // TODO this crashes if "Default" exists but config.currentTopWorld doesn't.
-              world.persistence.persist(persistencePool, "Default");
-            }
-          }
+          var world = getOrDefaultOrMake(config.currentTopWorld.get(), "Default World", function () {
+            var blockset = getOrDefaultOrMake(config.generate_blockset.get(), "Default Blockset", function () {
+              return WorldGen.newDefaultBlockset(Math.round(config.generate_tileSize.get()));
+            });
+            return generateWorlds(config, blockset);
+          });
+
           main.setTopWorld(world);
         },
         "Creating your avatar...",
@@ -466,7 +481,7 @@ var CubesMain = (function () {
     };
     
     this.regenerate = function () {
-      var world = generateWorlds(config);
+      var world = generateWorlds(config, persistencePool.get(config.generate_blockset.get()));
       world.persistence.persist(persistencePool, config.generate_name.get());
       this.setTopWorld(world);
     };
