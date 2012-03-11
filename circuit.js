@@ -523,7 +523,7 @@ var Circuit = (function () {
   
   Circuit.executeCircuitInBlock = function (blockWorld, outerWorld, cube, subDatum, extraState) {
     blockWorld.getCircuits().forEach(function (circuit) {
-      var state = Object.create(extraState);
+      var state = extraState ? Object.create(extraState) : {};
       state.blockIn_subDatum = subDatum;
       
       circuit.evaluate(state);
@@ -535,10 +535,11 @@ var Circuit = (function () {
           outerWorld.gSub(cube[0],cube[1],cube[2]));
         outerWorld.audioEvent(cube, "create");
       } else {
-        if ("blockOut_rotation" in state) {
+        // Rotations are only assigned when the circuit is being evaluated in the normal case, not during an event
+        if ("blockOut_rotation" in state && !extraState) {
           outerWorld.rawRotations[cube[0]*outerWorld.wy*outerWorld.wz+cube[1]*outerWorld.wz+cube[2]] // TODO KLUDGE
             = CubeRotation.canonicalCode(state.blockOut_rotation);
-          // TODO This needs a notification. It usually works, when this is called due to a block modification; but it would fail in e.g. the spontaneous event case. The notification should alert the world renderer and any circuit containing the block.
+          // This does not need a change notification, because rotations are not true state, but always a function of the world state (note that extraState must be omitted).
         }
       }
     });

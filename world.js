@@ -299,7 +299,7 @@ function World(sizes, blockSet) {
     var z = cube[2];
     var index = x*wy*wz + y*wz + z;
     if (newType.hasCircuits) {
-      Circuit.executeCircuitInBlock(newType.world, self, cube, subData[index], {});
+      Circuit.executeCircuitInBlock(newType.world, self, cube, subData[index], null);
     } else {
       rotations[index] = 0;
     }
