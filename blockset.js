@@ -21,7 +21,6 @@ var BlockType = (function () {
     this.listen = n.listen;
     
     this._serial = nextBlockTypeSerial++;
-    this.sound = {}; // computed, TODO should be readonly
     
     // TODO: This property is to be replaced by circuits.
     this.automaticRotations = [0]; // editable property
