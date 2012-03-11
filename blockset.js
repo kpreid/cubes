@@ -22,12 +22,13 @@ var BlockType = (function () {
     
     this._serial = nextBlockTypeSerial++;
     
-    // TODO: This property is to be replaced by circuits.
-    this.automaticRotations = [0]; // editable property
+    var name = null;
     
-    this.solid = true; // editable property
-    
-    this.behavior = null; // editable property
+    // (In principle) user-editable properties of block types.
+    this.automaticRotations = [0]; // TODO: This property is to be replaced by circuits.
+    this.behavior = null;
+    this.name = null;
+    this.solid = true;
   }
   
   BlockType.prototype.serialize = function (serialize) {
@@ -35,9 +36,11 @@ var BlockType = (function () {
     serialize.setUnserializer(json, BlockType);
     if (this.automaticRotations.length !== 1 || this.automaticRotations[0] !== 0)
       json.automaticRotations = this.automaticRotations;
-    if (!this.solid) json.solid = false; // default true
     if (this.behavior && this.behavior.name)
       json.behavior = this.behavior.name;
+    if (this.name !== null)
+      json.name = this.name;
+    if (!this.solid) json.solid = false; // default true
     return json;
   };
   
@@ -188,11 +191,13 @@ var BlockType = (function () {
     
     if (Object.prototype.hasOwnProperty.call(json, "automaticRotations"))
       self.automaticRotations = json.automaticRotations || [0];
-    if (Object.prototype.hasOwnProperty.call(json, "solid"))
-      self.solid = json.solid;
     if (Object.prototype.hasOwnProperty.call(json, "behavior"))
       self.behavior = Circuit.behaviors.hasOwnProperty(json.behavior) 
           ? Circuit.behaviors[json.behavior] : null;
+    if (Object.prototype.hasOwnProperty.call(json, "name"))
+      self.name = json.name;
+    if (Object.prototype.hasOwnProperty.call(json, "solid"))
+      self.solid = json.solid;
     
     return self;
   };
@@ -496,6 +501,16 @@ var BlockSet = (function () {
           array[i] = bogus;
         }
         return array;
+      },
+      
+      lookup: function (blockName) {
+        // TODO revisit making this < O(n)
+        for (var i = 0; i < types.length; i++) {
+          if (blockName === types[i].name) {
+            return i;
+          }
+        }
+        return null;
       },
       
       // Listener protocol:
