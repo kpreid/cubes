@@ -45,8 +45,10 @@ var Player = (function () {
 
       // must happen late
       this.wrend = new WorldRenderer(world, this /* TODO: facet */, renderer, audio, scheduleDraw, true);
-
     }
+    Place.prototype.delete = function () {
+      this.wrend.deleteResources();
+    };
 
     // Worlds we've been in
     var placeStack = [];
@@ -383,7 +385,8 @@ var Player = (function () {
       return currentPlace.selection;
     };
     this.setWorld = function (world) {
-      while (placeStack.length) placeStack.pop().wrend.deleteResources();
+      if (currentPlace) currentPlace.delete();
+      while (placeStack.length) placeStack.pop().delete();
       currentPlace = new Place(world);
       // TODO: move this position downward to free space rather than just imparting velocity
       this.setPosition([world.wx/2, world.wy - playerAABB.get(1, 0) + EPSILON, world.wz/2]);
@@ -520,7 +523,7 @@ var Player = (function () {
             break;
           case -1:
             if (placeStack.length <= 0) return;
-            currentPlace.wrend.deleteResources();
+            currentPlace.delete();
             currentPlace = placeStack.pop();
             aimChanged();
             break;
