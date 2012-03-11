@@ -83,7 +83,7 @@ var CubesMain = (function () {
     var readyToDraw = false;
     
     function getOrDefaultOrMake(selection, defaultName, maker) {
-      if (persistencePool.has(selection)) {
+      if (persistencePool.has(selection) && !config.alwaysGenerateWorld.get()) {
         try {
           return persistencePool.get(selection);
         } catch (exception) {
@@ -92,7 +92,7 @@ var CubesMain = (function () {
         }
       }
       
-      if (persistencePool.has(defaultName)) {
+      if (persistencePool.has(defaultName) && !config.alwaysGenerateWorld.get()) {
         try {
           return persistencePool.get(defaultName);
         } catch (exception) {
