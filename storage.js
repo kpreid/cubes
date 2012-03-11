@@ -5,15 +5,25 @@
 
 var SERIAL_TYPE_NAME = "()"; // TODO local variable
 
-function cyclicSerialize(root, unserializers) {
+function cyclicSerialize(root, unserializers, getName) {
   "use strict";
+  if (!getName) getName = function () { return null; };
   var seen = [];
   function serialize(obj) {
+    // named objects
+    var name = getName(obj);
+    if (typeof name === "string") {
+      return name;
+    }
+    
+    // break cycles
     var i;
     for (i = 0; i < seen.length; i++) {
       if (seen[i] === obj) // TODO use WeakMap if available
         return i;
     }
+    
+    // regular serialization
     seen.push(obj);
     var json = obj.serialize(serialize);
     json["#"] = i;
@@ -32,8 +42,9 @@ function cyclicSerialize(root, unserializers) {
   return serialize(root);
 }
 
-function cyclicUnserialize(json, unserializers) {
+function cyclicUnserialize(json, unserializers, lookupName) {
   "use strict";
+  if (!lookupName) lookupName = function () { throw new Error("got name w/ no lookup function"); };
   var seen = [];
 
   function findConstructor(json) {
@@ -46,6 +57,8 @@ function cyclicUnserialize(json, unserializers) {
   function unserialize(json) {
     if (typeof json === "number" && json >= 0) {
       return seen[json];
+    } else if (typeof json === "string") {
+      return lookupName(json);
     } else if (typeof json === "object") {
       return seen[+(json["#"])] = findConstructor(json).unserialize(json, unserialize);
     } else {
@@ -225,7 +238,7 @@ function PersistencePool(storage, objectPrefix) {
     }
     updateStatus();
   };
-  this.get = function (name) {
+  var get = this.get = function (name) {
     if (hop.call(currentlyLiveObjects, name)) {
       console.log("Persister: already live", name);
       return currentlyLiveObjects[name];
@@ -236,7 +249,7 @@ function PersistencePool(storage, objectPrefix) {
       return null;
     } else {
       console.log("Persister: retrieving", name);
-      var object = cyclicUnserialize(JSON.parse(data), Persister.types);
+      var object = cyclicUnserialize(JSON.parse(data), Persister.types, get);
       pool._persist(object, name);
       return object;
     }
@@ -304,6 +317,13 @@ function Persister(object) {
   var name = null;
   var dirty = false;
   
+  function getObjName(obj) {
+    // TODO confirm that these are in the same pool.
+    if (obj && obj !== object && obj && obj.persistence && obj.persistence.getName() !== null) {
+      return obj.persistence.getName();
+    }
+  }
+  
   this._registerName = function (newPool, newName) { // TODO internal, should not be published
     pool = newPool;
     name = newName;
@@ -336,7 +356,7 @@ function Persister(object) {
       return;
     } else {
       console.log("Persister: writing dirty", name);
-      pool._write(name, JSON.stringify(cyclicSerialize(object, Persister.types)));
+      pool._write(name, JSON.stringify(cyclicSerialize(object, Persister.types, getObjName)));
       dirty = false;
     }
   };
