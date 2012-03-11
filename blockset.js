@@ -22,8 +22,6 @@ var BlockType = (function () {
     
     this._serial = nextBlockTypeSerial++;
     
-    var name = null;
-    
     // (In principle) user-editable properties of block types.
     this.automaticRotations = [0]; // TODO: This property is to be replaced by circuits.
     this.behavior = null;
@@ -456,7 +454,7 @@ var BlockSet = (function () {
     
     var appearanceChangedQueue = new CatchupQueue();
     
-    var self = Object.freeze({
+    var self = {
       get tileSize () {
         // If tile size is undefined because we have only color blocks, then we treat it as 1
         return isNaN(tileSize) ? 1 : tileSize;
@@ -485,7 +483,8 @@ var BlockSet = (function () {
               console.warn("Inconsistent tile size for blockset; set has", tileSize, "and new type has", ts);
           }
         }
-
+        
+        self.persistence.dirty();
         notifier.notify("tableChanged", newID);
       },
       
@@ -537,7 +536,8 @@ var BlockSet = (function () {
         serialize.setUnserializer(json, BlockSet);
         return json;
       }
-    });
+    };
+    self.persistence = new Persister(self);
     
     initialTypes.forEach(self.add);
     

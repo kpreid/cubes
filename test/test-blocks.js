@@ -17,6 +17,23 @@ describe("BlockType", function () {
 });
 
 describe("BlockSet", function () {
+  it("should know when it is dirty", function () {
+    sessionStorage.clear();
+    var pool = new PersistencePool(sessionStorage, "BlockSet-dirty-test.");
+    
+    var blockset = new BlockSet([]);
+    blockset.persistence.persist(pool, "obj");
+    expect(pool.status.get()).toEqual(1);
+    pool.flushNow();
+    expect(pool.status.get()).toEqual(0);
+    
+    blockset.add(new BlockType.Color([1,1,1,1]));
+    expect(pool.status.get()).toEqual(1);
+    pool.flushNow();
+
+    // TODO also when a block type is modified
+  });
+  
   it("should know block names", function () {
     var type1 = new BlockType.Color([1,1,1,1]);
     type1.name = "foo";
