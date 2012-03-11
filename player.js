@@ -156,6 +156,13 @@ var Player = (function () {
       }
     }
     
+    function updateAudioListener() {
+      audio.setListener(
+        currentPlace.pos,
+        [-Math.sin(currentPlace.yaw), 0, -Math.cos(currentPlace.yaw)],
+        currentPlace.vel);
+    }
+    
     var EPSILON = 1e-3;
     function stepPlayer(timestep) {
       var world = currentPlace.world;
@@ -315,10 +322,7 @@ var Player = (function () {
       
       if (vec3.length(vec3.subtract(nextPosIncr, currentPlace.pos, vec3.create())) >= EPSILON) {
         vec3.set(nextPosIncr, currentPlace.pos);
-        audio.setListener(
-          currentPlace.pos,
-          [-Math.sin(currentPlace.yaw), 0, -Math.cos(currentPlace.yaw)],
-          currentPlace.vel);
+        updateAudioListener();
         aimChanged();
       }
       if (config.debugPlayerCollision.get()) {
@@ -370,6 +374,7 @@ var Player = (function () {
     });
     this.setPosition = function(p) {
       vec3.set(p, currentPlace.pos);
+      updateAudioListener();
     };
     this.getWorld = function() {
       return currentPlace.world;
@@ -471,6 +476,7 @@ var Player = (function () {
         currentPlace.forBlock = blockID;
         vec3.set([world.wx/2, world.wy - playerAABB.get(1, 0) + EPSILON, world.wz/2], currentPlace.pos);
         placeStack.push(oldPlace);
+        updateAudioListener();
         aimChanged();
 
         notifyChangedPlace();
@@ -521,6 +527,7 @@ var Player = (function () {
         }
         
         aabbR.recompute();
+        updateAudioListener();
         notifyChangedPlace();
       },
       jump: function () {
