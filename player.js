@@ -10,6 +10,7 @@ var Player = (function () {
   var GRAVITY = 20; // cubes/s^2
   var JUMP_SPEED = 8; // cubes/s
   var MAX_STEP_UP = 0.57; // cubes
+  var CONTROL_STIFFNESS = 0.18;
   
   var playerAABB = new AAB(
     -0.35, 0.35, // x
@@ -175,15 +176,15 @@ var Player = (function () {
       mat4.multiplyVec3(controlOrientation, movement, movAdj);
       vec3.scale(movAdj, currentPlace.flying ? FLYING_SPEED : WALKING_SPEED);
       //console.log(vec3.str(movAdj));
-      currentPlace.vel[0] += (movAdj[0] - currentPlace.vel[0]) * 0.4;
+      currentPlace.vel[0] += (movAdj[0] - currentPlace.vel[0]) * CONTROL_STIFFNESS;
       if (currentPlace.flying) {
-        currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * 0.4;
+        currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * CONTROL_STIFFNESS;
       } else {
         if (movAdj[1] !== 0) {
-          currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * 0.4 + timestep * GRAVITY;
+          currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * CONTROL_STIFFNESS + timestep * GRAVITY;
         }
       }
-      currentPlace.vel[2] += (movAdj[2] - currentPlace.vel[2]) * 0.4;
+      currentPlace.vel[2] += (movAdj[2] - currentPlace.vel[2]) * CONTROL_STIFFNESS;
       
       // gravity
       if (!currentPlace.flying)
