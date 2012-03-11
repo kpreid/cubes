@@ -60,6 +60,12 @@ function World(sizes, blockSet) {
     notifier.notify("deletedCircuit", circuit);
   }
   
+  function touchedCircuit(circuit) {
+    circuit.compile();
+    circuit.refreshLocal();
+    notifier.notify("dirtyCircuit", circuit);
+  }
+  
   // Flood-fill additional circuit parts adjacent to 'start'
   function floodCircuit(circuit, start) {
     if (!circuit) throw new Error("floodCircuit not given a circuit");
@@ -88,9 +94,7 @@ function World(sizes, blockSet) {
       }
     }
     
-    circuit.compile();
-    circuit.refreshLocal();
-    notifier.notify("dirtyCircuit", circuit);
+    touchedCircuit(circuit);
   }
   
   function becomeCircuit(block) {
@@ -167,8 +171,7 @@ function World(sizes, blockSet) {
     if (cp) {
       var circuit = blockCircuits.get(vec);
       if (circuit) {
-        // TODO: If we changed *type* then the circuit must be rebuilt, not just reevaluated
-        circuit.refreshLocal();
+        touchedCircuit(circuit);
       } else {
         becomeCircuit(vec);
       }

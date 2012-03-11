@@ -43,6 +43,10 @@ var Circuit = (function () {
   var INOUT = "INOUT";
   var NONE = "NONE";
   
+  function getRot(world, block) {
+    return CubeRotation.byCode[world.gRot(block[0],block[1],block[2])];
+  }
+  
   function Circuit(world) {
     var blockSet = world.blockSet;
     function getBehavior(block) {
@@ -128,7 +132,7 @@ var Circuit = (function () {
             cGraph[bn][comingFrom] = net;
             net.push([bn,comingFrom]);
             net.edges.push([net,block,bn]);
-            net["has" + bnBeh.faces[comingFrom]] = true;
+            net["has" + bnBeh.getFace(world, bn, comingFrom)] = true;
             traceIntoNode(net, bn, comingFrom);
             return;
           }
@@ -161,7 +165,7 @@ var Circuit = (function () {
           
           cGraph[block][direction] = net;
           net.push([block,direction]);
-          net["has" + beh.faces[direction]] = true;
+          net["has" + beh.getFace(world, block, direction)] = true;
           traceNet(net, block, direction);
         });
         if (DEBUG_WIRE) { console.groupEnd(); }
@@ -225,7 +229,7 @@ var Circuit = (function () {
         net.forEach(function (record) {
           var block = record[0];
           var faceDirection = record[1];
-          if (getBehavior(block).faces[faceDirection] === OUT) {
+          if (getBehavior(block).getFace(world, block, faceDirection) === OUT) {
             //console.log("doing connected output face", net.toString(), block, faceDirection);
             getters.push(blockEvaluator(block, faceDirection));
           }
@@ -252,11 +256,10 @@ var Circuit = (function () {
         //console.group("compiling block " + block);
         
         var beh = getBehavior(block);
-        var faces = beh.faces;
         var inputGetters = {};
         DIRECTIONS.forEach(function (direction) {
-          if (faces[direction] === IN) {
-            var net = cGraph[block][direction];
+          if (beh.faces[direction] === IN) {
+            var net = cGraph[block][Array.prototype.slice.call(getRot(world, block).transformVector(direction))];
             if (net)
               inputGetters[direction] = netEvaluator(net);
           }
@@ -305,7 +308,7 @@ var Circuit = (function () {
           var net = graph[direction];
           if (net) {
             s += "\n" + directionsPretty[direction] + " (" + net.serial + ")";
-            switch (getBehavior(block).faces[direction]) {
+            switch (getBehavior(block).getFace(world, block, direction)) {
               case OUT: 
                 s += " \u2190 " + localState[block+"/"+direction];
                 break;
@@ -335,8 +338,12 @@ var Circuit = (function () {
       behaviors[name] = beh;
       return beh;
     }
-    function compileOutput(block, faces) {
-      var keys = faces.map(function (face) { return block + "/" + face; });
+    function compileOutput(world, block, faces) {
+      var outRot = getRot(world, block);
+      var keys = faces.map(function (face) {
+        var rotFace = Array.prototype.slice.call(outRot.transformVector(face));
+        return block + "/" + rotFace;
+      });
       return function (state, value) {
         keys.forEach(function (key) { state[key] = value; });
       }
@@ -362,6 +369,11 @@ var Circuit = (function () {
     protobehavior.hasEffect = false;
     protobehavior.standingOn = function (circuit, cube, value) {};
     protobehavior.executeForBlock = function (world, cube, subDatum) {};
+    protobehavior.getFace = function (world, block, face) {
+      var faceValue = this.faces[Array.prototype.slice.call(getRot(world, block).inverse.transformVector(face))];
+      if (faceValue === undefined) throw new Error("shouldn't happen");
+      return faceValue;
+    };
 
     nb("wire", protobehavior);
     
@@ -374,7 +386,7 @@ var Circuit = (function () {
     
     var pad = nb("pad", outputOnlyBeh);
     pad.compile = function (world, block, inputs) {
-      var out = compileOutput(block, DIRECTIONS);
+      var out = compileOutput(world, block, DIRECTIONS);
       return function (state) {
         out(state, world.gSub(block[0],block[1],block[2]));
       };
@@ -407,7 +419,7 @@ var Circuit = (function () {
     nor.faces["1,0,0"] = nor.faces["-1,0,0"] = IN;
     nor.compile = function (world, block, inputs) {
       var input = combineInputs(inputs, [[-1,0,0],[1,0,0]]);
-      var out = compileOutput(block, [
+      var out = compileOutput(world, block, [
         [0,0,1],
         [0,0,-1],
         [0,1,0],
@@ -425,7 +437,7 @@ var Circuit = (function () {
     gate.compile = function (world, block, inputs) {
       var gateInput = combineInputs(inputs, [[0,-1,0],[0,1,0],[0,0,-1],[0,0,1]]);
       var valueInput = inputs[[-1,0,0]];
-      var out = compileOutput(block, [[1,0,0]]);
+      var out = compileOutput(world, block, [[1,0,0]]);
       return function (state) {
         out(state, gateInput(state) ? valueInput(state) : null);
       };
@@ -433,7 +445,7 @@ var Circuit = (function () {
     
     var getSubDatum = nb("getSubDatum", outputOnlyBeh);
     getSubDatum.compile = function (world, block, inputs) {
-      var out = compileOutput(block, DIRECTIONS);
+      var out = compileOutput(world, block, DIRECTIONS);
       return function (state) {
         out(state, state.blockIn_subDatum);
       };
@@ -443,7 +455,7 @@ var Circuit = (function () {
     // The value emitted is 1 divided by the (probabilistic) rate of events per second.
     var spontaneous = nb("spontaneous", outputOnlyBeh);
     spontaneous.compile = function (world, block, inputs) {
-      var out = compileOutput(block, DIRECTIONS);
+      var out = compileOutput(world, block, DIRECTIONS);
       return function (state) {
         out(state, state.blockIn_spontaneous || null);
       };
@@ -493,7 +505,7 @@ var Circuit = (function () {
       type.world.getCircuits().forEach(function (circuit) {
         circuitsArr.push(circuit);
       });
-      var out = compileOutput(block, DIRECTIONS);
+      var out = compileOutput(world, block, DIRECTIONS);
       return function (state) {
         circuitsArr.forEach(function (circuit) {
           var subState = {blockIn_subDatum: world.gSub(block[0],block[1],block[2])};
@@ -526,6 +538,7 @@ var Circuit = (function () {
         if ("blockOut_rotation" in state) {
           outerWorld.rawRotations[cube[0]*outerWorld.wy*outerWorld.wz+cube[1]*outerWorld.wz+cube[2]] // TODO KLUDGE
             = CubeRotation.canonicalCode(state.blockOut_rotation);
+          // TODO This needs a notification. It usually works, when this is called due to a block modification; but it would fail in e.g. the spontaneous event case. The notification should alert the world renderer and any circuit containing the block.
         }
       }
     });

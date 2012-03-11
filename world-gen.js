@@ -275,7 +275,6 @@ var WorldGen = (function () {
                               functionShapePat,
                               f.flat(colorToID(0.75,0.75,0.75)));
       type = genedit(f.sphere(TS/2,TS-0.5,TS/2,TS/2,specklePat));
-      selfRotating(TL-1);
       type.behavior = Circuit.behaviors.pad;
       type.name = "logic.pad";
       type.solid = true; // override circuit-block default
@@ -293,13 +292,15 @@ var WorldGen = (function () {
       type = genedit(f.union(f.sphere(TS/2-TS*.2,TS/2,TS/2, TS*3/16, functionShapePat),
                              f.sphere(TS/2+TS*.2,TS/2,TS/2, TS*3/16, functionShapePat)));
       type.behavior = Circuit.behaviors.nor;
+      selfRotating(TL-1);
       type.name = "logic.nor";
 
       // gate block
       type = genedit(f.subtract(f.plane(0, TS/2-1, TS/2+1,
-                                        f.sphere(TS/2,TS/2,TS/2, TS/2, functionShapePat)),
-                                f.sphere(TS/2,TS/2,TS/2, TS*3/16, functionShapePat)));
+                                        f.sphere(TS*0.3,TS/2,TS/2, TS*0.5, functionShapePat)),
+                                f.sphere(TS*0.3,TS/2,TS/2, TS*0.3, functionShapePat)));
       type.behavior = Circuit.behaviors.gate;
+      selfRotating(TS/2);
       type.name = "logic.gate";
 
       // get-subdata block
