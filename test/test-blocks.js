@@ -21,17 +21,25 @@ describe("BlockSet", function () {
     sessionStorage.clear();
     var pool = new PersistencePool(sessionStorage, "BlockSet-dirty-test.");
     
+    // creating a blockset
     var blockset = new BlockSet([]);
     blockset.persistence.persist(pool, "obj");
     expect(pool.status.get()).toEqual(1);
     pool.flushNow();
     expect(pool.status.get()).toEqual(0);
     
-    blockset.add(new BlockType.Color([1,1,1,1]));
+    // adding block types
+    var btc = new BlockType.Color([1,1,1,1]);
+    var btw = new BlockType.World(new World([16,16,16], WorldGen.colorBlocks(2,2,2)));
+    blockset.add(btc);
+    blockset.add(btw);
     expect(pool.status.get()).toEqual(1);
     pool.flushNow();
 
-    // TODO also when a block type is modified
+    // modifying a block type
+    btw.world.s(0,0,0,1);
+    expect(pool.status.get()).toEqual(1);
+    pool.flushNow();
   });
   
   it("should know block names", function () {

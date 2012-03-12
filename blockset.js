@@ -466,6 +466,7 @@ var BlockSet = (function () {
         types.push(newBlockType);
         newBlockType.listen({
           appearanceChanged: function () {
+            self.persistence.dirty(); // TODO also need to dirty on other modifications to the block type, but there are no hooks for that
             appearanceChangedQueue.enqueue(newID);
             notifier.notify("texturingChanged", newID);
             return true;
