@@ -19,11 +19,14 @@ describe("Circuit", function() {
     WorldGen.addLogicBlocks(TS, baseLogicAndColors, pureColors);
 
     // layer 3
-    var blockset = WorldGen.colorBlocks(4, 4, 4);
+    var blockset = WorldGen.colorBlocks(2, 2, 2);
     WorldGen.addLogicBlocks(TS, blockset, baseLogicAndColors);
     var ls = {};
     for (var i = 0; i < blockset.length; i++) {
-      ls[(blockset.get(i).name || "").replace(/^logic\./, "")] = i;
+      var name = (blockset.get(i).name || "");
+      if (/^logic\./.test(name)) {
+        ls[name.replace(/^logic\./, "")] = i;
+      }
     }
 
     var self = {
@@ -205,6 +208,30 @@ describe("Circuit", function() {
       expect(t.readOutput(UNIT_PZ /* since the output was rotated */)).toEqual(3);
       
       t.dumpWorld("getNeighborID rotation test");
+    });
+  });
+  
+  it("should not crash given nonsense", function () {
+    var rots = [CubeRotation.identity.code,
+                CubeRotation.y90.code,
+                CubeRotation.y180.code,
+                CubeRotation.y270.code];
+    var blocks = Object.keys(t.ls).map(function (k) { return t.ls[k]; });
+    function pickBlock(x,y,z,cont) {
+      blocks.forEach(function (id) {
+        rots.forEach(function (subdatum) {
+          t.world.s(x,y,z,id,subdatum);
+          cont();
+        });
+      });
+    }
+    
+    t.world.s(0,1,1, t.ls.emitConstant, 0);
+    t.world.s(1,1,0, t.ls.emitConstant, 1);
+    t.world.s(2,1,1, t.ls.indicator);
+    pickBlock(1,1,1, function () {
+      pickBlock(1,1,2, function () {
+      });
     });
   });
 });
