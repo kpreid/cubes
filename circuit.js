@@ -293,6 +293,17 @@ var Circuit = (function () {
     this.getNetValue = function (net) {
       return localState[net.serial];
     };
+    
+    // For circuit testing. Return the value output by the given face of the given block.
+    this.getBlockOutput = function (block, face) { 
+      if (getBehavior(block) === behaviors.junction) {
+        // junctions don't have output data, so look up the net
+        return localState[cGraph[block]["1,0,0"].serial];
+      } else {
+        // look up specific face output
+        return localState[Array.prototype.slice.call(block) + "/" + Array.prototype.slice.call(face)];
+      }
+    } 
     this.describeBlock = function (block) {
       var graph = cGraph[block];
       if (!graph) return "Wire";
