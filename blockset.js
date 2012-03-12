@@ -338,6 +338,7 @@ var BlockSet = (function () {
     var tileAllocMap;
     var freePointer;
     var usageMap;
+    var overrun = false;
     this.textureLost = false;
     
     function initForSize() {
@@ -424,10 +425,18 @@ var BlockSet = (function () {
       while (tileAllocMap[freePointer]) {
         if ((++n) >= tileAllocMap.length) {
           if (typeof console !== 'undefined') 
-            console.info("Enlarging block texture to hold", (tileAllocMap.length + 1));
-          textureSize *= 2;
-          initForSize();
-          return 0;
+            console.info("Enlarging block texture to hold", (tileAllocMap.length + 1), "tiles.");
+          var newSize = textureSize * 2;
+          if (newSize >= gl.getParameter(gl.MAX_TEXTURE_SIZE)) { // NOTE: this may not be the true limit in the particular case but I don't see proxy textures or allocation failure checking in WebGL
+            if (typeof console !== 'undefined' && !overrun)
+              console.error("Maximum texture size", newSize, " reached; display will be corrupted.");
+            overrun = true;
+            break; // overwrite some tile
+          } else {
+            textureSize *= 2;
+            initForSize();
+            return 0;
+          }
         }
         freePointer = mod(freePointer + 1, tileAllocMap.length);
       }
