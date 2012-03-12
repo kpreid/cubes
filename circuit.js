@@ -471,13 +471,14 @@ var Circuit = (function () {
     var getNeighborID = nb("getNeighborID", outputOnlyBeh);
     getNeighborID.compile = function (world, block, inputs) {
       var out = compileOutput(world, block, DIRECTIONS);
-      var neighborInner = vec3.add(getRot(world, block).transformVector(UNIT_NX), block);
+      var myLookVector = getRot(world, block).transformVector(UNIT_NX);
+      var neighborInner = vec3.add(myLookVector, block, vec3.create());
       return function (state) {
         var nworld, ncube;
         if (state.blockIn_world) {
           nworld = state.blockIn_world;
-          ncube = vec3.add(getRot(state.blockIn_world, state.blockIn_cube).transformVector(UNIT_NX),
-                              state.blockIn_cube);
+          ncube = vec3.add(getRot(state.blockIn_world, state.blockIn_cube).transformVector(myLookVector),
+                           state.blockIn_cube);
         } else {
           nworld = world;
           ncube = neighborInner;
