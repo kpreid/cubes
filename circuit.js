@@ -436,7 +436,7 @@ var Circuit = (function () {
     gate.faces["1,0,0"] = OUT;
     gate.compile = function (world, block, inputs) {
       var gateInput = combineInputs(inputs, [[0,-1,0],[0,1,0],[0,0,-1],[0,0,1]]);
-      var valueInput = inputs[[-1,0,0]];
+      var valueInput = inputs[[-1,0,0]] || function () { return null; };
       var out = compileOutput(world, block, [[1,0,0]]);
       return function (state) {
         out(state, gateInput(state) ? valueInput(state) : null);
