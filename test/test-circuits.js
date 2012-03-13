@@ -28,29 +28,26 @@ describe("Circuit", function() {
   });
   
   function makeTester() {
-    var world = new World([TS, TS, TS], blockset);
-    var center = [5, 5, 5];
-    
     var self = {
-      world: world,
-      center: center,
+      world: new World([TS, TS, TS], blockset),
+      center: [5, 5, 5],
 
       // For looking at the test case in-game for debugging.
       dumpWorld: function (name) {
         var pool = new PersistencePool(localStorage, "cubes.object.");
         if (pool.has(name)) pool.get(name).persistence.ephemeralize();
-        world.persistence.persist(pool, name);
+        self.world.persistence.persist(pool, name);
         pool.flushNow();
       },
 
       putBlockUnderTest: function (id, subdatum) {
-        world.s(center[0],center[1],center[2], id, subdatum);
+        self.world.s(this.center[0],this.center[1],this.center[2], id, subdatum);
       },
       putNeighbor: function (offset, id, subdatum) {
-        world.s(center[0]+offset[0],
-                center[1]+offset[1],
-                center[2]+offset[2],
-                id, subdatum);
+        self.world.s(this.center[0]+offset[0],
+                     this.center[1]+offset[1],
+                     this.center[2]+offset[2],
+                     id, subdatum);
       },
       putInput: function (offset, value) {
         if (typeof value !== "number" || value < 0 || value >= 256) {
@@ -62,7 +59,7 @@ describe("Circuit", function() {
         self.putNeighbor(offset, ls.indicator);
       },
       readOutput: function (offset) {
-        return world.getCircuit(center).getBlockOutput(center, offset);
+        return self.world.getCircuit(this.center).getBlockOutput(this.center, offset);
       }
     };
     return self;
@@ -104,7 +101,10 @@ describe("Circuit", function() {
     expect(t.readOutput(UNIT_PX)).toBeFalsy();
     expect(t.readOutput(UNIT_PZ)).toEqual(3);
 
-    //dumpWorld("rotation test");
+    // Regression test: rotation connectivity works after unserialization (that is, the notifyRawEdit path)
+    t.world = cyclicUnserialize(cyclicSerialize(t.world, Persister.types), Persister.types);
+    expect(t.readOutput(UNIT_PX)).toBeFalsy();
+    expect(t.readOutput(UNIT_PZ)).toEqual(3);
   });
 
   describe("getNeighborID", function () {

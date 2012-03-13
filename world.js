@@ -341,15 +341,26 @@ function World(sizes, blockSet) {
         var ybase = xbase + y*wz;
         for (var z = 0; z < wz; z++) {
           vec[2] = z;
-          var value = blocks[ybase + z];
+          reeval(vec, types[blocks[ybase + z]]);
+        }
+      }
+    }
           
+    // In-block circuits (handled by reeval) determine rotations, which determine in-this-world circuit connectivity, so all floodCircuit must happen after all reeval.
+    for (var x = 0; x < wx; x++) {
+      vec[0] = x;
+      var xbase = x*wy*wz;
+      for (var y = 0; y < wy; y++) {
+        vec[1] = y;
+        var ybase = xbase + y*wz;
+        for (var z = 0; z < wz; z++) {
+          vec[2] = z;
+          var value = blocks[ybase + z];
           if (isCircuitPart(types[value]) && !blockCircuits.get(vec)) {
             var circuit = new Circuit(self);
             circuits.set(vec, circuit);
             floodCircuit(circuit, vec);
           }
-          
-          reeval(vec, types[value]);
         }
       }
     }
