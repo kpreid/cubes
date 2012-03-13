@@ -61,6 +61,12 @@ function World(sizes, blockSet) {
   }
   
   function touchedCircuit(circuit) {
+    if (circuits.get(circuit.getOrigin()) !== circuit) {
+      // This is a check for trouble in the circuit fill logic
+      if (typeof console !== "undefined")
+        console.warn("Unindexed circuit at " + circuit.getOrigin() + "!");
+      debugger;
+    }
     circuit.compile();
     circuit.refreshLocal();
     notifier.notify("dirtyCircuit", circuit);
@@ -108,10 +114,10 @@ function World(sizes, blockSet) {
                        blockCircuits.get([x+1,y,z]),
                        blockCircuits.get([x,y+1,z]),
                        blockCircuits.get([x,y,z+1])];
-    var circuit = null;
+    var circuit = undefined;
     adjCircuits.forEach(function (c) {
-      if (c === null) return;
-      if (circuit === null) {
+      if (!c) return;
+      if (!circuit) {
         circuit = c;
       }
     });
