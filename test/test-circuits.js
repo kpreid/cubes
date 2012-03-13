@@ -65,6 +65,14 @@ describe("Circuit", function() {
     return self;
   }
 
+  function makeCircuitBlock() {
+    var inner = makeTester();
+    var type = new BlockType.World(inner.world);
+    type.behavior = Circuit.behaviors.ic;
+    inner.id = blockset.length;
+    blockset.add(type); // NOTE: This creates a blockset->blocktype->world->blockset circular reference; might be a problem in the future
+    return inner;
+  }
   
   //////////////////////////////////////////////////////////////////////
 
@@ -106,6 +114,18 @@ describe("Circuit", function() {
     expect(t.readOutput(UNIT_PX)).toBeFalsy();
     expect(t.readOutput(UNIT_PZ)).toEqual(3);
   });
+  
+  describe("emitUniform", function () {
+    it("should emit a value", function () {
+      var inner = makeCircuitBlock();
+      inner.putBlockUnderTest(ls.emitUniform, CubeRotation.identity.code);
+      inner.putInput(UNIT_NX, 47);
+      
+      t.putBlockUnderTest(inner.id);
+      expect(t.readOutput(UNIT_PX)).toEqual(47);
+      expect(t.readOutput(UNIT_NZ)).toEqual(47);
+    });
+  });
 
   describe("getNeighborID", function () {
     it("should report inner block IDs according to rotation", function () {
@@ -123,24 +143,20 @@ describe("Circuit", function() {
 
     it("should report outer block IDs when in a block", function () {
       // Create a block which does the same thing, but on -z axis
-      var inner = makeTester();
+      var inner = makeCircuitBlock();
       inner.putBlockUnderTest(ls.getNeighborID, CubeRotation.y270.code);
       inner.putNeighbor(UNIT_PX, ls.emitUniform);
       inner.world.s(0,0,0, ls.getSubDatum);
       inner.world.s(0,0,1, ls.setRotation);
-      var type = new BlockType.World(inner.world);
-      type.behavior = Circuit.behaviors.ic;
-      var id = blockset.length;
-      blockset.add(type); // NOTE: This creates a blockset->blocktype->world->blockset circular reference; might be a problem in the future
       
-      t.putBlockUnderTest(id, CubeRotation.identity.code);
+      t.putBlockUnderTest(inner.id, CubeRotation.identity.code);
       expect(t.readOutput(UNIT_PX)).toEqual(0);
       t.putNeighbor(UNIT_NZ, 2);
       expect(t.readOutput(UNIT_PX)).toEqual(2);
 
       // rotated on the outside
       t.putNeighbor(UNIT_PX, 3);
-      t.putBlockUnderTest(id, CubeRotation.y270.code); // rotated 90ª twice, should now read +x
+      t.putBlockUnderTest(inner.id, CubeRotation.y270.code); // rotated 90ª twice, should now read +x
       expect(t.readOutput(UNIT_PX)).toEqual(3);
     });
   });
