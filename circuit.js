@@ -519,16 +519,21 @@ var Circuit = (function () {
       };
     };
     
-    var emitUniform = nb("emitUniform", inputOnlyBeh);
-    emitUniform.compile = function (world, block, inputs) {
-      var input = combineInputs(inputs, DIRECTIONS);
+    var icOutput = nb("icOutput", inputOnlyBeh);
+    icOutput.compile = function (world, block, inputs) {
+      var table = DIRECTIONS.map(function (dir) {
+        return ["blockOut_output_" + dir, inputs[vec3.scale(dir, -1, [])] || function () {}];
+      });
       return function (state) {
-        state.blockOut_output = input(state);
+        table.forEach(function (r) {
+          // TODO detect/handle conflicts among multiple outputs
+          state[r[0]] = r[1](state);
+        });
       };
     };
   
     // This behavior evaluates a block's inner circuit.
-    // TODO: Add input and non-uniform support
+    // TODO: Add input support
     var ic = nb("ic", protobehavior);
     ic.faces = dirKeys(OUT);
     ic.compile = function (world, block, inputs) {
@@ -542,7 +547,11 @@ var Circuit = (function () {
       type.world.getCircuits().forEach(function (circuit) {
         circuitsArr.push(circuit);
       });
-      var out = compileOutput(world, block, DIRECTIONS);
+      
+      var outTable = DIRECTIONS.map(function (dir) {
+        return [compileOutput(world, block, [dir]), "blockOut_output_" + dir];
+      });
+      
       return function (state) {
         circuitsArr.forEach(function (circuit) {
           var subState = {
@@ -550,10 +559,12 @@ var Circuit = (function () {
             blockIn_cube: block
           };
           circuit.evaluate(subState);
-          if ("blockOut_output" in subState) {
-            // TODO: detect conflicts among multiple outputs
-            out(state, subState.blockOut_output);
-          }
+          outTable.forEach(function (r) {
+            if (r[1] in subState) {
+              // TODO detect/handle conflicts among multiple circuits
+              r[0](state, subState[r[1]]);
+            }
+          });
         });
       };
     };

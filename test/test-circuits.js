@@ -53,7 +53,7 @@ describe("Circuit", function() {
         if (typeof value !== "number" || value < 0 || value >= 256) {
           throw new Error("Can't yet define a test input value of " + value);
         }
-        self.putNeighbor(offset, ls.emitConstant, value);
+        self.putNeighbor(offset, ls.constant, value);
       },
       putOutput: function (offset) {
         self.putNeighbor(offset, ls.indicator);
@@ -115,15 +115,26 @@ describe("Circuit", function() {
     expect(t.readOutput(UNIT_PZ)).toEqual(3);
   });
   
-  describe("emitUniform", function () {
-    it("should emit a value", function () {
+  describe("icOutput", function () {
+    it("should cause a block to emit values", function () {
       var inner = makeCircuitBlock();
-      inner.putBlockUnderTest(ls.emitUniform, CubeRotation.identity.code);
-      inner.putInput(UNIT_NX, 47);
+      inner.putBlockUnderTest(ls.icOutput, CubeRotation.identity.code);
+      inner.putInput(UNIT_NX, 101);
+      inner.putInput(UNIT_PX, 102);
+      inner.putInput(UNIT_NY, 103);
+      inner.putInput(UNIT_PY, 104);
+      inner.putInput(UNIT_NZ, 105);
+      inner.putInput(UNIT_PZ, 106);
       
       t.putBlockUnderTest(inner.id);
-      expect(t.readOutput(UNIT_PX)).toEqual(47);
-      expect(t.readOutput(UNIT_NZ)).toEqual(47);
+      expect(t.readOutput(UNIT_PX)).toEqual(101);
+      expect(t.readOutput(UNIT_NX)).toEqual(102);
+      expect(t.readOutput(UNIT_PY)).toEqual(103);
+      expect(t.readOutput(UNIT_NY)).toEqual(104);
+      expect(t.readOutput(UNIT_PZ)).toEqual(105);
+      expect(t.readOutput(UNIT_NZ)).toEqual(106);
+      
+      // TODO: Test effects when there are multiple icOutput elements, multiple circuits containing icOutput elements, or unconnected faces.
     });
   });
 
@@ -145,7 +156,7 @@ describe("Circuit", function() {
       // Create a block which does the same thing, but on -z axis
       var inner = makeCircuitBlock();
       inner.putBlockUnderTest(ls.getNeighborID, CubeRotation.y270.code);
-      inner.putNeighbor(UNIT_PX, ls.emitUniform);
+      inner.putNeighbor(UNIT_PX, ls.icOutput);
       inner.world.s(0,0,0, ls.getSubDatum);
       inner.world.s(0,0,1, ls.setRotation);
       
@@ -157,7 +168,7 @@ describe("Circuit", function() {
       // rotated on the outside
       t.putNeighbor(UNIT_PX, 3);
       t.putBlockUnderTest(inner.id, CubeRotation.y270.code); // rotated 90ª twice, should now read +x
-      expect(t.readOutput(UNIT_PX)).toEqual(3);
+      expect(t.readOutput(UNIT_PZ /* since the output was rotated */)).toEqual(3);
     });
   });
 });

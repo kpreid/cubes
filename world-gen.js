@@ -233,7 +233,7 @@ var WorldGen = (function () {
       
       var baseGetSubDatum = baseSet.lookup("logic.getSubDatum");
       var baseSetRotation = baseSet.lookup("logic.setRotation");
-      var baseEmitUniform = baseSet.lookup("logic.emitUniform");
+      var baseICOutput = baseSet.lookup("logic.icOutput");
       
       // appearance utilities
       var colorToID = WorldGen.colorPicker(baseSet);
@@ -344,24 +344,29 @@ var WorldGen = (function () {
       type.behavior = Circuit.behaviors.become;
       type.name = "logic.become";
 
-      // emit-value block
+      // IC output block
       type = genedit(function (b) {
         return Math.abs(b[0]-HALF)+Math.abs(b[1]-HALF)+Math.abs(b[2]-HALF) < TS/2+0.5 ? functionShapeColor : 0;
       });
-      type.behavior = Circuit.behaviors.emitUniform;
-      type.name = "logic.emitUniform";
+      type.behavior = Circuit.behaviors.icOutput;
+      type.name = "logic.icOutput";
 
       // IC blocks (require logic blocks on the next level down)
-      if (baseEmitUniform !== null) {
+      if (baseICOutput !== null) {
         type = genedit(function (b) {
           var r = f.rad(b);
           return r < TS/2 && r > HALF && f.plane(0, TS/2-1, TS/2+1, function(){return true;})(b) && Math.abs(b[1]-HALF) > (b[2]-HALF) ? functionShapeColor : 0;
         });
-        type.world.s(1,1,1, baseGetSubDatum);
-        type.world.s(1,1,2, baseEmitUniform);
+        type.world.s(2,2,2, baseICOutput);
+        type.world.s(1,2,2, baseGetSubDatum);
+        type.world.s(3,2,2, baseGetSubDatum);
+        type.world.s(2,1,2, baseGetSubDatum);
+        type.world.s(2,3,2, baseGetSubDatum);
+        type.world.s(2,2,1, baseGetSubDatum);
+        type.world.s(2,2,3, baseGetSubDatum);
         type.automaticRotations = [0,1,2,3,4,5,6,7]; // TODO kludge
         type.behavior = Circuit.behaviors.ic;
-        type.name = "logic.emitConstant";
+        type.name = "logic.constant";
       }
     },
 
@@ -403,12 +408,12 @@ var WorldGen = (function () {
       function rgbPat(b) { return brgb(b[0]/TL,b[1]/TL,b[2]/TL); }
 
       function addSpontaneousConversion(type, targetID) {
-        var emitConstant = colorSet.lookup("logic.emitConstant");
+        var constant = colorSet.lookup("logic.constant");
         var gate = colorSet.lookup("logic.gate");
         var spontaneous = colorSet.lookup("logic.spontaneous");
         var become = colorSet.lookup("logic.become");
-        if (!emitConstant) throw new Error("don't have constant block available");
-        type.world.s(1,1,1, emitConstant, targetID);
+        if (!constant) throw new Error("don't have constant block available");
+        type.world.s(1,1,1, constant, targetID);
         type.world.s(2,1,1, gate);  type.world.s(2,1,2, spontaneous);
         type.world.s(3,1,1, become);
       }
@@ -842,7 +847,7 @@ function generateWorlds(config, blockset) {
   
   (function () {
     var x = Math.floor(182/400*wx), y = Math.floor(wy/2)+3, z = Math.floor(191/400*wx);
-    var emitConstant = blockset.lookup("logic.emitConstant");
+    var constant = blockset.lookup("logic.constant");
     var gate = blockset.lookup("logic.gate");
     var indicator = blockset.lookup("logic.indicator");
     var junction = blockset.lookup("logic.junction");
@@ -857,7 +862,7 @@ function generateWorlds(config, blockset) {
                          
     topWorld.s(x-1,y,z+5,wire);
     topWorld.s(x-2,y,z+5,gate);
-    topWorld.s(x-3,y,z+5,emitConstant,42);
+    topWorld.s(x-3,y,z+5,constant,42);
     topWorld.s(x-2,y,z+4,pad);
                          
     topWorld.s(x+1,y,z+5,wire);
