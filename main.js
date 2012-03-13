@@ -150,10 +150,12 @@ var CubesMain = (function () {
             var value = world.g(cube[0],cube[1],cube[2]);
             var sub = world.gSub(cube[0],cube[1],cube[2]);
             var type = world.gt(cube[0],cube[1],cube[2]);
-            var text = 
+            var text = (
               value
               + (sub ? ":" + sub : "")
-              + " at " + sel.cube;
+              + (type.name ? " (" + type.name + ")" : "")
+              + "\nat " + sel.cube
+            );
 
             var circuit = world.getCircuit(cube);
             if (circuit !== null) {
