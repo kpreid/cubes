@@ -452,7 +452,7 @@ var CubesMain = (function () {
         },
         "Creating your avatar...",
         function () {
-          player = new Player(config, worldH, renderer/*TODO facet? */, audio/*TODO facet? */, scheduleDraw);
+          player = main.player = new Player(config, worldH, renderer/*TODO facet? */, audio/*TODO facet? */, scheduleDraw);
         },
         "Painting blocks...",
         function () {
@@ -514,6 +514,7 @@ var CubesMain = (function () {
     
     this.config = config;
     this.pool = persistencePool;
+    this.player = null;
   }
   
   return CubesMain;
