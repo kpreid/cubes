@@ -86,7 +86,6 @@ describe("Circuit", function() {
   it("should reevaluate on subdata updates", function () {
     t.putBlockUnderTest(ls.junction);
     t.putInput(UNIT_NX, 0);
-    t.putOutput(UNIT_PX);
     expect(t.readOutput(UNIT_PX)).toEqual(0);
     t.putInput(UNIT_NX, 1);
     expect(t.readOutput(UNIT_PX)).toEqual(1);
@@ -97,8 +96,6 @@ describe("Circuit", function() {
     t.putBlockUnderTest(ls.gate, CubeRotation.identity.code);
     t.putInput(UNIT_NX, 2); // connected emitter
     t.putInput(UNIT_NZ, 3); // unconnected emitter
-    t.putOutput(UNIT_PZ); // connected indicator
-    t.putOutput(UNIT_PX); // unconnected indicator
     expect(t.readOutput(UNIT_PX)).toEqual(2);
     expect(t.readOutput(UNIT_PZ)).toBeFalsy();
     
@@ -113,7 +110,6 @@ describe("Circuit", function() {
   describe("getNeighborID", function () {
     it("should report inner block IDs according to rotation", function () {
       t.putBlockUnderTest(ls.getNeighborID, CubeRotation.identity.code);
-      t.putOutput(UNIT_PX);
       expect(t.readOutput(UNIT_PX)).toEqual(0);
       t.putNeighbor(UNIT_NZ, 2); // should be irrelevant
       expect(t.readOutput(UNIT_PX)).toEqual(0);
@@ -138,7 +134,6 @@ describe("Circuit", function() {
       blockset.add(type); // NOTE: This creates a blockset->blocktype->world->blockset circular reference; might be a problem in the future
       
       t.putBlockUnderTest(id, CubeRotation.identity.code);
-      t.putOutput(UNIT_PZ); // TODO only necessary due to the output-based eval which isn't really needed
       expect(t.readOutput(UNIT_PX)).toEqual(0);
       t.putNeighbor(UNIT_NZ, 2);
       expect(t.readOutput(UNIT_PX)).toEqual(2);

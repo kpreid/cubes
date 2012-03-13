@@ -86,12 +86,11 @@ var Circuit = (function () {
     };
     this.compile = function () { // TODO should be implicit
       if (DEBUG_WIRE) console.info("Recompiling a circuit");
-      var outputs = [];
       var nodes = [];
       var nets = [];
       var netSerial = 0;
       
-      // Clear and initialize; find active nodes and outputs
+      // Clear and initialize; find active nodes
       cGraph = {};
       cEdges = [];
       blocks.forEach(function (block) {
@@ -100,10 +99,9 @@ var Circuit = (function () {
           // Initialize state
           cGraph[block] = {};
           
-          // Build indexes
-          nodes.push(block);
-          if (beh.hasEffect) {
-            outputs.push(block);
+          // Build index
+          if (beh !== Circuit.behaviors.junction) {
+            nodes.push(block);
           }
         }
       });
@@ -271,7 +269,12 @@ var Circuit = (function () {
         
         //console.groupEnd();
       }
-      outputs.forEach(compile);
+
+      // We used to only compile starting from the "output" blocks. This is a nice optimization in principle, but interferes with debugging circuits since they show their connectivity but have all values undefined. Instead, we...
+      // Make sure every net has its value computed
+      nets.forEach(compileNet);
+      // Make sure every block (outputs in particular) has had its turn (even if it has no connected nets)
+      nodes.forEach(compile);
       
       evaluate = function (state) {
         if (!state) state = {};
@@ -377,7 +380,6 @@ var Circuit = (function () {
     
     var protobehavior = {};
     protobehavior.faces = dirKeys(NONE);
-    protobehavior.hasEffect = false;
     protobehavior.standingOn = function (circuit, cube, value) {};
     protobehavior.executeForBlock = function (world, cube, subDatum) {};
     protobehavior.getFace = function (world, block, face) {
@@ -389,7 +391,6 @@ var Circuit = (function () {
     nb("wire", protobehavior);
     
     var inputOnlyBeh = Object.create(protobehavior);
-    inputOnlyBeh.hasEffect = true;
     inputOnlyBeh.faces = dirKeys(IN);
     
     var outputOnlyBeh = Object.create(protobehavior);
