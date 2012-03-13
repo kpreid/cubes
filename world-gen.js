@@ -424,7 +424,6 @@ var WorldGen = (function () {
 
       var type;
       var blockset = new BlockSet([]);
-      var ids = {};
 
       // color cube - world base and bogus-placeholder
       blockset.add(type = genedit(function (b) {
@@ -523,8 +522,8 @@ var WorldGen = (function () {
 
       // random block types
       var firstRandom = blockset.length;
-      var lastRandom = ids.firstRandom + 3;
-      while (blockset.length <= ids.lastRandom) {
+      var lastRandom = firstRandom + 3;
+      while (blockset.length <= lastRandom) {
         blockset.add(WorldGen.newRandomBlockType(TS, colorSet));
       }
       blockset.get(firstRandom).name = "random.first";
@@ -603,7 +602,7 @@ function generateWorlds(config, blockset) {
     var air = BlockSet.ID_EMPTY;
     var bedrock = BlockSet.ID_BOGUS;
     var ground = 3; // TODO magic number
-    var road = ids.slab;
+    var road = blockset.lookup("slab");
     
     // Dimensions
     var roadWidth = 3;
@@ -697,13 +696,14 @@ function generateWorlds(config, blockset) {
       return vec3.create([v[2], v[1], -v[0]]);
     }
     
+    var greenery = blockset.lookup("greenery");
     function roadBuilder(pos, vel, width) {
       return posLoop(pos, vel, 
           function (p) { return topWorld.g(p[0],p[1],p[2]) == ground; }, 
           function (pos) {
         var perp = counterclockwise(vel);
-        setvec(maddy(pos, 1, perp, -width-1), ids.greenery, Math.floor(Math.random()*CubeRotation.count));
-        setvec(maddy(pos, 1, perp, +width+1), ids.greenery, Math.floor(Math.random()*CubeRotation.count));
+        setvec(maddy(pos, 1, perp, -width-1), greenery, Math.floor(Math.random()*CubeRotation.count));
+        setvec(maddy(pos, 1, perp, +width+1), greenery, Math.floor(Math.random()*CubeRotation.count));
         fill(madd(pos, perp, -width), madd(pos, perp, width), road);
         return [];
       });
@@ -724,15 +724,22 @@ function generateWorlds(config, blockset) {
       return looper;
     }
     
+    function pick(a) {
+      return a[Math.floor(Math.random() * a.length)];
+    }
+    
+    var glass = blockset.lookup("glass");
+    var firstRandom = blockset.lookup("random.first");
+    var slab = blockset.lookup("slab");
     function buildingBuilder(origin, u, v, usize, vsize) {
       var buildingFloorHeight = 3 + Math.floor(Math.random() * 3);
       
-      var material = f.pick([
-        ids.firstRandom+0, // TODO use ids.lastRandom
-        ids.firstRandom+1,
-        ids.firstRandom+2,
-        ids.firstRandom+3,
-        ids.slab,
+      var material = pick([
+        firstRandom+0,
+        firstRandom+1,
+        firstRandom+2,
+        firstRandom+3,// TODO use lastRandom
+        slab,
       ]);
       var height = origin[1] + Math.floor(Math.random() * (wy-origin[1])/buildingFloorHeight) * buildingFloorHeight;
       // ground floor
@@ -744,7 +751,7 @@ function generateWorlds(config, blockset) {
         var high = madd(madd(pos, u, usize-1), v, vsize-1);
         function buildingWall(worigin, wdir, size) {
           fill(worigin, maddy(worigin, buildingFloorHeight-2, wdir, size-1), material);
-          fill(madd(worigin, wdir, 1), maddy(worigin, buildingFloorHeight-2, wdir, size-2), ids.glass, frontFaceTo(clockwise(wdir)));
+          fill(madd(worigin, wdir, 1), maddy(worigin, buildingFloorHeight-2, wdir, size-2), glass, frontFaceTo(clockwise(wdir)));
         }
         buildingWall(pos, u, usize);
         buildingWall(high, vec3.scale(u, -1, vec3.create()), usize);
