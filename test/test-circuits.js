@@ -116,7 +116,7 @@ describe("Circuit", function() {
   });
   
   describe("icOutput", function () {
-    it("should cause a block to emit values", function () {
+    it("should pass values out of an IC", function () {
       var inner = makeCircuitBlock(t);
       inner.putBlockUnderTest(t.ls.icOutput, CubeRotation.identity.code);
       inner.putInput(UNIT_NX, 101);
@@ -125,6 +125,10 @@ describe("Circuit", function() {
       inner.putInput(UNIT_PY, 104);
       inner.putInput(UNIT_NZ, 105);
       inner.putInput(UNIT_PZ, 106);
+      
+      // permit rotation
+      inner.world.s(0,0,0, t.ls.getSubDatum);
+      inner.world.s(0,0,1, t.ls.setRotation);
       
       t.putBlockUnderTest(inner.id);
       expect(t.readOutput(UNIT_PX)).toEqual(101);
@@ -135,6 +139,15 @@ describe("Circuit", function() {
       expect(t.readOutput(UNIT_NZ)).toEqual(106);
       
       // TODO: Test effects when there are multiple icOutput elements, multiple circuits containing icOutput elements, or unconnected faces.
+      
+      // rotated case
+      t.putBlockUnderTest(inner.id, CubeRotation.y90.code);
+      expect(t.readOutput(UNIT_PX)).toEqual(105);
+      expect(t.readOutput(UNIT_NX)).toEqual(106);
+      expect(t.readOutput(UNIT_PY)).toEqual(103);
+      expect(t.readOutput(UNIT_NY)).toEqual(104);
+      expect(t.readOutput(UNIT_PZ)).toEqual(102);
+      expect(t.readOutput(UNIT_NZ)).toEqual(101);
     });
   });
 
