@@ -151,6 +151,27 @@ describe("Circuit", function() {
     });
   });
 
+  describe("icInput", function () {
+    it("should pass values into an IC", function () {
+      // Note: This test relies on output functionality, because it is not currently possible to read the state of an executing circuit in a block. inner.readOutput() would just give us the "local" block-independent result.
+      
+      var inner = makeCircuitBlock(t);
+      inner.putBlockUnderTest(t.ls.icInput);
+      inner.putNeighbor(UNIT_PX, t.ls.icOutput);
+      inner.putNeighbor(UNIT_NY, t.ls.icOutput);
+      inner.putNeighbor(UNIT_PZ, t.ls.icOutput);
+      
+      t.putBlockUnderTest(inner.id);
+      t.putInput(UNIT_NX, 101);
+      t.putInput(UNIT_PY, 102);
+      t.putInput(UNIT_NZ, 103);
+
+      expect(t.readOutput(UNIT_PX)).toEqual(101);
+      expect(t.readOutput(UNIT_NY)).toEqual(102);
+      expect(t.readOutput(UNIT_PZ)).toEqual(103);
+    });
+  });
+
   describe("getNeighborID", function () {
     it("should report inner block IDs according to rotation", function () {
       t.putBlockUnderTest(t.ls.getNeighborID, CubeRotation.identity.code);

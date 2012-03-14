@@ -351,6 +351,14 @@ var WorldGen = (function () {
       type.behavior = Circuit.behaviors.icOutput;
       type.name = "logic.icOutput";
 
+      // IC input block
+      type = genedit(function (b) {
+        var c = b.map(function (coord) { return Math.abs(coord - HALF); }).sort();
+        return c[2] > c[0]+c[1]+TS*0.125 ? functionShapeColor : 0;
+      });
+      type.behavior = Circuit.behaviors.icInput;
+      type.name = "logic.icInput";
+
       // IC blocks (require logic blocks on the next level down)
       if (baseICOutput !== null) {
         type = genedit(function (b) {

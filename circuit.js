@@ -550,10 +550,41 @@ var Circuit = (function () {
       };
     };
   
+    var icInput = nb("icInput", outputOnlyBeh);
+    icInput.compile = function (world, block, inputs, notes) {
+      var table = DIRECTIONS.map(function (dir) {
+        // TODO Give a nice way to detect whether our faces are connected so as to report accurately in notes
+        notes["icInput_" + dir] = true;
+        return [compileOutput(world, block, [vec3.scale(dir, -1, [])]), "blockIn_input_" + dir];
+      });
+      return function (state) {
+        table.forEach(function (r) {
+          r[0](state, state[r[1]]);
+        });
+      };
+    };
+  
     // This behavior evaluates a block's inner circuit.
-    // TODO: Add input support
     var ic = nb("ic", protobehavior);
-    ic.faces = dirKeys(OUT);
+    ic.faces = "<DYNAMIC>"; // bogus, shouldn't be noticed
+    ic.getFaceUnrotated = function (world, block, face) {
+      // TODO this is overly long considering how often it's called in a compile; perhaps have the block type cache some info?
+      var type = world.gt(block[0],block[1],block[2]);
+      if (!type.world) {
+        if (typeof console !== 'undefined')
+          console.warn("IC behavior applied to non-world block type!");
+        return NONE;
+      }
+      var hasIn = false;
+      var hasOut = false;
+      type.world.getCircuits().forEach(function (circuit) {
+        var notes = circuit.getNotes();
+        hasIn  = hasIn  || notes["icInput_" + face];
+        hasOut = hasOut || notes["icOutput_" + face];
+      });
+      // NOTE: Prioritizes inputs because hasIn may be bogus: precise detection of icInput connectivity is not implemented
+      return hasOut ? OUT : hasIn ? IN : NONE;
+    };
     ic.compile = function (world, block, inputs) {
       var type = world.gt(block[0],block[1],block[2]);
       if (!type.world) {
@@ -566,23 +597,37 @@ var Circuit = (function () {
         circuitsArr.push(circuit);
       });
       
-      var outTable = DIRECTIONS.map(function (dir) {
-        return [compileOutput(world, block, [dir]), "blockOut_output_" + dir];
+      var inTable = [];
+      var outTable = [];
+      DIRECTIONS.map(function (dir) {
+        var faceType = ic.getFaceUnrotated(world, block, dir);
+        if (faceType === IN) {
+          inTable.push(["blockIn_input_" + dir, inputs[dir] || function () { return undefined; }]);
+        }
+        if (faceType === OUT) {
+          outTable.push([compileOutput(world, block, [dir]), "blockOut_output_" + dir]);
+        }
       });
       
       return function (state) {
         circuitsArr.forEach(function (circuit) {
+          //console.group("evaluating IC at", block);
           var subState = {
             blockIn_world: world,
             blockIn_cube: block
           };
+          inTable.forEach(function (r) {
+            //console.log("importing to ic", r[0], r[1](state));
+            subState[r[0]] = r[1](state);
+          });
           circuit.evaluate(subState);
           outTable.forEach(function (r) {
-            if (r[1] in subState) {
-              // TODO detect/handle conflicts among multiple circuits
+            //console.log("exporting from ic", r[1], subState[r[1]]);
+            if (r[1] in subState) { // this test needed because multiple circuits are evaluated. TODO: build the inTable and outTable on a per-circuit basis so we don't evaluate irrelevant circuits, or re-evaluate circuits with inputs
               r[0](state, subState[r[1]]);
             }
           });
+          //console.groupEnd("evaluating IC at", block);
         });
       };
     };
