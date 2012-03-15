@@ -560,11 +560,11 @@ var Renderer = (function () {
             // destroy mode for color cubes
             blockType.writeColor(1, colors, colors.length);
           }
-          var v = CubeRotation.byCode[symm].transformPoint([
+          var v = [
             (x+0.5)/tileSize,
             (y+0.5)/tileSize,
             (z+0.5)/tileSize
-          ]);
+          ]; CubeRotation.byCode[symm].transformPoint(v, v);
           
           vertices.push(location[0]+v[0],
                         location[1]+v[1],

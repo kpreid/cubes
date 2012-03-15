@@ -197,8 +197,8 @@ var AAB = (function () {
   };
   
   AAB.prototype.rotate = function (rot) {
-    var v0 = rot.transformPoint([this[0], this[2], this[4]]);
-    var v1 = rot.transformPoint([this[1], this[3], this[5]]);
+    var v0 = [this[0], this[2], this[4]]; rot.transformPoint(v0, v0);
+    var v1 = [this[1], this[3], this[5]]; rot.transformPoint(v1, v1);
     return new AAB(Math.min(v0[0], v1[0]),
                    Math.max(v0[0], v1[0]),
                    Math.min(v0[1], v1[1]),
@@ -242,7 +242,7 @@ var CubeRotation = (function () {
   
   var RANGE = 64; // contains some duplicates due to "120-ness" having 3 possibilities in 2 bits
   
-  function computeSymmetry(code, size, vec) {
+  function computeSymmetry(code, size, vec, result) {
     // Contributed by Jack Schmidt; see: <http://math.stackexchange.com/questions/78573/what-is-a-natural-way-to-enumerate-the-symmetries-of-a-cube>
 
     var x = vec[0];
@@ -268,11 +268,11 @@ var CubeRotation = (function () {
        case 2: y=size-y; z=size-z; break;
        case 3: z=size-z; x=size-x; break;
      }
-     vec = vec3.create();
-     vec[0] = x;
-     vec[1] = y;
-     vec[2] = z;
-     return vec;
+     if (!result) result = vec3.create();
+     result[0] = x;
+     result[1] = y;
+     result[2] = z;
+     return result;
   }
   
   function CubeRotation(code) {
@@ -291,11 +291,12 @@ var CubeRotation = (function () {
   CubeRotation.prototype.after = function (firstRotation) {
     return this._compositions[firstRotation.code];
   };
-  CubeRotation.prototype.transformVector = function (vec) {
-    return computeSymmetry(this.code, 0, vec);
+  CubeRotation.prototype.transformVector = function (vec, result) {
+    // TODO: Find out if using a matrix is faster.
+    return computeSymmetry(this.code, 0, vec, result);
   };
-  CubeRotation.prototype.transformPoint = function (vec) {
-    return computeSymmetry(this.code, 1, vec);
+  CubeRotation.prototype.transformPoint = function (vec, result) {
+    return computeSymmetry(this.code, 1, vec, result);
   };
   
   // "Static methods"
@@ -308,8 +309,9 @@ var CubeRotation = (function () {
   CubeRotation.nearestToDirection = function (target, toRotate, rotations) {
     var cosine = -Infinity;
     var best = null;
+    var vecbuf = vec3.create();
     for (var i = 0; i < rotations.length; i++) {
-      var ia = vec3.dot(target, rotations[i].transformVector(toRotate));
+      var ia = vec3.dot(target, rotations[i].transformVector(toRotate, vecbuf));
       if (ia > cosine) {
         cosine = ia;
         best = rotations[i];

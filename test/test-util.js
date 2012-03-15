@@ -11,6 +11,9 @@ describe("CubeRotation", function() {
           if (Math.abs(expected[i] - this.actual[i]) >= 1e-6) return false;
         }
         return true;
+      },
+      toBeInstanceOf: function(expected) {
+        return this.actual instanceof expected;
       }
     });
   });
@@ -26,6 +29,13 @@ describe("CubeRotation", function() {
   });
   it("should reflect a point", function () {
     expect(CubeRotation.byCode[1].transformPoint([0.1,0.2,0.3])).toEqualVector([0.9,0.8,0.3]);
+  });
+  
+  it("should use the provided result object, else a vec3", function () {
+    var aRot = CubeRotation.y90;
+    expect(aRot.transformVector([0,0,0])).toBeInstanceOf(vec3.create().constructor);
+    expect(aRot.transformVector([0,0,0], [])).toBeInstanceOf(Array);
+    expect(aRot.transformVector([0,0,0], new Uint8Array(3))).toBeInstanceOf(Uint8Array);
   });
   
   it("should have paired inverses", function () {

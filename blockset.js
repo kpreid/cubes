@@ -253,14 +253,15 @@ var BlockSet = (function () {
   
   function rotateVertices(rot, vertices) {
     var out = [];
+    var t = [];
     if (rot.isReflection) {
       for (var i = vertices.length - 3; i >= 0; i -= 3) {
-        var t = rot.transformPoint([vertices[i], vertices[i+1], vertices[i+2]]);
+        rot.transformPoint([vertices[i], vertices[i+1], vertices[i+2]], t);
         out.push(t[0],t[1],t[2]);
       }
     } else {
       for (var i = 0; i < vertices.length; i += 3) {
-        var t = rot.transformPoint([vertices[i], vertices[i+1], vertices[i+2]]);
+        rot.transformPoint([vertices[i], vertices[i+1], vertices[i+2]], t);
         out.push(t[0],t[1],t[2]);
       }
     }

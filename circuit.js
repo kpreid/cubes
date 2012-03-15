@@ -264,7 +264,7 @@ var Circuit = (function () {
         var inputGetters = {};
         DIRECTIONS.forEach(function (direction) {
           if (beh.getFaceUnrotated(world, block, direction) === IN) {
-            var net = cGraph[block][Array.prototype.slice.call(getRot(world, block).transformVector(direction))];
+            var net = cGraph[block][getRot(world, block).transformVector(direction, [])];
             if (net)
               inputGetters[direction] = netEvaluator(net);
           }
@@ -365,7 +365,7 @@ var Circuit = (function () {
     function compileOutput(world, block, faces) {
       var outRot = getRot(world, block);
       var keys = faces.map(function (face) {
-        var rotFace = Array.prototype.slice.call(outRot.transformVector(face));
+        var rotFace = outRot.transformVector(face, []);
         return block + "/" + rotFace;
       });
       return function (state, value) {
@@ -396,7 +396,7 @@ var Circuit = (function () {
       return this.faces[face];
     };
     protobehavior.getFace = function (world, block, face) {
-      var faceValue = this.getFaceUnrotated(world, block, Array.prototype.slice.call(getRot(world, block).inverse.transformVector(face)));
+      var faceValue = this.getFaceUnrotated(world, block, getRot(world, block).inverse.transformVector(face, []));
       if (faceValue === undefined) throw new Error("shouldn't happen");
       return faceValue;
     };
