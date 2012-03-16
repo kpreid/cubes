@@ -49,7 +49,7 @@ var WorldRenderer = (function () {
     return distanceInfoCache;
   }
   
-  function WorldRenderer(world, place, renderer, audio, scheduleDraw, showBoundaries) {
+  function WorldRenderer(world, place, renderer, optAudio, scheduleDraw, showBoundaries) {
     var gl = renderer.context;
     var config = renderer.config; // TODO eliminate need for this
     
@@ -285,7 +285,7 @@ var WorldRenderer = (function () {
       deletedCircuit: deletedCircuit,
       audioEvent: function (position, type, kind) {
         if (!isAlive()) return false;
-        audio.play(position, type, kind);
+        if (optAudio) optAudio.play(position, type, kind);
         return true;
       }
     };
