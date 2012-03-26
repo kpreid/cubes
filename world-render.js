@@ -472,6 +472,7 @@ var WorldRenderer = (function () {
         var wz = world.wz;
         var rawBlocks = world.raw; // for efficiency
         var rawRotations = world.rawRotations;
+        var rawLighting = world.rawLighting;
         var chunkOriginX = xzkey[0];
         var chunkOriginY = xzkey[1];
         var chunkOriginZ = xzkey[2];
@@ -489,11 +490,19 @@ var WorldRenderer = (function () {
           var types = renderData.types;
           var g = world.g;
 
+          var adjnx = -wy*wz;
+          var adjpx = +wy*wz;
+          var adjny = -wz;
+          var adjpy = +wz;
+          var adjnz = -1;
+          var adjpz = +1;
+          
           // these variables are used by face() and written by the loop
           var x,y,z;
           var thisOpaque;
+          var rawIndex;
           
-          function face(vFacing, data) {
+          function face(vFacing, data, lightingOffsetIndex) {
             var fx = vFacing[0];
             var fy = vFacing[1];
             var fz = vFacing[2];
@@ -511,7 +520,8 @@ var WorldRenderer = (function () {
                               faceVertices[vi+1]+y,
                               faceVertices[vi+2]+z);
                 texcoords.push(faceTexcoords[ti], faceTexcoords[ti+1]);
-                normals.push(fx, fy, fz);
+                var light = rawLighting[rawIndex+lightingOffsetIndex] / 255; // TODO handle oob
+                normals.push(light*fx, light*fy, light*fz);
               }
             }
           }
@@ -520,7 +530,7 @@ var WorldRenderer = (function () {
           for (y = chunkOriginY; y < chunkLimitY; y++)
           for (z = chunkOriginZ; z < chunkLimitZ; z++) {
             // raw array access inlined and simplified for efficiency
-            var rawIndex = (x*wy+y)*wz+z;
+            rawIndex = (x*wy+y)*wz+z;
             var value = rawBlocks[rawIndex];
             if (value === ID_EMPTY) continue;
 
@@ -530,12 +540,12 @@ var WorldRenderer = (function () {
             var faceData = (rotatedBlockFaceData[value] || BOGUS_BLOCK_DATA)[rotIndex];
             thisOpaque = btype.opaque;
 
-            face(rot.nx, faceData.lx);
-            face(rot.ny, faceData.ly);
-            face(rot.nz, faceData.lz);
-            face(rot.px, faceData.hx);
-            face(rot.py, faceData.hy);
-            face(rot.pz, faceData.hz);
+            face(rot.nx, faceData.lx, adjnx);
+            face(rot.ny, faceData.ly, adjny);
+            face(rot.nz, faceData.lz, adjnz);
+            face(rot.px, faceData.hx, adjpx);
+            face(rot.py, faceData.hy, adjpy);
+            face(rot.pz, faceData.hz, adjpz);
           }
           nonempty = vertices.length > 0;
           measuring.chunk.end();

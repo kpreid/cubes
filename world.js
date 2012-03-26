@@ -36,9 +36,15 @@ var World = (function () {
       // early catch of various mistakes that can lead to this
       throw new Error("invalid size for new World: " + vec3.str(sizes));
     }
-    var blocks = new Uint8Array(wx*wy*wz);
-    var rotations = new Uint8Array(wx*wy*wz);
-    var subData = new Uint8Array(wx*wy*wz);
+    var cubeCount = wx * wy * wz;
+
+    // Persistent data arrays.
+    var blocks = new Uint8Array(cubeCount);
+    var subData = new Uint8Array(cubeCount);
+    
+    // Computed data arrays.
+    var rotations = new Uint8Array(cubeCount);
+    var lighting = new Uint8Array(cubeCount);
     
     // Maps from cube to its circuit object if any
     var blockCircuits = new IntVectorMap();
@@ -52,7 +58,7 @@ var World = (function () {
     // Blocks which a body is touching the top surface of (TODO: generalize this)
     var standingOn = new IntVectorMap();
     
-    var numToDisturbPerSec = wx*wy*wz * spontaneousBaseRate;
+    var numToDisturbPerSec = cubeCount * spontaneousBaseRate;
     
     var notifier = new Notifier("World");
     
@@ -354,6 +360,7 @@ var World = (function () {
       } else {
         rotations[index] = 0;
       }
+      lighting[index] = mod(y/16, 1) * 256;
     }
     
     function queueEffect(cube, effect) {
@@ -517,6 +524,7 @@ var World = (function () {
     this.raw = blocks;
     this.rawSubData = subData;
     this.rawRotations = rotations;
+    this.rawLighting = lighting;
     this.notifyRawEdit = notifyRawEdit;
     this.raycast = raycast;
     this.getCircuits = function () { return circuits; }; // TODO should be read-only interface
