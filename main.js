@@ -511,14 +511,15 @@ var CubesMain = (function () {
     this.save = function () {
       persistencePool.flushAsync();
     };
-    
-    this.config = config;
-    this.pool = persistencePool;
-    this.player = null;
 
     this.requestFullScreen = function () {
       input.requestFullScreen();
     };
+
+    // Exposed for debugging access
+    this.config = config;
+    this.pool = persistencePool;
+    this.player = null;
   }
   
   return CubesMain;
