@@ -1,3 +1,6 @@
 [submodule "deps/jasmine"]
 	path = deps/jasmine
 	url = git://github.com/pivotal/jasmine.git
+[submodule "deps/game-shim"]
+	path = deps/game-shim
+	url = git://github.com/toji/game-shim.git
