@@ -6,7 +6,7 @@ function Input(config, eventReceiver, playerInput, menuElement, renderer, focusC
 
   var keymap = {};
   var mouselookMode = true;
-  var useLockMovement = false;
+  var expectingPointerLock = false;
 
   var mousePos = null;
 
@@ -22,7 +22,7 @@ function Input(config, eventReceiver, playerInput, menuElement, renderer, focusC
   function setMouselook(value) {
     mouselookMode = value;
     menuElement.style.visibility = mouselookMode ? 'hidden' : 'visible';
-    twiddlePointerLock();
+    updatePointerLock();
     applyMousePosition();
   }
   
@@ -140,10 +140,20 @@ function Input(config, eventReceiver, playerInput, menuElement, renderer, focusC
   
   // --- Mouselook ---
   
+  var CENTER = {};
   var dx = 0;
   var prevx = 0;
   
   function applyMousePosition() {
+    var cs = window.getComputedStyle(eventReceiver, null);
+    var w = parseInt(cs.width, 10);
+    var h = parseInt(cs.height, 10);
+
+    if (mousePos === CENTER) {
+      playerInput.mousePos = [w/2, h/2];
+      return;
+    }
+    
     if (!focusCell.get()) {
       playerInput.mousePos = null;
       dx = 0;
@@ -153,10 +163,6 @@ function Input(config, eventReceiver, playerInput, menuElement, renderer, focusC
     }
     
     if (mousePos === null) { return; }
-
-    var cs = window.getComputedStyle(eventReceiver, null);
-    var w = parseInt(cs.width, 10);
-    var h = parseInt(cs.height, 10);
 
     var swingY = mousePos[1] / (h*0.5) - 1;
     var swingX = mousePos[0] / (w*0.5) - 1;
@@ -179,15 +185,23 @@ function Input(config, eventReceiver, playerInput, menuElement, renderer, focusC
   });
   
   function updateMouseFromEvent(event) {
-    if (useLockMovement) return;
-    mousePos = [event.clientX, event.clientY];
+    if (document.pointerLockEnabled/*shimmed*/ || expectingPointerLock) {
+      mousePos = CENTER;
+      dx = 0;
+    } else if (event && !expectingPointerLock) {
+      mousePos = [event.clientX, event.clientY];
+    }
     applyMousePosition();
   }
   
   eventReceiver.addEventListener("mousemove", function (event) {
     updateMouseFromEvent(event);
     
-    if (mouselookMode && useLockMovement) {
+    if (document.pointerLockEnabled/*shimmed*/ || expectingPointerLock) {
+      // This is not in updateMouseFromEvent because movement* are updated only on mousemove events, even though they are provided on all events.
+      
+      // TODO this is duplicative-ish of applyMousePosition. We need a refactoring...
+      
       var my = event.movementY/*shimmed*/;
       var mx = event.movementX/*shimmed*/;
       mx = mx || 0; // TODO Why are movement* sometimes undefined?
@@ -206,45 +220,37 @@ function Input(config, eventReceiver, playerInput, menuElement, renderer, focusC
     return true;
   }, false);
   
-  // --- Mouse lock ---
+  // --- Fullscreen and pointer lock (experimental browser APIs) ---
   
-  // This code supports the experimental Chrome/Firefox mouse lock feature.
+  // game-shim.js provides these facilities as stubs if the browser does not, so this code contains no conditionals.
+  
   var fullScreenElement = document.body;
-  var twiddlePointerLock;
   
-  console.log("Pointer lock supported:", GameShim.supports.pointerLock);
-  if (GameShim.supports.pointerLock) { (function () {
-    function fullScreenChangeListener(event) {
-      var isFullScreen = document.fullscreenEnabled/*shimmed*/;
-      console.info("Fullscreen change", isFullScreen, document.fullscreenElement/*shimmed*/);
-      twiddlePointerLock();
+  //console.log("Pointer lock supported:", GameShim.supports.pointerLock);
+  
+  document.addEventListener("fullscreenchange"/*shimmed*/, updatePointerLock, false);
+  document.addEventListener("fullscreenerror"/*shimmed*/, function (event) {
+    console.info("Fullscreen entry error", event);
+  }, false);
+  
+  this.requestFullScreen = function () {
+    fullScreenElement.requestFullScreen/*shimmed*/(Element.ALLOW_KEYBOARD_INPUT /* TODO this is a webkitism */);
+  };
+
+  function updatePointerLock() {
+    if (mouselookMode) {
+      eventReceiver.requestPointerLock/*shimmed*/();
+      expectingPointerLock = GameShim.supports.pointerLock;
+      updateMouseFromEvent(null);
+      setTimeout(function () {
+         // TODO should be on pointer lock callback but that's not supported by the shim
+         expectingPointerLock = false;
+         updateMouseFromEvent(null);
+      }, 20);
+    } else {
+      document.exitPointerLock/*shimmed*/();
     }
-    function fullScreenErrorListener(event) {
-      console.info("Fullscreen entry error",event);
-    }
-    document.addEventListener("fullscreenchange"/*shimmed*/, fullScreenChangeListener, false);
-    document.addEventListener("fullscreenerror"/*shimmed*/, fullScreenErrorListener, false);
-    //fullScreenChangeListener(); // note initial state
-    
-    this.requestFullScreen = function () {
-      console.log("attempting full screen");
-      fullScreenElement.requestFullScreen/*shimmed*/(Element.ALLOW_KEYBOARD_INPUT /* TODO this is a webkitism */);
-      console.log("attempted full screen");
-    };
-    twiddlePointerLock = function () {
-      if (mouselookMode && document.fullscreenEnabled) {
-        eventReceiver.requestPointerLock/*shimmed*/();
-        console.info("After pointer lock request:", document.pointerLockEnabled, document.pointerLockElement, navigator.pointer.isLocked);
-        useLockMovement = document.pointerLockEnabled;
-        useLockMovement = true;
-      } else {
-        document.exitPointerLock();
-        useLockMovement = false;
-      }
-    };
-  }.call(this)); } else {
-    twiddlePointerLock = function () {};
-  }
+  };
   
   // --- Clicks ---
   
