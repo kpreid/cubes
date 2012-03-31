@@ -224,7 +224,7 @@ var CubesMain = (function () {
     var animFrameWasRequested = false;
     function scheduleDraw() {
       if (!animFrameWasRequested && readyToDraw && !renderer.contextLost) {
-        window.requestAnimFrame(function () {
+        window.requestAnimationFrame/*shimmed*/(function () {
           animFrameWasRequested = false;
 
           // done here because chunk updating should be deprioritized at the same time drawing would be

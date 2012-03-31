@@ -70,7 +70,7 @@ var measuring = (function () {
       },
       updateIfVisible: function () {
         if (!animFrameWasRequested) {
-          window.requestAnimFrame(function () {
+          window.requestAnimationFrame/*shimmed*/(function () {
             animFrameWasRequested = false;
             this.update();
           }.bind(this), container);
