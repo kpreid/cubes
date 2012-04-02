@@ -2,24 +2,39 @@
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
 describe("CubesMain", function() {
-  var main, done;
+  var main, done, parts;
   
   function stubElem() { 
     return document.createElement("div");
   }
   
-  var parts = {
-    // TODO: Reduce the amount of this boilerplate needed.
-    viewCanvas: document.createElement("canvas"),
-    menu: stubElem(),
-    sceneInfoOverlay: stubElem(),
-    cursorInfoOverlay: stubElem(),
-    loadError: [stubElem(), stubElem()]
-  };
-  
   beforeEach(function () {
     // We are using sessionStorage as a temporary Storage object for testing.
     sessionStorage.clear();
+
+    parts = {
+      // TODO: Reduce the amount of this boilerplate needed.
+      viewCanvas: document.createElement("canvas"),
+      menu: stubElem(),
+      sceneInfoOverlay: stubElem(),
+      cursorInfoOverlay: stubElem(),
+      loadError: [stubElem(), stubElem()]
+    };
+
+    // Make canvas visible
+    parts.viewCanvas.width = 320;
+    parts.viewCanvas.height = 240;
+    var container = document.createElement("div");
+    container.style.margin = "3px";
+    container.style.background = "#EEE";
+    container.style.border = "1px solid gray";
+    container.style.display = "inline-block";
+    container.style.width = "320px";
+    var label = document.createElement("div");
+    label.innerText = "View of: " + this.getFullName();
+    container.appendChild(label);
+    container.appendChild(parts.viewCanvas);
+    document.body.appendChild(container);
     
     main = new CubesMain(TEST_URL_ROOT, 1/60, sessionStorage);
     done = undefined;
