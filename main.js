@@ -444,8 +444,10 @@ var CubesMain = (function () {
           
           var world = getOrDefaultOrMake(config.currentTopWorld.get(), "Default World", function () {
             var blockset = getOrDefaultOrMake(config.generate_blockset.get(), "Default Blockset", function () {
+              startupMessage("  Creating default blockset...");
               return WorldGen.newDefaultBlockset(Math.round(config.generate_tileSize.get()));
             });
+            startupMessage("  Creating overworld...");
             return generateWorlds(config, blockset);
           });
 

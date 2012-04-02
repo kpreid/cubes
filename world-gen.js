@@ -58,25 +58,35 @@ var WorldGen = (function () {
     // Colors will be dithered with a variation up to 'dithering' times the distance between the best match and the available color; therefore any value <= 1 means no dithering.
     colorPicker: function (blockset, dithering) {
       if ((dithering || 0) < 1) dithering = 1;
-      var count = 0;
+      
       var table = {};
+      
+      var ditheringSq = Math.pow(dithering, 2);
+      var idToColor = blockset.getAll().map(function (t) { return t.color; });
+      function compareMatchRecord(a,b) { return a[1] - b[1]; }
+      
       function colorToID(r,g,b) {
-        var key = r+","+g+","+b;
+        // reduce to 8-bit-per-component color from arbitrary float to keep the table small
+        var rk,bk,gk;
+        r = (rk = r * 255 | 0) / 255;
+        g = (gk = g * 255 | 0) / 255;
+        b = (bk = b * 255 | 0) / 255;
+        var key = rk+","+gk+","+bk;
         if (!(key in table)) {
           var matches = [];
           // Compute Euclidean distance for each color in the set.
           for (var i = blockset.length - 1; i >= 0; i--) {
-            var color = blockset.get(i).color;
+            var color = idToColor[i];
             if (!color || color[3] <= 0.0) continue; // transparent or not a color block
             var dr = r-color[0];
             var dg = g-color[1];
             var db = b-color[2];
-            matches.push([i, Math.sqrt(dr*dr+dg*dg+db*db)]);
+            matches.push([i, dr*dr+dg*dg+db*db]);
           }
           // Sort from lowest to highest distance.
-          matches.sort(function (a,b) { return a[1] - b[1]; });
+          matches.sort(compareMatchRecord);
           // Find the maximum distance allowed for picking dither colors.
-          var ditherBound = matches[0][1] * dithering;
+          var ditherBound = matches[0][1] * ditheringSq;
           // Cut off the match list at that point.
           for (var ditherCount = 0; ditherCount < matches.length && matches[ditherCount][1] <= ditherBound; ditherCount++);
           table[key] = matches.slice(0, ditherCount);
@@ -379,6 +389,7 @@ var WorldGen = (function () {
     },
 
     newDefaultBlockset: function (TS) {
+      var t0 = Date.now();
       // Given an object facing the +z direction, these will rotate that face to...
       var sixFaceRotations = [0/*+z*/, 2/*-z*/, 4/*+y*/, 4+2/*-y*/, 16+8/*-x*/, 16+11/*+x*/];
 
@@ -433,30 +444,28 @@ var WorldGen = (function () {
         type.automaticRotations = sixFaceRotations;
       }
 
+      var t15 = Date.now();
+
       // --- default block worlds and block set ---
 
       var type;
       var blockset = new BlockSet([]);
 
       // color cube - world base and bogus-placeholder
-      blockset.add(type = genedit(function (b) {
-        return rgbPat(b);
-      }));
+      blockset.add(type = genedit(rgbPat));
 
       // ground block
-      blockset.add(type = genedit(function (b) {
-        return (f.te(b) ? f.cond(f.speckle, f.flat(brgb(.67,.34,.34)), f.flat(brgb(.67,0,0))) :
-                f.tp(b) ? f.flat(brgb(1,.34,.34)) :
-                f.cond(f.speckle, f.flat(brgb(.34,0,0)), f.flat(brgb(0,0,0))))(b);
-      }));
+      blockset.add(type = genedit(
+        f.cond(f.te, f.cond(f.speckle, f.flat(brgb(.67,.34,.34)), f.flat(brgb(.67,0,0))),
+          f.cond(f.tp, f.flat(brgb(1,.34,.34)),
+            f.cond(f.speckle, f.flat(brgb(.34,0,0)), f.flat(brgb(0,0,0)))))));
       var ground = type.world;
 
       // ground block #2
-      blockset.add(type = genedit(function (b) {
-        return (f.te(b) ? f.cond(f.speckle, f.flat(brgb(.34,.67,.34)), f.flat(brgb(0,.34,0))) :
-                f.tp(b) ? f.flat(brgb(.34,1,.34)) :
-                f.cond(f.speckle, f.flat(brgb(0,.34,0)), f.flat(brgb(0,1,1))))(b);
-      }));
+      blockset.add(type = genedit(
+        f.cond(f.te, f.cond(f.speckle, f.flat(brgb(.34,.67,.34)), f.flat(brgb(0,.34,0))),
+          f.cond(f.tp, f.flat(brgb(.34,1,.34)),
+            f.cond(f.speckle, f.flat(brgb(0,.34,0)), f.flat(brgb(0,1,1)))))));
 
       // pyramid thing
       var pyr1 = blockset.length;
@@ -503,9 +512,10 @@ var WorldGen = (function () {
       }));
 
       // glass sheet for buildings
-      blockset.add(type = genedit(function (b) {
-        return (f.xe(b) || f.te(b) || f.be(b)) && b[2] == TL ? brgb(.9,.9,.9) : 0;
-      }));
+      blockset.add(type = genedit(
+        f.cond(function (b) { return (f.xe(b) || f.te(b) || f.be(b)) && b[2] == TL; },
+          f.flat(brgb(.9,.9,.9)),
+          f.flat(brgb(0,0,0)))));
       type.name = "glass";
       addRotation(type);
 
@@ -542,7 +552,12 @@ var WorldGen = (function () {
       blockset.get(firstRandom).name = "random.first";
       blockset.get(lastRandom).name = "random.last";
 
+      var t1 = Date.now();
       WorldGen.addLogicBlocks(TS, blockset, fullLogicAndColors);
+
+      var t2 = Date.now();
+      //console.log("Blockset generation", t15 - t0, "ms mid ", t1 - t15, "ms adding logic", t2 - t1, "ms");
+
       return blockset;
     }
   };
@@ -582,6 +597,7 @@ function generateWorlds(config, blockset) {
     // Using raw array access because it lets us cache the altitude computation by iterating over y last, not because the overhead of .edit() is especially high.
     var raw = topWorld.raw;
     var rawSubData = topWorld.rawSubData;
+    var t0 = Date.now();
     for (var x = 0; x < wx; x++) {
       var xbase = x*wy*wz;
       for (var z = 0; z < wz; z++) {
@@ -605,7 +621,10 @@ function generateWorlds(config, blockset) {
         }
       }
     }
+    var t1 = Date.now();
     topWorld.notifyRawEdit();
+    var t2 = Date.now();
+    //console.log("Generation", t1 - t0, "ms updating", t2 - t1, "ms");
   }
   
   function generateCity() {
