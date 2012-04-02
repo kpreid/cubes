@@ -206,8 +206,6 @@ describe("Circuit", function() {
       t.putNeighbor(UNIT_PX, 3);
       t.putBlockUnderTest(inner.id, CubeRotation.y270.code); // rotated 90ª twice, should now read +x
       expect(t.readOutput(UNIT_PZ /* since the output was rotated */)).toEqual(3);
-      
-      t.dumpWorld("getNeighborID rotation test");
     });
   });
   
