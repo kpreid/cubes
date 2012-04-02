@@ -73,13 +73,15 @@ var Renderer = (function () {
     // --- Internals ---
     
     function buildProgram() {
+      // Every config option mentioned here should be listened to by rebuildProgramL below.
       
       attribs = {};
       uniforms = {};
       
       var decls = {
         LIGHTING: config.lighting.get(),
-        BUMP_MAPPING: config.bumpMapping.get()
+        BUMP_MAPPING: config.bumpMapping.get(),
+        CUBE_PARTICLES: config.cubeParticles.get()
       };
       
       blockProgramSetup = prepareProgram(gl, decls, permanentAttribs,
@@ -264,6 +266,7 @@ var Renderer = (function () {
     }};
     config.lighting.listen(rebuildProgramL);
     config.bumpMapping.listen(rebuildProgramL);
+    config.cubeParticles.listen(rebuildProgramL);
     config.fov.listen(projectionL);
     config.renderDistance.listen(projectionL);
 
@@ -411,10 +414,16 @@ var Renderer = (function () {
       return this.array.length / this.numComponents;
     };
     BufferAndArray.prototype.load = function (jsArray, checkAgainst) {
-      this.array = new Float32Array(jsArray);
+      if (jsArray.override) { // kludge for BlockParticles
+        this.buffer = jsArray.override.buffer;
+        this.array = jsArray.override.array;
+      } else {
+        this.array = new Float32Array(jsArray);
+      }
       if (checkAgainst && this.countVertices() !== checkAgainst.countVertices()) {
         throw new Error("Inconsistent number of vertices.");
       }
+      return !jsArray.override;
     };
     BufferAndArray.prototype.send = function (mode) {
       gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
@@ -461,17 +470,13 @@ var Renderer = (function () {
             mustRebuild = currentContextTicket();
           }
 
-          v.load(vertices);
-          v.send(gl.STATIC_DRAW);
-          n.load(normals, v);
-          n.send(gl.STATIC_DRAW);
+          v.load(vertices) && v.send(gl.STATIC_DRAW);
+          n.load(normals, v) && n.send(gl.STATIC_DRAW);
 
           if (optGetTexture) {
-            t.load(texcoords, v);
-            t.send(gl.STATIC_DRAW);
+            t.load(texcoords, v) && t.send(gl.STATIC_DRAW);
           } else {
-            c.load(colors, v);
-            c.send(gl.STATIC_DRAW);
+            c.load(colors, v) && c.send(gl.STATIC_DRAW);
           }
         };
 
@@ -533,55 +538,143 @@ var Renderer = (function () {
     }
     this.RenderBundle = RenderBundle;
     
+    // Table of [vertex, normal] tuples for a unit cube
+    var genericCubeVertices = [];
+    [CubeRotation.identity, CubeRotation.y90, CubeRotation.y180, CubeRotation.y270, CubeRotation.x90, CubeRotation.x270].forEach(function (face) {
+      [[0,0,1], [1,0,1], [1,1,1], [1,1,1], [0,1,1], [0,0,1]].forEach(function (vertex) {
+        genericCubeVertices.push([face.transformPoint(vertex), face.transformVector([0,0,1])]);
+      });
+    });
+    
+    var blockParticleVerticesCache = new IntVectorMap();
+    function getBlockParticleVertices(tileSize, symm, cubeParticles) {
+      var verticesPerParticle = cubeParticles ? genericCubeVertices.length : 1;
+      var cacheKey = [tileSize, symm, cubeParticles ? 0 : 1];
+      var geometry = blockParticleVerticesCache.get(cacheKey);
+      function arr() { 
+        return new Float32Array(tileSize*tileSize*tileSize * verticesPerParticle * 3);
+      }
+      if (!geometry) {
+        var r = CubeRotation.byCode[symm];
+        var positions = new BufferAndArray(3);
+        var subcubes  = new BufferAndArray(3);
+        var normals   = new BufferAndArray(3);
+        var pa = positions.array = arr();
+        var sa = subcubes .array = arr();
+        var na = normals  .array = arr();
+        var index = 0;
+        for (var x = 0; x < tileSize; x++)
+        for (var y = 0; y < tileSize; y++)
+        for (var z = 0; z < tileSize; z++) {
+          var subcube = r.transformPoint([(x+0.5)/tileSize, (y+0.5)/tileSize, (z+0.5)/tileSize]);
+          if (cubeParticles) {
+            genericCubeVertices.forEach(function (record) {
+              var v = r.transformPoint(record[0]);
+              var normal = r.transformVector(record[1]);
+              pa[index+0] = (v[0] - 0.5)/tileSize;
+              pa[index+1] = (v[1] - 0.5)/tileSize;
+              pa[index+2] = (v[2] - 0.5)/tileSize;
+              sa[index+0] = subcube[0];
+              sa[index+1] = subcube[1];
+              sa[index+2] = subcube[2];
+              na[index+0] = normal[0];
+              na[index+1] = normal[1];
+              na[index+2] = normal[2];
+              index += 3;
+            });
+          } else {
+            pa[index+0] = 0;
+            pa[index+1] = 0;
+            pa[index+2] = 0;
+            sa[index+0] = subcube[0];
+            sa[index+1] = subcube[1];
+            sa[index+2] = subcube[2];
+            na[index+0] = 0;
+            na[index+1] = 0;
+            na[index+2] = 0;
+            index += 3;
+          }
+        }
+        positions.send(gl.STATIC_DRAW);
+        subcubes .send(gl.STATIC_DRAW);
+        normals  .send(gl.STATIC_DRAW);
+        geometry = {
+          positions: positions,
+          subcubes: subcubes,
+          normals: normals,
+          ticket: currentContextTicket(),
+          vpp: verticesPerParticle
+        };
+        blockParticleVerticesCache.set(cacheKey, geometry);
+      }
+      if (geometry.ticket()) {
+        geometry.positions.renew();
+        geometry.subcubes .renew();
+        geometry.normals  .renew();
+        geometry.positions.send(gl.STATIC_DRAW);
+        geometry.subcubes .send(gl.STATIC_DRAW);
+        geometry.normals  .send(gl.STATIC_DRAW);
+        geometry.ticket = currentContextTicket();
+      }
+      return geometry;
+    }
+    
     function BlockParticles(location, tileSize, blockType, destroyMode, symm) {
       var blockWorld = blockType.world;
       var k = 2;
-      var t0 = Date.now();
-      var rb = new renderer.RenderBundle(gl.POINTS, null, function (vertices, normals, colors) {
+      var colorbuf = [0,0,0,0];
+      var cubeParticles = config.cubeParticles.get();
+      var geometry = getBlockParticleVertices(tileSize, symm, cubeParticles);
+      var rb = new renderer.RenderBundle(cubeParticles ? gl.TRIANGLES : gl.POINTS, null,
+          function (vertices, normals, colors) {
         for (var x = 0; x < tileSize; x++)
         for (var y = 0; y < tileSize; y++)
         for (var z = 0; z < tileSize; z++) {
           if (!destroyMode) {
-            if (!(x < k || x >= tileSize-k ||
-                  y < k || y >= tileSize-k ||
-                  z < k || z >= tileSize-k)) {
-              continue;
+            if (x < k || x >= tileSize-k ||
+                y < k || y >= tileSize-k ||
+                z < k || z >= tileSize-k) {
+              var c = 1.0 - Math.random() * 0.04;
+              colorbuf[0] = colorbuf[1] = colorbuf[2] = c;
+              colorbuf[3] = 1;
+            } else {
+              colorbuf[0] = colorbuf[1] = colorbuf[2] = colorbuf[3] = 0;
             }
-            var c = 1.0 - Math.random() * 0.04;
-            colors.push(c,c,c,1);
           } else if (blockWorld) {
-            blockWorld.gt(x,y,z).writeColor(1, colors, colors.length);
-            if (colors[colors.length - 1] <= 0.0) {
-              // transparent, skip
-              colors.length -= 4;
-              continue;
-            }
+            blockWorld.gt(x,y,z).writeColor(1, colorbuf, 0);
           } else if (blockType.color) {
-            // destroy mode for color cubes
-            blockType.writeColor(1, colors, colors.length);
+            blockType.writeColor(1, colorbuf, 0);
           }
-          var v = [
-            (x+0.5)/tileSize,
-            (y+0.5)/tileSize,
-            (z+0.5)/tileSize
-          ]; CubeRotation.byCode[symm].transformPoint(v, v);
-          
-          vertices.push(location[0]+v[0],
-                        location[1]+v[1],
-                        location[2]+v[2]);
-          normals.push(0,0,0); // disable lighting
+          for (var i = 0; i < geometry.vpp; i++) {
+            colors.push(colorbuf[0], colorbuf[1], colorbuf[2], colorbuf[3]);
+          }
         }
+        vertices.override = geometry.positions;
+        normals.override = geometry.normals;
       }, {
         aroundDraw: function (draw) {
           switchProgram(particleProgramSetup);
           sendAllUniforms();
           gl.uniform1i(uniforms.uParticleExplode, destroyMode ? 1 : 0);
           gl.uniform1f(uniforms.uParticleInterp, t());
-          draw();
+          
+          geometry.subcubes.attrib(attribs.aParticleSubcube);
+          gl.enableVertexAttribArray(attribs.aParticleSubcube);
+          
+            var matrix = mat4.create(mvMatrix);
+            mat4.translate(matrix, location);
+            gl.uniformMatrix4fv(uniforms.uMVMatrix, false, matrix);
+              
+              draw();
+              
+            gl.uniformMatrix4fv(uniforms.uMVMatrix, false, mvMatrix);
+            
+          gl.disableVertexAttribArray(attribs.aParticleSubcube);
           switchProgram(blockProgramSetup);
         }
       });
       
+      var t0 = Date.now();
       function t() {
         return Math.min((Date.now() - t0) * 0.003, 1);
       }

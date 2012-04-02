@@ -48,13 +48,13 @@ void main(void) {
     vec4 color = vColor;
 #endif
     
-    if (uTextureEnabled) {
+    if (uTextureEnabled)
       color *= texture2D(uSampler, vTextureCoord);
-
-      // alpha test
-      if (color.a <= 0.0)
-        discard;
-    }
+    
+    // Note: This alpha test is needed for textures, but also for the block
+    // particles, which have static geometry.
+    if (color.a <= 0.0)
+      discard;
     
     color = vec4(spill(vec3(color)), color.a);
 

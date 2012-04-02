@@ -6,7 +6,6 @@ attribute vec2 aTextureCoord;
 vec4 eyePosition; // written by basicVertex
 
 void basicVertex(vec3 vertexPosition) {
-  vGridPosition = vertexPosition;
   vFixedOrientationPosition = vertexPosition - uViewPosition;
   eyePosition = uMVMatrix * vec4(vertexPosition, 1.0);
   gl_Position = uPMatrix * eyePosition;

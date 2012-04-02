@@ -28,6 +28,7 @@ var CubesMain = (function () {
       defineOption("mouseTurnRate", "number", 4); // radians/second/half-screen-width
       defineOption("lighting", "boolean", true);
       defineOption("bumpMapping", "boolean", true);
+      defineOption("cubeParticles", "boolean", false);
       defineOption("sound", "boolean", true);
       defineOption("noclip", "boolean", false);
       defineOption("alwaysGenerateWorld", "boolean", false);
