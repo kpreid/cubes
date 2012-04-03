@@ -157,7 +157,7 @@ var Player = (function () {
       mat4.multiplyVec3(controlOrientation, movement, movAdj);
       vec3.scale(movAdj, body.flying ? FLYING_SPEED : WALKING_SPEED);
 
-      body.impulse([
+      body.addVelocity([
         (movAdj[0] - body.vel[0]) * CONTROL_STIFFNESS,
         body.flying ? (movAdj[1] - body.vel[1]) * CONTROL_STIFFNESS
         : movAdj[1] !== 0 ? (movAdj[1] - body.vel[1]) * CONTROL_STIFFNESS + timestep * GRAVITY : 0,
@@ -364,7 +364,7 @@ var Player = (function () {
         notifyChangedPlace();
       },
       jump: function () {
-        if (currentPlace.body.standingOn) currentPlace.body.vel[1] = JUMP_SPEED;
+        currentPlace.body.jump([0, JUMP_SPEED, 0]);
       }
     });
     
