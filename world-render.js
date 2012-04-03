@@ -49,7 +49,7 @@ var WorldRenderer = (function () {
     return distanceInfoCache;
   }
   
-  function WorldRenderer(world, place, renderer, optAudio, scheduleDraw, showBoundaries) {
+  function WorldRenderer(world, getViewPosition, renderer, optAudio, scheduleDraw, showBoundaries) {
     var gl = renderer.context;
     var config = renderer.config; // TODO eliminate need for this
     
@@ -306,8 +306,9 @@ var WorldRenderer = (function () {
     function updateSomeChunks() {
       // Determine if chunks' visibility to the player has changed
       var rdi = renderDistanceInfo(config.renderDistance.get());
-      var newPlayerChunk = [place.pos[0] - mod(place.pos[0], CHUNKSIZE),
-                            place.pos[2] - mod(place.pos[2], CHUNKSIZE)];
+      var pos = getViewPosition();
+      var newPlayerChunk = [pos[0] - mod(pos[0], CHUNKSIZE),
+                            pos[2] - mod(pos[2], CHUNKSIZE)];
       if (playerChunk === null || newPlayerChunk[0] !== playerChunk[0] || newPlayerChunk[1] !== playerChunk[1]) {
         //console.log("nPC ", newPlayerChunk[0], newPlayerChunk[1]);
         

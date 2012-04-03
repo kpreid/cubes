@@ -18,34 +18,19 @@ var Player = (function () {
     -0.35, 0.35 // z
   );
 
-  var PLACEHOLDER_ROTATIONS = [];
-  for (var i = 0; i < CubeRotation.countWithoutReflections; i++) {
-    PLACEHOLDER_ROTATIONS.push(i);
-  }
-  
   function Player(config, initialWorld, renderer, audio, scheduleDraw) {
     var player = this;
     var gl = renderer.context;
     
     // a Place stores a world and location in it; used for push/pop
     function Place(world) {
-      // Body state
       this.world = world;
-      this.pos = vec3.create([0,0,0]);
-      this.vel = vec3.create([0,0,0]);
-      this.yaw = Math.PI/4 * 5;
-      this.standingOn = null;
-      this.flying = false;
-      this.cameraYLag = 0;
-
-      // Selection
+      var body = this.body = new Body(config, world, playerAABB);
       this.selection = null;
-
-      // Current tool/block id
       this.tool = 2; // first non-bogus block id
 
       // must happen late
-      this.wrend = new WorldRenderer(world, this /* TODO: facet */, renderer, audio, scheduleDraw, true);
+      this.wrend = new WorldRenderer(world, function () { return body.pos; }, renderer, audio, scheduleDraw, true);
     }
     Place.prototype.delete = function () {
       this.wrend.deleteResources();
@@ -91,7 +76,6 @@ var Player = (function () {
       }
     });
     
-    var debugHitAABBs = []; // filled by collision code
     var axisPermutationsForBoxes = [[0,1,2], [1,2,0], [2,0,1]];
     var aabbR = new renderer.RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
       if (!(config.debugPlayerCollision.get() && currentPlace)) return;
@@ -113,8 +97,8 @@ var Player = (function () {
           }
         });
       }
-      renderAABB(currentPlace.pos, playerAABB, 0,0,1);
-      debugHitAABBs.forEach(function (aabb) {
+      renderAABB(currentPlace.body.pos, playerAABB, 0,0,1);
+      currentPlace.body.debugHitAABBs.forEach(function (aabb) {
         renderAABB([0,0,0], aabb, 0,1,0);
       })
     }, {aroundDraw: function (draw) {
@@ -160,193 +144,38 @@ var Player = (function () {
     }
     
     function updateAudioListener() {
-      audio.setListener(
-        currentPlace.pos,
-        [-Math.sin(currentPlace.yaw), 0, -Math.cos(currentPlace.yaw)],
-        currentPlace.vel);
+      audio.setListener.apply(audio, currentPlace.body.getListenerParameters());
     }
     
     var EPSILON = 1e-3;
     function stepPlayer(timestep) {
-      var world = currentPlace.world;
+      var body = currentPlace.body;
       
       // apply movement control to velocity
-      var controlOrientation = mat4.rotateY(mat4.identity(mat4.create()), currentPlace.yaw);
+      var controlOrientation = mat4.rotateY(mat4.identity(mat4.create()), body.yaw);
       var movAdj = vec3.create();
       mat4.multiplyVec3(controlOrientation, movement, movAdj);
-      vec3.scale(movAdj, currentPlace.flying ? FLYING_SPEED : WALKING_SPEED);
-      //console.log(vec3.str(movAdj));
-      currentPlace.vel[0] += (movAdj[0] - currentPlace.vel[0]) * CONTROL_STIFFNESS;
-      if (currentPlace.flying) {
-        currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * CONTROL_STIFFNESS;
-      } else {
-        if (movAdj[1] !== 0) {
-          currentPlace.vel[1] += (movAdj[1] - currentPlace.vel[1]) * CONTROL_STIFFNESS + timestep * GRAVITY;
-        }
-      }
-      currentPlace.vel[2] += (movAdj[2] - currentPlace.vel[2]) * CONTROL_STIFFNESS;
-      
-      // gravity
-      if (!currentPlace.flying)
-        currentPlace.vel[1] -= timestep * GRAVITY;
-      
-      // early exit
-      if (vec3.length(currentPlace.vel) <= 0) return;
-      
-      var curPos = currentPlace.pos;
-      var curVel = currentPlace.vel;
-      var nextPos = vec3.scale(currentPlace.vel, timestep, vec3.create());
-      vec3.add(nextPos, curPos);
-      
-      // --- collision ---
+      vec3.scale(movAdj, body.flying ? FLYING_SPEED : WALKING_SPEED);
 
-      function intersectWorld(aabb, iworld, ignore, level) {
-        var hit = new IntVectorMap();
-        var lx = Math.max(0, Math.floor(aabb.get(0, 0)));
-        var ly = Math.max(0, Math.floor(aabb.get(1, 0)));
-        var lz = Math.max(0, Math.floor(aabb.get(2, 0)));
-        var hx = Math.min(iworld.wx - 1, Math.floor(aabb.get(0, 1)));
-        var hy = Math.min(iworld.wy - 1, Math.floor(aabb.get(1, 1)));
-        var hz = Math.min(iworld.wz - 1, Math.floor(aabb.get(2, 1)));
-        measuring.collisionTests.inc(Math.max(0, hx-lx+1) *
-                                     Math.max(0, hy-ly+1) *
-                                     Math.max(0, hz-lz+1));
-        for (var x = lx; x <= hx; x++)
-        for (var y = ly; y <= hy; y++)
-        for (var z = lz; z <= hz; z++) {
-          var type = iworld.gt(x,y,z);
-          if (!type.solid) continue;
-          var pos = [x, y, z];
-          if (ignore.get(pos)) continue;
-          if (!type.opaque && type.world && level == 0) {
-            var scale = type.world.wx;
-            var rotCode = iworld.gRot(x,y,z);
-            if (rotCode === 0) {
-              var rot = null;
-              var scaledCollideAABB = aabb.translate([-x, -y, -z]).scale(scale);
-            } else {
-              var rot = CubeRotation.byCode[rotCode];
-              var scaledCollideAABB = aabb.translate([-x, -y, -z]).rotate(rot.inverse).scale(scale);
-            }
-            var subhit = intersectWorld(
-                  scaledCollideAABB,
-                  type.world,
-                  IntVectorMap.empty,
-                  level + 1);
-            if (subhit) subhit.forEach(function (subHitAAB, subPos) {
-              hit.set(pos.concat(subPos), 
-                rot ? subHitAAB.scale(1/scale).rotate(rot).translate([x, y, z])
-                    : subHitAAB.scale(1/scale)            .translate([x, y, z]));
-            });
-          } else {
-            hit.set(pos, AAB.unitCube(pos));
-          }
-        }
-        return hit.length ? hit : null;
-      }
-      
-      function intersectPlayerAt(pos, ignore) {
-        return intersectWorld(playerAABB.translate(pos), world, ignore || IntVectorMap.empty, 0);
-      }
-      
-      function unionHits(hit) {
-        var union = [Infinity,-Infinity,Infinity,-Infinity,Infinity,-Infinity];
-        hit.forEach(function (aabb) {
-          debugHitAABBs.push(aabb); // TODO: misplaced for debug
-          union[0] = Math.min(union[0], aabb[0]);
-          union[1] = Math.max(union[1], aabb[1]);
-          union[2] = Math.min(union[2], aabb[2]);
-          union[3] = Math.max(union[3], aabb[3]);
-          union[4] = Math.min(union[4], aabb[4]);
-          union[5] = Math.max(union[5], aabb[5]);
-        });
-        return new AAB(union[0],union[1],union[2],union[3],union[4],union[5]);
-      }
-      
-      debugHitAABBs = [];
-      
-      var alreadyColliding = intersectPlayerAt(curPos);
-      
-      // To resolve diagonal movement, we treat it as 3 orthogonal moves, updating nextPosIncr.
-      var previousStandingOn = currentPlace.standingOn;
-      currentPlace.standingOn = null;
-      var nextPosIncr = vec3.create(curPos);
-      if (config.noclip.get()) {
-        nextPosIncr = nextPos;
-        currentPlace.flying = true;
-      } else {
-        for (var dimi = 0; dimi < 3; dimi++) {
-          var dim = [1,0,2][dimi]; // TODO: doing the dims in another order makes the slope walking glitch out, but I don't understand *why*.
-          var dir = curVel[dim] >= 0 ? 1 : 0;
-          nextPosIncr[dim] = nextPos[dim]; // TODO: Sample multiple times if velocity exceeds 1 block/step
-          //console.log(dir, dim, playerAABB.get(dim, dir), front, nextPosIncr);
-          var hit = intersectPlayerAt(nextPosIncr, alreadyColliding);
-          if (hit) {
-            var hitAABB = unionHits(hit);
-            resolveDirection: {
-              // Walk-up-slopes
-              if (dim !== 1 /*moving horizontally*/ && currentPlace.standingOn /*not in air*/) {
-                var upward = vec3.create(nextPosIncr);
-                upward[1] = hitAABB.get(1, 1) - playerAABB.get(1,0) + EPSILON;
-                var delta = upward[1] - nextPosIncr[1];
-                //console.log("upward test", delta, !!intersectPlayerAt(upward));
-                if (delta > 0 && delta < MAX_STEP_UP && !intersectPlayerAt(upward)) {
-                  currentPlace.cameraYLag += delta;
-                  nextPosIncr = upward;
-                  break resolveDirection;
-                }
-              }
-          
-              var surfaceOffset = hitAABB.get(dim, 1-dir) - (nextPosIncr[dim] + playerAABB.get(dim, dir));
-              nextPosIncr[dim] += surfaceOffset - (dir ? 1 : -1) * EPSILON;
-              curVel[dim] /= 10;
-              if (dim === 1 && dir === 0) {
-                if (hit) {
-                  // TODO: eliminate the need for this copy
-                  var standingOnMap = new IntVectorMap();
-                  hit.forEach(function (aab, cube) {
-                    standingOnMap.set(cube.slice(0, 3), true);
-                  });
-                  currentPlace.standingOn = standingOnMap;
-                } else {
-                  currentPlace.standingOn = null;
-                }
-                currentPlace.flying = false;
-              }
-            }
-          }
-        }
-      }
-      
-      if (nextPosIncr[1] < 0) {
-        // Prevent falling downward indefinitely, without preventing flying under the world (e.g. for editing the bottom of a block).
-        currentPlace.flying = true;
-      }
-      
-      if (vec3.length(vec3.subtract(nextPosIncr, currentPlace.pos, vec3.create())) >= EPSILON) {
-        vec3.set(nextPosIncr, currentPlace.pos);
+      body.impulse([
+        (movAdj[0] - body.vel[0]) * CONTROL_STIFFNESS,
+        body.flying ? (movAdj[1] - body.vel[1]) * CONTROL_STIFFNESS
+        : movAdj[1] !== 0 ? (movAdj[1] - body.vel[1]) * CONTROL_STIFFNESS + timestep * GRAVITY : 0,
+        (movAdj[2] - body.vel[2]) * CONTROL_STIFFNESS]);
+
+      body.step(timestep, function () {
         updateAudioListener();
         aimChanged();
-      }
-      if (config.debugPlayerCollision.get()) {
-        aabbR.recompute();
-        scheduleDraw();
-      }
-      
-      var currentStandingOn = currentPlace.standingOn || IntVectorMap.empty;
-      currentStandingOn.forEach(function (aab, cube) {
-        world.setStandingOn(cube, true);
-      });
-      if (previousStandingOn) previousStandingOn.forEach(function (aab, cube) {
-        if (!currentStandingOn.has(cube)) {
-          world.setStandingOn(cube, false);
-        }
       });
     }
     
     this.stepYourselfAndWorld = function (timestep) {
       stepPlayer(timestep);
       currentPlace.world.step(timestep);
+      if (config.debugPlayerCollision.get()) {
+        aabbR.recompute();
+        scheduleDraw();
+      }
     };
     
     // --- The facet for rendering ---
@@ -354,16 +183,16 @@ var Player = (function () {
     this.render = Object.freeze({
       applyViewRot: function (matrix) {
         mat4.rotate(matrix, -pitch, [1, 0, 0]);
-        mat4.rotate(matrix, -currentPlace.yaw, [0, 1, 0]);
+        mat4.rotate(matrix, -currentPlace.body.yaw, [0, 1, 0]);
       },
       applyViewTranslation: function (matrix) {
-        var positionTrans = vec3.negate(currentPlace.pos, vec3.create());
-        positionTrans[1] += currentPlace.cameraYLag;
-        currentPlace.cameraYLag *= 0.75; /*Math.exp(-timestep*10) TODO we should be like this */
+        var positionTrans = vec3.negate(currentPlace.body.pos, vec3.create());
+        positionTrans[1] += currentPlace.body.cameraYLag;
+        currentPlace.body.cameraYLag *= 0.75; /*Math.exp(-timestep*10) TODO we should be like this */
         mat4.translate(matrix, positionTrans);
       },
       getPosition: function() {
-        return vec3.create(currentPlace.pos);
+        return vec3.create(currentPlace.body.pos);
       },
       selectionRender: selectionR,
       characterRender: {
@@ -376,7 +205,7 @@ var Player = (function () {
       }
     });
     this.setPosition = function(p) {
-      vec3.set(p, currentPlace.pos);
+      vec3.set(p, currentPlace.body.pos);
       updateAudioListener();
     };
     this.getWorld = function() {
@@ -391,7 +220,7 @@ var Player = (function () {
       currentPlace = new Place(world);
       // TODO: move this position downward to free space rather than just imparting velocity
       this.setPosition([world.wx/2, world.wy - playerAABB.get(1, 0) + EPSILON, world.wz/2]);
-      vec3.set([0,-120,0], currentPlace.vel);
+      vec3.set([0,-120,0], currentPlace.body.vel);
       notifyChangedPlace();
     };
     
@@ -455,15 +284,15 @@ var Player = (function () {
       set movement (value) { 
         vec3.set(value, movement);
         if (movement[1] > 0) {
-          currentPlace.flying = true;
+          currentPlace.body.flying = true;
         }
       },
       get mousePos () { throw new TypeError("player.input.mousePos write-only"); },
       set mousePos (value) { mousePos = value; aimChanged(); },
       get pitch () { return pitch; },
       set pitch (value) { pitch = value; aimChanged(); },
-      get yaw () { return currentPlace.yaw; },
-      set yaw (value) { currentPlace.yaw = value; aimChanged(); },
+      get yaw () { return currentPlace.body.yaw; },
+      set yaw (value) { currentPlace.body.yaw = value; aimChanged(); },
       get tool () { return currentPlace.tool; },
       set tool (value) { 
         currentPlace.tool = value; 
@@ -478,7 +307,7 @@ var Player = (function () {
 
         currentPlace = new Place(world);
         currentPlace.forBlock = blockID;
-        vec3.set([world.wx/2, world.wy - playerAABB.get(1, 0) + EPSILON, world.wz/2], currentPlace.pos);
+        vec3.set([world.wx/2, world.wy - playerAABB.get(1, 0) + EPSILON, world.wz/2], currentPlace.body.pos);
         placeStack.push(oldPlace);
         updateAudioListener();
         aimChanged();
@@ -506,13 +335,13 @@ var Player = (function () {
             
             // Initial adjustments:
             // Make new position same relative to cube
-            vec3.subtract(oldPlace.pos, cube, currentPlace.pos);
-            vec3.scale(currentPlace.pos, tileSize);
+            vec3.subtract(oldPlace.pos, cube, currentPlace.body.pos);
+            vec3.scale(currentPlace.body.pos, tileSize);
             // ... but not uselessly far away.
-            vec3.scale(currentPlace.pos, Math.min(1.0, (tileSize+40)/vec3.length(currentPlace.pos))); // TODO make relative to center of world, not origin
+            vec3.scale(currentPlace.body.pos, Math.min(1.0, (tileSize+40)/vec3.length(currentPlace.body.pos))); // TODO make relative to center of world, not origin
             // Same velocity, scaled
-            vec3.set(oldPlace.vel, currentPlace.vel);
-            vec3.scale(currentPlace.vel, tileSize);
+            vec3.set(oldPlace.vel, currentPlace.body.vel);
+            vec3.scale(currentPlace.body.vel, tileSize);
             // Same view direction
             currentPlace.yaw = oldPlace.yaw;
             // And not falling.
@@ -535,7 +364,7 @@ var Player = (function () {
         notifyChangedPlace();
       },
       jump: function () {
-        if (currentPlace.standingOn) currentPlace.vel[1] = JUMP_SPEED;
+        if (currentPlace.body.standingOn) currentPlace.body.vel[1] = JUMP_SPEED;
       }
     });
     
