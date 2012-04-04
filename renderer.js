@@ -903,9 +903,39 @@ This is what you can assume/should do:
       // farther than 1 unit is fully fogged.
       cube(vertices, colors, 1, false);
     });
-    
     this.skybox = skyboxR;
+    
+    var axisPermutationsForBoxes = [[0,1,2], [1,2,0], [2,0,1]];
+    // Tool for rendering AAB objects' wireframes.
+    function aabRenderer(collectorFn) {
+      return new renderer.RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
+        if (!config.debugPlayerCollision.get()) return;
 
+        var p = vec3.create();
+        function renderAAB(offset, aabb, c) {
+          axisPermutationsForBoxes.forEach(function (dims) {
+            for (var du = 0; du < 2; du++)
+            for (var dv = 0; dv < 2; dv++)
+            for (var dw = 0; dw < 2; dw++) {
+              vec3.set(offset, p);
+              p[dims[0]] += aabb.get(dims[0], du);
+              p[dims[1]] += aabb.get(dims[1], dv);
+              p[dims[2]] += aabb.get(dims[2], dw);
+
+              vertices.push(p[0],p[1],p[2]);
+              normals.push(0,0,0);
+              colors.push(c[0],c[1],c[2],1);
+            }
+          });
+        }
+        collectorFn(renderAAB);
+      }, {aroundDraw: function (draw) {
+        gl.lineWidth(2);
+        draw();
+      }});
+    }
+    this.aabRenderer = aabRenderer;
+  
     this.config = config; // TODO eliminate this; it is used only for WorldRenderer getting the render distance (which we should provide directly) and for the texture debug (which should not be done by WorldRenderer since it leaks into block renders)
     
     Object.seal(this); // TODO freeze all but verticesDrawn

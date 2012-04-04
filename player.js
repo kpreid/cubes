@@ -93,36 +93,14 @@
       }
     });
     
-    var axisPermutationsForBoxes = [[0,1,2], [1,2,0], [2,0,1]];
-    var aabbR = new renderer.RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
-      if (!(config.debugPlayerCollision.get() && currentPlace)) return;
-
-      var p = vec3.create();
-      function renderAABB(offset, aabb, r, g, b) {
-        axisPermutationsForBoxes.forEach(function (dims) {
-          for (var du = 0; du < 2; du++)
-          for (var dv = 0; dv < 2; dv++)
-          for (var dw = 0; dw < 2; dw++) {
-            vec3.set(offset, p);
-            p[dims[0]] += aabb.get(dims[0], du);
-            p[dims[1]] += aabb.get(dims[1], dv);
-            p[dims[2]] += aabb.get(dims[2], dw);
-
-            vertices.push(p[0],p[1],p[2]);
-            normals.push(0,0,0);
-            colors.push(r,g,b,1);
-          }
+    var aabbR = renderer.aabRenderer(function (draw) {
+      if (currentPlace) {
+        draw(currentPlace.body.pos, playerAABB, [0,0,1]);
+        currentPlace.body.debugHitAABBs.forEach(function (aabb) {
+          draw(ZEROVEC, aabb, [0,1,0]);
         });
       }
-      renderAABB(currentPlace.body.pos, playerAABB, 0,0,1);
-      currentPlace.body.debugHitAABBs.forEach(function (aabb) {
-        renderAABB(ZEROVEC, aabb, 0,1,0);
-      });
-    }, {aroundDraw: function (draw) {
-      if (!config.debugPlayerCollision.get()) return;
-      renderer.setLineWidth(2);
-      draw();
-    }});
+    });
     
     function _transformPointToSubworld(cube,world,rot,point) {
       var buf = vec3.create(point);
