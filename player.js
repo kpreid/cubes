@@ -147,6 +147,10 @@ var Player = (function () {
       audio.setListener.apply(audio, currentPlace.body.getListenerParameters());
     }
     
+    var footstepPhase = 0;
+    var footstepPeriod = 1.4;
+    var footstepY = 0;
+    
     var EPSILON = 1e-3;
     function stepPlayer(timestep) {
       var body = currentPlace.body;
@@ -166,6 +170,31 @@ var Player = (function () {
       body.step(timestep, function () {
         updateAudioListener();
         aimChanged();
+
+        if (vec3.length(movement) < EPSILON) {
+          footstepPhase = 0;
+        } else {
+          footstepPhase += vec3.length(body.vel) * timestep;
+        }
+        if (footstepPhase > footstepPeriod) {
+          footstepPhase = mod(footstepPhase, footstepPeriod);
+          playFootstep();
+        } else if (body.pos[1] < footstepY || body.pos[1] > footstepY && footstepPhase > 0.4) {
+          // footstep sooner if just hit a bump or fell down
+          footstepPhase = 0;
+          playFootstep();
+        }
+        function playFootstep() {
+          footstepY = body.pos[1];
+          var type, pos;
+          (body.standingOn || IntVectorMap.empty).forEach(function (junk, pi) {
+            pos = pi;
+            type = body.world.gt(pos[0],pos[1],pos[2]);
+          });
+          if (type) {
+            audio.play(pos, type, "footstep", 0.5);
+          }
+        }
       });
     }
     

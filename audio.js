@@ -22,7 +22,8 @@ var CubesAudio = (function () {
     // Parameters to subSynth defining each sound.
     var synthParameters = {
       create: [0.5, 0.1, 0, false],
-      destroy: [1, 0.22, 0.2, true]
+      destroy: [1, 0.22, 0.2, true],
+      footstep: [0.18, 0.1, 0, true]
     };
   
     // argument is time in wavelengths
@@ -150,7 +151,7 @@ var CubesAudio = (function () {
         context.listener.setVelocity(vel[0],vel[1],vel[2]);
       },
     
-      play: !supported ? function () {} : function (pos, blockType, kind) {
+      play: !supported ? function () {} : function (pos, blockType, kind, gain) {
         if (!config.sound.get()) return;
         if (!blockType.world) return;
       
@@ -164,8 +165,12 @@ var CubesAudio = (function () {
         var source = context.createBufferSource();
         source.buffer = buffer;
         source.playbackRate.value = 0.98 + Math.random() * 0.04;
+        
+        var gainN = context.createGainNode();
+        gainN.gain.value = gain;
       
-        source.connect(panner);
+        source.connect(gainN);
+        gainN.connect(panner);
         panner.connect(context.destination);
 
         source.noteOn(0);

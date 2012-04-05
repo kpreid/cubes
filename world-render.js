@@ -297,7 +297,7 @@ var WorldRenderer = (function () {
       deletedCircuit: deletedCircuit,
       audioEvent: function (position, type, kind) {
         if (!isAlive()) return false;
-        if (optAudio) optAudio.play(position, type, kind);
+        if (optAudio) optAudio.play(position, type, kind, 1);
         return true;
       }
     };
