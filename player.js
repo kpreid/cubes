@@ -335,17 +335,17 @@ var Player = (function () {
             
             // Initial adjustments:
             // Make new position same relative to cube
-            vec3.subtract(oldPlace.pos, cube, currentPlace.body.pos);
+            vec3.subtract(oldPlace.body.pos, cube, currentPlace.body.pos);
             vec3.scale(currentPlace.body.pos, tileSize);
             // ... but not uselessly far away.
             vec3.scale(currentPlace.body.pos, Math.min(1.0, (tileSize+40)/vec3.length(currentPlace.body.pos))); // TODO make relative to center of world, not origin
             // Same velocity, scaled
-            vec3.set(oldPlace.vel, currentPlace.body.vel);
+            vec3.set(oldPlace.body.vel, currentPlace.body.vel);
             vec3.scale(currentPlace.body.vel, tileSize);
             // Same view direction
-            currentPlace.yaw = oldPlace.yaw;
+            currentPlace.body.yaw = oldPlace.body.yaw;
             // And not falling.
-            currentPlace.flying = true;
+            currentPlace.body.flying = true;
             
             placeStack.push(oldPlace);
             aimChanged();
