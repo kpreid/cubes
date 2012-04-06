@@ -6,6 +6,11 @@ var World = (function () {
   
   var spontaneousBaseRate = 0.0003; // probability of block spontaneous effect call per block per second
   
+  var LIGHT_MAX = 255;
+  var LIGHT_SKY = LIGHT_MAX;
+  var RAYCOUNT = 20;
+  var reflectivity = 0.9;
+  
   function isCircuitPart(type) {
     return !!type.behavior;
   }
@@ -45,6 +50,7 @@ var World = (function () {
     // Computed data arrays.
     var rotations = new Uint8Array(cubeCount);
     var lighting = new Uint8Array(cubeCount);
+    for (var i = lighting.length - 1; i >= 0; i--) lighting[i] = LIGHT_MAX/2; // better initial value than 0
     
     // Maps from cube to its circuit object if any
     var blockCircuits = new IntVectorMap();
@@ -360,7 +366,7 @@ var World = (function () {
       } else {
         rotations[index] = 0;
       }
-      lighting[index] = mod(y/16, 1) * 256;
+      evaluateLightAt(x,y,z);
     }
     
     function queueEffect(cube, effect) {
@@ -437,6 +443,7 @@ var World = (function () {
         var x = Math.floor(Math.random() * wx);
         var y = Math.floor(Math.random() * wy);
         var z = Math.floor(Math.random() * wz);
+        var index = x*wy*wz + y*wz + z;
         
         // The input value given is chosen so that if you want a rate of k, you can
         // multiply k*value to get the chance you should do your thing.
@@ -449,6 +456,68 @@ var World = (function () {
             blockIn_spontaneous: 1/spontaneousBaseRate
           }));
         }
+      }
+
+      // Lighting updates
+      // TODO: Make this biased towards where people are looking
+      for (var i = 0; i < 100; i++) {
+        var x = Math.floor(Math.random() * wx);
+        var y = Math.floor(Math.random() * wy);
+        var z = Math.floor(Math.random() * wz);
+      
+        // Skip blocks which are not adjacent to a solid block and therefore irrelevant
+        if (!(g(x-1,y,z) ||
+              g(x+1,y,z) ||
+              g(x,y+1,z) ||
+              g(x,y-1,z) ||
+              g(x,y,z+1) ||
+              g(x,y,z-1))) continue;
+        evaluateLightAt(x,y,z);
+      }
+    }
+    
+    function evaluateLightAt(x, y, z) {
+      var index = x*wy*wz + y*wz + z;
+      
+      var incomingLight = 0;
+      for (var ray = 0; ray < RAYCOUNT; ray++) {
+        var pt1 = [x+0.5,y+0.5,z+0.5];
+        var pt2 = [x + Math.random(),y + Math.random(),z + Math.random()];
+        var found = false;
+        raycast(pt1, pt2, 30/*TODO magic number */, function (rx, ry, rz, id, face) {
+          if (id === 0) {
+            // empty air -- pass through
+            return false;
+          } else if (!blockSet.get(id).opaque) {
+            // not quite empty air, but for now we'll not bother picking up some of it
+            return false;
+          } else {
+            var emptyx = rx+face[0];
+            var emptyy = ry+face[1];
+            var emptyz = rz+face[2];
+            
+            // No loss if we hit right here
+            var factor = (emptyx === x && emptyy === y && emptyz === z) ? 1 : reflectivity;
+            
+            var lightFromThatBlock = (id === 1) ? LIGHT_MAX : lighting[emptyx*wy*wz + emptyy*wz + emptyz];
+            
+            incomingLight += factor * lightFromThatBlock;
+            found = true;
+            return true;
+          }
+        });
+        if (!found) {
+          incomingLight += LIGHT_SKY;
+        }
+      }
+      var newSample = incomingLight / RAYCOUNT;
+      var newValue = (0.75 * lighting[index] + 0.25 * newSample);
+      var newStoredValue = Math.round(Math.min(LIGHT_MAX, newValue));
+      
+      if (lighting[index] !== newStoredValue) {
+        lighting[index] = newStoredValue;
+        if (Math.random() < 0.005) // TODO kludge for fewer updates
+          notifier.notify("dirtyBlock", [x,y,z]);
       }
     }
     

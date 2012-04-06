@@ -520,7 +520,8 @@ var WorldRenderer = (function () {
                               faceVertices[vi+1]+y,
                               faceVertices[vi+2]+z);
                 texcoords.push(faceTexcoords[ti], faceTexcoords[ti+1]);
-                var light = rawLighting[rawIndex+lightingOffsetIndex] / 255; // TODO handle oob
+                var light = Math.max(.01, rawLighting[rawIndex+lightingOffsetIndex] / 255); // TODO handle oob index
+                // the max is because a zero normal is special
                 normals.push(light*fx, light*fy, light*fz);
               }
             }
@@ -540,6 +541,7 @@ var WorldRenderer = (function () {
             var faceData = (rotatedBlockFaceData[value] || BOGUS_BLOCK_DATA)[rotIndex];
             thisOpaque = btype.opaque;
 
+            // TODO: Uses the wrong lighting adj* for rotated blocks
             face(rot.nx, faceData.lx, adjnx);
             face(rot.ny, faceData.ly, adjny);
             face(rot.nz, faceData.lz, adjnz);
