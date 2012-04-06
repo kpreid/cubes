@@ -202,6 +202,7 @@ var World = (function () {
       
       var newType = blockSet.get(val);
       reeval(vec, newType);
+      evaluateLightAt(x,y,z);
       
       // Update circuits
       var cp = isCircuitPart(newType);
@@ -223,6 +224,7 @@ var World = (function () {
       // Update neighbors, which may have circuit inputs depending on this block
       neighbors.forEach(function (neighbor) {
         reeval(neighbor, gt(neighbor[0],neighbor[1],neighbor[2]));
+        evaluateLightAt(x,y,z);
         
         // note: this duplicates work if the same circuit neighbors this block more than once
         var circuit = blockCircuits.get(neighbor);
@@ -366,7 +368,6 @@ var World = (function () {
       } else {
         rotations[index] = 0;
       }
-      evaluateLightAt(x,y,z);
     }
     
     function queueEffect(cube, effect) {
