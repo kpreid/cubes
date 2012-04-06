@@ -46,6 +46,9 @@ var World = (function () {
     // Maps from an arbitrary cube in each circuit to that circuit (no duplicates)
     var circuits = new IntVectorMap();
     
+    // Blocks which are to be modified according to circuit outputs
+    var effects = new IntVectorMap();
+    
     var numToDisturbPerSec = wx*wy*wz * spontaneousBaseRate;
     
     var notifier = new Notifier("World");
@@ -162,15 +165,24 @@ var World = (function () {
       if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
         return;
       
-      var index = x*wy*wz + y*wz + z
+      var index = (x*wy + y)*wz + z;
       
       if (blocks[index] === val && subData[index] === +subdatum)
         return;
         
       blocks[index] = val;
       subData[index] = subdatum;
-      
-      var vec = [x,y,z];
+
+      handleSet([x,y,z]);
+    }
+    // Perform the side-effects of a block modification.
+    // This is split so that synchronized changes don't do partial updates
+    // vec must not be mutated
+    function handleSet(vec) {
+      var x = vec[0];
+      var y = vec[1];
+      var z = vec[2];
+      var val = blocks[(x*wy + y)*wz + z];
       var neighbors = [[x-1,y,z], [x,y-1,z], [x,y,z-1], [x+1,y,z], [x,y+1,z], [x,y,z+1]];
       
       var newType = blockSet.get(val);
@@ -193,7 +205,7 @@ var World = (function () {
         })
       }
       
-      // Update neighbors
+      // Update neighbors, which may have circuit inputs depending on this block
       neighbors.forEach(function (neighbor) {
         reeval(neighbor, gt(neighbor[0],neighbor[1],neighbor[2]));
         
@@ -330,9 +342,18 @@ var World = (function () {
       var z = cube[2];
       var index = x*wy*wz + y*wz + z;
       if (newType.hasCircuits) {
-        Circuit.executeCircuitInBlock(newType.world, self, cube, subData[index], null);
+        queueEffect(cube, Circuit.executeCircuitInBlock(newType.world, self, cube, subData[index], null));
+        
       } else {
         rotations[index] = 0;
+      }
+    }
+    
+    function queueEffect(cube, effect) {
+      if (effect !== null) {
+        var list = effects.get(cube);
+        if (!list) effects.set(cube, list = []);
+        list.push(effect);
       }
     }
     
@@ -380,6 +401,20 @@ var World = (function () {
     }
     
     function step(timestep) {
+      // Handle delayed effects ("become") — first update everything, then
+      // perform reactions.
+      var curEffects = effects;
+      effects = new IntVectorMap(); // for effects caused by these updates
+      curEffects.forEach(function (effectList, cube) {
+        var effect = effectList[0]; // TODO note and react to conflicts
+        var index = (cube[0]*wy + cube[1])*wz + cube[2];
+        blocks[index] = effect[0];
+        subData[index] = effect[1];
+      });
+      curEffects.forEach(function (effect, cube) {
+        handleSet(cube);
+      });
+      
       // turn fractional part of number of iterations into randomness - 1.25 = 1 3/4 and 2 1/4 of the time
       var numToDisturb = numToDisturbPerSec * timestep;
       var roundedNum = Math.floor(numToDisturb) + (Math.random() < (numToDisturb % 1) ? 1 : 0);
@@ -395,9 +430,10 @@ var World = (function () {
         var type = gt(x,y,z);
         if (type.hasCircuits) {
           // TODO: this seems a bit overly coupled
-          Circuit.executeCircuitInBlock(type.world, self, [x,y,z], gSub(x,y,z), {
+          var cube = [x,y,z];
+          queueEffect(cube, Circuit.executeCircuitInBlock(type.world, self, cube, gSub(x,y,z), {
             blockIn_spontaneous: 1/spontaneousBaseRate
-          });
+          }));
         }
       }
     }

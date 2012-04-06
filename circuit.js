@@ -662,6 +662,7 @@ var Circuit = (function () {
   }());
   
   Circuit.executeCircuitInBlock = function (blockWorld, outerWorld, cube, subDatum, extraState) {
+    var effect = null;
     blockWorld.getCircuits().forEach(function (circuit) {
       var state = extraState ? Object.create(extraState) : {};
       state.blockIn_world = outerWorld;
@@ -671,10 +672,8 @@ var Circuit = (function () {
       
       if ("blockOut_become" in state) {
         var blockID = state.blockOut_become;
-        outerWorld.s(cube[0],cube[1],cube[2],
-          blockID,
-          outerWorld.gSub(cube[0],cube[1],cube[2]));
-        outerWorld.audioEvent(cube, "create");
+        effect = [blockID, outerWorld.gSub(cube[0],cube[1],cube[2])]; // TODO detect conflicts
+        outerWorld.audioEvent(cube, "create"); // TODO part of effect?
       } else {
         // Rotations are only assigned when the circuit is being evaluated in the normal case, not during an event
         if ("blockOut_rotation" in state && !extraState) {
@@ -684,6 +683,7 @@ var Circuit = (function () {
         }
       }
     });
+    return effect;
   };
   
   return Object.freeze(Circuit);
