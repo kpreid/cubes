@@ -460,12 +460,29 @@ var World = (function () {
       }
 
       // Lighting updates
-      // TODO: Make this biased towards where people are looking
-      for (var i = 0; i < 100; i++) {
+      for (var i = 0; i < 10; i++) {
         var x = Math.floor(Math.random() * wx);
         var y = Math.floor(Math.random() * wy);
         var z = Math.floor(Math.random() * wz);
       
+        // Skip blocks which are not adjacent to a solid block and therefore irrelevant
+        if (!(g(x-1,y,z) ||
+              g(x+1,y,z) ||
+              g(x,y+1,z) ||
+              g(x,y-1,z) ||
+              g(x,y,z+1) ||
+              g(x,y,z-1))) continue;
+        evaluateLightAt(x,y,z);
+      }
+    }
+    
+    function polishLightInVicinity(cpos,radius) {
+      var diameter = 2 * radius;
+      for (var i = 0; i < 100; i++) {
+        var x = Math.round(cpos[0] + (Math.random()-0.5) * radius);
+        var y = Math.round(cpos[1] + (Math.random()-0.5) * radius);
+        var z = Math.round(cpos[2] + (Math.random()-0.5) * radius);
+        
         // Skip blocks which are not adjacent to a solid block and therefore irrelevant
         if (!(g(x-1,y,z) ||
               g(x+1,y,z) ||
@@ -601,6 +618,7 @@ var World = (function () {
     this.getCircuit = function (block) { return blockCircuits.get(block) || null; }
     this.edit = edit;
     this.step = step;
+    this.polishLightInVicinity = polishLightInVicinity;
     this.setStandingOn = setStandingOn;
     this.getStandingOn = getStandingOn;
     this.audioEvent = audioEvent;

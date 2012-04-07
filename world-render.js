@@ -302,7 +302,8 @@ var WorldRenderer = (function () {
       // Add circuits which are in viewing distance.
       // Note: This enumerates every circuit in the world. Currently, this is more efficient than the alternatives because there are not many circuits in typical data. When that changes, we should revisit this and use some type of spatial index to make it efficient. Testing per-block is *not* efficient.
       if (!playerChunk) return;
-      var rdi = renderDistanceInfo(config.renderDistance.get());
+      var renderDistance = config.renderDistance.get();
+      var rdi = renderDistanceInfo(renderDistance);
       world.getCircuits().forEach(function (circuit, origin) {
         if (dist3sq(origin, playerChunk) < rdi.addChunkDistanceSquared) {
           if (!circuitRenderers.get(origin)) {
@@ -353,8 +354,9 @@ var WorldRenderer = (function () {
             circuitRenderers.delete(cube);
           }
         });
-        
       }
+      
+      world.polishLightInVicinity(pos, config.renderDistance.get() * 0.1); // TODO too sharp, for testing
       
       // Update chunks from the queues.
       var deadline = Date.now() + (addChunks.size() > 30 ? 30 : 10);
