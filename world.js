@@ -10,7 +10,6 @@ var World = (function () {
   var LIGHT_SCALE = 4/LIGHT_MAX;
   var LIGHT_LAMP = LIGHT_MAX;
   var LIGHT_SKY = 1/LIGHT_SCALE;
-  var RAYCOUNT = 20;
   var reflectivity = 0.9;
   
   function isCircuitPart(type) {
@@ -67,6 +66,8 @@ var World = (function () {
     var standingOn = new IntVectorMap();
     
     var numToDisturbPerSec = cubeCount * spontaneousBaseRate;
+    
+    var lightingUpdateQueue = new DirtyQueue(function (a,b) { return a.priority - b.priority; });
     
     var notifier = new Notifier("World");
     
@@ -226,7 +227,7 @@ var World = (function () {
       // Update neighbors, which may have circuit inputs depending on this block
       neighbors.forEach(function (neighbor) {
         reeval(neighbor, gt(neighbor[0],neighbor[1],neighbor[2]));
-        evaluateLightAt(x,y,z);
+        evaluateLightAt(neighbor[0], neighbor[1], neighbor[2]);
         
         // note: this duplicates work if the same circuit neighbors this block more than once
         var circuit = blockCircuits.get(neighbor);
@@ -285,6 +286,8 @@ var World = (function () {
       var tDeltaY = stepY/dy;
       var tDeltaZ = stepZ/dz;
       var face = vec3.create();
+      
+      if (dx === 0 && dy === 0 && dz === 0) throw new Error("Raycast in zero direction!");
       
       // 't' is in units of (pt2-pt1), so adjust radius in blocks by that
       radius /= Math.sqrt(dx*dx+dy*dy+dz*dz);
@@ -462,25 +465,16 @@ var World = (function () {
       }
 
       // Lighting updates
-      for (var i = 0; i < 10; i++) {
-        var x = Math.floor(Math.random() * wx);
-        var y = Math.floor(Math.random() * wy);
-        var z = Math.floor(Math.random() * wz);
-      
-        // Skip blocks which are not adjacent to a solid block and therefore irrelevant
-        if (!(g(x-1,y,z) ||
-              g(x+1,y,z) ||
-              g(x,y+1,z) ||
-              g(x,y-1,z) ||
-              g(x,y,z+1) ||
-              g(x,y,z-1))) continue;
-        evaluateLightAt(x,y,z);
+      measuring.lightingQueueSize.inc(lightingUpdateQueue.size());
+      var lqe, n = 0;
+      while ((lqe = lightingUpdateQueue.dequeue()) && n++ < 15) {
+        evaluateLightAt(lqe[0],lqe[1],lqe[2]);
       }
     }
     
     function polishLightInVicinity(cpos,radius) {
       var diameter = 2 * radius;
-      for (var i = 0; i < 100; i++) {
+      for (var i = 0; i < 10; i++) {
         var x = Math.round(cpos[0] + (Math.random()-0.5) * radius);
         var y = Math.round(cpos[1] + (Math.random()-0.5) * radius);
         var z = Math.round(cpos[2] + (Math.random()-0.5) * radius);
@@ -496,13 +490,37 @@ var World = (function () {
       }
     }
     
+    var lightRays = [];
+    (function () {
+      for (var dim = 0; dim < 3; dim++)
+      for (var dir = -1; dir <= 1; dir += 2)
+      for (var rayx = -1; rayx <= 1; rayx += 1)
+      for (var rayy = -1; rayy <= 1; rayy += 1) {
+        var origin = [0.5,0.5,0.5];
+        origin[dim] += dir * 0.25;
+        var ray = vec3.create(origin);
+        ray[dim] += 0.1*dir;
+        ray[mod(dim + 1, 3)] += 0.1*rayx;
+        ray[mod(dim + 2, 3)] += 0.1*rayy;
+        lightRays.push([origin, ray]);
+      }
+    }());
+    
     function evaluateLightAt(x, y, z) {
+      if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
+        return;
+      
+      var here = [x,y,z];
       var index = x*wy*wz + y*wz + z;
       
       var incomingLight = 0;
-      for (var ray = 0; ray < RAYCOUNT; ray++) {
-        var pt1 = [x+0.5,y+0.5,z+0.5];
-        var pt2 = [x + Math.random(),y + Math.random(),z + Math.random()];
+      var rayHits = [];
+      var pt1 = vec3.create();
+      var pt2 = vec3.create();
+      for (var rayi = lightRays.length - 1; rayi >= 0; rayi--) {
+        var rayData = lightRays[rayi];
+        vec3.add(here, rayData[0], pt1);
+        vec3.add(here, rayData[1], pt2);
         var found = false;
         raycast(pt1, pt2, 30/*TODO magic number */, function (rx, ry, rz, id, face) {
           if (id === 0) {
@@ -522,6 +540,8 @@ var World = (function () {
             var lightFromThatBlock = (id === 1) ? LIGHT_LAMP : lighting[emptyx*wy*wz + emptyy*wz + emptyz];
             
             incomingLight += factor * lightFromThatBlock;
+            rayHits.push([emptyx,emptyy,emptyz]);
+            
             found = true;
             return true;
           }
@@ -530,14 +550,23 @@ var World = (function () {
           incomingLight += LIGHT_SKY;
         }
       }
-      var newSample = incomingLight / RAYCOUNT;
-      var newValue = (0.75 * lighting[index] + 0.25 * newSample);
+      var newSample = incomingLight / lightRays.length;
+      var oldStoredValue = lighting[index];
+      var newValue = newSample /* 0.75 * oldStoredValue + 0.25 * newSample -- old for softening randomization */;
       var newStoredValue = Math.round(Math.min(LIGHT_MAX, newValue));
       
-      if (lighting[index] !== newStoredValue) {
+      if (oldStoredValue !== newStoredValue) {
         lighting[index] = newStoredValue;
-        if (Math.random() < 0.005) // TODO kludge for fewer updates
-          notifier.notify("dirtyBlock", [x,y,z]);
+        notifier.notify("dirtyBlock", here);
+        
+        if (lightingUpdateQueue.size() < 1000/*TODO magic number */) {
+          rayHits.push([x,y,z]);
+          for (var i = rayHits.length - 1; i >= 0; i--) {
+            var lqe = rayHits[i];
+            lqe.priority = Math.abs(newStoredValue - oldStoredValue); // queue priority
+            lightingUpdateQueue.enqueue(lqe);
+          }
+        }
       }
     }
     
