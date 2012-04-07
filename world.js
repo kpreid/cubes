@@ -7,7 +7,9 @@ var World = (function () {
   var spontaneousBaseRate = 0.0003; // probability of block spontaneous effect call per block per second
   
   var LIGHT_MAX = 255;
-  var LIGHT_SKY = LIGHT_MAX;
+  var LIGHT_SCALE = 4/LIGHT_MAX;
+  var LIGHT_LAMP = LIGHT_MAX;
+  var LIGHT_SKY = 1/LIGHT_SCALE;
   var RAYCOUNT = 20;
   var reflectivity = 0.9;
   
@@ -50,7 +52,7 @@ var World = (function () {
     // Computed data arrays.
     var rotations = new Uint8Array(cubeCount);
     var lighting = new Uint8Array(cubeCount);
-    for (var i = lighting.length - 1; i >= 0; i--) lighting[i] = LIGHT_MAX/2; // better initial value than 0
+    for (var i = lighting.length - 1; i >= 0; i--) lighting[i] = LIGHT_SKY/2; // better initial value than 0
     
     // Maps from cube to its circuit object if any
     var blockCircuits = new IntVectorMap();
@@ -517,7 +519,7 @@ var World = (function () {
             // No loss if we hit right here
             var factor = (emptyx === x && emptyy === y && emptyz === z) ? 1 : reflectivity;
             
-            var lightFromThatBlock = (id === 1) ? LIGHT_MAX : lighting[emptyx*wy*wz + emptyy*wz + emptyz];
+            var lightFromThatBlock = (id === 1) ? LIGHT_LAMP : lighting[emptyx*wy*wz + emptyy*wz + emptyz];
             
             incomingLight += factor * lightFromThatBlock;
             found = true;

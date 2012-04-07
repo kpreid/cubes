@@ -7,7 +7,9 @@ var WorldRenderer = (function () {
   // The side length of the chunks the world is broken into for rendering.
   // Smaller chunks are faster to update when the world changes, but have a higher per-frame cost.
   var CHUNKSIZE = 20;
-
+  
+  var LIGHT_SCALE = 4/255; // TODO duplicative of hidden constant in world.js
+  
   // 3D Euclidean distance, squared (for efficiency).
   function dist3sq(v1, v2) {
     var x = v1[0] - v2[0];
@@ -522,7 +524,7 @@ var WorldRenderer = (function () {
                               faceVertices[vi+1]+y,
                               faceVertices[vi+2]+z);
                 texcoords.push(faceTexcoords[ti], faceTexcoords[ti+1]);
-                var light = Math.max(.01, rawLighting[rawIndex+lightingOffsetIndex] / 255); // TODO handle oob index
+                var light = Math.max(.01, rawLighting[rawIndex+lightingOffsetIndex] * LIGHT_SCALE); // TODO handle oob index
                 // the max is because a zero normal is special
                 normals.push(light*fx, light*fy, light*fz);
               }
