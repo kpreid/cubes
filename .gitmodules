@@ -4,3 +4,6 @@
 [submodule "deps/game-shim"]
 	path = deps/game-shim
 	url = git://github.com/toji/game-shim.git
+[submodule "deps/gl-matrix"]
+	path = deps/gl-matrix
+	url = git://github.com/toji/gl-matrix.git
