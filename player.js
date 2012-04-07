@@ -117,7 +117,7 @@ var Player = (function () {
         w.raycast(pts[0], pts[1], 20, function (x,y,z,value,face) {
           if (w.selectable(x,y,z)) {
             foundCube = Object.freeze([x,y,z]);
-            foundFace = face;
+            foundFace = Object.freeze(Array.prototype.slice.call(face));
             return true;
           }
         });

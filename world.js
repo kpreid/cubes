@@ -222,8 +222,10 @@ function World(sizes, blockSet) {
   
   /**
    * Call the callback with (x,y,z,value,face) of all blocks along the line
-   * segment from pt1, through pt2, of length radius. 'face' is the normal
-   * vector of the face of that block that was entered.
+   * segment from pt1, through pt2, of length 'radius'.
+   *
+   * 'face' is the normal vector of the face of that block that was entered.
+   * It should not be used after the callback returns.
    *
    * If the callback returns a true value, the traversal will be stopped.
    */
@@ -248,7 +250,7 @@ function World(sizes, blockSet) {
     var tDeltaX = stepX/dx;
     var tDeltaY = stepY/dy;
     var tDeltaZ = stepZ/dz;
-    var face = [0,0,0];
+    var face = vec3.create();
     
     // 't' is in units of (pt2-pt1), so adjust radius in blocks by that
     radius /= Math.sqrt(dx*dx+dy*dy+dz*dz);
@@ -264,24 +266,32 @@ function World(sizes, blockSet) {
           if (tMaxX > radius) break;
           x += stepX;
           tMaxX += tDeltaX;
-          face = [-stepX,0,0];
+          face[0] = -stepX;
+          face[1] = 0;
+          face[2] = 0;
         } else {
           if (tMaxZ > radius) break;
           z += stepZ;
           tMaxZ += tDeltaZ;
-          face = [0,0,-stepZ];
+          face[0] = 0;
+          face[1] = 0;
+          face[2] = -stepZ;
         }
       } else {
         if (tMaxY < tMaxZ) {
           if (tMaxY > radius) break;
           y += stepY;
           tMaxY += tDeltaY;
-          face = [0,-stepY,0];
+          face[0] = 0;
+          face[1] = -stepY;
+          face[2] = 0;
         } else {
           if (tMaxZ > radius) break;
           z += stepZ;
           tMaxZ += tDeltaZ;
-          face = [0,0,-stepZ];
+          face[0] = 0;
+          face[1] = 0;
+          face[2] = -stepZ;
         }
       }
     }
