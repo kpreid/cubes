@@ -463,25 +463,31 @@ var WorldRenderer = (function () {
           var rotatedBlockFaceData = renderData.rotatedBlockFaceData;
           var BOGUS_BLOCK_DATA = rotatedBlockFaceData.bogus;
           var types = blockSet.getAll();
+          var g = world.g;
 
           // these variables are used by face() and written by the loop
           var x,y,z;
           var thisOpaque;
           
           function face(vFacing, data) {
+            var fx = vFacing[0];
+            var fy = vFacing[1];
+            var fz = vFacing[2];
             var faceVertices = data.vertices;
             var faceTexcoords = data.texcoords;
-            if (thisOpaque && world.opaque(x+vFacing[0],y+vFacing[1],z+vFacing[2])) {
+            if (thisOpaque && types[g(x+fx,y+fy,z+fz)].opaque) {
               // this face is invisible
-              return
+              return;
             } else {
               var vl = faceVertices.length / 3;
               for (var i = 0; i < vl; i++) {
-                vertices.push(faceVertices[i*3  ]+x,
-                              faceVertices[i*3+1]+y,
-                              faceVertices[i*3+2]+z);
-                texcoords.push(faceTexcoords[i*2],faceTexcoords[i*2+1]);
-                normals.push(vFacing[0],vFacing[1],vFacing[2]);
+                var vi = i*3;
+                var ti = i*2;
+                vertices.push(faceVertices[vi  ]+x,
+                              faceVertices[vi+1]+y,
+                              faceVertices[vi+2]+z);
+                texcoords.push(faceTexcoords[ti], faceTexcoords[ti+1]);
+                normals.push(fx, fy, fz);
               }
             }
           }
