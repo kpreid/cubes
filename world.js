@@ -10,6 +10,7 @@ var World = (function () {
   var LIGHT_SCALE = 4/LIGHT_MAX;
   var LIGHT_LAMP = LIGHT_MAX;
   var LIGHT_SKY = 1/LIGHT_SCALE;
+  var MAX_LIGHTING_QUEUE = 1000;
   
   function isCircuitPart(type) {
     return !!type.behavior;
@@ -204,7 +205,7 @@ var World = (function () {
       
       var newType = blockSet.get(val);
       reeval(vec, newType);
-      evaluateLightAt(x,y,z);
+      queueLightAt(x,y,z);
       
       // Update circuits
       var cp = isCircuitPart(newType);
@@ -226,7 +227,7 @@ var World = (function () {
       // Update neighbors, which may have circuit inputs depending on this block
       neighbors.forEach(function (neighbor) {
         reeval(neighbor, gt(neighbor[0],neighbor[1],neighbor[2]));
-        evaluateLightAt(neighbor[0], neighbor[1], neighbor[2]);
+        queueLightAt(neighbor[0], neighbor[1], neighbor[2]);
         
         // note: this duplicates work if the same circuit neighbors this block more than once
         var circuit = blockCircuits.get(neighbor);
@@ -467,12 +468,13 @@ var World = (function () {
       measuring.lightingQueueSize.inc(lightingUpdateQueue.size());
       var lqe, n = 0;
       while ((lqe = lightingUpdateQueue.dequeue()) && n++ < 15) {
-        evaluateLightAt(lqe[0],lqe[1],lqe[2]);
+        evaluateLightAt(lqe);
       }
     }
     
     function polishLightInVicinity(cpos,radius) {
       var diameter = 2 * radius;
+      var vec = [];
       for (var i = 0; i < 10; i++) {
         var x = Math.round(cpos[0] + (Math.random()-0.5) * radius);
         var y = Math.round(cpos[1] + (Math.random()-0.5) * radius);
@@ -485,7 +487,7 @@ var World = (function () {
               g(x,y-1,z) ||
               g(x,y,z+1) ||
               g(x,y,z-1))) continue;
-        evaluateLightAt(x,y,z);
+        evaluateLightAt([x,y,z]);
       }
     }
     
@@ -505,11 +507,22 @@ var World = (function () {
       }
     }());
     
-    function evaluateLightAt(x, y, z) {
+    function queueLightAt(x, y, z, priority) {
+      if (lightingUpdateQueue.size() < MAX_LIGHTING_QUEUE) {
+        var lqe = [x,y,z];
+        lqe.priority = priority || 0;
+        lightingUpdateQueue.enqueue(lqe);
+      }
+    }
+    
+    function evaluateLightAt(here) {
+      var x = here[0];
+      var y = here[1];
+      var z = here[2];
+      
       if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
         return;
       
-      var here = [x,y,z];
       var index = x*wy*wz + y*wz + z;
       
       var incomingLight = 0;
@@ -563,7 +576,7 @@ var World = (function () {
         lighting[index] = newStoredValue;
         notifier.notify("dirtyBlock", here);
         
-        if (lightingUpdateQueue.size() < 1000/*TODO magic number */) {
+        if (lightingUpdateQueue.size() < MAX_LIGHTING_QUEUE) {
           rayHits.push([x,y,z]);
           for (var i = rayHits.length - 1; i >= 0; i--) {
             var lqe = rayHits[i];
