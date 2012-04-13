@@ -9,6 +9,7 @@ var WorldRenderer = (function () {
   var CHUNKSIZE = 20;
   
   var LIGHT_SCALE = 4/255; // TODO duplicative of hidden constant in world.js
+  var LIGHT_SKY = 1/LIGHT_SCALE;
   
   // 3D Euclidean distance, squared (for efficiency).
   function dist3sq(v1, v2) {
@@ -477,6 +478,7 @@ var WorldRenderer = (function () {
         var rawBlocks = world.raw; // for efficiency
         var rawRotations = world.rawRotations;
         var rawLighting = world.rawLighting;
+        var inBounds = world.inBounds;
         var chunkOriginX = xzkey[0];
         var chunkOriginY = xzkey[1];
         var chunkOriginZ = xzkey[2];
@@ -505,12 +507,14 @@ var WorldRenderer = (function () {
           var x,y,z;
           var thisOpaque;
           var rawIndex;
+          var isAtBounds;
           
           function face(vFacing, data, lightingOffsetIndex) {
-            var fx = vFacing[0];
-            var fy = vFacing[1];
-            var fz = vFacing[2];
-            if (thisOpaque && types[g(x+fx,y+fy,z+fz)].opaque) {
+            var fx = vFacing[0]; var xfx = x + fx;
+            var fy = vFacing[1]; var yfy = y + fy;
+            var fz = vFacing[2]; var zfz = z + fz;
+            // TODO between the g() and the inBounds() we're testing the neighbor twice
+            if (thisOpaque && types[g(xfx,yfy,zfz)].opaque) {
               // this face is invisible
               return;
             } else {
@@ -524,8 +528,11 @@ var WorldRenderer = (function () {
                               faceVertices[vi+1]+y,
                               faceVertices[vi+2]+z);
                 texcoords.push(faceTexcoords[ti], faceTexcoords[ti+1]);
-                var light = Math.max(.01, rawLighting[rawIndex+lightingOffsetIndex] * LIGHT_SCALE); // TODO handle oob index
-                // the max is because a zero normal is special
+                var lightValue = (isAtBounds && !inBounds(xfx,yfy,zfz))
+                    ? LIGHT_SKY
+                    : rawLighting[rawIndex+lightingOffsetIndex];
+                var light = Math.max(.01, lightValue * LIGHT_SCALE);
+                // the max is because a zero normal is special -- TODO kludge
                 normals.push(light*fx, light*fy, light*fz);
               }
             }
@@ -534,6 +541,7 @@ var WorldRenderer = (function () {
           for (x = chunkOriginX; x < chunkLimitX; x++)
           for (y = chunkOriginY; y < chunkLimitY; y++)
           for (z = chunkOriginZ; z < chunkLimitZ; z++) {
+            isAtBounds = x === chunkOriginX || x === chunkLimitX - 1 || y === 0 || y === wy - 1 || z === chunkOriginZ || z === chunkLimitZ - 1;
             // raw array access inlined and simplified for efficiency
             rawIndex = (x*wy+y)*wz+z;
             var value = rawBlocks[rawIndex];
