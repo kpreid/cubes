@@ -216,11 +216,9 @@ var measuring = (function () {
     ViewGroup.call(this, label, [timer].concat(elements));
     
     this.start = function () {
-      timer.start();
       Object.getPrototypeOf(this).start.call(this);
     };
     this.end = function () {
-      timer.end();
       Object.getPrototypeOf(this).end.call(this);
     };
   }
