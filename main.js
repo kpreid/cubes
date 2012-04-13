@@ -231,8 +231,7 @@ var CubesMain = (function () {
           animFrameWasRequested = false;
 
           // done here because chunk updating should be deprioritized at the same time drawing would be
-          var count = player.render.getWorldRenderer().updateSomeChunks();
-          measuring.chunkCount.inc(count);
+          player.render.getWorldRenderer().updateSomeChunks();
 
           measuring.frame.start();
           drawScene(player.render);

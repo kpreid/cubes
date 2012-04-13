@@ -358,22 +358,21 @@ var WorldRenderer = (function () {
         });
         
       }
-
+      
       var chunkQueue = dirtyChunks.size() > 0 ? dirtyChunks : addChunks;
-      var toCompute = chunkQueue.size() > 30 ? 6 : 1;
-      for (var i = 0; i < toCompute && chunkQueue.size() > 0; i++) {
-        if (calcChunk(chunkQueue.dequeue())) {
-          // Chunk wasn't actually dirty; take another chunk
-          i--;
+      var deadline = Date.now() + (chunkQueue.size() > 30 ? 30 : 10);
+      var count = 0;
+      while (chunkQueue.size() > 0 && Date.now() < deadline) {
+        if (!calcChunk(chunkQueue.dequeue())) {
+          count++;
         }
       }
+      measuring.chunkCount.inc(count);
       
       if (chunkQueue.size() > 0) {
         // Schedule rendering more chunks
         scheduleDraw();
       }
-      
-      return i;
     }
     this.updateSomeChunks = updateSomeChunks;
 
