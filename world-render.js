@@ -8,11 +8,14 @@ var WorldRenderer = (function () {
   
   // The side length of the chunks the world is broken into for rendering.
   // Smaller chunks are faster to update when the world changes, but have a higher per-frame cost.
-  var CHUNKSIZE = 10;
+  var CHUNKSIZE = 20;
 
-  // 2D Euclidean distance, squared (for efficiency).
-  function dist2sq(v) {
-    return v[0]*v[0]+v[1]*v[1];
+  // 3D Euclidean distance, squared (for efficiency).
+  function dist3sq(v) {
+    var x = v[0];
+    var y = v[1];
+    var z = v[2];
+    return x*x + y*y + z*z;
   }
 
   var rotationsByCode = CubeRotation.byCode;
@@ -35,14 +38,15 @@ var WorldRenderer = (function () {
       // A static table of the offsets of the chunks visible from the player location
       var nearChunkOrder = [];
       for (var x = -chunkDistance-1; x <= chunkDistance; x++)
+      for (var y = -chunkDistance-1; y <= chunkDistance; y++)
       for (var z = -chunkDistance-1; z <= chunkDistance; z++) {
-        var v = [x*CHUNKSIZE,z*CHUNKSIZE];
-        if (dist2sq(v) <= boundSquared) {
+        var v = [x*CHUNKSIZE,y*CHUNKSIZE,z*CHUNKSIZE];
+        if (dist3sq(v) <= boundSquared) {
           nearChunkOrder.push(v);
         }
       }
       nearChunkOrder.sort(function (a,b) {
-        return dist2sq(a) - dist2sq(b);
+        return dist3sq(a) - dist3sq(b);
       });
       distanceInfoCache.nearChunkOrder = Object.freeze(nearChunkOrder);
     }
@@ -53,12 +57,13 @@ var WorldRenderer = (function () {
     var gl = renderer.context;
     var config = renderer.config; // TODO eliminate need for this
     
-    // Table of all world rendering chunks which have RenderBundles created, indexed by [x,z] where x and z are the low-side coordinates (i.e. divisible by CHUNKSIZE).
+    // Table of all world rendering chunks which have RenderBundles created, indexed by [x,y,z] of the low-side coordinates (i.e. divisible by CHUNKSIZE).
     var chunks = new IntVectorMap();
 
+    var compareByPlayerDistance_vectmp = vec3.create();
     function compareByPlayerDistance(a,b) {
-      return dist2sq([a[0]-playerChunk[0], a[1]-playerChunk[1]]) 
-           - dist2sq([b[0]-playerChunk[0], b[1]-playerChunk[1]]);
+      return dist3sq(vec3.subtract(a, playerChunk, compareByPlayerDistance_vectmp)) 
+           - dist3sq(vec3.subtract(b, playerChunk, compareByPlayerDistance_vectmp));
     }
 
     // Queue of chunks to rerender. Array (first-to-do at the end); each element is [x,z] where x and z are the low coordinates of the chunk.
@@ -212,14 +217,16 @@ var WorldRenderer = (function () {
 
     function chunkIntersectsWorld(chunkOrigin) {
       var x = chunkOrigin[0];
-      var z = chunkOrigin[1];
+      var y = chunkOrigin[1];
+      var z = chunkOrigin[2];
       return x >= 0 && x - CHUNKSIZE < world.wx &&
+             y >= 0 && y - CHUNKSIZE < world.wy &&
              z >= 0 && z - CHUNKSIZE < world.wz;
     }
 
     // x,z must be multiples of CHUNKSIZE
-    function setDirtyChunk(x, z) {
-      var k = [x, z];
+    function setDirtyChunk(x, y, z) {
+      var k = [x, y, z];
       if (!chunkIntersectsWorld(k)) return;
       var chunk = chunks.get(k);
       if (chunk) {
@@ -235,18 +242,23 @@ var WorldRenderer = (function () {
       if (!isAlive()) return false;
       
       var x = vec[0];
+      var y = vec[1];
       var z = vec[2];
       
       var xm = mod(x, CHUNKSIZE);
+      var ym = mod(y, CHUNKSIZE);
       var zm = mod(z, CHUNKSIZE);
       x -= xm;
+      y -= ym;
       z -= zm;
 
-      setDirtyChunk(x,z);
-      if (xm == 0)           setDirtyChunk(x-CHUNKSIZE,z);
-      if (zm == 0)           setDirtyChunk(x,z-CHUNKSIZE);
-      if (xm == CHUNKSIZE-1) setDirtyChunk(x+CHUNKSIZE,z);
-      if (zm == CHUNKSIZE-1) setDirtyChunk(x,z+CHUNKSIZE);
+      setDirtyChunk(x,y,z);
+      if (xm == 0)           setDirtyChunk(x-CHUNKSIZE,y,z);
+      if (ym == 0)           setDirtyChunk(x,y-CHUNKSIZE,z);
+      if (zm == 0)           setDirtyChunk(x,y,z-CHUNKSIZE);
+      if (xm == CHUNKSIZE-1) setDirtyChunk(x+CHUNKSIZE,y,z);
+      if (ym == CHUNKSIZE-1) setDirtyChunk(x,y+CHUNKSIZE,z);
+      if (zm == CHUNKSIZE-1) setDirtyChunk(x,y,z+CHUNKSIZE);
 
       // TODO: This is actually "Schedule updateSomeChunks()" and shouldn't actually require a frame redraw
       scheduleDraw();
@@ -295,7 +307,7 @@ var WorldRenderer = (function () {
       // Note: This enumerates every circuit in the world. Currently, this is more efficient than the alternatives because there are not many circuits in typical data. When that changes, we should revisit this and use some type of spatial index to make it efficient. Testing per-block is *not* efficient.
       var rdi = renderDistanceInfo(config.renderDistance.get());
       world.getCircuits().forEach(function (circuit, origin) {
-        if (dist2sq([origin[0]-playerChunk[0],origin[2]-playerChunk[1]]) < rdi.addChunkDistanceSquared) {
+        if (dist3sq([origin[0]-playerChunk[0],origin[1]-playerChunk[1],origin[2]-playerChunk[1]]) < rdi.addChunkDistanceSquared) {
           if (!circuitRenderers.get(origin)) {
             circuitRenderers.set(origin, makeCircuitRenderer(circuit));
           }
@@ -308,15 +320,18 @@ var WorldRenderer = (function () {
       var rdi = renderDistanceInfo(config.renderDistance.get());
       var pos = getViewPosition();
       var newPlayerChunk = [pos[0] - mod(pos[0], CHUNKSIZE),
+                            pos[1] - mod(pos[1], CHUNKSIZE),
                             pos[2] - mod(pos[2], CHUNKSIZE)];
-      if (playerChunk === null || newPlayerChunk[0] !== playerChunk[0] || newPlayerChunk[1] !== playerChunk[1]) {
-        //console.log("nPC ", newPlayerChunk[0], newPlayerChunk[1]);
+      if (playerChunk === null || newPlayerChunk[0] !== playerChunk[0]
+                               || newPlayerChunk[1] !== playerChunk[1]
+                               || newPlayerChunk[2] !== playerChunk[2]) {
+        //console.log("nPC ", newPlayerChunk[0], newPlayerChunk[1], newPlayerChunk[2]);
         
         playerChunk = newPlayerChunk;
         
         // Add chunks which are in viewing distance.
         rdi.nearChunkOrder.forEach(function (offset) {
-          var chunkKey = [playerChunk[0] + offset[0], playerChunk[1] + offset[1]];
+          var chunkKey = [playerChunk[0] + offset[0], playerChunk[1] + offset[1], playerChunk[2] + offset[2]];
           if (!chunks.has(chunkKey) && chunkIntersectsWorld(chunkKey)) {
             addChunks.enqueue(chunkKey, chunks.get(chunkKey));
           }
@@ -324,10 +339,10 @@ var WorldRenderer = (function () {
 
         // Drop now-invisible chunks. Has a higher boundary so that we're not constantly reloading chunks if the player is moving back and forth.
         var dds = rdi.dropChunkDistanceSquared;
-        chunks.forEach(function (chunk, xz) {
-          if (dist2sq([xz[0]-playerChunk[0],xz[1]-playerChunk[1]]) > dds) {
+        chunks.forEach(function (chunk, chunkKey) {
+          if (dist3sq([chunkKey[0]-playerChunk[0],chunkKey[1]-playerChunk[1],chunkKey[2]-playerChunk[2]]) > dds) {
             chunk.deleteResources();
-            chunks.delete(xz);
+            chunks.delete(chunkKey);
           }
         });
         
@@ -336,7 +351,7 @@ var WorldRenderer = (function () {
         // Drop now-invisible circuits
         // TODO: This works off the origin, but circuits can be arbitrarily large so we should test against their AABB
         circuitRenderers.forEach(function (cr, cube) {
-          if (dist2sq([cube[0]-playerChunk[0],cube[2]-playerChunk[1]]) > dds) {
+          if (dist3sq([cube[0]-playerChunk[0],cube[1]-playerChunk[1],cube[2]-playerChunk[2]]) > dds) {
             cr.deleteResources();
             circuitRenderers.delete(cube);
           }
@@ -452,9 +467,11 @@ var WorldRenderer = (function () {
         var rawBlocks = world.raw; // for efficiency
         var rawRotations = world.rawRotations;
         var chunkOriginX = xzkey[0];
-        var chunkOriginZ = xzkey[1];
+        var chunkOriginY = xzkey[1];
+        var chunkOriginZ = xzkey[2];
         var chunkLimitX = Math.min(wx, xzkey[0] + CHUNKSIZE);
-        var chunkLimitZ = Math.min(wz, xzkey[1] + CHUNKSIZE);
+        var chunkLimitY = Math.min(wy, xzkey[1] + CHUNKSIZE);
+        var chunkLimitZ = Math.min(wz, xzkey[2] + CHUNKSIZE);
         var chunk = new renderer.RenderBundle(gl.TRIANGLES,
                                               function () { return renderData.texture; },
                                               function (vertices, normals, texcoords) {
@@ -493,7 +510,7 @@ var WorldRenderer = (function () {
           }
           
           for (x = chunkOriginX; x < chunkLimitX; x++)
-          for (y = 0;            y < wy         ; y++)
+          for (y = chunkOriginY; y < chunkLimitY; y++)
           for (z = chunkOriginZ; z < chunkLimitZ; z++) {
             // raw array access inlined and simplified for efficiency
             var rawIndex = (x*wy+y)*wz+z;
@@ -518,7 +535,7 @@ var WorldRenderer = (function () {
         
         chunk.aabb = new AAB(
           chunkOriginX, chunkLimitX,
-          0, world.wy,
+          chunkOriginY, chunkLimitY,
           chunkOriginZ, chunkLimitZ
         );
         
