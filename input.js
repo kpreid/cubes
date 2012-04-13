@@ -481,6 +481,19 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
       };
       cell().appendChild(solid);
       
+      var light = document.createElement("input");
+      light.className = "block-details";
+      light.type = "range";
+      light.min = 0;
+      light.max = 4;
+      light.step = "any";
+      light.value = blockType.light.toString();
+      light.onchange = function () {
+        blockType.light = parseFloat(light.value);
+        return true;
+      };
+      cell().appendChild(light);
+      
       setupIconButton(item,icon,blockID);
       
       hud.blocksetAll.appendChild(item);

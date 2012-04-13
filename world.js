@@ -10,7 +10,6 @@ var World = (function () {
   var LIGHT_SCALE = 4/LIGHT_MAX;
   var LIGHT_LAMP = LIGHT_MAX;
   var LIGHT_SKY = 1/LIGHT_SCALE;
-  var reflectivity = 0.9;
   
   function isCircuitPart(type) {
     return !!type.behavior;
@@ -526,8 +525,10 @@ var World = (function () {
           if (id === 0) {
             // empty air -- pass through
             return false;
-          } else if (!blockSet.get(id).opaque) {
-            // not quite empty air, but for now we'll not bother picking up some of it
+          }
+          var type = blockSet.get(id); // TODO bunch updates and use getAll
+          if (!type.opaque) {
+            // TODO: Implement handling of semi-occluding or transparent blocks.
             return false;
           } else {
             var emptyx = rx+face[0];
@@ -535,9 +536,11 @@ var World = (function () {
             var emptyz = rz+face[2];
             
             // No loss if we hit right here
-            var factor = (emptyx === x && emptyy === y && emptyz === z) ? 1 : reflectivity;
+            var factor = (emptyx === x && emptyy === y && emptyz === z) ? 1 : type.reflectivity;
             
-            var lightFromThatBlock = (id === 1) ? LIGHT_LAMP : lighting[emptyx*wy*wz + emptyy*wz + emptyz];
+            var lightFromThatBlock =
+              type.light/LIGHT_SCALE                         // Emission
+              + lighting[emptyx*wy*wz + emptyy*wz + emptyz]; // Diffuse reflection
             
             incomingLight += factor * lightFromThatBlock;
             rayHits.push([emptyx,emptyy,emptyz]);

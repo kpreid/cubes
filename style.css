@@ -172,6 +172,7 @@ html {
 .ui-mode-full .menu-full-block-list > * > tr > *:first-child + * + * { width: 200px; }
 .ui-mode-full .menu-full-block-list > * > tr > *:first-child + * + * + * { width: 100px; }
 .ui-mode-full .menu-full-block-list > * > tr > *:first-child + * + * + * + * { width: 50px; }
+.ui-mode-full .menu-full-block-list > * > tr > *:first-child + * + * + * + * + * { width: 50px; }
 
 #menu input[type="text"] {
   width: 190px;
@@ -181,6 +182,10 @@ html {
   font: inherit;
   margin: 1px;
   padding: 2px;
+}
+
+#menu input[type="range"] {
+  width: 40px;
 }
 
 
