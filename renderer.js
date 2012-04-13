@@ -304,6 +304,11 @@ var Renderer = (function () {
       get: function () { return contextLost; }
     });
 
+    Object.defineProperty(this, "bundlesDrawn", {
+      enumerable: true,
+      writable: true,
+      value: 0
+    });
     Object.defineProperty(this, "verticesDrawn", {
       enumerable: true,
       writable: true,
@@ -523,6 +528,7 @@ var Renderer = (function () {
           c.attrib(permanentAttribs.aVertexColor);
         }
         var count = v.countVertices();
+        renderer.bundlesDrawn += 1;
         renderer.verticesDrawn += count;
         gl.drawArrays(primitive, 0, count);
         

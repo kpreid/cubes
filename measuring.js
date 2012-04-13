@@ -235,6 +235,7 @@ var measuring = (function () {
     ]),
     measuring.chunk = new TaskGroup("Chunk calc", []),
     measuring.frame = new TaskGroup("Frame", [
+      measuring.bundles = new Counter("Bundles"),
       measuring.vertices = new Counter("Vertices")
     ])
   ]);

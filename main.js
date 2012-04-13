@@ -193,7 +193,9 @@ var CubesMain = (function () {
         persistenceProgressBar.setByTodoCount(persistencePool.status.get());
         
         measuring.frameCount.inc();
+        measuring.bundles.inc(renderer.bundlesDrawn);
         measuring.vertices.inc(renderer.verticesDrawn);
+        renderer.bundlesDrawn = 0;
         renderer.verticesDrawn = 0;
     }
     
