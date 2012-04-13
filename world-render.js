@@ -527,9 +527,10 @@ var WorldRenderer = (function () {
                               faceVertices[vi+1]+y,
                               faceVertices[vi+2]+z);
                 texcoords.push(faceTexcoords[ti], faceTexcoords[ti+1]);
-                var lightValue = (isAtBounds && !inBounds(xfx,yfy,zfz))
-                    ? lightOutside
-                    : rawLighting[rawIndex+lightingOffsetIndex];
+                var lightValue =
+                    !thisOpaque ? rawLighting[rawIndex] :
+                    (isAtBounds && !inBounds(xfx,yfy,zfz)) ? lightOutside :
+                    rawLighting[rawIndex+lightingOffsetIndex];
                 var light = Math.max(.01, lightValue * lightScale);
                 // the max is because a zero normal is special -- TODO kludge
                 normals.push(light*fx, light*fy, light*fz);
