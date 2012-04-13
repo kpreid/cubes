@@ -528,7 +528,8 @@ var World = (function () {
           }
           var type = blockSet.get(id); // TODO bunch updates and use getAll
           if (!type.opaque) {
-            // TODO: Implement handling of semi-occluding or transparent blocks.
+            // TODO: implement attenuation and blocks with some opaque faces.
+            incomingLight += type.light/LIGHT_SCALE;
             return false;
           } else {
             var emptyx = rx+face[0];
