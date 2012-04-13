@@ -660,6 +660,10 @@ var World = (function () {
     this.wy = wy;
     this.wz = wz;
     this.blockSet = blockSet;
+    this.lightMax = LIGHT_MAX;     // Maximum value in lighting array
+    this.lightScale = LIGHT_SCALE; // Value which should be a unity/"normal" light level
+    this.lightOutside = LIGHT_SKY; // Ambient outside-the-world light level
+    
     Object.freeze(this);
   }
   
