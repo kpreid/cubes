@@ -515,7 +515,7 @@ var WorldGen = (function () {
       blockset.add(type = genedit(
         f.cond(function (b) { return (f.xe(b) || f.te(b) || f.be(b)) && b[2] == TL; },
           f.flat(brgb(.9,.9,.9)),
-          f.flat(brgb(0,0,0)))));
+          f.flat(0))));
       type.name = "glass";
       addRotation(type);
 
