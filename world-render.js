@@ -472,6 +472,7 @@ var WorldRenderer = (function () {
         var chunkLimitX = Math.min(wx, xzkey[0] + CHUNKSIZE);
         var chunkLimitY = Math.min(wy, xzkey[1] + CHUNKSIZE);
         var chunkLimitZ = Math.min(wz, xzkey[2] + CHUNKSIZE);
+        var nonempty = true;
         var chunk = new renderer.RenderBundle(gl.TRIANGLES,
                                               function () { return renderData.texture; },
                                               function (vertices, normals, texcoords) {
@@ -530,7 +531,12 @@ var WorldRenderer = (function () {
             face(rot.py, faceData.hy);
             face(rot.pz, faceData.hz);
           }
+          nonempty = vertices.length > 0;
           measuring.chunk.end();
+        }, {
+          aroundDraw: function (draw) {
+            if (nonempty) draw();
+          }
         });
         
         chunk.aabb = new AAB(
