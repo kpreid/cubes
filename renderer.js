@@ -51,11 +51,12 @@ var Renderer = (function () {
     var viewPosition = vec3.create();
     var viewFrustum = {}; // computed
     
-    // Other globals (uniforms)
+    // Other local mirrors of GL state
     var fogDistance = 0;
     var stipple = 0;
     var tileSize = 1;
     var focusCue = false;
+    var currentTexture = undefined; // undefined=unknown/invalid, null=none, or texture
 
     // Shader programs, and attrib and uniform locations
     var blockProgramSetup = null;
@@ -102,6 +103,7 @@ var Renderer = (function () {
       gl.useProgram(newP.program);
       attribs = newP.attribs;
       uniforms = newP.uniforms;
+      currentTexture = undefined;
     }
     
     function initContext() {
@@ -410,6 +412,28 @@ var Renderer = (function () {
     }
     this.setTileSize = setTileSize;
     
+    function setTexture(texture) {
+      if (currentTexture === texture) return;
+      currentTexture = texture;
+      
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.uniform1i(uniforms.uSampler, 0);
+      
+      gl.enableVertexAttribArray(permanentAttribs.aTextureCoord);
+      gl.disableVertexAttribArray(permanentAttribs.aVertexColor);
+    }
+    //this.setTexture = setTexture; // currently used only inside RenderBundle
+    
+    function unsetTexture() {
+      if (currentTexture === null) return;
+      currentTexture = null;
+      
+      gl.disableVertexAttribArray(permanentAttribs.aTextureCoord);
+      gl.enableVertexAttribArray(permanentAttribs.aVertexColor);
+    }
+    //this.unsetTexture = unsetTexture;
+    
     function BufferAndArray(numComponents) {
       this.numComponents = numComponents;
       this.buffer = gl.createBuffer();
@@ -513,18 +537,10 @@ var Renderer = (function () {
         gl.uniform1i(uniforms.uTextureEnabled, optGetTexture ? 1 : 0);
 
         if (optGetTexture) {
-          gl.enableVertexAttribArray(permanentAttribs.aTextureCoord);
-          gl.disableVertexAttribArray(permanentAttribs.aVertexColor);
-          
+          setTexture(optGetTexture());
           t.attrib(permanentAttribs.aTextureCoord);
-  
-          gl.activeTexture(gl.TEXTURE0);
-          gl.bindTexture(gl.TEXTURE_2D, optGetTexture());
-          gl.uniform1i(uniforms.uSampler, 0);
         } else {
-          gl.disableVertexAttribArray(permanentAttribs.aTextureCoord);
-          gl.enableVertexAttribArray(permanentAttribs.aVertexColor);
-
+          unsetTexture();
           c.attrib(permanentAttribs.aVertexColor);
         }
         var count = v.countVertices();
