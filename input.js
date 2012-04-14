@@ -1,7 +1,7 @@
 // Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
-function Input(config, eventReceiver, playerInput, menuElement, renderer, focusCell, save) {
+function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, save) {
   "use strict";
 
   var keymap = {};
@@ -21,13 +21,17 @@ function Input(config, eventReceiver, playerInput, menuElement, renderer, focusC
   
   function setMouselook(value) {
     mouselookMode = value;
-    menuElement.style.visibility = mouselookMode ? 'hidden' : 'visible';
+    hud.menu.style.visibility = mouselookMode ? 'hidden' : 'visible';
     updatePointerLock();
     applyMousePosition();
   }
   
   function quick(n) {
     playerInput.tool = quickSlots[n];
+  }
+  
+  function clearChildren(elem) {
+    while (elem.firstChild) elem.removeChild(elem.firstChild);
   }
   
   // --- Focus ---
@@ -288,7 +292,8 @@ function Input(config, eventReceiver, playerInput, menuElement, renderer, focusC
   var QUICK_SLOT_COUNT = 10;
   
   var menuItemsByBlockId;
-  var hintTextsByBlockId;
+  var canvasesByBlockId;
+  var quickItemsByBlockId;
   var blockSetInMenu;
 
   function deferrer(func) {
@@ -315,7 +320,7 @@ function Input(config, eventReceiver, playerInput, menuElement, renderer, focusC
   resetQuick();
 
   function forAllMenuBlocks(f) {
-    for (var i = 1; i < blockSetInMenu.length; i++) f(i, menuItemsByBlockId[i]);
+    for (var i = 1; i < blockSetInMenu.length; i++) f(i, menuItemsByBlockId[i], canvasesByBlockId[i]);
   }
   
   var updateDeferred = deferrer(updateMenuBlocks);
@@ -325,6 +330,38 @@ function Input(config, eventReceiver, playerInput, menuElement, renderer, focusC
     tableChanged:     function (id) { updateDeferred(); return true; }
   };
   
+  function setupIconButton(item, icon, blockID) {
+    icon.onclick = function () {
+      playerInput.tool = blockID;
+      
+      var quickSlot = quickSlots.indexOf(blockID);
+      if (quickSlot === -1) {
+        // promote to recently-used menu
+        quickSlot = quickSlotLRU.shift();
+        quickSlots[quickSlot] = blockID;
+        updateQuickBar();
+      } else {
+        // touch LRU entry
+        quickSlotLRU.splice(quickSlotLRU.indexOf(quickSlot), 1);
+      }
+      quickSlotLRU.push(quickSlot);
+      
+      return false;
+    };
+    icon.onmousedown = icon.onselectstart = function () {
+      item.className = "menu-item selectedTool";
+      return false; // inhibit selection
+    };
+    icon.oncontextmenu = function () {
+      playerInput.enterWorld(i);
+      return false;
+    };
+    icon.onmouseout = function () {
+      item.className = "menu-item " + (blockID === playerInput.tool ? " selectedTool" : "");
+      return true;
+    };
+  }
+  
   function updateMenuBlocks() {
     if (playerInput.blockSet !== blockSetInMenu) {
       if (blockSetInMenu) blockSetInMenu.listen.cancel(menuListener);
@@ -333,110 +370,79 @@ function Input(config, eventReceiver, playerInput, menuElement, renderer, focusC
     }
     
     menuItemsByBlockId = [];
-    hintTextsByBlockId = [];
+    canvasesByBlockId = [];
+    quickItemsByBlockId = [];
     resetQuick();
 
     var blockRenderer = new BlockRenderer(blockSetInMenu, renderer);
   
     var sidecount = Math.ceil(Math.sqrt(blockSetInMenu.length));
     var size = Math.min(64, 300 / sidecount);
+    
+    clearChildren(hud.blocksetAll);
   
-    forAllMenuBlocks(function (i) {
+    forAllMenuBlocks(function (blockID) {
       // element structure and style
-      var item = menuItemsByBlockId[i] = document.createElement("span");
+      var item = menuItemsByBlockId[blockID] = document.createElement("span");
       item.className = "menu-item";
-      var canvas = document.createElement("canvas");
+      var canvas = canvasesByBlockId[blockID] = document.createElement("canvas");
       canvas.width = canvas.height = 64; // TODO magic number
       canvas.style.width = canvas.style.height = size + "px";
-
-      // keyboard shortcut hint
-      var hint = document.createElement("kbd");
-      hint.appendChild(hintTextsByBlockId[i] = document.createTextNode(""));
-      hint.className = "menu-shortcut-key";
-      item.appendChild(hint);
-
+      
       item.appendChild(canvas);
       
       // render block
       var cctx = canvas.getContext('2d');
-      cctx.putImageData(blockRenderer.blockToImageData(i, cctx), 0, 0);
-
-      // event handlers
-      (function (item,canvas,i) { // TODO remove, now moot
-        canvas.onclick = function () {
-          playerInput.tool = i;
-          
-          var quickSlot = quickSlots.indexOf(i);
-          if (quickSlot === -1) {
-            // promote to recently-used menu
-            quickSlot = quickSlotLRU.shift();
-            quickSlots[quickSlot] = i;
-            updateMenuLayout();
-          } else {
-            // touch LRU entry
-            quickSlotLRU.splice(quickSlotLRU.indexOf(quickSlot), 1);
-          }
-          quickSlotLRU.push(quickSlot);
-          
-          return false;
-        };
-        canvas.onmousedown = canvas.onselectstart = function () {
-          item.className = "menu-item selectedTool";
-          return false; // inhibit selection
-        };
-        canvas.oncontextmenu = function () {
-          playerInput.enterWorld(i);
-          return false;
-        };
-        canvas.onmouseout = function () {
-          item.className = "menu-item " + (i === playerInput.tool ? " selectedTool" : "");
-          return true;
-        };
-      })(item,canvas,i);
+      cctx.putImageData(blockRenderer.blockToImageData(blockID, cctx), 0, 0);
+      
+      setupIconButton(item,canvas,blockID);
+      
+      hud.blocksetAll.appendChild(item);
     });
     
     blockRenderer.deleteResources();
     
-    // since we rebuilt the menu these need redoing
-    updateMenuLayout();
-    updateMenuSelection();
+    updateQuickBar();
   }
   
-  function updateMenuLayout() {
-    // This is not especially efficient, but it doesn't need to be.
-    
-    while (menuElement.firstChild) menuElement.removeChild(menuElement.firstChild);
+  function updateQuickBar() {
+    clearChildren(hud.quickBar);
+    quickItemsByBlockId = [];
+    quickSlots.forEach(function (blockID, index) {
+      var canvas = canvasesByBlockId[blockID];
+      if (canvas) {
+        var item = document.createElement("span");
+        item.className = "menu-item";
 
-    var quickGroup = document.createElement("div");
+        // keyboard shortcut hint
+        var hint = document.createElement("kbd");
+        hint.appendChild(document.createTextNode(((index+1) % 10).toString()));
+        hint.className = "menu-shortcut-key";
+        item.appendChild(hint);
 
-    forAllMenuBlocks(function (i, item) {
-      menuElement.appendChild(item);
-      hintTextsByBlockId[i].data = "";
-    });
-    quickSlots.forEach(function (blockId, index) {
-      var item = menuItemsByBlockId[blockId];
-      if (item) {
-        quickGroup.appendChild(item);
-        hintTextsByBlockId[blockId].data = ((index+1) % 10).toString();
+        var icon = document.createElement("img");
+        icon.src = canvas.toDataURL("image/png");
+        //canvas.style.width = canvas.style.height = size + "px";
+        item.appendChild(icon);
+
+        setupIconButton(item,icon,blockID);
+        hud.quickBar.appendChild(item);
+        
+        quickItemsByBlockId[blockID] = item;
       }
     });
     
-    var addButton = document.createElement("button");
-    addButton.className = "menu-item menu-button";
-    addButton.appendChild(document.createTextNode("+"));
-    addButton.onclick = function () {
-      playerInput.blockSet.add(WorldGen.newRandomBlockType(playerInput.blockSet.tileSize, playerInput.blockSet.get(1).world.blockSet));
-      eventReceiver.focus();
-    };
-    menuElement.appendChild(addButton);
-
-    menuElement.appendChild(quickGroup);
+    updateMenuSelection();
   }
   
   function updateMenuSelection() {
     var tool = playerInput.tool;
     forAllMenuBlocks(function (i, item) {
       item.className = i === tool ? "menu-item selectedTool" : "menu-item";
+    });
+    quickItemsByBlockId.forEach(function (item, i) {
+      if (item !== undefined)
+        item.className = i === tool ? "menu-item selectedTool" : "menu-item";
     });
   }
 
@@ -457,6 +463,12 @@ function Input(config, eventReceiver, playerInput, menuElement, renderer, focusC
   // --- Methods ---
   
   this.step = step;
+  
+  // invoked from UI
+  this.addBlock = function () {
+    playerInput.blockSet.add(WorldGen.newRandomBlockType(playerInput.blockSet.tileSize, playerInput.blockSet.get(1).world.blockSet));
+    eventReceiver.focus();
+  };
   
   // --- Late initialization ---
   

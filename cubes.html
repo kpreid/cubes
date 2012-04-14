@@ -54,7 +54,11 @@
   var id = document.getElementById.bind(document);
   main.start({
     viewCanvas: id("view-canvas"),
-    menu: id("menu"),
+    hud: {
+      menu: id("menu"),
+      blocksetAll: id("blockset-all"),
+      quickBar: id("quick-bar")
+    },
     sceneInfoOverlay: id("scene-info-overlay"),
     cursorInfoOverlay: id("cursor-info"),
     saveButton: id("save-button"),
@@ -76,7 +80,9 @@
   <div id="cursor-info" class="overlay"></div>
   <div id="menu-container">
     <div id="menu">
-      <!-- dynamic content -->
+      <div id="blockset-all" class="menu-full-block-list"></div>
+      <button class="menu-button" onclick="main.input.addBlock();">+</button>
+      <div id="quick-bar"></div>
     </div>
   </div>
 </div>

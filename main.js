@@ -465,7 +465,7 @@ var CubesMain = (function () {
         },
         "Finishing...",
         function () {
-          input = new Input(config, theCanvas, player.input, pageElements.menu, renderer, focusCell, main.save.bind(main));
+          input = main.input = new Input(config, theCanvas, player.input, pageElements.hud, renderer, focusCell, main.save.bind(main));
           theCanvas.focus();
         },
         "Ready!",
