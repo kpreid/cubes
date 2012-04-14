@@ -51,11 +51,16 @@ html {
   display: table;
   width: 100%;
 }
+.ui-mode-full #menu-container {
+  display: block;
+  height: 100%;
+}
 #menu {
   pointer-events: auto;
   margin: 2px auto;
   background: gray;
   background: rgba(0, 0, 0, 0.5);
+  color: white;
   border-radius: 5px;
   display: table;
   text-align: center;
@@ -65,12 +70,23 @@ html {
   position: relative;
   margin: 1px 1px;
 }
-.menu-shortcut-key {
+.ui-mode-full .menu-item {
+  display: table-row;
+}
+.ui-mode-full .menu-item > * {
+  display: table-cell;
+}
+.ui-mode-hidden .menu-shortcut-key, .ui-mode-menu .menu-shortcut-key {
   position: absolute;
   bottom: -1px;
   left: 1px;
-  color: white;
-  background: none;
+}
+.block-details {
+  display: none;
+}
+.ui-mode-full .block-details {
+  display: table-cell;
+  vertical-align: middle;
 }
 #menu .selectedTool {
   border-radius: 5px;
@@ -80,6 +96,25 @@ html {
 }
 #quick-bar .selectedTool {
   visibility: visible; /* show current tool even when menu is hidden */
+}
+.ui-mode-hidden #menu {
+  visibility: hidden;
+} 
+.ui-mode-menu #menu, .mode-full #menu {
+  visibility: visible;
+} 
+.ui-mode-full #menu {
+  display: block;
+  height: 100%;
+  width: 50%;
+  overflow: auto;
+}
+.ui-mode-full #quick-bar {
+  display: none;
+}
+.ui-mode-full .menu-full-block-list {
+  display: table;
+  width: 100%;
 }
 
 #error-notices {

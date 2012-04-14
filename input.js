@@ -5,7 +5,7 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
   "use strict";
 
   var keymap = {};
-  var mouselookMode = true;
+  var interfaceMode;
   var expectingPointerLock = false;
 
   var mousePos = null;
@@ -17,13 +17,6 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
 
   function evalVel(pos, neg) {
     return pos ? neg ? 0 : 1 : neg ? -1 : 0;
-  }
-  
-  function setMouselook(value) {
-    mouselookMode = value;
-    hud.menu.style.visibility = mouselookMode ? 'hidden' : 'visible';
-    updatePointerLock();
-    applyMousePosition();
   }
   
   function quick(n) {
@@ -57,6 +50,7 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
         // Blur is probably a good time to autosave
         save();
       }
+      interfaceMode.focus(value);
     }, 0);
     return true;
   });
@@ -110,13 +104,17 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
       case "9": quick(8); return false;
       case "0": quick(9); return false;
       case "Q": 
-        setMouselook(!mouselookMode);
+        switchMode(interfaceMode.mouselookKeyTransition);
         return false;
       case "R": playerInput.changeWorld(1);  return false;
       case "\x1B"/*Esc*/:
       case "F": playerInput.changeWorld(-1); return false;
       case "Z": playerInput.tweakSubdata(-1); return false;
       case "X": playerInput.tweakSubdata(1);  return false;
+      case "B": 
+        switchMode(fullMenuMode);
+        eventReceiver.blur();
+        return false;
       case " ": playerInput.jump(); return false;
     }
 
@@ -174,7 +172,7 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
     var directY = -Math.PI/2 * swingY;
     var directX = -Math.PI/2 * swingX;
 
-    if (mouselookMode) {
+    if (interfaceMode.mouselook) {
       playerInput.pitch = directY;
       playerInput.yaw += (directX - prevx);
       dx = -(config.mouseTurnRate.get()) * deadzone(swingX, 0.1);
@@ -242,7 +240,7 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
   };
 
   function updatePointerLock() {
-    if (mouselookMode) {
+    if (interfaceMode.mouselook) {
       eventReceiver.requestPointerLock/*shimmed*/();
       expectingPointerLock = GameShim.supports.pointerLock;
       updateMouseFromEvent(null);
@@ -286,6 +284,39 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
       playerInput.yaw += dx*timestep;
     }
   }
+  
+  // --- Interface modes ---
+  
+  function switchMode(newMode) {
+    interfaceMode = newMode;
+    var e = document.body;
+    e.className = e.className.replace(/\s*ui-mode-\w+/, "") + " ui-mode-" + interfaceMode.uiClass;
+    updatePointerLock();
+    applyMousePosition();
+  }
+  
+  var mouselookIMode = {
+    mouselook: true,
+    uiClass: "hidden",
+    focus: function () {}
+  };
+  
+  var menuMode = {
+    mouselook: false,
+    mouselookKeyTransition: mouselookIMode,
+    uiClass: "menu",
+    focus: function () {}
+  };
+  mouselookIMode.mouselookKeyTransition = menuMode;
+  
+  var fullMenuMode = {
+    mouselook: false,
+    mouselookKeyTransition: menuMode,
+    uiClass: "full",
+    focus: function (focused) { if (focused) switchMode(menuMode); }
+  };
+  
+  interfaceMode = mouselookIMode;
   
   // --- Block menu ---
   
@@ -353,7 +384,7 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
       return false; // inhibit selection
     };
     icon.oncontextmenu = function () {
-      playerInput.enterWorld(i);
+      playerInput.enterWorld(blockID);
       return false;
     };
     icon.onmouseout = function () {
@@ -382,14 +413,37 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
     clearChildren(hud.blocksetAll);
   
     forAllMenuBlocks(function (blockID) {
+      var blockType = blockSetInMenu.get(blockID);
+      
       // element structure and style
       var item = menuItemsByBlockId[blockID] = document.createElement("span");
       item.className = "menu-item";
       var canvas = canvasesByBlockId[blockID] = document.createElement("canvas");
       canvas.width = canvas.height = 64; // TODO magic number
-      canvas.style.width = canvas.style.height = size + "px";
+      canvas.style.width = canvas.style.height = size + "px"; // TODO don't do this in full menu mode
       
-      item.appendChild(canvas);
+      var icon = document.createElement("span");
+      icon.appendChild(canvas);
+      item.appendChild(icon);
+      
+      var name = document.createElement("input");
+      name.className = "block-details";
+      name.type = "text";
+      name.value = blockType.name;
+      item.appendChild(name);
+      
+      var behavior = document.createElement("input");
+      behavior.className = "block-details";
+      behavior.type = "text";
+      behavior.readOnly = true;
+      behavior.value = (blockType.behavior || {name:""}).name;
+      item.appendChild(behavior);
+      
+      var solid = document.createElement("input");
+      solid.className = "block-details";
+      solid.type = "checkbox";
+      solid.checked = blockType.solid;
+      item.appendChild(solid);
       
       // render block
       var cctx = canvas.getContext('2d');
@@ -472,5 +526,5 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
   
   // --- Late initialization ---
   
-  setMouselook(mouselookMode);
+  switchMode(interfaceMode);
 }
