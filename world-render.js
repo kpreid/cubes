@@ -488,12 +488,12 @@ var WorldRenderer = (function () {
             var fx = vFacing[0];
             var fy = vFacing[1];
             var fz = vFacing[2];
-            var faceVertices = data.vertices;
-            var faceTexcoords = data.texcoords;
             if (thisOpaque && types[g(x+fx,y+fy,z+fz)].opaque) {
               // this face is invisible
               return;
             } else {
+              var faceVertices = data.vertices;
+              var faceTexcoords = data.texcoords;
               var vl = faceVertices.length / 3;
               for (var i = 0; i < vl; i++) {
                 var vi = i*3;
