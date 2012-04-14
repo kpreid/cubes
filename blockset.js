@@ -594,6 +594,7 @@ var BlockSet = (function () {
     
     var texgen = null;
     var rotatedBlockFaceData = [EMPTY_BLOCKRENDER];
+    var allTypesCached;
     
     function rebuildOne(blockID) {
       //if (typeof console !== "undefined") console.info("Rendering block type", blockID);
@@ -757,7 +758,7 @@ var BlockSet = (function () {
     }
     
     function freshenTexture() {
-      var upload = false;
+      var someChanged = false;
       var allChanged = false;
       var l = blockSet.length;
       if (!texgen || texgen.mustRebuild()) {
@@ -768,24 +769,26 @@ var BlockSet = (function () {
         texgen.textureLost = false;
         for (var id = BlockSet.ID_EMPTY + 1; id < l && !texgen.textureLost; id++)
           rebuildOne(id);
-        upload = true;
+        someChanged = true;
         allChanged = true;
         toRerender = appearanceChangedQueue.getHead(); // we're caught up by definition
       }
       for (; toRerender.available; toRerender = toRerender.next) {
         rebuildOne(toRerender.value);
-        upload = true;
+        someChanged = true;
       }
       if (allChanged) {
         // If textureLost, which might occur because it was resized, then we need to notify of *everything* changing
         for (var id = BlockSet.ID_EMPTY + 1; id < l; id++)
           notifier.notify("texturingChanged", id);
       }
-      if (upload) {
+      if (someChanged) {
         var gl = texgen.context;
         gl.bindTexture(gl.TEXTURE_2D, texgen.texture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texgen.image);
         gl.bindTexture(gl.TEXTURE_2D, null);
+        
+        allTypesCached = blockSet.getAll();
       }
     }
     return function () {
@@ -793,7 +796,8 @@ var BlockSet = (function () {
       rotatedBlockFaceData.bogus = rotatedBlockFaceData[BlockSet.ID_BOGUS] || EMPTY_BLOCKRENDER;
       return {
         texture: texgen.texture,
-        rotatedBlockFaceData: rotatedBlockFaceData
+        rotatedBlockFaceData: rotatedBlockFaceData,
+        types: allTypesCached
       };
     }
   }

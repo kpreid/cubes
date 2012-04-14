@@ -477,7 +477,7 @@ var WorldRenderer = (function () {
           renderData = blockSet.getRenderData(renderer);
           var rotatedBlockFaceData = renderData.rotatedBlockFaceData;
           var BOGUS_BLOCK_DATA = rotatedBlockFaceData.bogus;
-          var types = blockSet.getAll();
+          var types = renderData.types;
           var g = world.g;
 
           // these variables are used by face() and written by the loop
