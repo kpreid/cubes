@@ -18,27 +18,37 @@ var CubesAudio = (function () {
     // --- Utilities ---
   
     var bsSampleRate = 22050;
+    
+    // Parameters to subSynth defining each sound.
+    var synthParameters = {
+      create: [0.5, 0.1, 0, false],
+      destroy: [1, 0.22, 0.2, true]
+    };
   
     // argument is time in wavelengths
     function square(t) {
       return Math.floor(t % 1 * 2);
     }
-  
-    function synthBlock(blockWorld) {
-      //console.log("synthBlock");
-      // Find volumes of material in the block
-      var types = blockWorld.blockSet.getAll();
-
-      var counts = [];
-      for (var i = 0; i < BlockSet.ID_LIMIT; i++) counts.push(0);
     
-      var raw = blockWorld.raw;
-      for (var i = raw.length - 1; i >= 0; i--) {
-        counts[raw[i]]++;
+    function SynthData(type) {
+      var blockWorld = type.world;
+      
+      // cache
+      var types, counts, buffers;
+      
+      function readBlock() {
+        // Find volumes of material in the block
+        counts = [];
+        for (var i = 0; i < BlockSet.ID_LIMIT; i++) counts.push(0);
+        var raw = blockWorld.raw;
+        for (var i = raw.length - 1; i >= 0; i--) {
+          counts[raw[i]]++;
+        }
+        
+        types = blockWorld.blockSet.getAll();
+        buffers = {};
       }
-    
-      //console.log("synthBlock spans done");
-
+      
       function subSynth(duration, variation, echo, noise) {
         var bsSamples = Math.round(duration * bsSampleRate);
       
@@ -100,24 +110,30 @@ var CubesAudio = (function () {
       
         return b;
       }
-    
-      var r = {
-        create: subSynth(0.5, 0.1, 0, false),
-        destroy: subSynth(1, 0.22, 0.2, true)
+      
+      this.get = function (name) { // NOT safe for arbitrary input
+        if (buffers.hasOwnProperty(name)) {
+          return buffers[name];
+        } else {
+          return buffers[name] = subSynth.apply(undefined, synthParameters[name]);
+        }
       };
-      return r;
+      
+      // --- Initialization ---
+      
+      readBlock();
+      type.listen({
+        appearanceChanged: function () {
+          readBlock();
+          return true;
+        }
+      });
     }
-  
+    
     function getSynthData(blockType) {
       var synthData = blockSoundTable[blockType._serial /* TODO kludge */];
       if (!synthData) {
-        synthData = blockSoundTable[blockType._serial] = synthBlock(blockType.world);
-        blockType.listen({
-          appearanceChanged: function () {
-            blockSoundTable[blockType._serial] = synthBlock(blockType.world);
-            return true;
-          }
-        });
+        synthData = blockSoundTable[blockType._serial] = new SynthData(blockType);
       }
       return synthData;
     }
@@ -138,7 +154,7 @@ var CubesAudio = (function () {
         if (!config.sound.get()) return;
         if (!blockType.world) return;
       
-        var buffer = getSynthData(blockType)[kind];
+        var buffer = getSynthData(blockType).get(kind);
       
         if (!buffer) return;
       
