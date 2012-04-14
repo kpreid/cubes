@@ -99,7 +99,7 @@ var Player = (function () {
       }
       renderAABB(currentPlace.body.pos, playerAABB, 0,0,1);
       currentPlace.body.debugHitAABBs.forEach(function (aabb) {
-        renderAABB([0,0,0], aabb, 0,1,0);
+        renderAABB(ZEROVEC, aabb, 0,1,0);
       })
     }, {aroundDraw: function (draw) {
       if (!config.debugPlayerCollision.get()) return;

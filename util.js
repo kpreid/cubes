@@ -54,6 +54,7 @@ function fixedmultiplyVec3(matrix, vector) {
   return vector;
 }
 
+var ZEROVEC = vec3.create([0,0,0]);
 var UNIT_PX = vec3.create([1,0,0]);
 var UNIT_PY = vec3.create([0,1,0]);
 var UNIT_PZ = vec3.create([0,0,1]);

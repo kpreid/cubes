@@ -11,10 +11,10 @@ var WorldRenderer = (function () {
   var CHUNKSIZE = 20;
 
   // 3D Euclidean distance, squared (for efficiency).
-  function dist3sq(v) {
-    var x = v[0];
-    var y = v[1];
-    var z = v[2];
+  function dist3sq(v1, v2) {
+    var x = v1[0] - v2[0];
+    var y = v1[1] - v2[1];
+    var z = v1[2] - v2[2];
     return x*x + y*y + z*z;
   }
 
@@ -41,12 +41,12 @@ var WorldRenderer = (function () {
       for (var y = -chunkDistance-1; y <= chunkDistance; y++)
       for (var z = -chunkDistance-1; z <= chunkDistance; z++) {
         var v = [x*CHUNKSIZE,y*CHUNKSIZE,z*CHUNKSIZE];
-        if (dist3sq(v) <= boundSquared) {
+        if (dist3sq(v, ZEROVEC) <= boundSquared) {
           nearChunkOrder.push(v);
         }
       }
       nearChunkOrder.sort(function (a,b) {
-        return dist3sq(a) - dist3sq(b);
+        return dist3sq(a, ZEROVEC) - dist3sq(b, ZEROVEC);
       });
       distanceInfoCache.nearChunkOrder = Object.freeze(nearChunkOrder);
     }
@@ -60,10 +60,8 @@ var WorldRenderer = (function () {
     // Table of all world rendering chunks which have RenderBundles created, indexed by [x,y,z] of the low-side coordinates (i.e. divisible by CHUNKSIZE).
     var chunks = new IntVectorMap();
 
-    var compareByPlayerDistance_vectmp = vec3.create();
     function compareByPlayerDistance(a,b) {
-      return dist3sq(vec3.subtract(a, playerChunk, compareByPlayerDistance_vectmp)) 
-           - dist3sq(vec3.subtract(b, playerChunk, compareByPlayerDistance_vectmp));
+      return dist3sq(a, playerChunk) - dist3sq(b, playerChunk);
     }
 
     // Queue of chunks to rerender. Array (first-to-do at the end); each element is [x,z] where x and z are the low coordinates of the chunk.
@@ -307,7 +305,7 @@ var WorldRenderer = (function () {
       // Note: This enumerates every circuit in the world. Currently, this is more efficient than the alternatives because there are not many circuits in typical data. When that changes, we should revisit this and use some type of spatial index to make it efficient. Testing per-block is *not* efficient.
       var rdi = renderDistanceInfo(config.renderDistance.get());
       world.getCircuits().forEach(function (circuit, origin) {
-        if (dist3sq([origin[0]-playerChunk[0],origin[1]-playerChunk[1],origin[2]-playerChunk[1]]) < rdi.addChunkDistanceSquared) {
+        if (dist3sq(origin, playerChunk) < rdi.addChunkDistanceSquared) {
           if (!circuitRenderers.get(origin)) {
             circuitRenderers.set(origin, makeCircuitRenderer(circuit));
           }
@@ -340,7 +338,7 @@ var WorldRenderer = (function () {
         // Drop now-invisible chunks. Has a higher boundary so that we're not constantly reloading chunks if the player is moving back and forth.
         var dds = rdi.dropChunkDistanceSquared;
         chunks.forEach(function (chunk, chunkKey) {
-          if (dist3sq([chunkKey[0]-playerChunk[0],chunkKey[1]-playerChunk[1],chunkKey[2]-playerChunk[2]]) > dds) {
+          if (dist3sq(chunkKey, playerChunk) > dds) {
             chunk.deleteResources();
             chunks.delete(chunkKey);
           }
@@ -351,7 +349,7 @@ var WorldRenderer = (function () {
         // Drop now-invisible circuits
         // TODO: This works off the origin, but circuits can be arbitrarily large so we should test against their AABB
         circuitRenderers.forEach(function (cr, cube) {
-          if (dist3sq([cube[0]-playerChunk[0],cube[1]-playerChunk[1],cube[2]-playerChunk[2]]) > dds) {
+          if (dist3sq(cube, playerChunk) > dds) {
             cr.deleteResources();
             circuitRenderers.delete(cube);
           }
