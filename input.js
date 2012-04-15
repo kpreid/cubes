@@ -311,7 +311,7 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
   
   var fullMenuMode = {
     mouselook: false,
-    mouselookKeyTransition: menuMode,
+    mouselookKeyTransition: mouselookIMode,
     uiClass: "full",
     focus: function (focused) { if (focused) switchMode(menuMode); }
   };
@@ -530,6 +530,11 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
   // invoked from UI
   this.addBlock = function () {
     playerInput.blockSet.add(WorldGen.newRandomBlockType(playerInput.blockSet.tileSize, playerInput.blockSet.get(1).world.blockSet));
+  };
+  
+  // invoked from UI
+  this.editBlockset = function () {
+    switchMode(fullMenuMode);
   };
   
   // --- Late initialization ---

@@ -145,6 +145,24 @@ html {
 .ui-mode-full #quick-bar {
   display: none;
 }
+.menu-expand-button {
+  display: block;
+  margin: -0.75em 5% 0 80%;
+  width: 15%;
+  border: none;
+  border-radius: 1em;
+  padding: 0.25em 0;
+  text-align: center;
+  background: black;
+  color: white;
+}
+.menu-expand-button:before, .menu-expand-button:after {
+  content: " ︽ ";
+  font-weight: bold;
+}
+.ui-mode-full .menu-expand-button {
+  display: none;
+}
 
 /* column sizes :| */
 .ui-mode-full .menu-full-block-list > * > tr > *:first-child { width: 30px; }
