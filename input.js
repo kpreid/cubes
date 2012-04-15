@@ -530,7 +530,6 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
   // invoked from UI
   this.addBlock = function () {
     playerInput.blockSet.add(WorldGen.newRandomBlockType(playerInput.blockSet.tileSize, playerInput.blockSet.get(1).world.blockSet));
-    eventReceiver.focus();
   };
   
   // --- Late initialization ---

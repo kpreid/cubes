@@ -43,6 +43,8 @@ html {
   font-weight: bold;
 }
 
+/* --- block menu --- */
+
 #menu-container { /* exists to support centering */
   position: absolute;
   pointer-events: none;
@@ -114,10 +116,11 @@ html {
   height: 100%;
   overflow: auto;
 }
-.menu-full-block-list thead {
+.menu-full-block-list thead, .menu-full-block-list tfoot {
   display: table;
+  width: 100%;
 }
-.ui-mode-menu .menu-full-block-list > thead {
+.ui-mode-menu .menu-full-block-list > thead, .ui-mode-menu .menu-full-block-list > tfoot {
   display: none;
 }
 .menu-full-block-list th {
@@ -147,6 +150,8 @@ html {
   margin: 1px;
   padding: 2px;
 }
+
+/* ---  --- */
 
 #error-notices {
   position: absolute;
