@@ -434,11 +434,17 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
       var iconCell = cell();
       iconCell.className = ""; // always shown
       iconCell.appendChild(canvas);
-
+      
+      // TODO: This code duplicates functionality of PersistentCell.bindControl — refactor so we can use that code here.
+      
       var name = document.createElement("input");
       name.className = "block-details";
       name.type = "text";
       name.value = blockType.name;
+      name.onchange = function () {
+        blockType.name = name.value;
+        return true;
+      };
       cell().appendChild(name);
             
       var behavior = document.createElement("select");
@@ -453,15 +459,24 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
       Object.keys(Circuit.behaviors).forEach(function (name) {
         var o = document.createElement("option");
         o.textContent = name;
+        o.value = name;
         o.selected = name === currentBehavior;
         behavior.appendChild(o);
       })
+      behavior.onchange = function () {
+        blockType.behavior = Circuit.behaviors[behavior.value];
+        return true;
+      };
       cell().appendChild(behavior);
       
       var solid = document.createElement("input");
       solid.className = "block-details";
       solid.type = "checkbox";
       solid.checked = blockType.solid;
+      solid.onchange = function () {
+        blockType.solid = solid.checked;
+        return true;
+      };
       cell().appendChild(solid);
       
       // render block
