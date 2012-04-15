@@ -60,7 +60,7 @@ html {
 #menu {
   pointer-events: auto;
   margin: 2px auto;
-  background: gray;
+  background: #333;
   background: rgba(0, 0, 0, 0.5);
   color: white;
   border-radius: 5px;
@@ -71,6 +71,13 @@ html {
   display: inline-block;
   position: relative;
   margin: 1px 1px;
+}
+.menu-item td {
+  margin: 0;
+  padding: 0;
+}
+.menu-item canvas {
+  vertical-align: middle; /* remove baseline gap */
 }
 .ui-mode-full .menu-item {
   display: table-row;
@@ -90,7 +97,7 @@ html {
   display: table-cell;
   vertical-align: middle;
 }
-#menu .selectedTool {
+.ui-mode-hidden #menu .selectedTool, .ui-mode-menu #menu .selectedTool {
   border-radius: 5px;
   margin: -1px -1px; /* outlines don't have radius */
   border: 2px solid white;
@@ -106,6 +113,8 @@ html {
   visibility: visible;
 } 
 .ui-mode-full #menu {
+  border: 2px solid gray;
+  background: #333;
   display: table;
   height: 80%;
   margin-top: 3em;
@@ -116,8 +125,14 @@ html {
   height: 100%;
   overflow: auto;
 }
-.menu-full-block-list thead, .menu-full-block-list tfoot {
+.ui-mode-full .menu-full-block-list > * /* thead, tfoot, tbody */ {
   display: table;
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin: 0;
+  padding: 0;
+}
+.menu-full-block-list > thead, .menu-full-block-list > tfoot {
   width: 100%;
 }
 .ui-mode-menu .menu-full-block-list > thead, .ui-mode-menu .menu-full-block-list > tfoot {
@@ -126,9 +141,6 @@ html {
 .menu-full-block-list th {
   font: inherit;
   font-weight: bold;
-}
-.ui-mode-full .menu-full-block-list > tbody {
-  display: table;
 }
 .ui-mode-full #quick-bar {
   display: none;
