@@ -66,6 +66,7 @@ html {
   border-radius: 5px;
   display: table;
   text-align: center;
+  font-family: monospace;
 }
 .menu-item {
   display: inline-block;
@@ -113,8 +114,9 @@ html {
   visibility: visible;
 } 
 .ui-mode-full #menu {
-  border: 2px solid gray;
-  background: #333;
+  border: 2px solid black;
+  background: gray;
+  color: black;
   display: table;
   height: 80%;
   margin-top: 3em;
@@ -173,13 +175,14 @@ html {
 
 #menu input[type="text"] {
   width: 190px;
-  border: 1px solid black;
+  border: 1px solid #BBB;
   background: none;
   color: inherit;
   font: inherit;
   margin: 1px;
   padding: 2px;
 }
+
 
 /* ---  --- */
 
