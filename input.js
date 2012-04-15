@@ -311,9 +311,9 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
   
   var fullMenuMode = {
     mouselook: false,
-    mouselookKeyTransition: mouselookIMode,
+    mouselookKeyTransition: menuMode,
     uiClass: "full",
-    focus: function (focused) { if (focused) switchMode(menuMode); }
+    focus: function (focused) { if (focused) switchMode(mouselookIMode); }
   };
   
   interfaceMode = mouselookIMode;
