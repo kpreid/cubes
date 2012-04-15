@@ -416,34 +416,43 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
       var blockType = blockSetInMenu.get(blockID);
       
       // element structure and style
-      var item = menuItemsByBlockId[blockID] = document.createElement("span");
+      var item = menuItemsByBlockId[blockID] = document.createElement("tr");
       item.className = "menu-item";
       var canvas = canvasesByBlockId[blockID] = document.createElement("canvas");
       canvas.width = canvas.height = 64; // TODO magic number
       canvas.style.width = canvas.style.height = size + "px"; // TODO don't do this in full menu mode
       
-      var icon = document.createElement("span");
-      icon.appendChild(canvas);
-      item.appendChild(icon);
+      function cell() {
+        var cell = document.createElement("td");
+        cell.className = "block-details";
+        item.appendChild(cell);
+        return cell;
+      }
       
+      cell().appendChild(document.createTextNode(blockID.toString()));
+            
+      var iconCell = cell();
+      iconCell.className = ""; // always shown
+      iconCell.appendChild(canvas);
+
       var name = document.createElement("input");
       name.className = "block-details";
       name.type = "text";
       name.value = blockType.name;
-      item.appendChild(name);
-      
-      var behavior = document.createElement("input");
+      cell().appendChild(name);
+            
+      var behavior = document.createElement("select");
       behavior.className = "block-details";
       behavior.type = "text";
       behavior.readOnly = true;
       behavior.value = (blockType.behavior || {name:""}).name;
-      item.appendChild(behavior);
+      cell().appendChild(behavior);
       
       var solid = document.createElement("input");
       solid.className = "block-details";
       solid.type = "checkbox";
       solid.checked = blockType.solid;
-      item.appendChild(solid);
+      cell().appendChild(solid);
       
       // render block
       var cctx = canvas.getContext('2d');

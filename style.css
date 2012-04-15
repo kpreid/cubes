@@ -104,17 +104,48 @@ html {
   visibility: visible;
 } 
 .ui-mode-full #menu {
+  display: table;
+  height: 80%;
+  margin-top: 3em;
+  padding: 2px;
+}
+.ui-mode-full .menu-full-block-list {
   display: block;
   height: 100%;
-  width: 50%;
   overflow: auto;
+}
+.menu-full-block-list thead {
+  display: table;
+}
+.ui-mode-menu .menu-full-block-list > thead {
+  display: none;
+}
+.menu-full-block-list th {
+  font: inherit;
+  font-weight: bold;
+}
+.ui-mode-full .menu-full-block-list > tbody {
+  display: table;
 }
 .ui-mode-full #quick-bar {
   display: none;
 }
-.ui-mode-full .menu-full-block-list {
-  display: table;
-  width: 100%;
+
+/* column sizes :| */
+.ui-mode-full .menu-full-block-list > * > tr > *:first-child { width: 30px; }
+.ui-mode-full .menu-full-block-list > * > tr > *:first-child + * { width: 70px; }
+.ui-mode-full .menu-full-block-list > * > tr > *:first-child + * + * { width: 200px; }
+.ui-mode-full .menu-full-block-list > * > tr > *:first-child + * + * + * { width: 100px; }
+.ui-mode-full .menu-full-block-list > * > tr > *:first-child + * + * + * + * { width: 50px; }
+
+#menu input[type="text"] {
+  width: 190px;
+  border: 1px solid black;
+  background: none;
+  color: inherit;
+  font: inherit;
+  margin: 1px;
+  padding: 2px;
 }
 
 #error-notices {

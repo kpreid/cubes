@@ -80,7 +80,12 @@
   <div id="cursor-info" class="overlay"></div>
   <div id="menu-container">
     <div id="menu">
-      <div id="blockset-all" class="menu-full-block-list"></div>
+      <table class="menu-full-block-list">
+        <thead><tr>
+          <th>ID<th><th>Codename<th>Circuit<th>Solid
+        </tr></thead>
+        <tbody id="blockset-all"></tbody>
+      </table>
       <button class="menu-button" onclick="main.input.addBlock();">+</button>
       <div id="quick-bar"></div>
     </div>
