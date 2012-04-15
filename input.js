@@ -445,7 +445,17 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
       behavior.className = "block-details";
       behavior.type = "text";
       behavior.readOnly = true;
-      behavior.value = (blockType.behavior || {name:""}).name;
+      var currentBehavior = (blockType.behavior || {name:""}).name;
+      var o = document.createElement("option");
+      o.textContent = "—";
+      o.selected = name === currentBehavior;
+      behavior.appendChild(o);
+      Object.keys(Circuit.behaviors).forEach(function (name) {
+        var o = document.createElement("option");
+        o.textContent = name;
+        o.selected = name === currentBehavior;
+        behavior.appendChild(o);
+      })
       cell().appendChild(behavior);
       
       var solid = document.createElement("input");
