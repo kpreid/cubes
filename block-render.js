@@ -46,6 +46,7 @@ function BlockRenderer(blockSet, renderer, resolution) {
     var restoreView = renderer.saveView();
     renderer.setViewToBlock();
     singleBlockWorld.s(0,0,0,blockID);
+    singleBlockWorld.rawLighting[0] = singleBlockWorld.lightOutside;
     singleBlockR.updateSomeChunks();
     singleBlockR.draw();
     
