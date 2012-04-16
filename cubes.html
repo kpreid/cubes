@@ -80,8 +80,16 @@
   <div id="cursor-info" class="overlay"></div>
   <div id="menu-container">
     <div id="menu">
-      <div id="blockset-all" class="menu-full-block-list"></div>
-      <button class="menu-button" onclick="main.input.addBlock();">+</button>
+      <button class="menu-button menu-expand-button" onclick="main.input.editBlockset();">Edit blockset</button>
+      <table class="menu-full-block-list">
+        <thead><tr>
+          <th>ID<th><th>Codename<th>Circuit<th>Solid
+        </tr></thead>
+        <tbody id="blockset-all"></tbody>
+        <tfoot class="menu-full-only"><tr colspan="5"><td>
+            <button class="menu-button" onclick="main.input.addBlock();">New block type</button>
+        </td></tr></tfoot>
+      </table>
       <div id="quick-bar"></div>
     </div>
   </div>
@@ -267,13 +275,16 @@
     <tr><th colspan=2>Blocks
     <tr><td>Left button<td> remove block
     <tr><td>Right button<td> place block
-    <tr><td><kbd>Q</kbd><td> toggle block menu
+    <tr><td><kbd>Q</kbd><td> toggle between block menu and mouselook
     <tr><td><kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd><td>choose from menu
     <tr><td><kbd>R</kbd><td> edit targeted block
     <tr><td><kbd>Z</kbd>, <kbd>X</kbd><td> twiddle targeted block (rotation, etc.)
     <tr><td>Right button in menu<td> edit clicked block
-    <tr><td><kbd>Esc</kbd>, <kbd>F</kbd><td> exit editing
+    <tr><td><kbd>Esc</kbd>, <kbd>F</kbd><td> exit block editing
+    <tr><td><kbd>B</kbd><td> edit blockset, block properties
   </table>
+  
+  <p>Click “Edit blockset” in the block menu or press <kbd>B</kbd> to bring up a menu for editing the blockset.</p>
   
   <p>While you can edit any block to any shape, note that making the first block type (which makes up the underground volume in the default world) a non-cubical shape will likely be fatal to your frame rate.</p>
   
@@ -282,6 +293,8 @@
   <p>Player movement does not work on Safari 5.1.</p>
   
   <p>On an older MacBook Pro with 10.7 “Lion”, the terrain may be entirely white and the game may crash (exiting the browser in Firefox, a permanently gray screen in Chrome).</p>
+  
+  <p>Editing block properties does not cause the blockset to be saved to permanent storage. Editing the circuit behaviors can cause the game to enter inconsistent states.</p>
 </div>
 
 </body></html>
