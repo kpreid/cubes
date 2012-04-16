@@ -449,8 +449,6 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
             
       var behavior = document.createElement("select");
       behavior.className = "block-details";
-      behavior.type = "text";
-      behavior.readOnly = true;
       var currentBehavior = (blockType.behavior || {name:""}).name;
       var o = document.createElement("option");
       o.textContent = "—";
