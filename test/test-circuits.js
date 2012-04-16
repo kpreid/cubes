@@ -39,7 +39,7 @@ describe("Circuit", function() {
       dumpWorld: function (name) {
         var pool = new PersistencePool(localStorage, "cubes.object.");
         if (pool.has(name)) pool.get(name).persistence.ephemeralize();
-        self.world.persistence.persist(pool, name);
+        pool.persist(self.world, name);
         pool.flushNow();
       },
 

@@ -104,7 +104,7 @@ var CubesMain = (function () {
       
       var obj = maker();
       if (persistencePool.available && !config.alwaysGenerateWorld.get() && !persistencePool.has(defaultName)) {
-        obj.persistence.persist(persistencePool, defaultName);
+        persistencePool.persist(obj, defaultName);
       }
       return obj;
     }
@@ -488,7 +488,7 @@ var CubesMain = (function () {
     
     this.regenerate = function () {
       var world = generateWorlds(config, persistencePool.get(config.generate_blockset.get()));
-      world.persistence.persist(persistencePool, config.generate_name.get());
+      persistencePool.persist(world, config.generate_name.get());
       this.setTopWorld(world);
     };
     var genOKCell = new Cell("main.regenerateOK", false);

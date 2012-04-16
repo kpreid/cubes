@@ -10,8 +10,8 @@ describe("Persister", function () {
     
     var inner = new BlockSet([]);
     var outer = new World([1,1,1], inner);
-    inner.persistence.persist(pool1, "inner");
-    outer.persistence.persist(pool1, "outer");
+    pool1.persist(inner, "inner");
+    pool1.persist(outer, "outer");
     // TODO also test correct linking if an inner object is persisted after the outer is written. This doesn't matter yet, but it will.
     
     pool1.flushNow();

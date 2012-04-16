@@ -23,7 +23,7 @@ describe("BlockSet", function () {
     
     // creating a blockset
     var blockset = new BlockSet([]);
-    blockset.persistence.persist(pool, "obj");
+    pool.persist(blockset, "obj");
     expect(pool.status.get()).toEqual(1);
     pool.flushNow();
     expect(pool.status.get()).toEqual(0);

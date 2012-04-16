@@ -220,6 +220,11 @@ function PersistencePool(storage, objectPrefix) {
     }
   }
   
+  function register(object, name) {
+    object.persistence._registerName(pool, name);
+    currentlyLiveObjects[name] = object;
+  }
+  
   this.flushAsync = function () {
     function loop() {
       var name = dirtyQueue.dequeue();
@@ -257,7 +262,7 @@ function PersistencePool(storage, objectPrefix) {
           throw new Error("Serialized object contained reference to missing object: " + name);
         }
       });
-      pool._persist(object, name);
+      register(object, name);
       return object;
     }
   };
@@ -278,7 +283,10 @@ function PersistencePool(storage, objectPrefix) {
       }
     }
   };
-  this._persist = function (object, name) { // TODO internal
+  this.persist = function (object, name) {
+    if (pool.has(name)) {
+      throw new Error("The name " + newName + " is already in use.");
+    }
     if (!pool.available) {
       throw new Error("localStorage not supported by this browser; persistence not available");
     }
@@ -288,13 +296,12 @@ function PersistencePool(storage, objectPrefix) {
     if (object.persistence.getName() !== null) {
       throw new Error("This object already has the name " + name);
     }
-    // TODO should take the persister, not the object
-    object.persistence._registerName(pool, name);
-    currentlyLiveObjects[name] = object;
+    register(object, name);
+    // TODO should take the persister, not the object, so we aren't assuming .persistence is correct
     object.persistence.dirty();
     object.persistence.commit(); // TODO all we really need to do here is ensure that it appears in the forEach list; this is just a kludge for that.
     notifier.notify("added", name);
-    console.log("Persister: persisted", name, ":", object);
+    console.log("Persister: persisted", name);
   };
   this._write = function (name, data) { // TODO internal
     storage.setItem(objectPrefix + name, data);
@@ -339,12 +346,6 @@ function Persister(object) {
     name = newName;
   };
   this.getName = function () { return name; };
-  this.persist = function (newPool, newName) {
-    if (newPool.has(newName)) {
-      throw new Error("The name " + newName + " is already in use.");
-    }
-    newPool._persist(object, newName);
-  };
   this.ephemeralize = function () {
     if (name) {
       pool._ephemeralize(name);
