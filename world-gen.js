@@ -255,13 +255,31 @@ var WorldGen = (function () {
           return (f.e(b) && (b[0]+b[1]+b[2])%2) ? boxColor : insidePat(b);
         };
       }
-      function genedit(pattern) {
-        var type = WorldGen.newProceduralBlockType(TS, baseSet, boxed(pattern));
+      
+      function addOrUpdate(name, behavior, pattern) {
+        pattern = boxed(pattern);
+        var existingID = targetSet.lookup(name);
+        var type;
+        if (existingID !== null) {
+          type = targetSet.get(existingID);
+          if (!type.world) {
+            // TODO provide a warnings channel so this sort of thing can propagate up to user level sanely
+            if (typeof console !== "undefined")
+              console.warn("cannot update " + name + " from being a color block");
+          }
+        } else {
+          type = WorldGen.newWorldBlockType(TS, baseSet);
+          targetSet.add(type);
+          type.name = name;
+        }
+        type.world.edit(function (x,y,z,value) { // TODO duplicative of newProceduralBlockType
+          return pattern([x,y,z]);
+        });
         type.solid = false;
-        targetSet.add(type);
+        type.behavior = behavior;
         return type;
       }
-
+      
       // Add a rotate-based-on-subdata circuit
       function selfRotating(y) {
         if (baseSetRotation !== null) {
@@ -271,110 +289,126 @@ var WorldGen = (function () {
       }
       
       // wire
-      type = genedit(f.flat(0));
-      type.behavior = Circuit.behaviors.wire;
-      type.name = "logic.wire";
+      type = addOrUpdate(
+          "logic.wire",
+          Circuit.behaviors.wire,
+          f.flat(0));
 
       // junction block
-      type = genedit(f.sphere(TS/2,TS/2,TS/2, TS*3/16, functionShapePat));
-      type.behavior = Circuit.behaviors.junction;
-      type.name = "logic.junction";
+      type = addOrUpdate(
+          "logic.junction",
+          Circuit.behaviors.junction,
+          f.sphere(TS/2,TS/2,TS/2, TS*3/16, functionShapePat));
 
       // step pad block
       var specklePat = f.cond(f.speckle,
                               functionShapePat,
                               f.flat(colorToID(0.75,0.75,0.75)));
-      type = genedit(f.sphere(TS/2,TS-0.5,TS/2,TS/2,specklePat));
-      type.behavior = Circuit.behaviors.pad;
-      type.name = "logic.pad";
+      type = addOrUpdate(
+          "logic.pad",
+          Circuit.behaviors.pad,
+          f.sphere(TS/2,TS-0.5,TS/2,TS/2,specklePat));
       type.solid = true; // override circuit-block default
 
       // indicator block
-      type = genedit(function (b) {
-        return f.rad([b[0],b[1],b[2]]) > TS*6/16 ? 0 :
-               b[1] < TS/2 ? colorToID(1,1,1) : colorToID(0,0,0);
-      });
+      type = addOrUpdate(
+          "logic.indicator",
+          Circuit.behaviors.indicator,
+          function (b) {
+            return f.rad([b[0],b[1],b[2]]) > TS*6/16 ? 0 :
+                   b[1] < TS/2 ? colorToID(1,1,1) : colorToID(0,0,0);
+          });
       selfRotating(TS/2-1);
-      type.behavior = Circuit.behaviors.indicator;
-      type.name = "logic.indicator";
 
       // nor block
-      type = genedit(f.union(f.sphere(TS/2-TS*.2,TS/2,TS/2, TS*3/16, functionShapePat),
-                             f.sphere(TS/2+TS*.2,TS/2,TS/2, TS*3/16, functionShapePat)));
-      type.behavior = Circuit.behaviors.nor;
+      type = addOrUpdate(
+          "logic.nor",
+          Circuit.behaviors.nor,
+          f.union(f.sphere(TS/2-TS*.2,TS/2,TS/2, TS*3/16, functionShapePat),
+                  f.sphere(TS/2+TS*.2,TS/2,TS/2, TS*3/16, functionShapePat)));
       selfRotating(TL-1);
-      type.name = "logic.nor";
 
       // gate block
-      type = genedit(f.subtract(f.plane(0, TS/2-1, TS/2+1,
-                                        f.sphere(TS*0.3,TS/2,TS/2, TS*0.5, functionShapePat)),
-                                f.sphere(TS*0.3,TS/2,TS/2, TS*0.3, functionShapePat)));
-      type.behavior = Circuit.behaviors.gate;
+      type = addOrUpdate(
+          "logic.gate",
+          Circuit.behaviors.gate,
+          f.subtract(f.plane(0, TS/2-1, TS/2+1,
+                             f.sphere(TS*0.3,TS/2,TS/2, TS*0.5, functionShapePat)),
+                     f.sphere(TS*0.3,TS/2,TS/2, TS*0.3, functionShapePat)));
       selfRotating(TS/2);
-      type.name = "logic.gate";
 
       // get-subdata block
-      type = genedit(function (b) {
-        return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 2 ? functionShapeColor : 0;
-      });
-      type.behavior = Circuit.behaviors.getSubDatum;
-      type.name = "logic.getSubDatum";
+      type = addOrUpdate(
+          "logic.getSubDatum",
+          Circuit.behaviors.getSubDatum,
+          function (b) {
+            return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 2 ? functionShapeColor : 0;
+          });
 
       // getNeighborID
-      type = genedit(f.union(function (b) {
-        return Math.abs(Math.sqrt(Math.pow(b[1]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - (TS-b[0])) <= 2 ? functionShapeColor : 0;
-      }, f.cube(0,TS/2,TS/2,TS/4,functionShapePat)));
+      type = addOrUpdate(
+          "logic.getNeighborID",
+          Circuit.behaviors.getNeighborID,
+          f.union(function (b) {
+            return Math.abs(Math.sqrt(Math.pow(b[1]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - (TS-b[0])) <= 2 ? functionShapeColor : 0;
+          }, f.cube(0,TS/2,TS/2,TS/4,functionShapePat)));
       selfRotating(0);
-      type.behavior = Circuit.behaviors.getNeighborID;
-      type.name = "logic.getNeighborID";
 
       // spontaneous event detector block
-      type = genedit(function (b) {
-        // TODO: make this look more like a lightning bolt
-        return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 2 ? colorToID(1,1,0) : 0;
-      });
-      type.behavior = Circuit.behaviors.spontaneous;
-      type.name = "logic.spontaneous";
+      type = addOrUpdate(
+          "logic.spontaneous",
+          Circuit.behaviors.spontaneous,
+          function (b) {
+            // TODO: make this look more like a lightning bolt
+            return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 2 ? colorToID(1,1,0) : 0;
+          });
 
       // set-rotation block
-      type = genedit(f.intersection(
-        f.subtract(
-          f.sphere(TS/2,TS/2,TS/2, TS/2, functionShapePat),
-          f.sphere(TS/2,TS/2,TS/2, TS/2-2, functionShapePat)),
-        f.union(
-          f.plane(0, TS/2-1, TS/2+1, functionShapePat),
-          f.union(
-            f.plane(1, TS/2-1, TS/2+1, functionShapePat),
-            f.plane(2, TS/2-1, TS/2+1, functionShapePat)))))
-      type.behavior = Circuit.behaviors.setRotation;
-      type.name = "logic.setRotation";
+      type = addOrUpdate(
+          "logic.setRotation",
+          Circuit.behaviors.setRotation,
+          f.intersection(
+            f.subtract(
+              f.sphere(TS/2,TS/2,TS/2, TS/2, functionShapePat),
+              f.sphere(TS/2,TS/2,TS/2, TS/2-2, functionShapePat)),
+            f.union(
+              f.plane(0, TS/2-1, TS/2+1, functionShapePat),
+              f.union(
+                f.plane(1, TS/2-1, TS/2+1, functionShapePat),
+                f.plane(2, TS/2-1, TS/2+1, functionShapePat)))));
 
       // set-block-id block
-      type = genedit(f.cube(TS/2,TS/2,TS/2, TS/4, functionShapePat));
-      type.behavior = Circuit.behaviors.become;
-      type.name = "logic.become";
+      type = addOrUpdate(
+          "logic.become",
+          Circuit.behaviors.become,
+          f.cube(TS/2,TS/2,TS/2, TS/4, functionShapePat));
 
       // IC output block
-      type = genedit(function (b) {
-        return Math.abs(b[0]-HALF)+Math.abs(b[1]-HALF)+Math.abs(b[2]-HALF) < TS/2+0.5 ? functionShapeColor : 0;
-      });
-      type.behavior = Circuit.behaviors.icOutput;
-      type.name = "logic.icOutput";
+      type = addOrUpdate(
+          "logic.icOutput",
+          Circuit.behaviors.icOutput,
+          function (b) {
+            return Math.abs(b[0]-HALF)+Math.abs(b[1]-HALF)+Math.abs(b[2]-HALF) < TS/2+0.5 ? functionShapeColor : 0;
+          });
 
       // IC input block
-      type = genedit(function (b) {
-        var c = b.map(function (coord) { return Math.abs(coord - HALF); }).sort();
-        return c[2] > c[0]+c[1]+TS*0.125 ? functionShapeColor : 0;
-      });
-      type.behavior = Circuit.behaviors.icInput;
-      type.name = "logic.icInput";
+      type = addOrUpdate(
+          "logic.icInput",
+          Circuit.behaviors.icInput,
+          function (b) {
+            var c = b.map(function (coord) { return Math.abs(coord - HALF); }).sort();
+            return c[2] > c[0]+c[1]+TS*0.125 ? functionShapeColor : 0;
+          });
 
       // IC blocks (require logic blocks on the next level down)
       if (baseICOutput !== null) {
-        type = genedit(function (b) {
-          var r = f.rad(b);
-          return r < TS/2 && r > HALF && f.plane(0, TS/2-1, TS/2+1, function(){return true;})(b) && Math.abs(b[1]-HALF) > (b[2]-HALF) ? functionShapeColor : 0;
-        });
+        type = addOrUpdate(
+            "logic.constant",
+            Circuit.behaviors.ic,
+            function (b) {
+              var r = f.rad(b);
+              return r < TS/2 && r > HALF && f.plane(0, TS/2-1, TS/2+1, function(){return true;})(b) && Math.abs(b[1]-HALF) > (b[2]-HALF) ? functionShapeColor : 0;
+            });
         type.world.s(2,2,2, baseICOutput);
         type.world.s(1,2,2, baseGetSubDatum);
         type.world.s(3,2,2, baseGetSubDatum);
@@ -383,8 +417,6 @@ var WorldGen = (function () {
         type.world.s(2,2,1, baseGetSubDatum);
         type.world.s(2,2,3, baseGetSubDatum);
         type.automaticRotations = [0,1,2,3,4,5,6,7]; // TODO kludge
-        type.behavior = Circuit.behaviors.ic;
-        type.name = "logic.constant";
       }
     },
 
@@ -431,10 +463,14 @@ var WorldGen = (function () {
         var gate = colorSet.lookup("logic.gate");
         var spontaneous = colorSet.lookup("logic.spontaneous");
         var become = colorSet.lookup("logic.become");
-        if (!constant) throw new Error("don't have constant block available");
-        type.world.s(1,1,1, constant, targetID);
-        type.world.s(2,1,1, gate);  type.world.s(2,1,2, spontaneous);
-        type.world.s(3,1,1, become);
+        if (!constant) {
+          if (typeof console !== "undefined")
+            console.warn("constant IC block is unavailable; addSpontaneousConversion fails");
+        } else {
+          type.world.s(1,1,1, constant, targetID);
+          type.world.s(2,1,1, gate);  type.world.s(2,1,2, spontaneous);
+          type.world.s(3,1,1, become);
+        }
       }
       function addRotation(type) {
         var getSubDatum = colorSet.lookup("logic.getSubDatum");
