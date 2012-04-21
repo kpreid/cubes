@@ -9,8 +9,11 @@ var World = (function () {
   var LIGHT_MAX = 255;
   var LIGHT_SCALE = 4/LIGHT_MAX;
   var LIGHT_LAMP = LIGHT_MAX;
-  var LIGHT_SKY = 1/LIGHT_SCALE;
+  var LIGHT_SKY = Math.round(1/LIGHT_SCALE);
   var MAX_LIGHTING_QUEUE = 1000;
+  
+  // typical value a well-lit surface works out to in practice
+  var LIGHT_INITIAL_GUESS = LIGHT_SKY * 0.93;
   
   function isCircuitPart(type) {
     return !!type.behavior;
@@ -429,6 +432,19 @@ var World = (function () {
               floodCircuit(circuit, vec);
             }
           }
+        }
+      }
+      
+      // Initialize lighting to something sane
+      for (var x = 0; x < wx; x++)
+      for (var z = 0; z < wz; z++) {
+        var shade = LIGHT_INITIAL_GUESS;
+        for (var y = wy - 1; y >= 0; y--) {
+          var index = ((x * wy) + y) * wz + z;
+          if (types[blocks[index]].opaque) {
+            shade = 0;
+          }
+          lighting[index] = shade;
         }
       }
     }
