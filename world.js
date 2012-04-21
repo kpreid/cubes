@@ -179,6 +179,13 @@ var World = (function () {
       else
         return rotations[x*wy*wz + y*wz + z];
     }
+    // Return the block lighting value at the given coordinates
+    function gLight(x,y,z) {
+      if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
+        return LIGHT_SKY;
+      else
+        return lighting[x*wy*wz + y*wz + z];
+    }
     function s(x,y,z,val,subdatum) { // TODO revisit making this not take a vec
       if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
         return;
@@ -649,6 +656,7 @@ var World = (function () {
     this.g = g;
     this.gt = gt;
     this.gRot = gRot;
+    this.gLight = gLight;
     this.gSub = gSub;
     this.s = s;
     this.sSub = sSub;
