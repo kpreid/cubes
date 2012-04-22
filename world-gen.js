@@ -288,17 +288,20 @@ var WorldGen = (function () {
         }
       }
       
-      // wire
       type = addOrUpdate(
           "logic.wire",
           Circuit.behaviors.wire,
           f.flat(0));
 
-      // junction block
       type = addOrUpdate(
           "logic.junction",
           Circuit.behaviors.junction,
           f.sphere(TS/2,TS/2,TS/2, TS*3/16, functionShapePat));
+
+      type = addOrUpdate(
+          "logic.become",
+          Circuit.behaviors.become,
+          f.cube(TS/2,TS/2,TS/2, TS/4, functionShapePat));
 
       type = addOrUpdate(
           "logic.count",
@@ -315,17 +318,44 @@ var WorldGen = (function () {
           });
       selfRotating(TS/2);
 
-      // step pad block
-      var specklePat = f.cond(f.speckle,
-                              functionShapePat,
-                              f.flat(colorToID(0.75,0.75,0.75)));
       type = addOrUpdate(
-          "logic.pad",
-          Circuit.behaviors.pad,
-          f.sphere(TS/2,TS-0.5,TS/2,TS/2,specklePat));
-      type.solid = true; // override circuit-block default
+          "logic.gate",
+          Circuit.behaviors.gate,
+          f.subtract(f.plane(0, TS/2-1, TS/2+1,
+                             f.sphere(TS*0.3,TS/2,TS/2, TS*0.5, functionShapePat)),
+                     f.sphere(TS*0.3,TS/2,TS/2, TS*0.3, functionShapePat)));
+      selfRotating(TS/2);
 
-      // indicator block
+      type = addOrUpdate(
+          "logic.getNeighborID",
+          Circuit.behaviors.getNeighborID,
+          f.union(function (b) {
+            return Math.abs(Math.sqrt(Math.pow(b[1]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - (TS-b[0])) <= 2 ? functionShapeColor : 0;
+          }, f.cube(0,TS/2,TS/2,TS/4,functionShapePat)));
+      selfRotating(0);
+
+      type = addOrUpdate(
+          "logic.getSubDatum",
+          Circuit.behaviors.getSubDatum,
+          function (b) {
+            return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 2 ? functionShapeColor : 0;
+          });
+
+      type = addOrUpdate(
+          "logic.icInput",
+          Circuit.behaviors.icInput,
+          function (b) {
+            var c = b.map(function (coord) { return Math.abs(coord - HALF); }).sort();
+            return c[2] > c[0]+c[1]+TS*0.125 ? functionShapeColor : 0;
+          });
+
+      type = addOrUpdate(
+          "logic.icOutput",
+          Circuit.behaviors.icOutput,
+          function (b) {
+            return Math.abs(b[0]-HALF)+Math.abs(b[1]-HALF)+Math.abs(b[2]-HALF) < TS/2+0.5 ? functionShapeColor : 0;
+          });
+
       type = addOrUpdate(
           "logic.indicator",
           Circuit.behaviors.indicator,
@@ -335,7 +365,6 @@ var WorldGen = (function () {
           });
       selfRotating(TS/2-1);
 
-      // nor block
       type = addOrUpdate(
           "logic.nor",
           Circuit.behaviors.nor,
@@ -343,42 +372,15 @@ var WorldGen = (function () {
                   f.sphere(TS/2+TS*.2,TS/2,TS/2, TS*3/16, functionShapePat)));
       selfRotating(TL-1);
 
-      // gate block
+      var specklePat = f.cond(f.speckle,
+                              functionShapePat,
+                              f.flat(colorToID(0.75,0.75,0.75)));
       type = addOrUpdate(
-          "logic.gate",
-          Circuit.behaviors.gate,
-          f.subtract(f.plane(0, TS/2-1, TS/2+1,
-                             f.sphere(TS*0.3,TS/2,TS/2, TS*0.5, functionShapePat)),
-                     f.sphere(TS*0.3,TS/2,TS/2, TS*0.3, functionShapePat)));
-      selfRotating(TS/2);
+          "logic.pad",
+          Circuit.behaviors.pad,
+          f.sphere(TS/2,TS-0.5,TS/2,TS/2,specklePat));
+      type.solid = true; // override circuit-block default
 
-      // get-subdata block
-      type = addOrUpdate(
-          "logic.getSubDatum",
-          Circuit.behaviors.getSubDatum,
-          function (b) {
-            return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 2 ? functionShapeColor : 0;
-          });
-
-      // getNeighborID
-      type = addOrUpdate(
-          "logic.getNeighborID",
-          Circuit.behaviors.getNeighborID,
-          f.union(function (b) {
-            return Math.abs(Math.sqrt(Math.pow(b[1]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - (TS-b[0])) <= 2 ? functionShapeColor : 0;
-          }, f.cube(0,TS/2,TS/2,TS/4,functionShapePat)));
-      selfRotating(0);
-
-      // spontaneous event detector block
-      type = addOrUpdate(
-          "logic.spontaneous",
-          Circuit.behaviors.spontaneous,
-          function (b) {
-            // TODO: make this look more like a lightning bolt
-            return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 2 ? colorToID(1,1,0) : 0;
-          });
-
-      // set-rotation block
       type = addOrUpdate(
           "logic.setRotation",
           Circuit.behaviors.setRotation,
@@ -392,27 +394,12 @@ var WorldGen = (function () {
                 f.plane(1, TS/2-1, TS/2+1, functionShapePat),
                 f.plane(2, TS/2-1, TS/2+1, functionShapePat)))));
 
-      // set-block-id block
       type = addOrUpdate(
-          "logic.become",
-          Circuit.behaviors.become,
-          f.cube(TS/2,TS/2,TS/2, TS/4, functionShapePat));
-
-      // IC output block
-      type = addOrUpdate(
-          "logic.icOutput",
-          Circuit.behaviors.icOutput,
+          "logic.spontaneous",
+          Circuit.behaviors.spontaneous,
           function (b) {
-            return Math.abs(b[0]-HALF)+Math.abs(b[1]-HALF)+Math.abs(b[2]-HALF) < TS/2+0.5 ? functionShapeColor : 0;
-          });
-
-      // IC input block
-      type = addOrUpdate(
-          "logic.icInput",
-          Circuit.behaviors.icInput,
-          function (b) {
-            var c = b.map(function (coord) { return Math.abs(coord - HALF); }).sort();
-            return c[2] > c[0]+c[1]+TS*0.125 ? functionShapeColor : 0;
+            // TODO: make this look more like a lightning bolt
+            return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 2 ? colorToID(1,1,0) : 0;
           });
 
       // IC blocks (require logic blocks on the next level down)

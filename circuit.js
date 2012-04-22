@@ -401,13 +401,33 @@ var Circuit = (function () {
       return faceValue;
     };
 
-    nb("wire", protobehavior);
-    
     var inputOnlyBeh = Object.create(protobehavior);
     inputOnlyBeh.faces = dirKeys(IN);
     
     var outputOnlyBeh = Object.create(protobehavior);
     outputOnlyBeh.faces = dirKeys(OUT);
+
+    // Special behavior -- wires are not nodes
+    nb("wire", protobehavior);    
+    
+    // Special behavior -- junctions are bidirectional
+    var junction = nb("junction", protobehavior);
+    junction.faces = dirKeys(INOUT);
+    
+    // --- Ordinary behaviors (alphabetical order) ---
+    
+    // Become another block, by numeric ID.
+    // TODO: Become effects should be bunched and deferred, to prevent infinite loops and to allow CA-style interactions.
+    var become = nb("become", inputOnlyBeh);
+    become.compile = function (world, block, inputs) {
+      var input = combineInputs(inputs, DIRECTIONS);
+      return function (state) {
+        var i = input(state);
+        if (typeof i === "number") {
+          state.blockOut_become = Math.floor(mod(i, 256));
+        }
+      };
+    };
     
     // Emits on +X the count of side inputs which are equal to the -X input
     var count = nb("count", protobehavior);
@@ -428,52 +448,6 @@ var Circuit = (function () {
           (bInput(state) == toCount ? 1 : 0) +
           (cInput(state) == toCount ? 1 : 0) +
           (dInput(state) == toCount ? 1 : 0));
-      };
-    };
-    
-    var pad = nb("pad", outputOnlyBeh);
-    pad.compile = function (world, block, inputs) {
-      var out = compileOutput(world, block, DIRECTIONS);
-      return function (state) {
-        out(state, world.gSub(block[0],block[1],block[2]));
-      };
-    };
-    pad.standingOn = function (circuit, cube, value) {
-      value = value ? 1 : 0;
-      if (circuit.world.gSub(cube[0],cube[1],cube[2]) !== value) {
-        circuit.world.sSub(cube[0],cube[1],cube[2],value);
-      }
-    };
-    
-    var indicator = nb("indicator", inputOnlyBeh);
-    indicator.compile = function (world, block, inputs) {
-      var input = combineInputs(inputs, DIRECTIONS);
-      return function (state) {
-        var flag = !!input(state);
-        //if (player && world === player.getWorld()) { console.log("evaluating indicator", block, inputs, "got", flag); }
-        var cur = world.gSub(block[0],block[1],block[2]);
-        if (flag !== cur && state.allowWorldEdit) {
-          world.sSub(block[0],block[1],block[2], flag ? 1 : 0);
-        }
-      };
-    };
-    
-    var junction = nb("junction", protobehavior);
-    junction.faces = dirKeys(INOUT);
-    
-    var nor = nb("nor", protobehavior);
-    nor.faces = dirKeys(OUT);
-    nor.faces["1,0,0"] = nor.faces["-1,0,0"] = IN;
-    nor.compile = function (world, block, inputs) {
-      var input = combineInputs(inputs, [[-1,0,0],[1,0,0]]);
-      var out = compileOutput(world, block, [
-        [0,0,1],
-        [0,0,-1],
-        [0,1,0],
-        [0,-1,0]
-      ]);
-      return function (state) {
-        out(state, !input(state));
       };
     };
     
@@ -523,14 +497,47 @@ var Circuit = (function () {
       };
     };
     
-    // Normally null; occasionally emits a numeric value.
-    // The value emitted is 1 divided by the (probabilistic) rate of events per second.
-    var spontaneous = nb("spontaneous", outputOnlyBeh);
-    spontaneous.compile = function (world, block, inputs) {
+    var indicator = nb("indicator", inputOnlyBeh);
+    indicator.compile = function (world, block, inputs) {
+      var input = combineInputs(inputs, DIRECTIONS);
+      return function (state) {
+        var flag = !!input(state);
+        //if (player && world === player.getWorld()) { console.log("evaluating indicator", block, inputs, "got", flag); }
+        var cur = world.gSub(block[0],block[1],block[2]);
+        if (flag !== cur && state.allowWorldEdit) {
+          world.sSub(block[0],block[1],block[2], flag ? 1 : 0);
+        }
+      };
+    };
+    
+    var nor = nb("nor", protobehavior);
+    nor.faces = dirKeys(OUT);
+    nor.faces["1,0,0"] = nor.faces["-1,0,0"] = IN;
+    nor.compile = function (world, block, inputs) {
+      var input = combineInputs(inputs, [[-1,0,0],[1,0,0]]);
+      var out = compileOutput(world, block, [
+        [0,0,1],
+        [0,0,-1],
+        [0,1,0],
+        [0,-1,0]
+      ]);
+      return function (state) {
+        out(state, !input(state));
+      };
+    };
+    
+    var pad = nb("pad", outputOnlyBeh);
+    pad.compile = function (world, block, inputs) {
       var out = compileOutput(world, block, DIRECTIONS);
       return function (state) {
-        out(state, state.blockIn_spontaneous || null);
+        out(state, world.gSub(block[0],block[1],block[2]));
       };
+    };
+    pad.standingOn = function (circuit, cube, value) {
+      value = value ? 1 : 0;
+      if (circuit.world.gSub(cube[0],cube[1],cube[2]) !== value) {
+        circuit.world.sSub(cube[0],cube[1],cube[2],value);
+      }
     };
     
     var setRotation = nb("setRotation", inputOnlyBeh);
@@ -541,48 +548,13 @@ var Circuit = (function () {
       };
     };
     
-    // Become another block, by numeric ID.
-    // TODO: Become effects should be bunched and deferred, to prevent infinite loops and to allow CA-style interactions.
-    var become = nb("become", inputOnlyBeh);
-    become.compile = function (world, block, inputs) {
-      var input = combineInputs(inputs, DIRECTIONS);
+    // Normally null; occasionally emits a numeric value.
+    // The value emitted is 1 divided by the (probabilistic) rate of events per second.
+    var spontaneous = nb("spontaneous", outputOnlyBeh);
+    spontaneous.compile = function (world, block, inputs) {
+      var out = compileOutput(world, block, DIRECTIONS);
       return function (state) {
-        var i = input(state);
-        if (typeof i === "number") {
-          state.blockOut_become = Math.floor(mod(i, 256));
-        }
-      };
-    };
-    
-    var icOutput = nb("icOutput", inputOnlyBeh);
-    icOutput.compile = function (world, block, inputs, notes) {
-      var table = [];
-      DIRECTIONS.forEach(function (dir) {
-        var input = inputs[vec3.scale(dir, -1, [])];
-        if (input) {
-          notes["icOutput_" + dir] = true;
-          table.push(["blockOut_output_" + dir, input]);
-        }
-      });
-      return function (state) {
-        table.forEach(function (r) {
-          // TODO detect/handle conflicts among multiple outputs
-          state[r[0]] = r[1](state);
-        });
-      };
-    };
-  
-    var icInput = nb("icInput", outputOnlyBeh);
-    icInput.compile = function (world, block, inputs, notes) {
-      var table = DIRECTIONS.map(function (dir) {
-        // TODO Give a nice way to detect whether our faces are connected so as to report accurately in notes
-        notes["icInput_" + dir] = true;
-        return [compileOutput(world, block, [vec3.scale(dir, -1, [])]), "blockIn_input_" + dir];
-      });
-      return function (state) {
-        table.forEach(function (r) {
-          r[0](state, state[r[1]]);
-        });
+        out(state, state.blockIn_spontaneous || null);
       };
     };
   
@@ -654,8 +626,40 @@ var Circuit = (function () {
       };
     };
     
+    var icInput = nb("icInput", outputOnlyBeh);
+    icInput.compile = function (world, block, inputs, notes) {
+      var table = DIRECTIONS.map(function (dir) {
+        // TODO Give a nice way to detect whether our faces are connected so as to report accurately in notes
+        notes["icInput_" + dir] = true;
+        return [compileOutput(world, block, [vec3.scale(dir, -1, [])]), "blockIn_input_" + dir];
+      });
+      return function (state) {
+        table.forEach(function (r) {
+          r[0](state, state[r[1]]);
+        });
+      };
+    };
+
+    var icOutput = nb("icOutput", inputOnlyBeh);
+    icOutput.compile = function (world, block, inputs, notes) {
+      var table = [];
+      DIRECTIONS.forEach(function (dir) {
+        var input = inputs[vec3.scale(dir, -1, [])];
+        if (input) {
+          notes["icOutput_" + dir] = true;
+          table.push(["blockOut_output_" + dir, input]);
+        }
+      });
+      return function (state) {
+        table.forEach(function (r) {
+          // TODO detect/handle conflicts among multiple outputs
+          state[r[0]] = r[1](state);
+        });
+      };
+    };
+  
     Object.freeze(behaviors);
-  }());;
+  }());
   
   Circuit.executeCircuitInBlock = function (blockWorld, outerWorld, cube, subDatum, extraState) {
     blockWorld.getCircuits().forEach(function (circuit) {
