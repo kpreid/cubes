@@ -226,7 +226,10 @@ function PersistencePool(storage, objectPrefix) {
   }
   
   this.flushAsync = function () {
+    var currentlyDirty = [];
+    var n = dirtyQueue.size();
     function loop() {
+      if (n-- <= 0) return; // avoid inf loop if things are constantly dirty
       var name = dirtyQueue.dequeue();
       if (name !== null) {
         handleDirty(name);
