@@ -544,6 +544,8 @@ var World = (function () {
     return world;
   }
   
+  World.subdatumBound = 256;
+  
   Object.freeze(World);
   
   return World;

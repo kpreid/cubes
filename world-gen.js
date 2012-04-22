@@ -38,8 +38,9 @@ var WorldGen = (function () {
     // Generate a blockset containing RGB colors with the specified number of
     // levels in each channel.
     colorBlocks: function (reds, greens, blues) {
-      if (reds*greens*blues >= 256)
-        throw new Error("Color resolution would result in " + reds*greens*blues + " > 255 colors.");
+      var max = BlockSet.ID_LIMIT - 1;
+      if (reds*greens*blues >= max)
+        throw new Error("Color resolution would result in " + reds*greens*blues + " (> " + max + ") colors.");
     
       var colors = [];
       for (var i = 0; i < reds*greens*blues; i++) {

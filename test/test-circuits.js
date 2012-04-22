@@ -53,7 +53,7 @@ describe("Circuit", function() {
                      id, subdatum);
       },
       putInput: function (offset, value) {
-        if (typeof value !== "number" || value < 0 || value >= 256 || Math.floor(value) !== value) {
+        if (typeof value !== "number" || value < 0 || value >= World.subdatumBound || Math.floor(value) !== value) {
           throw new Error("Can't yet define a test input value of " + value);
         }
         self.putNeighbor(offset, t.ls.constant, value);

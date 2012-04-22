@@ -304,7 +304,7 @@ var Player = (function () {
           var cube = currentPlace.selection.cube;
           var x = cube[0], y = cube[1], z = cube[2];
           currentPlace.world.sSub(x, y, z,
-              mod(currentPlace.world.gSub(x,y,z) + delta, 256)); // TODO magic number
+              mod(currentPlace.world.gSub(x,y,z) + delta, World.subdatumBound));
         }
       },
       get blockSet () { return currentPlace.world.blockSet; },
