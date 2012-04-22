@@ -53,16 +53,16 @@ describe("Circuit", function() {
                      id, subdatum);
       },
       putInput: function (offset, value) {
-        if (typeof value !== "number" || value < 0 || value >= 256) {
+        if (typeof value !== "number" || value < 0 || value >= 256 || Math.floor(value) !== value) {
           throw new Error("Can't yet define a test input value of " + value);
         }
         self.putNeighbor(offset, t.ls.constant, value);
       },
-      putOutput: function (offset) {
-        self.putNeighbor(offset, t.ls.indicator);
-      },
-      readOutput: function (offset) {
-        return self.world.getCircuit(this.center).getBlockOutput(this.center, offset);
+      readOutput: function (face) {
+        var circuit = self.world.getCircuit(this.center);
+        if (!circuit)
+          throw new Error("There is no circuit at the center!");
+        return circuit.getBlockOutput(this.center, face);
       }
     };
     return self;
@@ -118,6 +118,31 @@ describe("Circuit", function() {
     expect(t.readOutput(UNIT_PZ)).toEqual(3);
   });
   
+  describe("count", function () {
+    it("should count its inputs equal to -X", function () {
+      t.putBlockUnderTest(t.ls.count);
+
+      // sample data
+      t.putInput(UNIT_NY, 10);
+      t.putInput(UNIT_NZ, 12);
+      t.putInput(UNIT_PY, 20);
+      t.putInput(UNIT_PZ, 20);
+      
+      // test cases
+      t.putInput(UNIT_NX, 43);
+      expect(t.readOutput(UNIT_PX)).toEqual(0);
+      t.putInput(UNIT_NX, 10);
+      expect(t.readOutput(UNIT_PX)).toEqual(1);
+      t.putInput(UNIT_NX, 12);
+      expect(t.readOutput(UNIT_PX)).toEqual(1);
+      t.putInput(UNIT_NX, 20);
+      expect(t.readOutput(UNIT_PX)).toEqual(2);
+      // TODO add non-integer input test cases once we can putInput them
+      
+      t.dumpWorld("count");
+    });
+  });
+
   describe("icOutput", function () {
     it("should pass values out of an IC", function () {
       var inner = makeCircuitBlock(t);

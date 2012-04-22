@@ -300,6 +300,21 @@ var WorldGen = (function () {
           Circuit.behaviors.junction,
           f.sphere(TS/2,TS/2,TS/2, TS*3/16, functionShapePat));
 
+      type = addOrUpdate(
+          "logic.count",
+          Circuit.behaviors.count,
+          function (b) {
+            var mx = b[0] - TL/2;
+            var my = b[1] - TL/2;
+            var mz = b[2] - TL/2;
+            return (b[0] > 2 &&
+                    Math.abs(b[0] - Math.max(Math.abs(my), Math.abs(mz))) < Math.sqrt(2) &&
+                   (Math.abs(mz) > 1 && Math.abs(mz) < 2 ||
+                    Math.abs(my) > 1 && Math.abs(my) < 2))
+                   ? functionShapePat(b) : 0;
+          });
+      selfRotating(TS/2);
+
       // step pad block
       var specklePat = f.cond(f.speckle,
                               functionShapePat,

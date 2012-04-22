@@ -409,6 +409,28 @@ var Circuit = (function () {
     var outputOnlyBeh = Object.create(protobehavior);
     outputOnlyBeh.faces = dirKeys(OUT);
     
+    // Emits on +X the count of side inputs which are equal to the -X input
+    var count = nb("count", protobehavior);
+    count.faces = dirKeys(IN);
+    count.faces["1,0,0"] = OUT;
+    count.compile = function (world, block, inputs) {
+      // TODO refactor
+      var valueInput = inputs[[-1,0,0]] || function () { return null; };
+      var aInput     = inputs[[0,1,0]]  || function () { return null; };
+      var bInput     = inputs[[0,-1,0]] || function () { return null; };
+      var cInput     = inputs[[0,0,1]]  || function () { return null; };
+      var dInput     = inputs[[0,0,-1]] || function () { return null; };
+      var out = compileOutput(world, block, [[1,0,0]]);
+      return function (state) {
+        var toCount = valueInput(state);
+        out(state, 
+          (aInput(state) == toCount ? 1 : 0) +
+          (bInput(state) == toCount ? 1 : 0) +
+          (cInput(state) == toCount ? 1 : 0) +
+          (dInput(state) == toCount ? 1 : 0));
+      };
+    };
+    
     var pad = nb("pad", outputOnlyBeh);
     pad.compile = function (world, block, inputs) {
       var out = compileOutput(world, block, DIRECTIONS);
