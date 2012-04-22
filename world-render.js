@@ -357,17 +357,27 @@ var WorldRenderer = (function () {
         
       }
       
-      var chunkQueue = dirtyChunks.size() > 0 ? dirtyChunks : addChunks;
-      var deadline = Date.now() + (chunkQueue.size() > 30 ? 30 : 10);
+      // Update chunks from the queues.
+      var deadline = Date.now() + (addChunks.size() > 30 ? 30 : 10);
       var count = 0;
-      while (chunkQueue.size() > 0 && Date.now() < deadline) {
-        if (!calcChunk(chunkQueue.dequeue())) {
+      // Chunks to add
+      while (addChunks.size() > 0 && Date.now() < deadline) {
+        if (!calcChunk(addChunks.dequeue())) {
           count++;
+        }
+      }
+      // Dirty chunks (only if visible)
+      while (dirtyChunks.size() > 0 && Date.now() < deadline) {
+        var chunkKey = dirtyChunks.dequeue();
+        if (chunks.has(chunkKey)) {
+          if (!calcChunk(chunkKey)) {
+            count++;
+          }
         }
       }
       measuring.chunkCount.inc(count);
       
-      if (chunkQueue.size() > 0) {
+      if (addChunks.size() > 0 || dirtyChunks.size() > 0) {
         // Schedule rendering more chunks
         scheduleDraw();
       }
