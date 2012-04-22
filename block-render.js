@@ -37,8 +37,6 @@ function BlockRenderer(blockSet, renderer) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   
   function blockToImageData(blockID, context2d) {
-    // TODO: global variables gl, renderer
-    
     gl.bindFramebuffer(gl.FRAMEBUFFER, rttFramebuffer);
     
     gl.viewport(0, 0, rttFramebuffer.width, rttFramebuffer.height);

@@ -417,7 +417,6 @@ var Circuit = (function () {
     // --- Ordinary behaviors (alphabetical order) ---
     
     // Become another block, by numeric ID.
-    // TODO: Become effects should be bunched and deferred, to prevent infinite loops and to allow CA-style interactions.
     var become = nb("become", inputOnlyBeh);
     become.compile = function (world, block, inputs) {
       var input = combineInputs(inputs, DIRECTIONS);

@@ -476,7 +476,7 @@ var BlockSet = (function () {
         types.push(newBlockType);
         newBlockType.listen({
           appearanceChanged: function () {
-            self.persistence.dirty(); // TODO also need to dirty on other modifications to the block type, but there are no hooks for that
+            self.persistence.dirty(); // TODO also need to dirty on other modifications to the block type, but there are no hooks for that. // TODO This is not a good strategy — we should be dirty in general because we contain a dirty unnamed object (and not if it is named).
             appearanceChangedQueue.enqueue(newID);
             notifier.notify("texturingChanged", newID);
             return true;
@@ -484,7 +484,7 @@ var BlockSet = (function () {
         });
         appearanceChangedQueue.enqueue(newID);
         
-        // TODO: This is not correct if BlockTypes are allowed to change their worlds
+        // TODO: This is not sufficient if BlockTypes are allowed to change their worlds
         if (newBlockType.world) {
           var ts = newBlockType.world.wx; // assuming cubicality
           if (tileSize == ts || isNaN(tileSize)) {

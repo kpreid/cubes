@@ -823,7 +823,7 @@ var Renderer = (function () {
           v[da] = b;
           v[db] = c;
           vertices.push(v[0], v[1], v[2]);
-          normals.push(0,0,0); // TODO stub
+          normals.push(0,0,0);
           colors.push(1, 0, 0, 1);
         }
         for (var dim = 0; dim < 3; dim++) {
