@@ -546,6 +546,8 @@ var World = (function () {
       if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
         return;
       
+      measuring.lightUpdateCount.inc();
+      
       var index = x*wy*wz + y*wz + z;
       
       var incomingLight = 0;
