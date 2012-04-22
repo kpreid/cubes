@@ -487,12 +487,7 @@ var World = (function () {
         }
       }
 
-      // Lighting updates
-      measuring.lightingQueueSize.inc(lightingUpdateQueue.size());
-      var lqe, n = 0;
-      while ((lqe = lightingUpdateQueue.dequeue()) && n++ < 15) {
-        evaluateLightAt(lqe);
-      }
+      evaluateLightsInQueue();
     }
     
     function polishLightInVicinity(cpos,radius) {
@@ -510,7 +505,7 @@ var World = (function () {
               g(x,y-1,z) ||
               g(x,y,z+1) ||
               g(x,y,z-1))) continue;
-        evaluateLightAt([x,y,z]);
+        queueLightAt(x,y,z,LIGHT_MAX);
       }
     }
     
@@ -538,78 +533,91 @@ var World = (function () {
       }
     }
     
-    function evaluateLightAt(here) {
-      var x = here[0];
-      var y = here[1];
-      var z = here[2];
+    function evaluateLightsInQueue() {
+      measuring.lightingQueueSize.inc(lightingUpdateQueue.size());
       
-      if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
-        return;
-      
-      measuring.lightUpdateCount.inc();
-      
-      var index = x*wy*wz + y*wz + z;
-      
-      var incomingLight = 0;
-      var rayHits = [];
       var pt1 = vec3.create();
       var pt2 = vec3.create();
-      for (var rayi = lightRays.length - 1; rayi >= 0; rayi--) {
-        var rayData = lightRays[rayi];
-        vec3.add(here, rayData[0], pt1);
-        vec3.add(here, rayData[1], pt2);
-        var found = false;
-        raycast(pt1, pt2, 30/*TODO magic number */, function (rx, ry, rz, id, face) {
-          if (id === 0) {
-            // empty air -- pass through
-            return false;
-          }
-          var type = blockSet.get(id); // TODO bunch updates and use getAll
-          if (!type.opaque) {
-            // TODO: implement attenuation and blocks with some opaque faces.
-            incomingLight += type.light/LIGHT_SCALE;
-            return false;
-          } else {
-            var emptyx = rx+face[0];
-            var emptyy = ry+face[1];
-            var emptyz = rz+face[2];
-            
-            // No loss if we hit right here
-            var factor = (emptyx === x && emptyy === y && emptyz === z) ? 1 : type.reflectivity;
-            
-            var lightFromThatBlock =
-              type.light/LIGHT_SCALE                         // Emission
-              + lighting[emptyx*wy*wz + emptyy*wz + emptyz]; // Diffuse reflection
-            
-            incomingLight += factor * lightFromThatBlock;
-            rayHits.push([emptyx,emptyy,emptyz]);
-            
-            found = true;
-            return true;
-          }
-        });
-        if (!found) {
-          incomingLight += LIGHT_SKY;
-        }
-      }
-      var newSample = incomingLight / lightRays.length;
-      var oldStoredValue = lighting[index];
-      var newValue = newSample /* 0.75 * oldStoredValue + 0.25 * newSample -- old for softening randomization */;
-      var newStoredValue = Math.round(Math.min(LIGHT_MAX, newValue));
+      var types = blockSet.getAll();
+      var here;
       
-      if (oldStoredValue !== newStoredValue) {
-        lighting[index] = newStoredValue;
-        notifier.notify("dirtyBlock", here);
+      // hoisted here so that it is only created once
+      // NOTE: uses outer variables incomingLight, rayHits, found
+      function rayCallback(rx, ry, rz, id, face) {
+        if (id === 0) {
+          // empty air -- pass through
+          return false;
+        }
+        var type = types[id];
+        if (!type.opaque) {
+          // TODO: implement attenuation and blocks with some opaque faces.
+          incomingLight += type.light/LIGHT_SCALE;
+          return false;
+        } else {
+          var emptyx = rx+face[0];
+          var emptyy = ry+face[1];
+          var emptyz = rz+face[2];
         
-        if (lightingUpdateQueue.size() < MAX_LIGHTING_QUEUE) {
-          rayHits.push([x,y,z]);
-          for (var i = rayHits.length - 1; i >= 0; i--) {
-            var lqe = rayHits[i];
-            lqe.priority = Math.abs(newStoredValue - oldStoredValue); // queue priority
-            lightingUpdateQueue.enqueue(lqe);
+          // No loss if we hit right here
+          var factor = (emptyx === x && emptyy === y && emptyz === z) ? 1 : type.reflectivity;
+        
+          var lightFromThatBlock =
+            type.light/LIGHT_SCALE                         // Emission
+            + lighting[emptyx*wy*wz + emptyy*wz + emptyz]; // Diffuse reflection
+        
+          incomingLight += factor * lightFromThatBlock;
+          rayHits.push([emptyx,emptyy,emptyz]);
+        
+          found = true;
+          return true;
+        }
+      }
+      
+      var updateCount = 0;
+      while ((here = lightingUpdateQueue.dequeue()) && updateCount++ < 40) {
+        
+        var x = here[0];
+        var y = here[1];
+        var z = here[2];
+      
+        if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
+          continue;
+      
+        var index = x*wy*wz + y*wz + z;
+      
+        var incomingLight = 0;
+        var rayHits = [];
+        for (var rayi = lightRays.length - 1; rayi >= 0; rayi--) {
+          var rayData = lightRays[rayi];
+          vec3.add(here, rayData[0], pt1);
+          vec3.add(here, rayData[1], pt2);
+          var found = false;
+          raycast(pt1, pt2, 30/*TODO magic number */, rayCallback);
+          if (!found) {
+            incomingLight += LIGHT_SKY;
+          }
+        }
+        var newSample = incomingLight / lightRays.length;
+        var oldStoredValue = lighting[index];
+        var newValue = newSample /* 0.75 * oldStoredValue + 0.25 * newSample -- old for softening randomization */;
+        var newStoredValue = Math.round(Math.min(LIGHT_MAX, newValue));
+      
+        if (oldStoredValue !== newStoredValue) {
+          lighting[index] = newStoredValue;
+          notifier.notify("dirtyBlock", here);
+        
+          if (lightingUpdateQueue.size() < MAX_LIGHTING_QUEUE) {
+            rayHits.push([x,y,z]);
+            for (var i = rayHits.length - 1; i >= 0; i--) {
+              var lqe = rayHits[i];
+              lqe.priority = Math.abs(newStoredValue - oldStoredValue); // queue priority
+              lightingUpdateQueue.enqueue(lqe);
+            }
           }
         }
       }
+      
+      measuring.lightUpdateCount.inc(updateCount);
     }
     
     // for use by bodies only
