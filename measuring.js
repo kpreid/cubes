@@ -107,7 +107,6 @@ var measuring = (function () {
     var sparkCanvas = document.createElement("canvas");
     sparkCanvas.className = "measuring-sparkline";
     var sparkLength = sparkCanvas.width  = this.history.length;
-    var sparkHeight = sparkCanvas.height = 9; // TODO magic number
     var sparkContext = sparkCanvas.getContext("2d");
     var lastUpdateIndex = 0;
 
@@ -128,6 +127,8 @@ var measuring = (function () {
           lastUpdateIndex = indexOffset;
 
           var history = this.history;
+          var sparkHeight = sparkCanvas.height =
+              parseInt(window.getComputedStyle(labelElem, null).height, 10) - 3;
           var fgColor = window.getComputedStyle(sparkCanvas, null).color;
           
           sparkContext.clearRect(0, 0, sparkLength, sparkHeight);
