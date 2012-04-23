@@ -10,10 +10,31 @@ var World = (function () {
   var LIGHT_SCALE = 4/LIGHT_MAX;
   var LIGHT_LAMP = LIGHT_MAX;
   var LIGHT_SKY = Math.round(1/LIGHT_SCALE);
-  var MAX_LIGHTING_QUEUE = 1000;
+  var MAX_LIGHTING_QUEUE = 3000;
+  
+  var lightRays = [];
+  (function () {
+    for (var dim = 0; dim < 3; dim++)
+    for (var dir = -1; dir <= 1; dir += 2) {
+      var origin = [0.5,0.5,0.5];
+      origin[dim] += dir * -0.25;
+      var reflectFace = [0,0,0];
+      reflectFace[dim] = -dir;
+      var raysForDir = [];
+      for (var rayx = -1; rayx <= 1; rayx += 1)
+      for (var rayy = -1; rayy <= 1; rayy += 1) {
+        var ray = vec3.create(origin);
+        ray[dim] += 0.1*dir;
+        ray[mod(dim + 1, 3)] += 0.1*rayx;
+        ray[mod(dim + 2, 3)] += 0.1*rayy;
+        raysForDir.push([origin, ray]);
+      }
+      lightRays.push({reflectFace:reflectFace, rays:raysForDir});
+    }
+  }());
   
   // typical value a well-lit surface works out to in practice
-  var LIGHT_INITIAL_GUESS = LIGHT_SKY * 0.93;
+  var LIGHT_INITIAL_GUESS = LIGHT_SKY - 1;
   
   function isCircuitPart(type) {
     return !!type.behavior;
@@ -509,22 +530,6 @@ var World = (function () {
       }
     }
     
-    var lightRays = [];
-    (function () {
-      for (var dim = 0; dim < 3; dim++)
-      for (var dir = -1; dir <= 1; dir += 2)
-      for (var rayx = -1; rayx <= 1; rayx += 1)
-      for (var rayy = -1; rayy <= 1; rayy += 1) {
-        var origin = [0.5,0.5,0.5];
-        origin[dim] += dir * 0.25;
-        var ray = vec3.create(origin);
-        ray[dim] += 0.1*dir;
-        ray[mod(dim + 1, 3)] += 0.1*rayx;
-        ray[mod(dim + 2, 3)] += 0.1*rayy;
-        lightRays.push([origin, ray]);
-      }
-    }());
-    
     function queueLightAt(x, y, z, priority) {
       if (lightingUpdateQueue.size() < MAX_LIGHTING_QUEUE) {
         var lqe = [x,y,z];
@@ -574,7 +579,7 @@ var World = (function () {
       }
       
       var updateCount = 0;
-      while ((here = lightingUpdateQueue.dequeue()) && updateCount++ < 40) {
+      while ((here = lightingUpdateQueue.dequeue()) && updateCount++ < 120) {
         
         var x = here[0];
         var y = here[1];
@@ -587,17 +592,26 @@ var World = (function () {
       
         var incomingLight = 0;
         var rayHits = [];
-        for (var rayi = lightRays.length - 1; rayi >= 0; rayi--) {
-          var rayData = lightRays[rayi];
-          vec3.add(here, rayData[0], pt1);
-          vec3.add(here, rayData[1], pt2);
-          var found = false;
-          raycast(pt1, pt2, 30/*TODO magic number */, rayCallback);
-          if (!found) {
-            incomingLight += LIGHT_SKY;
+        var totalRays = 0;
+        for (var raySetI = lightRays.length - 1; raySetI >= 0; raySetI--) {
+          var raySetData = lightRays[raySetI];
+          var reflectFace = raySetData.reflectFace;
+          if (!types[g(x+reflectFace[0], y+reflectFace[1], z+reflectFace[2])].opaque)
+            continue;
+          var rays = raySetData.rays;
+          for (var rayi = rays.length - 1; rayi >= 0; rayi--) {
+            var rayData = rays[rayi];
+            vec3.add(here, rayData[0], pt1);
+            vec3.add(here, rayData[1], pt2);
+            var found = false;
+            raycast(pt1, pt2, 30/*TODO magic number */, rayCallback);
+            if (!found) {
+              incomingLight += LIGHT_SKY;
+            }
+            totalRays++;
           }
         }
-        var newSample = incomingLight / lightRays.length;
+        var newSample = incomingLight / totalRays;
         var oldStoredValue = lighting[index];
         var newValue = newSample /* 0.75 * oldStoredValue + 0.25 * newSample -- old for softening randomization */;
         var newStoredValue = Math.round(Math.min(LIGHT_MAX, newValue));
