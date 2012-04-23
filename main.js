@@ -335,14 +335,17 @@ var CubesMain = (function () {
       if (pageElements.objectList) {
         var objectList = pageElements.objectList;
         function updateObjectList() {
+          var totalSize = 0;
           while (objectList.firstChild) objectList.removeChild(objectList.firstChild);
           persistencePool.forEach(function (name, type) {
             var row = document.createElement("tr");
             objectList.appendChild(row);
             var typeCell = document.createElement("td");
             var nameCell = document.createElement("td");
+            var sizeCell = document.createElement("td");
             row.appendChild(typeCell);
             row.appendChild(nameCell);
+            row.appendChild(sizeCell);
             switch (type) {
               case World: typeCell.textContent = "world"; break;
               case BlockSet: typeCell.textContent = "blockset"; break;
@@ -350,6 +353,9 @@ var CubesMain = (function () {
               default: typeCell.textContent = "???"; break;
             }
             nameCell.textContent = name;
+            var size = persistencePool.getSize(name);
+            totalSize += size;
+            sizeCell.textContent = (size/1000).toFixed(0) + "K";
             if (persistencePool.getIfLive(name) === worldH) row.className += " selected";
             
             row.addEventListener("click", function () {
@@ -382,6 +388,17 @@ var CubesMain = (function () {
             
             // TODO: add rename
           });
+          
+          var totalRow = document.createElement("tr");
+          objectList.appendChild(totalRow);
+          var nameCell = document.createElement("th");
+          nameCell.textContent = "Total";
+          var sizeCell = document.createElement("td");
+          sizeCell.textContent = (totalSize/1000).toFixed(0) + "K";
+          totalRow.appendChild(document.createElement("td"));
+          totalRow.appendChild(nameCell);
+          totalRow.appendChild(sizeCell);
+          
           return true;
         }
         updateObjectList();

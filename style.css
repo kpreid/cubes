@@ -264,6 +264,9 @@ html {
   background: rgba(255,255,255,0.1);
 }
 
+#objects {
+  width: 20em; /* wider than default sidebar */
+}
 #objects table {
   width: 100%;
   margin: 0 0 1em 0;
@@ -271,6 +274,9 @@ html {
 }
 #objects td {
   padding: 0.05em 0.3em;
+}
+#objects tr > :first-child + * + * /* size column */ {
+  text-align: right;
 }
 
 .optionline input[type="range"] {

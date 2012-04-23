@@ -271,7 +271,10 @@ function PersistencePool(storage, objectPrefix) {
   };
   this.getIfLive = function (name) {
     return hop.call(currentlyLiveObjects, name) ? currentlyLiveObjects[name] : null;
-  }
+  };
+  this.getSize = function (name) {
+    return storage.getItem(objectPrefix + name).length;
+  };
   this.has = function (name) {
     return this.available &&
         (hop.call(currentlyLiveObjects, name) || storage.getItem(objectPrefix + name) !== null);
