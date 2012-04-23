@@ -18,6 +18,7 @@ This is what you can assume/should do:
   Vertex property arrays are managed as a group by RenderBundle and are otherwise undefined.
   Texture 0: RenderBundle-associated texture
   Texture 1: Skybox
+  Texture 2: Luminance white noise
 */
 
 var Renderer = (function () {
@@ -72,6 +73,7 @@ var Renderer = (function () {
     var contextSerial = 0;
     
     var skyTexture;
+    var noiseTexture;
     
     // --- Internals ---
     
@@ -96,9 +98,9 @@ var Renderer = (function () {
 
       // initialize common constant uniforms. TODO: Do this more cleanly
       switchProgram(particleProgramSetup);
-      gl.uniform1i(uniforms.uSkySampler, 1);
+      initConstantUniforms();
       switchProgram(blockProgramSetup); // leave this as first program
-      gl.uniform1i(uniforms.uSkySampler, 1);
+      initConstantUniforms();
     }
     
     function switchProgram(newP) {
@@ -123,7 +125,12 @@ var Renderer = (function () {
       // Config-based GL state
       sendViewUniforms();
       
-      generateSkyTexture();
+      createResources();
+    }
+    
+    function initConstantUniforms() {
+      gl.uniform1i(uniforms.uSkySampler, 1);
+      gl.uniform1i(uniforms.uNoiseSampler, 2);
     }
     
     function calculateFrustum() {
@@ -766,7 +773,32 @@ var Renderer = (function () {
     this.transformPoint = transformPoint;
     
     // --- Non-core game-specific rendering utilities ---
-
+    
+    function createResources() {
+      generateSkyTexture();
+      generateNoiseTexture();
+    }
+    
+    function generateNoiseTexture() {
+      var texSize = 512;
+      var texPixels = texSize*texSize*4;
+      var image = new Uint8Array(texPixels);
+      var random = Math.random;
+      for (var i = 0; i < texPixels; i++) {
+        image[i] = random() * 256;
+      }
+      
+      noiseTexture = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, noiseTexture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, texSize, texSize, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, image);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+      gl.activeTexture(gl.TEXTURE0);
+    }
+    
     function generateSkyTexture() {
       // Sky texture
       var skyTexSize = 256;
@@ -825,6 +857,7 @@ var Renderer = (function () {
       gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.activeTexture(gl.TEXTURE0);
     }
     
     var skyboxR = new RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {

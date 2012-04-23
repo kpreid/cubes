@@ -37,7 +37,8 @@ var WorldGen = (function () {
 
     // Generate a blockset containing RGB colors with the specified number of
     // levels in each channel.
-    colorBlocks: function (reds, greens, blues) {
+    colorBlocks: function (reds, greens, blues, constAlpha) {
+      if (constAlpha === undefined) constAlpha = 1.0;
       var max = BlockSet.ID_LIMIT - 1;
       if (reds*greens*blues >= max)
         throw new Error("Color resolution would result in " + reds*greens*blues + " (> " + max + ") colors.");
@@ -48,7 +49,7 @@ var WorldGen = (function () {
           mod(i, reds) / (reds-1),
           mod(Math.floor(i/reds), greens) / (greens-1),
           mod(Math.floor(i/reds/greens), blues) / (blues-1),
-          1
+          constAlpha
         ]));
       }
       return new BlockSet(colors);
@@ -66,23 +67,26 @@ var WorldGen = (function () {
       var idToColor = blockset.getAll().map(function (t) { return t.color; });
       function compareMatchRecord(a,b) { return a[1] - b[1]; }
       
-      function colorToID(r,g,b) {
+      function colorToID(r,g,b,a) {
+        if (a === undefined) a = 1.0;
         // reduce to 8-bit-per-component color from arbitrary float to keep the table small
-        var rk,bk,gk;
+        var rk,bk,gk,ak;
         r = (rk = r * 255 | 0) / 255;
         g = (gk = g * 255 | 0) / 255;
         b = (bk = b * 255 | 0) / 255;
-        var key = rk+","+gk+","+bk;
+        a = (ak = a * 255 | 0) / 255;
+        var key = rk+","+gk+","+bk+","+ak;
         if (!(key in table)) {
           var matches = [];
           // Compute Euclidean distance for each color in the set.
           for (var i = blockset.length - 1; i >= 0; i--) {
             var color = idToColor[i];
-            if (!color || color[3] <= 0.0) continue; // transparent or not a color block
+            if (!color) continue; // not a color block
             var dr = r-color[0];
             var dg = g-color[1];
             var db = b-color[2];
-            matches.push([i, dr*dr+dg*dg+db*db]);
+            var da = (a-color[3]) * 1e6; // alpha match prioritized over color match
+            matches.push([i, dr*dr+dg*dg+db*db+da*da]);
           }
           // Sort from lowest to highest distance.
           matches.sort(compareMatchRecord);

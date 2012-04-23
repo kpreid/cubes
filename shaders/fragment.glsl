@@ -35,6 +35,23 @@ float lighting() {
   return cLightAmbient + lightEnv(normal);
 }
 
+float whiteNoise() {
+  const float noiseTexelScale = 1.0/512.0; // TODO parameter
+  
+  // By varying the noise with the grid position, we ensure that noise on
+  // multiple transparent surfaces doesn't line up.
+  vec2 positionVary = 0.1 * (
+      vNormal.x != 0.0 ? vGridPosition.yz
+    : vNormal.y != 0.0 ? vGridPosition.xz
+    : vNormal.z != 0.0 ? vGridPosition.xy
+    : vGridPosition.xz + vGridPosition.yy // fallback
+  );
+  
+  vec2 viewVary = gl_FragCoord.xy;
+  
+  return texture2D(uNoiseSampler, noiseTexelScale * (viewVary + 0.1 * positionVary)).r;
+}
+
 void main(void) {
     if (uStipple && mod(gl_FragCoord.x - gl_FragCoord.y, 2.0) < 1.0)
       discard;
@@ -53,10 +70,10 @@ void main(void) {
     
     // Note: This alpha test is needed for textures, but also for the block
     // particles, which have static geometry.
-    if (color.a <= 0.0)
+    if (color.a <= whiteNoise() * (254.0/255.0))
       discard;
     
-    color = vec4(spill(vec3(color)), color.a);
+    color = vec4(spill(color.rgb), color.a);
 
     vec4 fogColor = textureCube(uSkySampler, normalize(vFixedOrientationPosition));
     gl_FragColor = color * (1.0-vFog) + fogColor * vFog;
