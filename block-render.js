@@ -10,7 +10,7 @@
 
 // Renders single blocks from a world.
 
-function BlockRenderer(blockSet, renderer) {
+function BlockRenderer(blockSet, renderer, resolution) {
   var gl = renderer.context;
   
   var singleBlockWorld = new World([1,1,1], blockSet);
@@ -19,8 +19,8 @@ function BlockRenderer(blockSet, renderer) {
   
   var rttFramebuffer = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, rttFramebuffer);
-  rttFramebuffer.width = 64;
-  rttFramebuffer.height = 64;
+  rttFramebuffer.width = resolution;
+  rttFramebuffer.height = resolution;
 
   var renderbuffer1 = gl.createRenderbuffer();
   gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer1);

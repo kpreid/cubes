@@ -405,7 +405,8 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
     quickItemsByBlockId = [];
     resetQuick();
 
-    var blockRenderer = new BlockRenderer(blockSetInMenu, renderer);
+    var blockRenderRes = 128;
+    var blockRenderer = new BlockRenderer(blockSetInMenu, renderer, blockRenderRes);
   
     var sidecount = Math.ceil(Math.sqrt(blockSetInMenu.length));
     var size = Math.min(64, 300 / sidecount);
@@ -419,8 +420,9 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
       var item = menuItemsByBlockId[blockID] = document.createElement("tr");
       item.className = "menu-item";
       var canvas = canvasesByBlockId[blockID] = document.createElement("canvas");
-      canvas.width = canvas.height = 64; // TODO magic number
-      canvas.style.width = canvas.style.height = size + "px"; // TODO don't do this in full menu mode
+      canvas.width = canvas.height = blockRenderRes;
+      var cctx = canvas.getContext('2d');
+      cctx.putImageData(blockRenderer.blockToImageData(blockID, cctx), 0, 0);
       
       function cell() {
         var cell = document.createElement("td");
@@ -430,10 +432,14 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
       }
       
       cell().appendChild(document.createTextNode(blockID.toString()));
-            
+      
+      
       var iconCell = cell();
+      var icon = document.createElement("img");
+      icon.src = canvas.toDataURL("image/png");
+      icon.style.width = icon.style.height = size + "px"; // TODO don't do this in full menu mode
       iconCell.className = ""; // always shown
-      iconCell.appendChild(canvas);
+      iconCell.appendChild(icon);
       
       // TODO: This code duplicates functionality of PersistentCell.bindControl — refactor so we can use that code here.
       
@@ -477,11 +483,7 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
       };
       cell().appendChild(solid);
       
-      // render block
-      var cctx = canvas.getContext('2d');
-      cctx.putImageData(blockRenderer.blockToImageData(blockID, cctx), 0, 0);
-      
-      setupIconButton(item,canvas,blockID);
+      setupIconButton(item,icon,blockID);
       
       hud.blocksetAll.appendChild(item);
     });
@@ -508,7 +510,7 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
 
         var icon = document.createElement("img");
         icon.src = canvas.toDataURL("image/png");
-        //canvas.style.width = canvas.style.height = size + "px";
+        icon.style.width = icon.style.height = "64px";
         item.appendChild(icon);
 
         setupIconButton(item,icon,blockID);
