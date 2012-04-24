@@ -318,7 +318,7 @@ var BlockSet = (function () {
     var /*constant*/ borderTileSize = tileSize + 2;
 
     // Pixel size of texture. Chosen so that current example world data does not need reallocation
-    var textureSize = 1024;
+    this.textureSize = 1024;
     
     // Values computed from the texture size
     var borderTileUVSize; // Size of one tile, including border, in the texture in UV coordinates
@@ -343,14 +343,15 @@ var BlockSet = (function () {
     this.textureLost = false;
     
     function initForSize() {
+      var textureSize = self.textureSize;
+      
       self.tileUVSize = tileSize/textureSize;
       borderUVOffset = 1/textureSize;
       borderTileUVSize = borderTileSize/textureSize;
       tileCountSqrt = Math.floor(textureSize/borderTileSize);
       
-      // ImageData object used to buffer calculated texture data
-      self.image = document.createElement("canvas").getContext("2d")
-        .createImageData(textureSize, textureSize);
+      // Texture data (RGBA)
+      self.image = new Uint8Array(textureSize * textureSize * 4);
       
       // tile position allocator
       tileAllocMap = new Uint8Array(tileCountSqrt*tileCountSqrt);
@@ -400,8 +401,8 @@ var BlockSet = (function () {
     this.completed = function (usageIndex) {
       // generate texture clamp border
       var coords = this.imageCoordsFor(usageIndex);
-      var w = self.image.width;
-      var data = self.image.data;
+      var w = this.textureSize;
+      var data = self.image;
       function pix(u,v) {
         return (coords[0]+u + w * (coords[1]+v)) * 4;
       }
@@ -420,6 +421,20 @@ var BlockSet = (function () {
         copy(pix(tileSize,y), pix(tileSize-1,y));
       }
     };
+    this.send = function () {
+      var gl = this.context;
+      gl.bindTexture(gl.TEXTURE_2D, this.texture);
+      gl.texImage2D(gl.TEXTURE_2D,
+                    0, // level
+                    gl.RGBA, // internalformat
+                    this.textureSize, // width
+                    this.textureSize, // height
+                    0, // border
+                    gl.RGBA, // format
+                    gl.UNSIGNED_BYTE, // type
+                    this.image);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+    }
     
     function tileAlloc() {
       var n = 0;
@@ -427,14 +442,14 @@ var BlockSet = (function () {
         if ((++n) >= tileAllocMap.length) {
           if (typeof console !== 'undefined') 
             console.info("Enlarging block texture to hold", (tileAllocMap.length + 1), "tiles.");
-          var newSize = textureSize * 2;
+          var newSize = self.textureSize * 2;
           if (newSize >= gl.getParameter(gl.MAX_TEXTURE_SIZE)) { // NOTE: this may not be the true limit in the particular case but I don't see proxy textures or allocation failure checking in WebGL
             if (typeof console !== 'undefined' && !overrun)
               console.error("Maximum texture size", newSize, " reached; display will be corrupted.");
             overrun = true;
             break; // overwrite some tile
           } else {
-            textureSize *= 2;
+            self.textureSize *= 2;
             initForSize();
             return 0;
           }
@@ -603,8 +618,8 @@ var BlockSet = (function () {
       var blockType = blockSet.get(blockID);
       var rotatedFaceData = rotatedBlockFaceData[blockID] || (rotatedBlockFaceData[blockID] = {});
       
-      var texWidth = texgen.image.width;
-      var texData = texgen.image.data;
+      var texWidth = texgen.textureSize;
+      var texData = texgen.image;
       
       function pushQuad(vertices, texcoords, flipped, transform, depth, usageIndex) {
         texcoords.push.apply(texcoords, calcTexCoords(texgen, usageIndex, flipped));
@@ -783,11 +798,7 @@ var BlockSet = (function () {
           notifier.notify("texturingChanged", id);
       }
       if (someChanged) {
-        var gl = texgen.context;
-        gl.bindTexture(gl.TEXTURE_2D, texgen.texture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texgen.image);
-        gl.bindTexture(gl.TEXTURE_2D, null);
-        
+        texgen.send();
         allTypesCached = blockSet.getAll();
       }
     }
