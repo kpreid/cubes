@@ -46,6 +46,8 @@ var Renderer = (function () {
     var gl = null;
     
     // View and projection transformation globals.
+    var pixelScale;
+    var pagePixelWidth, pagePixelHeight;
     var pMatrix = mat4.create();
     var mvMatrix = mat4.create();
     var viewPosition = vec3.create();
@@ -164,12 +166,14 @@ var Renderer = (function () {
     }
     
     function updateViewport() {
-      var pagePixelWidth = parseInt(window.getComputedStyle(canvas,null).width, 10);
-      var pagePixelHeight = parseInt(window.getComputedStyle(canvas,null).height, 10);
+      var computedStyle = window.getComputedStyle(canvas,null);
+      pagePixelWidth = parseInt(computedStyle.width, 10);
+      pagePixelHeight = parseInt(computedStyle.height, 10);
       
       // Specify canvas resolution
-      canvas.width = pagePixelWidth;
-      canvas.height = pagePixelHeight;
+      pixelScale = config.fsaa.get() ? 2 : 1;
+      canvas.width = pagePixelWidth * pixelScale;
+      canvas.height = pagePixelHeight * pixelScale;
       
       // WebGL is not guaranteed to give us that resolution; instead, what it
       // can supply is returned in .drawingBuffer{Width,Height}. However, those
@@ -261,6 +265,11 @@ var Renderer = (function () {
       scheduleDraw();
       return true;
     }};
+    var viewportL = {changed: function (v) {
+      updateViewport();
+      scheduleDraw();
+      return true;
+    }};
     var projectionL = {changed: function (v) {
       updateProjection();
       scheduleDraw();
@@ -271,6 +280,7 @@ var Renderer = (function () {
     config.cubeParticles.listen(rebuildProgramL);
     config.fov.listen(projectionL);
     config.renderDistance.listen(projectionL);
+    config.fsaa.listen(viewportL);
 
     // --- Initialization ---
     
@@ -411,6 +421,11 @@ var Renderer = (function () {
       sendTileSize();
     }
     this.setTileSize = setTileSize;
+    
+    function setLineWidth(val) {
+      gl.lineWidth(val * pixelScale);
+    }
+    this.setLineWidth = setLineWidth;
     
     function setTexture(texture) {
       if (currentTexture === texture) return;
@@ -710,8 +725,8 @@ var Renderer = (function () {
     // Returns a pair of points along the line through the given screen point.
     function getAimRay(screenPoint, playerRender) {
       var glxy = [
-          screenPoint[0] / canvas.width * 2 - 1, 
-        -(screenPoint[1] / canvas.height * 2 - 1)
+          screenPoint[0] / pagePixelWidth * 2 - 1, 
+        -(screenPoint[1] / pagePixelHeight * 2 - 1)
       ];
       
       var unproject = mat4.identity(mat4.create());

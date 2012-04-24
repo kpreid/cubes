@@ -28,6 +28,7 @@ var CubesMain = (function () {
       defineOption("mouseTurnRate", "number", 4); // radians/second/half-screen-width
       defineOption("lighting", "boolean", true);
       defineOption("bumpMapping", "boolean", true);
+      defineOption("fsaa", "boolean", false);
       defineOption("cubeParticles", "boolean", false);
       defineOption("sound", "boolean", true);
       defineOption("noclip", "boolean", false);
@@ -144,8 +145,9 @@ var CubesMain = (function () {
             sy = Math.max(sy, vec[1]/vec[3]);
           }
           if (isFinite(sx) && isFinite(sy)) {
-            cursorInfoElem.style.left = (sx + 1) / 2 * theCanvas.width + "px";
-            cursorInfoElem.style.bottom = (sy + 1) / 2 * theCanvas.height + "px";
+            var computedStyle = window.getComputedStyle(theCanvas,null);
+            cursorInfoElem.style.left   = (sx + 1) / 2 * parseInt(computedStyle.width,  10) + "px";
+            cursorInfoElem.style.bottom = (sy + 1) / 2 * parseInt(computedStyle.height, 10) + "px";
             
             var world = player.getWorld();
             var value = world.g(cube[0],cube[1],cube[2]);

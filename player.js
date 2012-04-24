@@ -69,7 +69,7 @@ var Player = (function () {
       }
     }, {
       aroundDraw: function (draw) {
-        gl.lineWidth(1);
+        renderer.setLineWidth(1);
         gl.disable(gl.DEPTH_TEST);
         draw();
         gl.enable(gl.DEPTH_TEST);
@@ -103,7 +103,7 @@ var Player = (function () {
       })
     }, {aroundDraw: function (draw) {
       if (!config.debugPlayerCollision.get()) return;
-      gl.lineWidth(2);
+      renderer.setLineWidth(2);
       draw();
     }});
   

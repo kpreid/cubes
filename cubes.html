@@ -241,6 +241,8 @@
       document.getElementById("enableSound").disabled = !CubesAudio.supported;
       main.config.sound.bindControl("enableSound");
     </script>
+    <div class="optionline"><label><input type="checkbox" id="fsaa"> Fake 2× FSAA (I have fillrate to burn)</label></div>
+    <script>main.config.fsaa.bindControl("fsaa");</script>
     
     <h3>Debug</h3>
     

@@ -108,7 +108,7 @@ var WorldRenderer = (function () {
         }
       }
     }, {aroundDraw: function (draw) {
-      gl.lineWidth(1);
+      renderer.setLineWidth(1);
       draw();
     }});
 
