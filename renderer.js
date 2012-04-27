@@ -788,41 +788,39 @@ var Renderer = (function () {
             : mix(cHorizon, cSky, clamp(log(1.0 + sine * 2.0), 0.0, 1.0));
       }
       function proceduralImage(f) {
-        var image = document.createElement("canvas").getContext("2d")
-          .createImageData(skyTexSize, skyTexSize);
-        var data = image.data;
+        var image = new Uint8Array(skyTexSize*skyTexSize*4);
         for (var x = 0; x < skyTexSize; x++)
         for (var y = 0; y < skyTexSize; y++) {
           var base = (x + y*skyTexSize)*4;
           var ncx = x/skyTexSize-0.5;
           var ncy = y/skyTexSize-0.5;
           var ncz = 0.5;
-          var color = f(image.data,base,ncx,ncy,ncz);
-          data[base]   = color[0]*255;
-          data[base+1] = color[1]*255;
-          data[base+2] = color[2]*255;
-          data[base+3] = 255;
+          var color = f(base,ncx,ncy,ncz);
+          image[base]   = color[0]*255;
+          image[base+1] = color[1]*255;
+          image[base+2] = color[2]*255;
+          image[base+3] = 255;
         }
         return image;
       }
-      var side = proceduralImage(function (array,base,x,y,z) {
+      var side = proceduralImage(function (base,x,y,z) {
         return plot(-y / Math.sqrt(x*x+y*y+z*z));
       });
-      var top = proceduralImage(function (array,base,x,y,z) {
+      var top = proceduralImage(function (base,x,y,z) {
         return plot(z / Math.sqrt(x*x+y*y+z*z));
       });
-      var bottom = proceduralImage(function (array,base,x,y,z) {
+      var bottom = proceduralImage(function (base,x,y,z) {
         return plot(-z / Math.sqrt(x*x+y*y+z*z));
       });
       skyTexture = gl.createTexture();
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyTexture);
-      gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, side);
-      gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, top);
-      gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, side);
-      gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, side);
-      gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bottom);
-      gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, side);
+      gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, gl.RGBA, skyTexSize, skyTexSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, side);
+      gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, gl.RGBA, skyTexSize, skyTexSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, top);
+      gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, gl.RGBA, skyTexSize, skyTexSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, side);
+      gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, gl.RGBA, skyTexSize, skyTexSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, side);
+      gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, gl.RGBA, skyTexSize, skyTexSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, bottom);
+      gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, gl.RGBA, skyTexSize, skyTexSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, side);
       gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
