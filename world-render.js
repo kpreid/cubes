@@ -301,6 +301,7 @@ var WorldRenderer = (function () {
     function addCircuits() {
       // Add circuits which are in viewing distance.
       // Note: This enumerates every circuit in the world. Currently, this is more efficient than the alternatives because there are not many circuits in typical data. When that changes, we should revisit this and use some type of spatial index to make it efficient. Testing per-block is *not* efficient.
+      if (!playerChunk) return;
       var rdi = renderDistanceInfo(config.renderDistance.get());
       world.getCircuits().forEach(function (circuit, origin) {
         if (dist3sq(origin, playerChunk) < rdi.addChunkDistanceSquared) {
