@@ -329,7 +329,7 @@ html {
   padding: 0;
   background: none; 
 }
-.measuring-label {
+.measuring-label, .measuring-group-header {
   display: inline-block;
   min-width: 16ex;
   text-align: left;
@@ -351,4 +351,7 @@ ul.measuring-group-contents, ol.measuring-group-contents {
 }
 .measuring-sparkline {
   vertical-align: baseline;
+}
+.measuring-hide-sparklines .measuring-sparkline {
+  display: none;
 }

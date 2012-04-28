@@ -16,6 +16,25 @@ var measuring = (function () {
     return element.offsetWidth > 0;
   }
   
+  function createToggle(storageName, callback) {
+    var toggleState = new PersistentCell(localStorage, storageName, "boolean", true);
+    var toggler = document.createElement("a");
+    toggleState.nowAndWhenChanged(function (v) {
+      if (v) {
+        toggler.textContent = "[-]";
+      } else {
+        toggler.textContent = "[+]";
+      }
+      callback(v);
+      return true;
+    });
+    toggler.addEventListener("click", function () {
+      toggleState.set(!toggleState.get());
+      return false;
+    }, false);
+    return toggler;
+  }
+  
   function ViewGroup(label, elements) {
     this.label = label;
     this.elements = elements;
@@ -29,23 +48,13 @@ var measuring = (function () {
     if (this.label) {
       var header = document.createElement("div");
       header.className = "measuring-group-header";
-      var toggleState = new PersistentCell(localStorage, subContext + ".visible", "boolean", true);
-      var toggler = document.createElement("a");
-      toggleState.nowAndWhenChanged(function (v) {
-        if (v) {
+      header.appendChild(createToggle(subContext + ".visible", function (visible) {
+        if (visible) {
           list.style.removeProperty("display");
-          toggler.textContent = "[-]";
         } else {
           list.style.display = "none";
-          toggler.textContent = "[+]";
         }
-        return true;
-      });
-      toggler.addEventListener("click", function () {
-        toggleState.set(!toggleState.get());
-        return false;
-      }, false);
-      header.appendChild(toggler);
+      }));
       header.appendChild(document.createTextNode(" " + this.label));
       container.appendChild(header);
     }
@@ -63,6 +72,7 @@ var measuring = (function () {
     var animFrameWasRequested = false;
     return {
       element: container,
+      header: header,
       update: function () {
         if (elementIsVisible(list)) {
           updaters.forEach(function (f) { f(); });
@@ -85,6 +95,24 @@ var measuring = (function () {
   ViewGroup.prototype.end = function () {
     this.elements.forEach(function (e) { e.end(); });
   };
+  
+  function TopGroup(label, elements) {
+    ViewGroup.call(this, label, elements);
+  }
+  TopGroup.prototype = Object.create(ViewGroup);
+  TopGroup.prototype.constructor = TopGroup;
+  TopGroup.prototype.createDisplay = function (document, stateContext) {
+    var d = ViewGroup.prototype.createDisplay.call(this, document, stateContext);
+    var baseClassName = d.element.className;
+    var toggle = createToggle(stateContext + ".graphsVisible", function (visible) {
+      d.element.className = baseClassName + (visible ? "" : " measuring-hide-sparklines");
+    });
+    var bogusval = document.createElement("span"); // strictly for layout :(
+    bogusval.className = "measuring-value";
+    d.header.parentNode.insertBefore(toggle, d.header.nextSibling);
+    d.header.parentNode.insertBefore(bogusval, d.header.nextSibling);
+    return d;
+  }
   
   function Quantity(label) {
     this.label = label;
@@ -225,7 +253,7 @@ var measuring = (function () {
   }
   TaskGroup.prototype = Object.create(ViewGroup.prototype);
   
-  measuring.all = new ViewGroup("Performance", [
+  measuring.all = new TopGroup("Performance", [
     measuring.second = new ViewGroup("Per second", [
       measuring.simCount = new Counter("Steps"),
       measuring.frameCount = new Counter("Frames"),
