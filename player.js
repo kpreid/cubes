@@ -130,7 +130,7 @@ var Player = (function () {
             if (!type.opaque && type.world) {
               // test against shape of noncubical block
               var w1 = type.world;
-              var rot = CubeRotation.byCode[w.gRot(x,y,z)];
+              var rot = CubeRotation.byCode[w.gRot(x,y,z)].inverse;
               w1.raycast(_transformPointToSubworld(cube,w1,rot,pts[0]),
                          _transformPointToSubworld(cube,w1,rot,pts[1]),
                          Infinity,
