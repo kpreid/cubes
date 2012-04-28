@@ -461,25 +461,28 @@ var WorldGen = (function () {
 
       function rgbPat(b) { return brgb(b[0]/TL,b[1]/TL,b[2]/TL); }
 
+      // look up all circuit blocks
+      var ls = {};
+      for (var i = 0; i < colorSet.length; i++) {
+        var name = (colorSet.get(i).name || "");
+        if (/^logic\./.test(name)) {
+          ls[name.replace(/^logic\./, "")] = i;
+        }
+      }
+
       function addSpontaneousConversion(type, targetID) {
-        var constant = colorSet.lookup("logic.constant");
-        var gate = colorSet.lookup("logic.gate");
-        var spontaneous = colorSet.lookup("logic.spontaneous");
-        var become = colorSet.lookup("logic.become");
-        if (!constant) {
+        if (!ls.constant) {
           if (typeof console !== "undefined")
             console.warn("constant IC block is unavailable; addSpontaneousConversion fails");
         } else {
-          type.world.s(1,1,1, constant, targetID);
-          type.world.s(2,1,1, gate);  type.world.s(2,1,2, spontaneous);
-          type.world.s(3,1,1, become);
+          type.world.s(1,1,1, ls.constant, ls.targetID);
+          type.world.s(2,1,1, ls.gate);  type.world.s(2,1,2, ls.spontaneous);
+          type.world.s(3,1,1, ls.become);
         }
       }
       function addRotation(type) {
-        var getSubDatum = colorSet.lookup("logic.getSubDatum");
-        var setRotation = colorSet.lookup("logic.setRotation");
-        type.world.s(1,3,0, getSubDatum);
-        type.world.s(1,4,0, setRotation);
+        type.world.s(1,3,0, ls.getSubDatum);
+        type.world.s(1,4,0, ls.setRotation);
         type.automaticRotations = sixFaceRotations;
       }
 
@@ -580,7 +583,58 @@ var WorldGen = (function () {
         return b[0]*b[0]+b[1]*b[1]+b[2]*b[2] <= TS*TS ? roundMaterial : 0;
       }));
       type.name = "eround";
-      addRotation(type);  
+      addRotation(type);
+      
+      // WireWorld-ish CA blocks
+      function hollow(pattern) {
+        return f.cond(f.s, pattern, f.flat(0));
+      }
+      function addCircuit(world, func) {
+        // TODO: refine this to find an appropriate empty space.
+        var offsetX = Math.floor(TS/2);
+        var offsetY = Math.floor(TS/2);
+        var offsetZ = Math.floor(TS/2);
+        func(function (x,y,z,id,subdatum) {
+          world.s(x+offsetX, y+offsetY, z+offsetZ, id, subdatum);
+        });
+      }
+      var headID = blockset.length + 1; // TODO make hardcoded IDs not needed
+      var tailID = blockset.length + 2;
+      var wireID = blockset.length;
+      blockset.add(type = genedit(hollow(f.flat(brgb(0.5, 0.5, 0.5)))));
+      type.name = "wireworld.wire";
+      addCircuit(type.world, function (s) {
+        s(0, +1, 0, ls.junction);
+        
+        // counter (outputs to 0,1,0)
+        s(0, 0, 0, ls.count, CubeRotation.z90.code);
+        s(0, -1, 0, ls.constant, headID);
+        s(-1, 0, 0, ls.getNeighborID, CubeRotation.identity.code);
+        s(0, 0, +1, ls.getNeighborID, CubeRotation.y90.code);
+        s(+1, 0, 0, ls.getNeighborID, CubeRotation.y180.code);
+        s(0, 0, -1, ls.getNeighborID, CubeRotation.y270.code);
+        
+        // spontaneous input
+        s(-1, +1, 0, ls.spontaneous);
+        
+        // output
+        s(+1, +1, 0, ls.wire);
+        s(+2, +1, 0, ls.gate, CubeRotation.y270.code);
+        s(+2, +1, +1, ls.become);
+        s(+2, +1, -1, ls.constant, headID);
+      });
+      blockset.add(type = genedit(hollow(f.flat(brgb(1.0, 1.0, 0.0)))));
+      type.name = "wireworld.head";
+      addCircuit(type.world, function (s) {
+        s(0, 0, 0, ls.become);
+        s(-1, 0, 0, ls.constant, tailID);
+      });
+      blockset.add(type = genedit(hollow(f.flat(brgb(1.0, 0.5, 0.0)))));
+      type.name = "wireworld.tail";
+      addCircuit(type.world, function (s) {
+        s(0, 0, 0, ls.become);
+        s(-1, 0, 0, ls.constant, wireID);
+      });
 
       // random block types
       var firstRandom = blockset.length;
