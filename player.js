@@ -106,7 +106,15 @@ var Player = (function () {
       renderer.setLineWidth(2);
       draw();
     }});
-  
+    
+    function _transformPointToSubworld(cube,world,rot,point) {
+      var buf = vec3.create(point);
+      vec3.subtract(buf, cube);
+      rot.transformPoint(buf, buf);
+      vec3.scale(buf, world.wx); // cubical assumption
+      return buf;
+    }
+    
     function aimChanged() {
       scheduleDraw(); // because this routine is also 'view direction changed'
 
@@ -116,7 +124,25 @@ var Player = (function () {
         var pts = renderer.getAimRay(mousePos, player.render);
         w.raycast(pts[0], pts[1], 20, function (x,y,z,value,face) {
           if (w.selectable(x,y,z)) {
-            foundCube = Object.freeze([x,y,z]);
+            var cube = Object.freeze([x,y,z]);
+            var type = w.blockSet.get(value);
+            var subfound = false;
+            if (!type.opaque && type.world) {
+              // test against shape of noncubical block
+              var w1 = type.world;
+              var rot = CubeRotation.byCode[w.gRot(x,y,z)];
+              w1.raycast(_transformPointToSubworld(cube,w1,rot,pts[0]),
+                         _transformPointToSubworld(cube,w1,rot,pts[1]),
+                         Infinity,
+                         function (x1,y1,z1,v1,f1) {
+                if (w1.selectable(x1,y1,z1)) {
+                  subfound = true;
+                  return true;
+                }
+              });
+              if (!subfound) return;
+            }
+            foundCube = cube;
             foundFace = Object.freeze(Array.prototype.slice.call(face));
             return true;
           }
