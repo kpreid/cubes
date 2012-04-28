@@ -672,7 +672,7 @@ var Circuit = (function () {
       if ("blockOut_become" in state) {
         var blockID = state.blockOut_become;
         effect = [blockID, outerWorld.gSub(cube[0],cube[1],cube[2])]; // TODO detect conflicts
-        outerWorld.audioEvent(cube, "create"); // TODO part of effect?
+        outerWorld.audioEvent(cube, "become"); // TODO should be part of effect record
       } else {
         // Rotations are only assigned when the circuit is being evaluated in the normal case, not during an event
         if ("blockOut_rotation" in state && !extraState) {

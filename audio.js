@@ -21,9 +21,10 @@ var CubesAudio = (function () {
     
     // Parameters to subSynth defining each sound.
     var synthParameters = {
-      create: [0.5, 0.1, 0, false],
-      destroy: [1, 0.22, 0.2, true],
-      footstep: [0.18, 0.1, 0, true]
+      create: [0.5, 0.1, 0, false, 1],
+      destroy: [1, 0.22, 0.2, true, 1],
+      footstep: [0.18, 0.1, 0, true, 1],
+      become: [0.05, 0.1, 0, false, 0.2]
     };
   
     // argument is time in wavelengths
@@ -50,7 +51,7 @@ var CubesAudio = (function () {
         buffers = {};
       }
       
-      function subSynth(duration, variation, echo, noise) {
+      function subSynth(duration, variation, echo, noise, gain) {
         var bsSamples = Math.round(duration * bsSampleRate);
       
         var b = context.createBuffer(1, bsSamples, bsSampleRate);
@@ -80,7 +81,7 @@ var CubesAudio = (function () {
           }
         }
 
-        var normalize = totalAmp > 0 ? 1/totalAmp : 0;
+        var normalize = totalAmp > 0 ? gain/totalAmp : 0;
         for (var i = 0; i < bsSamples; i++) {
           a[i] *= normalize;
         }
