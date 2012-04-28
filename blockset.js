@@ -468,6 +468,8 @@ var BlockSet = (function () {
   }
   
   function BlockSet(initialTypes) {
+    var self = this;
+    
     var tileSize = NaN;
 
     // All block sets unconditionally have the standard empty block at ID 0.
@@ -479,95 +481,101 @@ var BlockSet = (function () {
     
     var appearanceChangedQueue = new CatchupQueue();
     
-    var self = {
-      get tileSize () {
+    Object.defineProperty(this, "tileSize", {
+      enumerable: true,
+      get: function () {
         // If tile size is undefined because we have only color blocks, then we treat it as 1
         return isNaN(tileSize) ? 1 : tileSize;
-      }, 
-      get length () { return types.length; },
-      
-      add: function (newBlockType) {
-        var newID = types.length;
-        types.push(newBlockType);
-        newBlockType.listen({
-          appearanceChanged: function () {
-            self.persistence.dirty(); // TODO also need to dirty on other modifications to the block type, but there are no hooks for that. // TODO This is not a good strategy — we should be dirty in general because we contain a dirty unnamed object (and not if it is named).
-            appearanceChangedQueue.enqueue(newID);
-            notifier.notify("texturingChanged", newID);
-            return true;
-          }
-        });
-        appearanceChangedQueue.enqueue(newID);
-        
-        // TODO: This is not sufficient if BlockTypes are allowed to change their worlds
-        if (newBlockType.world) {
-          var ts = newBlockType.world.wx; // assuming cubicality
-          if (tileSize == ts || isNaN(tileSize)) {
-            tileSize = ts;
-          } else {
-            if (typeof console !== "undefined")
-              console.warn("Inconsistent tile size for blockset; set has", tileSize, "and new type has", ts);
-          }
-        }
-        
-        self.persistence.dirty();
-        notifier.notify("tableChanged", newID);
-      },
-      
-      get: function (blockID) {
-        return types[blockID] || types[BlockSet.ID_BOGUS] || types[BlockSet.ID_EMPTY];
-      },
-      
-      // Return an ID_LIMIT-element array snapshotting the results of get().
-      getAll: function () {
-        var array = types.slice();
-        var bogus = types[BlockSet.ID_BOGUS] || types[BlockSet.ID_EMPTY];
-        for (var i = array.length; i < BlockSet.ID_LIMIT; i++) {
-          array[i] = bogus;
-        }
-        return array;
-      },
-      
-      lookup: function (blockName) {
-        // TODO revisit making this < O(n)
-        for (var i = 0; i < types.length; i++) {
-          if (blockName === types[i].name) {
-            return i;
-          }
-        }
-        return null;
-      },
-      
-      // Listener protocol:
-      // tableChanged(id) -- the given id has a different block type associated with it
-      // texturingChanged(id) -- the render data for the given id has changed
-      listen: notifier.listen,
-      
-      // Return the data required to render blocks, updating if it is out of date.
-      getRenderData: function (renderer) {
-        var rdf = renderDataTable.get(renderer);
-        if (!rdf) {
-          renderDataTable.set(renderer, rdf = new BlockSetRenderDataGenerator(this, renderer, notifier, appearanceChangedQueue));
-        }
-        return rdf();
-      },
-      worldFor: function (blockID) {
-        return types[blockID] ? types[blockID].world : null;
-      },
-      serialize: function (serialize) {
-        var json = {
-          type: "types",
-          types: types.slice(1).map(function (type) { return serialize(type); })
-        };
-        serialize.setUnserializer(json, BlockSet);
-        return json;
       }
+    });
+
+    Object.defineProperty(this, "length", {
+      enumerable: true,
+      get: function () {
+        return types.length;
+      }
+    });
+      
+    this.add = function (newBlockType) {
+      var newID = types.length;
+      types.push(newBlockType);
+      newBlockType.listen({
+        appearanceChanged: function () {
+          self.persistence.dirty(); // TODO also need to dirty on other modifications to the block type, but there are no hooks for that. // TODO This is not a good strategy — we should be dirty in general because we contain a dirty unnamed object (and not if it is named).
+          appearanceChangedQueue.enqueue(newID);
+          notifier.notify("texturingChanged", newID);
+          return true;
+        }
+      });
+      appearanceChangedQueue.enqueue(newID);
+      
+      // TODO: This is not sufficient if BlockTypes are allowed to change their worlds
+      if (newBlockType.world) {
+        var ts = newBlockType.world.wx; // assuming cubicality
+        if (tileSize == ts || isNaN(tileSize)) {
+          tileSize = ts;
+        } else {
+          if (typeof console !== "undefined")
+            console.warn("Inconsistent tile size for blockset; set has", tileSize, "and new type has", ts);
+        }
+      }
+      
+      self.persistence.dirty();
+      notifier.notify("tableChanged", newID);
     };
-    self.persistence = new Persister(self);
+      
+    this.get = function (blockID) {
+      return types[blockID] || types[BlockSet.ID_BOGUS] || types[BlockSet.ID_EMPTY];
+    };
+      
+    // Return an ID_LIMIT-element array snapshotting the results of get().
+    this.getAll = function () {
+      var array = types.slice();
+      var bogus = types[BlockSet.ID_BOGUS] || types[BlockSet.ID_EMPTY];
+      for (var i = array.length; i < BlockSet.ID_LIMIT; i++) {
+        array[i] = bogus;
+      }
+      return array;
+    };
+      
+    this.lookup = function (blockName) {
+      // TODO revisit making this < O(n)
+      for (var i = 0; i < types.length; i++) {
+        if (blockName === types[i].name) {
+          return i;
+        }
+      }
+      return null;
+    };
+      
+    // Listener protocol:
+    // tableChanged(id) -- the given id has a different block type associated with it
+    // texturingChanged(id) -- the render data for the given id has changed
+    this.listen = notifier.listen;
+      
+    // Return the data required to render blocks, updating if it is out of date.
+    this.getRenderData = function (renderer) {
+      var rdf = renderDataTable.get(renderer);
+      if (!rdf) {
+        renderDataTable.set(renderer, rdf = new BlockSetRenderDataGenerator(this, renderer, notifier, appearanceChangedQueue));
+      }
+      return rdf();
+    };
+    this.worldFor = function (blockID) {
+      return types[blockID] ? types[blockID].world : null;
+    };
+    this.serialize = function (serialize) {
+      var json = {
+        type: "types",
+        types: types.slice(1).map(function (type) { return serialize(type); })
+      };
+      serialize.setUnserializer(json, BlockSet);
+      return json;
+    };
+
+    this.persistence = new Persister(self);
     
-    initialTypes.forEach(self.add);
-    
-    return self;
+    initialTypes.forEach(this.add);
   }
   
   // This block ID is always empty air.
