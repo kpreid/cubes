@@ -432,6 +432,9 @@ var CubesMain = (function () {
               var text   = pageElements.loadError[1];
               notice.style.removeProperty("display");
               text.appendChild(document.createTextNode("Failed to download shader files."));
+              if (/^file:/.test(window.location.href)) {
+                text.appendChild(document.createTextNode("\n\nThis is probably because your browser is (rightfully) prohibiting access to local files. Please try accessing Cubes via a web server (http://...) instead."));
+              }
               return;
             }
             shaders = s;

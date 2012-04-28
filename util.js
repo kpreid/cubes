@@ -687,8 +687,8 @@ ProgressBar.prototype.setByTodoCount = function (count) {
 };
 
 // 'type' is an xhr.responseType value such as 'text' or 'arraybuffer'
-// The callback will be called with parameters (response), or (null)
-// in the event of a failure.
+// The callback will be called with parameters (response), or (null,
+// opt exception) in the event of a failure.
 function fetchResource(url, type, callback) {
   "use strict";
   // TODO: review this code
@@ -702,14 +702,22 @@ function fetchResource(url, type, callback) {
       return;
     }
     if (typeof console !== "undefined")
-      console.log("completed", url);
+      console.log("completed", url, xhr.status);
     if (xhr.status == 200) {
-      callback(xhr.response);
+      callback(xhr.response, null);
     } else {
       if (typeof console !== "undefined")
-        console.error("XHR fail:", xhr.readyState, xhr.status);
-      callback(null);
+        console.error("XHR reported failure:", xhr.readyState, xhr.status);
+      callback(null, null);
     }
   };
-  xhr.send(null);
+  try {
+    xhr.send(null);
+  } catch (e) {
+    if (typeof console !== "undefined")
+      console.error("XHR send crashed:", e);
+    setTimeout(function () {
+      callback(null, e);
+    }, 0);
+  }
 }

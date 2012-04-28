@@ -879,6 +879,7 @@ var Renderer = (function () {
       fragment: undefined
     };
     var names = Object.keys(table);
+    var done = false;
     
     names.forEach(function (filename) {
       fetchResource(directory+"shaders/"+filename+".glsl", "text", function (data) { 
@@ -889,6 +890,8 @@ var Renderer = (function () {
     
     function check() {
       if (names.every(function (f) { return table[f] !== undefined; })) {
+        if (done) return; // in case of multiple failures
+        done = true;
         if (names.some(function (f) { return table[f] === null; })) {
           callback(null); // TODO better error reporting
         } else {
