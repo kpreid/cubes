@@ -156,15 +156,13 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
       return;
     }
     
-    if (!focusCell.get()) {
+    if (!focusCell.get() || mousePos === null) {
       playerInput.mousePos = null;
       dx = 0;
       return;
     } else {
       playerInput.mousePos = mousePos;
     }
-    
-    if (mousePos === null) { return; }
 
     var swingY = mousePos[1] / (h*0.5) - 1;
     var swingX = mousePos[0] / (w*0.5) - 1;
