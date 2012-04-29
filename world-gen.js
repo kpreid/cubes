@@ -418,8 +418,7 @@ var WorldGen = (function () {
         type.world.s(2,3,2, baseGetSubDatum);
         type.world.s(2,2,1, baseGetSubDatum);
         type.world.s(2,2,3, baseGetSubDatum);
-        type.automaticRotations = [0,1,2,3,4,5,6,7]; // TODO kludge
-
+        
         var specklePat = f.cond(f.speckle,
                                 functionShapePat,
                                 f.flat(colorToID(0.75,0.75,0.75)));
