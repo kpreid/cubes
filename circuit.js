@@ -346,10 +346,6 @@ var Circuit = (function () {
       return s;
     };
     
-    this.setStandingOn = function (cube, value) {
-      getBehavior(cube).standingOn(this, cube, value);
-    };
-    
     Object.freeze(this);
   }
   
@@ -390,7 +386,6 @@ var Circuit = (function () {
     
     var protobehavior = {};
     protobehavior.faces = dirKeys(NONE);
-    protobehavior.standingOn = function (circuit, cube, value) {};
     protobehavior.executeForBlock = function (world, cube, subDatum) {};
     protobehavior.getFaceUnrotated = function (world, block, face) {
       return this.faces[face];
@@ -463,6 +458,16 @@ var Circuit = (function () {
       };
     };
     
+    var getContact = nb("getContact", outputOnlyBeh);
+    getContact.compile = function (world, block, inputs) {
+      var out = compileOutput(world, block, DIRECTIONS);
+      return function (state) {
+        out(state, state.blockIn_world
+            ? state.blockIn_world.getStandingOn(state.blockIn_cube)
+            : null);
+      };
+    };
+    
     var getSubDatum = nb("getSubDatum", outputOnlyBeh);
     getSubDatum.compile = function (world, block, inputs) {
       var out = compileOutput(world, block, DIRECTIONS);
@@ -523,20 +528,6 @@ var Circuit = (function () {
       return function (state) {
         out(state, !input(state));
       };
-    };
-    
-    var pad = nb("pad", outputOnlyBeh);
-    pad.compile = function (world, block, inputs) {
-      var out = compileOutput(world, block, DIRECTIONS);
-      return function (state) {
-        out(state, world.gSub(block[0],block[1],block[2]));
-      };
-    };
-    pad.standingOn = function (circuit, cube, value) {
-      value = value ? 1 : 0;
-      if (circuit.world.gSub(cube[0],cube[1],cube[2]) !== value) {
-        circuit.world.sSub(cube[0],cube[1],cube[2],value);
-      }
     };
     
     var setRotation = nb("setRotation", inputOnlyBeh);

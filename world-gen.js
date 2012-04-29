@@ -245,6 +245,7 @@ var WorldGen = (function () {
       var baseGetSubDatum = baseSet.lookup("logic.getSubDatum");
       var baseSetRotation = baseSet.lookup("logic.setRotation");
       var baseICOutput = baseSet.lookup("logic.icOutput");
+      var baseGetContact = baseSet.lookup("logic.getContact");
       
       // appearance utilities
       var colorToID = WorldGen.colorPicker(baseSet);
@@ -336,6 +337,13 @@ var WorldGen = (function () {
       selfRotating(0);
 
       type = addOrUpdate(
+          "logic.getContact",
+          Circuit.behaviors.getContact,
+          // TODO better symbol
+          f.cube(TS/2,TS*1.40,TS/2,TS*0.45,functionShapePat));
+      selfRotating(0);
+
+      type = addOrUpdate(
           "logic.getSubDatum",
           Circuit.behaviors.getSubDatum,
           function (b) {
@@ -372,15 +380,6 @@ var WorldGen = (function () {
           f.union(f.sphere(TS/2-TS*.2,TS/2,TS/2, TS*3/16, functionShapePat),
                   f.sphere(TS/2+TS*.2,TS/2,TS/2, TS*3/16, functionShapePat)));
       selfRotating(TL-1);
-
-      var specklePat = f.cond(f.speckle,
-                              functionShapePat,
-                              f.flat(colorToID(0.75,0.75,0.75)));
-      type = addOrUpdate(
-          "logic.pad",
-          Circuit.behaviors.pad,
-          f.sphere(TS/2,TS-0.5,TS/2,TS/2,specklePat));
-      type.solid = true; // override circuit-block default
 
       type = addOrUpdate(
           "logic.setRotation",
@@ -420,6 +419,22 @@ var WorldGen = (function () {
         type.world.s(2,2,1, baseGetSubDatum);
         type.world.s(2,2,3, baseGetSubDatum);
         type.automaticRotations = [0,1,2,3,4,5,6,7]; // TODO kludge
+
+        var specklePat = f.cond(f.speckle,
+                                functionShapePat,
+                                f.flat(colorToID(0.75,0.75,0.75)));
+        type = addOrUpdate(
+            "logic.pad",
+            Circuit.behaviors.ic,
+            f.sphere(TS/2,TS-0.5,TS/2,TS/2,specklePat));
+        type.solid = true; // override circuit-block default
+        type.world.s(2,2,2, baseGetContact);
+        type.world.s(1,2,2, baseICOutput);
+        type.world.s(3,2,2, baseICOutput);
+        type.world.s(2,1,2, baseICOutput);
+        type.world.s(2,3,2, baseICOutput);
+        type.world.s(2,2,1, baseICOutput);
+        type.world.s(2,2,3, baseICOutput);
       }
     },
 

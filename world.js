@@ -49,6 +49,9 @@ var World = (function () {
     // Blocks which are to be modified according to circuit outputs
     var effects = new IntVectorMap();
     
+    // Blocks which a body is touching the top surface of (TODO: generalize this)
+    var standingOn = new IntVectorMap();
+    
     var numToDisturbPerSec = wx*wy*wz * spontaneousBaseRate;
     
     var notifier = new Notifier("World");
@@ -442,11 +445,20 @@ var World = (function () {
       }
     }
     
+    // for use by bodies only
     function setStandingOn(cube, value) {
-      var circuit = blockCircuits.get(cube);
-      if (circuit) {
-        circuit.setStandingOn(cube, value);
+      if (value) {
+        standingOn.set(cube, true);
+      } else {
+        standingOn.delete(cube);
       }
+      reeval(cube, gt(cube[0],cube[1],cube[2])); // should this be deferred?
+      var circuit = blockCircuits.get(cube);
+      if (circuit) circuit.refreshLocal();
+    }
+    
+    function getStandingOn(cube) {
+      return !!standingOn.get(cube);
     }
     
     function audioEvent(cube, mode) {
@@ -512,6 +524,7 @@ var World = (function () {
     this.edit = edit;
     this.step = step;
     this.setStandingOn = setStandingOn;
+    this.getStandingOn = getStandingOn;
     this.audioEvent = audioEvent;
     this.listen = notifier.listen;
     this.serialize = serialize;
