@@ -271,12 +271,10 @@ var World = (function () {
       radius /= Math.sqrt(dx*dx+dy*dy+dz*dz);
       
       //console.log(stepX, stepY, stepZ, dx, dy, dz, tDeltaX, tDeltaY, tDeltaZ);
-      while (stepX > 0 && x < wx ||
-             stepY > 0 && y < wy ||
-             stepZ > 0 && z < wz ||
-             stepX < 0 && x >= 0 ||
-             stepY < 0 && y >= 0 ||
-             stepZ < 0 && z >= 0 /* ray has not gone past bounds of world */) {
+      while (/* ray has not gone past bounds of world */
+             (stepX > 0 ? x < wx : x >= 0) &&
+             (stepY > 0 ? y < wy : y >= 0) &&
+             (stepZ > 0 ? z < wz : z >= 0)) {
         
         if (!(x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz))
           if (callback(x, y, z, blocks[x*wy*wz + y*wz + z], face))
