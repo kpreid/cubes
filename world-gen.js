@@ -552,6 +552,16 @@ var WorldGen = (function () {
       }));
       type.name = "bump";
 
+      // vanish-when-stepped-on ground
+      blockset.add(type = genedit(function (b) {
+        return Math.random() > b[1]/TS ? 0 : ground.g(b[0],b[1],b[2]);
+      }));
+      type.name = "weakGround";
+      type.world.s(1, 0, 0, ls.getContact);
+      type.world.s(0, 1, 0, ls.constant, 0);
+      type.world.s(1, 1, 0, ls.gate);
+      type.world.s(2, 1, 0, ls.become);
+
       // leaves/hedge
       blockset.add(type = genedit(function (b) {
         var edgeness = f.maxrad(b);
