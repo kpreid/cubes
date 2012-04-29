@@ -56,4 +56,32 @@ describe("BlockSet", function () {
     var blockset = new BlockSet([]);
     expect(blockset.lookup("foo")).toBe(null);
   });
+  
+  it("should correctly delete a block type", function () {
+    var type1 = new BlockType.Color([1,1,1,1]);
+    var type2 = new BlockType.Color([1,1,0,1]);
+    var type3 = new BlockType.Color([1,0,0,1]);
+    var blockset = new BlockSet([type1, type2, type3]);
+    
+    expect(blockset.get(0)).toBe(BlockType.air);
+    expect(blockset.get(1)).toBe(type1);
+    expect(blockset.get(2)).toBe(type2);
+    expect(blockset.get(3)).toBe(type3);
+    
+    var listener = {
+      tableChanged: function (id) { return true; },
+      texturingChanged: function (id) { return true; },
+    };
+    spyOn(listener, "tableChanged");
+    blockset.listen(listener);
+    
+    blockset.deleteLast();
+    
+    expect(blockset.get(0)).toBe(BlockType.air);
+    expect(blockset.get(1)).toBe(type1);
+    expect(blockset.get(2)).toBe(type2);
+    expect(blockset.get(3)).toBe(type1);
+    
+    expect(listener.tableChanged).toHaveBeenCalledWith(3);
+  })
 });

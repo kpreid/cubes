@@ -553,8 +553,13 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
   // TODO these two blockset-editing operations are assuming the sub-blockset to use is the blockset of the #1 block. We should either explicitly declare there is only one sub-blockset or provide a way to choose.
   
   // invoked from UI
-  this.addBlock = function () {
+  this.addBlockType = function () {
     playerInput.blockSet.add(WorldGen.newRandomBlockType(playerInput.blockSet.tileSize, playerInput.blockSet.get(1).world.blockSet));
+  };
+  
+  // invoked from UI
+  this.deleteLastBlockType = function () {
+    playerInput.blockSet.deleteLast();
   };
   
   // invoked from UI

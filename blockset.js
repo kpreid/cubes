@@ -77,6 +77,10 @@ var BlockType = (function () {
   BlockType.World.prototype = Object.create(BlockType.prototype);
   BlockType.World.prototype.constructor = BlockType.World;
   
+  BlockType.World.prototype.toString = function () {
+    return "[BlockType #" + this.serial + " world]";
+  };
+  
   Object.defineProperty(BlockType.World.prototype, "color", {
     enumerable: true,
     value: null
@@ -143,7 +147,11 @@ var BlockType = (function () {
   };
   BlockType.Color.prototype = Object.create(BlockType.prototype);
   BlockType.Color.prototype.constructor = BlockType.Color;
-
+  
+  BlockType.Color.prototype.toString = function () {
+    return "[BlockType #" + this.serial + " color " + this.color + "]";
+  };
+  
   Object.defineProperty(BlockType.Color.prototype, "opaque", {
     enumerable: true,
     get: function () {
@@ -475,6 +483,8 @@ var BlockSet = (function () {
     // All block sets unconditionally have the standard empty block at ID 0.
     var types = [BlockType.air];
     
+    var listenersForTypes = [null];
+    
     var renderDataTable = new ObjectMap(); // per-GL-context
     
     var notifier = new Notifier("BlockSet");
@@ -497,17 +507,20 @@ var BlockSet = (function () {
     });
       
     this.add = function (newBlockType) {
-      var newID = types.length;
-      types.push(newBlockType);
-      newBlockType.listen({
+      var id = types.length;
+
+      var listener = {
         appearanceChanged: function () {
           self.persistence.dirty(); // TODO also need to dirty on other modifications to the block type, but there are no hooks for that. // TODO This is not a good strategy — we should be dirty in general because we contain a dirty unnamed object (and not if it is named).
-          appearanceChangedQueue.enqueue(newID);
-          notifier.notify("texturingChanged", newID);
+          appearanceChangedQueue.enqueue(id);
+          notifier.notify("texturingChanged", id);
           return true;
         }
-      });
-      appearanceChangedQueue.enqueue(newID);
+      };
+
+      types.push(newBlockType);
+      newBlockType.listen(listener);
+      listenersForTypes.push(listener);
       
       // TODO: This is not sufficient if BlockTypes are allowed to change their worlds
       if (newBlockType.world) {
@@ -521,9 +534,21 @@ var BlockSet = (function () {
       }
       
       self.persistence.dirty();
-      notifier.notify("tableChanged", newID);
+      appearanceChangedQueue.enqueue(id);
+      notifier.notify("tableChanged", id);
     };
+    
+    this.deleteLast = function () {
+      var type = types.pop();
+      var id = types.length;
       
+      type.listen.cancel(listenersForTypes.pop());
+      
+      self.persistence.dirty();
+      appearanceChangedQueue.enqueue(id);
+      notifier.notify("tableChanged", id);
+    };
+    
     this.get = function (blockID) {
       return types[blockID] || types[BlockSet.ID_BOGUS] || types[BlockSet.ID_EMPTY];
     };
