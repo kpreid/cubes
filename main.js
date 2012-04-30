@@ -211,7 +211,7 @@ var CubesMain = (function () {
       measuring.sim.end();
       measuring.simCount.inc();
     }
-    function doStep() {
+    function doSimulationSteps() {
       // perform limited catch-up
       var now = Date.now();
       if (lastStepTime === null)
@@ -223,30 +223,40 @@ var CubesMain = (function () {
         doOneStep();
         lastStepTime += timestep_ms;
       }
-      measureDisplay.updateIfVisible();
     }
     
-    var animFrameWasRequested = false;
-    function scheduleDraw() {
-      if (!animFrameWasRequested && readyToDraw && !renderer.contextLost) {
-        window.requestAnimationFrame/*shimmed*/(function () {
-          animFrameWasRequested = false;
-
-          // done here because chunk updating should be deprioritized at the same time drawing would be
-          player.render.getWorldRenderer().updateSomeChunks();
-
-          measuring.frame.start();
-          drawScene(player.render);
-          measuring.frame.end();
-          measureDisplay.updateIfVisible();
-          
-          if (config.debugForceRender.get()) scheduleDraw();
-        }, theCanvas);
-        animFrameWasRequested = true;
+    var drawingWasRequested = false;
+    
+    function animationFrameHandler() {
+      doSimulationSteps();
+      
+      if (drawingWasRequested && readyToDraw && !renderer.contextLost) {
+        drawingWasRequested = false;
+        
+        // done here because chunk updating should be deprioritized at the same time drawing would be
+        player.render.getWorldRenderer().updateSomeChunks();
+        
+        measuring.frame.start();
+        drawScene(player.render);
+        measuring.frame.end();
+        
+        if (config.debugForceRender.get()) scheduleDraw();
       }
+      
+      measureDisplay.updateIfVisible();
+      
+      startAnimationLoop();
     }
     config.debugForceRender.listen({changed: function () { scheduleDraw(); return true; }});
 
+    function scheduleDraw() {
+      drawingWasRequested = true;
+    }
+    
+    function startAnimationLoop() {
+      window.requestAnimationFrame(animationFrameHandler, theCanvas);
+    }
+    
     // statistics are reset once per second
     measuring.second.start();
     setInterval(function () {
@@ -494,7 +504,7 @@ var CubesMain = (function () {
         function () {
           readyToDraw = true;
           sceneInfoOverlay.insertBefore(measureDisplay.element, sceneInfoTextElem.nextSibling);
-          setInterval(doStep, timestep_ms);
+          startAnimationLoop();
           callback(null);
         }
       ], function (exception) {
