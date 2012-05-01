@@ -227,6 +227,7 @@ var Player = (function () {
     this.stepYourselfAndWorld = function (timestep) {
       stepPlayer(timestep);
       currentPlace.world.step(timestep);
+      currentPlace.world.polishLightInVicinity(currentPlace.body.pos, config.renderDistance.get(), 1);
       if (config.debugPlayerCollision.get()) {
         aabbR.recompute();
         scheduleDraw();

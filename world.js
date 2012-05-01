@@ -511,21 +511,23 @@ var World = (function () {
       evaluateLightsInQueue();
     }
     
-    function polishLightInVicinity(cpos,radius) {
+    function polishLightInVicinity(center, radius, count) {
       var diameter = 2 * radius;
       var vec = [];
-      for (var i = 0; i < 10; i++) {
-        var x = Math.round(cpos[0] + (Math.random()-0.5) * radius);
-        var y = Math.round(cpos[1] + (Math.random()-0.5) * radius);
-        var z = Math.round(cpos[2] + (Math.random()-0.5) * radius);
+      for (var i = 0; i < count; i++) {
+        var x = Math.round(center[0] + (Math.random()-0.5) * radius);
+        var y = Math.round(center[1] + (Math.random()-0.5) * radius);
+        var z = Math.round(center[2] + (Math.random()-0.5) * radius);
         
-        // Skip blocks which are not adjacent to a solid block and therefore irrelevant
-        if (!(g(x-1,y,z) ||
+        // Skip blocks which are empty and surrounded by emptiness and therefore irrelevant
+        if (!(g(x,y,z) ||
+              g(x-1,y,z) ||
               g(x+1,y,z) ||
               g(x,y+1,z) ||
               g(x,y-1,z) ||
               g(x,y,z+1) ||
               g(x,y,z-1))) continue;
+        
         queueLightAt(x,y,z,LIGHT_MAX);
       }
     }

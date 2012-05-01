@@ -356,8 +356,6 @@ var WorldRenderer = (function () {
         });
       }
       
-      world.polishLightInVicinity(pos, config.renderDistance.get() * 0.1); // TODO too sharp, for testing
-      
       // Update chunks from the queues.
       var deadline = Date.now() + (addChunks.size() > 30 ? 30 : 10);
       var count = 0;
