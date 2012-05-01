@@ -423,6 +423,7 @@ var World = (function () {
       blockCircuits = new IntVectorMap(); // TODO clear op instead of replacing objects?
       circuits = new IntVectorMap();
       var types = blockSet.getAll();
+      var opaques = types.map(function (t) { return t.opaque; });
       var vec = [0,0,0];
       for (var x = 0; x < wx; x++) {
         vec[0] = x;
@@ -462,7 +463,7 @@ var World = (function () {
         var shade = LIGHT_INITIAL_GUESS;
         for (var y = wy - 1; y >= 0; y--) {
           var index = ((x * wy) + y) * wz + z;
-          if (types[blocks[index]].opaque) {
+          if (opaques[blocks[index]]) {
             shade = 0;
           }
           lighting[index] = shade;
