@@ -135,6 +135,7 @@ var measuring = (function () {
     var sparkCanvas = document.createElement("canvas");
     sparkCanvas.className = "measuring-sparkline";
     var sparkLength = sparkCanvas.width  = this.history.length;
+    sparkCanvas.height = 1; // updated later via computed style
     var sparkContext = sparkCanvas.getContext("2d");
     var lastUpdateIndex = 0;
 
