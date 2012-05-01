@@ -2,9 +2,9 @@ const float cModEpsilon = 1e-20;
 const float cTileCurvature = 0.2;
 const float cTileBumpDistance = 2.0;
 
-const float cLightAmbient = 0.5;
-const vec3 cLight1Dir = vec3(0.8,-0.2,0);
-const vec3 cLight2Dir = vec3(-0.8,0.7,0.5);
+const float cLightAmbient = 0.75;
+const vec3 cLight1Dir = vec3(0.4,-0.1,0);
+const vec3 cLight2Dir = vec3(-0.4,0.35,0.25);
 
 // What is the illumination from the given (unit vector) direction?
 float lightEnv(vec3 dir) {
