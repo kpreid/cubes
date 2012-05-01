@@ -198,6 +198,11 @@ var CubesMain = (function () {
         chunkProgressBar.setByTodoCount(wrend.chunkRendersToDo());
         persistenceProgressBar.setByTodoCount(persistencePool.status.get());
         
+        measuring.chunkQueueSize.inc(wrend.chunkRendersToDo());
+        measuring.persistenceQueueSize.inc(persistencePool.status.get());
+        measuring.queues.end();
+        measuring.queues.start();
+        
         measuring.frameCount.inc();
         measuring.bundles.inc(renderer.bundlesDrawn);
         measuring.vertices.inc(renderer.verticesDrawn);

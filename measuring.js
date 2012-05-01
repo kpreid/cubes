@@ -255,6 +255,11 @@ var measuring = (function () {
   TaskGroup.prototype = Object.create(ViewGroup.prototype);
   
   measuring.all = new TopGroup("Performance", [
+    measuring.queues = new ViewGroup("Queue sizes", [
+      measuring.chunkQueueSize = new Counter("Chunks"),
+      measuring.lightingQueueSize = new Counter("Lights"),
+      measuring.persistenceQueueSize = new Counter("Dirty objs")
+    ]),
     measuring.second = new ViewGroup("Per second", [
       measuring.simCount = new Counter("Steps"),
       measuring.frameCount = new Counter("Frames"),
@@ -263,7 +268,6 @@ var measuring = (function () {
     ]),
     measuring.sim = new TaskGroup("Simulation", [
       measuring.collisionTests = new Counter("Collision tests"),
-      measuring.lightingQueueSize = new Counter("Lights to update")
     ]),
     measuring.chunk = new TaskGroup("Chunk calc", []),
     measuring.frame = new TaskGroup("Frame", [
