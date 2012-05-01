@@ -7,7 +7,7 @@ var WorldRenderer = (function () {
   // The side length of the chunks the world is broken into for rendering.
   // Smaller chunks are faster to update when the world changes, but have a higher per-frame cost.
   var CHUNKSIZE = 20;
-
+  
   // 3D Euclidean distance, squared (for efficiency).
   function dist3sq(v1, v2) {
     var x = v1[0] - v2[0];
@@ -302,7 +302,8 @@ var WorldRenderer = (function () {
       // Add circuits which are in viewing distance.
       // Note: This enumerates every circuit in the world. Currently, this is more efficient than the alternatives because there are not many circuits in typical data. When that changes, we should revisit this and use some type of spatial index to make it efficient. Testing per-block is *not* efficient.
       if (!playerChunk) return;
-      var rdi = renderDistanceInfo(config.renderDistance.get());
+      var renderDistance = config.renderDistance.get();
+      var rdi = renderDistanceInfo(renderDistance);
       world.getCircuits().forEach(function (circuit, origin) {
         if (dist3sq(origin, playerChunk) < rdi.addChunkDistanceSquared) {
           if (!circuitRenderers.get(origin)) {
@@ -353,7 +354,6 @@ var WorldRenderer = (function () {
             circuitRenderers.delete(cube);
           }
         });
-        
       }
       
       // Update chunks from the queues.
@@ -472,6 +472,10 @@ var WorldRenderer = (function () {
         var wz = world.wz;
         var rawBlocks = world.raw; // for efficiency
         var rawRotations = world.rawRotations;
+        var rawLighting = world.rawLighting;
+        var inBounds = world.inBounds;
+        var lightScale = world.lightScale;
+        var lightOutside = world.lightOutside;
         var chunkOriginX = xzkey[0];
         var chunkOriginY = xzkey[1];
         var chunkOriginZ = xzkey[2];
@@ -489,15 +493,25 @@ var WorldRenderer = (function () {
           var types = renderData.types;
           var g = world.g;
 
+          var adjnx = -wy*wz;
+          var adjpx = +wy*wz;
+          var adjny = -wz;
+          var adjpy = +wz;
+          var adjnz = -1;
+          var adjpz = +1;
+          
           // these variables are used by face() and written by the loop
           var x,y,z;
           var thisOpaque;
+          var rawIndex;
+          var isAtBounds;
           
-          function face(vFacing, data) {
-            var fx = vFacing[0];
-            var fy = vFacing[1];
-            var fz = vFacing[2];
-            if (thisOpaque && types[g(x+fx,y+fy,z+fz)].opaque) {
+          function face(vFacing, data, lightingOffsetIndex) {
+            var fx = vFacing[0]; var xfx = x + fx;
+            var fy = vFacing[1]; var yfy = y + fy;
+            var fz = vFacing[2]; var zfz = z + fz;
+            // TODO between the g() and the inBounds() we're testing the neighbor twice
+            if (thisOpaque && types[g(xfx,yfy,zfz)].opaque) {
               // this face is invisible
               return;
             } else {
@@ -511,7 +525,13 @@ var WorldRenderer = (function () {
                               faceVertices[vi+1]+y,
                               faceVertices[vi+2]+z);
                 texcoords.push(faceTexcoords[ti], faceTexcoords[ti+1]);
-                normals.push(fx, fy, fz);
+                var lightValue =
+                    !thisOpaque ? rawLighting[rawIndex] :
+                    (isAtBounds && !inBounds(xfx,yfy,zfz)) ? lightOutside :
+                    rawLighting[rawIndex+lightingOffsetIndex];
+                var light = Math.max(.01, lightValue * lightScale);
+                // the max is because a zero normal is special -- TODO kludge
+                normals.push(light*fx, light*fy, light*fz);
               }
             }
           }
@@ -519,8 +539,9 @@ var WorldRenderer = (function () {
           for (x = chunkOriginX; x < chunkLimitX; x++)
           for (y = chunkOriginY; y < chunkLimitY; y++)
           for (z = chunkOriginZ; z < chunkLimitZ; z++) {
+            isAtBounds = x === chunkOriginX || x === chunkLimitX - 1 || y === 0 || y === wy - 1 || z === chunkOriginZ || z === chunkLimitZ - 1;
             // raw array access inlined and simplified for efficiency
-            var rawIndex = (x*wy+y)*wz+z;
+            rawIndex = (x*wy+y)*wz+z;
             var value = rawBlocks[rawIndex];
             if (value === ID_EMPTY) continue;
 
@@ -530,12 +551,13 @@ var WorldRenderer = (function () {
             var faceData = (rotatedBlockFaceData[value] || BOGUS_BLOCK_DATA)[rotIndex];
             thisOpaque = btype.opaque;
 
-            face(rot.nx, faceData.lx);
-            face(rot.ny, faceData.ly);
-            face(rot.nz, faceData.lz);
-            face(rot.px, faceData.hx);
-            face(rot.py, faceData.hy);
-            face(rot.pz, faceData.hz);
+            // TODO: Uses the wrong lighting adj* for rotated blocks
+            face(rot.nx, faceData.lx, adjnx);
+            face(rot.ny, faceData.ly, adjny);
+            face(rot.nz, faceData.lz, adjnz);
+            face(rot.px, faceData.hx, adjpx);
+            face(rot.py, faceData.hy, adjpy);
+            face(rot.pz, faceData.hz, adjpz);
           }
           nonempty = vertices.length > 0;
           measuring.chunk.end();

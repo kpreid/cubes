@@ -258,9 +258,11 @@ var measuring = (function () {
       measuring.simCount = new Counter("Steps"),
       measuring.frameCount = new Counter("Frames"),
       measuring.chunkCount = new Counter("Chunk calcs"),
+      measuring.lightUpdateCount = new Counter("Light updates"),
     ]),
     measuring.sim = new TaskGroup("Simulation", [
-      measuring.collisionTests = new Counter("Collision tests")
+      measuring.collisionTests = new Counter("Collision tests"),
+      measuring.lightingQueueSize = new Counter("Lights to update")
     ]),
     measuring.chunk = new TaskGroup("Chunk calc", []),
     measuring.frame = new TaskGroup("Frame", [

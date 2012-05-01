@@ -10,6 +10,7 @@ var BlockType = (function () {
   function BlockType() {
     throw new Error("abstract");
   }
+  BlockType.prototype.reflectivity = 0.9; // This is not an instance property because I don't yet want to hardcode a particular value that gets saved.
   
   function _BlockTypeSuper() {
     if (!(this instanceof BlockType)) {
@@ -27,6 +28,7 @@ var BlockType = (function () {
     this.behavior = null;
     this.name = null;
     this.solid = true;
+    this.light = 0; // Light emission — float scale where 1.0 is an "ordinary light"
   }
   
   BlockType.prototype.serialize = function (serialize) {
@@ -39,6 +41,8 @@ var BlockType = (function () {
     if (this.name !== null)
       json.name = this.name;
     if (!this.solid) json.solid = false; // default true
+    if (this.light !== 0)
+      json.light = this.light;
     return json;
   };
   
@@ -204,6 +208,8 @@ var BlockType = (function () {
       self.name = json.name;
     if (Object.prototype.hasOwnProperty.call(json, "solid"))
       self.solid = json.solid;
+    if (Object.prototype.hasOwnProperty.call(json, "light"))
+      self.light = json.light;
     
     return self;
   };

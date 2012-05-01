@@ -136,6 +136,7 @@ var CubesMain = (function () {
           var sx = Infinity;
           var sy = -Infinity;
           var cube = sel.cube;
+          var empty = vec3.add(sel.cube, sel.face, vec3.create());
           for (var dx = 0; dx <= 1; dx++)
           for (var dy = 0; dy <= 1; dy++)
           for (var dz = 0; dz <= 1; dz++) {
@@ -153,11 +154,14 @@ var CubesMain = (function () {
             var value = world.g(cube[0],cube[1],cube[2]);
             var sub = world.gSub(cube[0],cube[1],cube[2]);
             var type = world.gt(cube[0],cube[1],cube[2]);
+            var light = type.opaque ? world.gLight(empty[0],empty[1],empty[2])
+                                    : world.gLight(cube[0],cube[1],cube[2]);
             var text = (
               value
               + (sub ? ":" + sub : "")
               + (type.name ? " (" + type.name + ")" : "")
               + "\nat " + sel.cube
+              + "\n" + (type.opaque ? "Surface" : "Interior") + " light: " + light
             );
 
             var circuit = world.getCircuit(cube);

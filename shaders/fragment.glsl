@@ -2,9 +2,9 @@ const float cModEpsilon = 1e-20;
 const float cTileCurvature = 0.2;
 const float cTileBumpDistance = 2.0;
 
-const float cLightAmbient = 0.5;
-const vec3 cLight1Dir = vec3(0.8,-0.2,0);
-const vec3 cLight2Dir = vec3(-0.8,0.7,0.5);
+const float cLightAmbient = 0.75;
+const vec3 cLight1Dir = vec3(0.4,-0.1,0);
+const vec3 cLight2Dir = vec3(-0.4,0.35,0.25);
 
 // What is the illumination from the given (unit vector) direction?
 float lightEnv(vec3 dir) {
@@ -23,16 +23,17 @@ vec3 spill(vec3 v) {
 }
 
 float lighting() {
+  float scalarLight = length(vNormal);
   // 'cell' is a vector with components in [-1.0, 1.0] indicating this point's
   // offset from the center of its sub-cube
   vec3 normal;
 #if BUMP_MAPPING
     vec3 cell = (mod(vGridPosition * uTileSize + cModEpsilon, 1.0) - vec3(0.5)) * 2.0;
-    normal = normalize(vNormal + cTileCurvature / max(1.0, vDistanceFromEye / cTileBumpDistance) * pow7vec3(cell));
+    normal = normalize(vNormal/scalarLight + cTileCurvature / max(1.0, vDistanceFromEye / cTileBumpDistance) * pow7vec3(cell));
 #else
     normal = vNormal;
 #endif
-  return cLightAmbient + lightEnv(normal);
+  return scalarLight * (cLightAmbient + lightEnv(normal));
 }
 
 float whiteNoise() {
