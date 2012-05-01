@@ -559,6 +559,7 @@ var World = (function () {
         if (!type.opaque) {
           // TODO: implement attenuation and blocks with some opaque faces.
           incomingLight += type.light/LIGHT_SCALE;
+          rayHits.push([rx,ry,rz]);
           return false;
         } else {
           var emptyx = rx+face[0];
@@ -591,15 +592,22 @@ var World = (function () {
           continue;
       
         var index = x*wy*wz + y*wz + z;
+        var thisOccupied = blocks[index];
       
         var incomingLight = 0;
         var rayHits = [];
         var totalRays = 0;
         for (var raySetI = lightRays.length - 1; raySetI >= 0; raySetI--) {
           var raySetData = lightRays[raySetI];
-          var reflectFace = raySetData.reflectFace;
-          if (!types[g(x+reflectFace[0], y+reflectFace[1], z+reflectFace[2])].opaque)
-            continue;
+          
+          // If this is empty space, then...
+          if (!thisOccupied) {
+            // Cast rays only from adjacent opaque surfaces
+            var reflectFace = raySetData.reflectFace;
+            if (!types[g(x+reflectFace[0], y+reflectFace[1], z+reflectFace[2])].opaque)
+              continue;
+          }
+          
           var rays = raySetData.rays;
           for (var rayi = rays.length - 1; rayi >= 0; rayi--) {
             var rayData = rays[rayi];
