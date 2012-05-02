@@ -40,6 +40,7 @@
   <script type="text/javascript" src="body.js"></script>
   <script type="text/javascript" src="player.js"></script>
   <script type="text/javascript" src="input.js"></script>
+  <script type="text/javascript" src="ui-2d.js"></script>
   <script type="text/javascript" src="audio.js"></script>
   <script type="text/javascript" src="main.js"></script>
   
@@ -200,7 +201,7 @@
       <textarea id="loadfield" cols="20" rows="3" style="width: 80%;"></textarea>
       <br>
       <button onclick="
-        document.getElementById('loadfield').value = JSON.stringify(cyclicSerialize(main.getTopWorld(), Persister.types)); return false;
+        document.getElementById('loadfield').value = JSON.stringify(cyclicSerialize(main.getTopWorld(), Persister.findType)); return false;
       ">Text Export</button>
       <button onclick="
         while (document.getElementById('load-error').firstChild)

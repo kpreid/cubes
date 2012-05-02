@@ -69,12 +69,15 @@ var CubesMain = (function () {
     var chunkProgressBar;
     var persistenceProgressBar;
     var measureDisplay;
+    var currentWorldChipContainer;
     
     var focusCell = new Cell("focus", false);
     focusCell.whenChanged(function () {
       scheduleDraw();
       return true;
     });
+    
+    var objectUI = new CubesObjectUI(persistencePool);
     
     // Game state, etc. objects
     var player;
@@ -311,6 +314,9 @@ var CubesMain = (function () {
     this.start = function (pageElements, callback) {
       var sceneInfoOverlay = pageElements.sceneInfoOverlay;
       
+      currentWorldChipContainer = document.createElement("div");
+      sceneInfoOverlay.appendChild(currentWorldChipContainer);
+      
       // Overall info overlay
       var sceneInfoTextElem = document.createElement("pre");
       sceneInfoOverlay.appendChild(sceneInfoTextElem);
@@ -373,7 +379,9 @@ var CubesMain = (function () {
               case BlockType: typeCell.textContent = "block type"; break;
               default: typeCell.textContent = "???"; break;
             }
-            nameCell.textContent = name;
+            var chip = new objectUI.ObjectChip();
+            chip.bindByName(name);
+            nameCell.appendChild(chip.element);
             var size = persistencePool.getSize(name);
             totalSize += size;
             sizeCell.textContent = (size/1000).toFixed(0) + "K";
@@ -385,29 +393,6 @@ var CubesMain = (function () {
                 main.setTopWorld(obj);
               }
             });
-            
-            var controlsArea = document.createElement("td");
-            row.appendChild(controlsArea);
-            
-            function addControl(label, fn) {
-              var b = document.createElement("button");
-              b.textContent = label;
-              controlsArea.appendChild(b);
-              b.addEventListener("click", fn, false);
-            }
-            
-            addControl("Delete", function () {
-              if (window.confirm("Really delete “" + name + "”?")) {
-                // TODO unnecessary unserialization - change pool interface
-                persistencePool.get(name).persistence.ephemeralize();
-              }
-            });
-            
-            //addControl("Export", function () {
-            //  // TODO put serialization text up in a dialog box. (Also add "Export Current World")
-            //});
-            
-            // TODO: add rename
           });
           
           var totalRow = document.createElement("tr");
@@ -550,6 +535,13 @@ var CubesMain = (function () {
 
       var name = world.persistence.getName();
       if (name !== null) config.currentTopWorld.set(name);
+      
+      if (currentWorldChipContainer) {
+        var chip = new objectUI.ObjectChip();
+        chip.bindByObject(world);
+        currentWorldChipContainer.textContent = ""; // clear
+        currentWorldChipContainer.appendChild(chip.element);
+      }
     };
     this.getTopWorld = function () { return worldH; };
     

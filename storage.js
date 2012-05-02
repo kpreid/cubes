@@ -5,7 +5,7 @@
 
 var SERIAL_TYPE_NAME = "()"; // TODO local variable
 
-function cyclicSerialize(root, unserializers, getName) {
+function cyclicSerialize(root, typeNameFunc, getName) {
   "use strict";
   if (!getName) getName = function () { return null; };
   var seen = [];
@@ -30,14 +30,12 @@ function cyclicSerialize(root, unserializers, getName) {
     return json;
   }
   serialize.setUnserializer = function (json, constructor) {
-    for (var k in unserializers) {
-      if (unserializers[k] === constructor
-          && Object.prototype.hasOwnProperty.call(unserializers, k)) {
-        json[SERIAL_TYPE_NAME] = k;
-        return;
-      }
+    var name = typeNameFunc(constructor);
+    if (name !== null) {
+      json[SERIAL_TYPE_NAME] = name;
+    } else {
+      throw new Error("Don't know how to serialize the constructor " + constructor);
     }
-    throw new Error("Don't know how to serialize the constructor " + constructor);
   };
   return serialize(root);
 }
@@ -373,9 +371,21 @@ function Persister(object) {
       return;
     } else {
       console.log("Persister: writing dirty", name);
-      pool._write(name, JSON.stringify(cyclicSerialize(object, Persister.types, getObjName)));
+      pool._write(name, JSON.stringify(cyclicSerialize(object, Persister.findType, getObjName)));
       dirty = false;
     }
   };
 }
 Persister.types = {}; // TODO global mutable state
+
+// TODO kludge
+Persister.findType = function (constructor) {
+  var ts = Persister.types;
+  for (var k in ts) {
+    if (ts[k] === constructor
+        && Object.prototype.hasOwnProperty.call(ts, k)) {
+      return k;
+    }
+  }
+  return null;
+};

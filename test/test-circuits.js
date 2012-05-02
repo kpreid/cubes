@@ -113,7 +113,7 @@ describe("Circuit", function() {
     expect(t.readOutput(UNIT_PZ)).toEqual(3);
 
     // Regression test: rotation connectivity works after unserialization (that is, the notifyRawEdit path)
-    t.world = cyclicUnserialize(cyclicSerialize(t.world, Persister.types), Persister.types);
+    t.world = cyclicUnserialize(cyclicSerialize(t.world, Persister.findType), Persister.types);
     expect(t.readOutput(UNIT_PX)).toBeFalsy();
     expect(t.readOutput(UNIT_PZ)).toEqual(3);
   });

@@ -8,7 +8,7 @@ describe("BlockType", function () {
     type.behavior = Circuit.behaviors.wire;
     type.name = "foo";
     type.solid = false;
-    var roundtrip = cyclicUnserialize(cyclicSerialize(type, Persister.types), Persister.types);
+    var roundtrip = cyclicUnserialize(cyclicSerialize(type, Persister.findType), Persister.types);
     expect(roundtrip.automaticRotations).toEqual([1,2]);
     expect(roundtrip.behavior).toEqual(Circuit.behaviors.wire);
     expect(roundtrip.name).toEqual("foo");

@@ -316,6 +316,71 @@ html {
   width: 20em;
 }
 
+/* --- object-UI widgets --- */
+
+.object-chip {
+  /* structure */
+  display: inline-block;
+  vertical-align: middle;
+  
+  /* geometry */
+  margin: 1px 0;
+  border-width: .1em;
+  border-radius: .2em;
+  padding: 0 .2em;
+  
+  /* style */
+  border-style: outset;
+  border-color #888;
+  background: #777;
+  color: #FFF;
+}
+.object-chip.object-chip-named { background: #686; }
+.object-chip.object-chip-ephemeral { background: #866; }
+.object-chip.object-chip-live { background: #494; }
+
+.object-chip button {
+  /* geometry */
+  margin: 0 -.15em;
+  padding: 0 .4em;
+  border: none;
+  
+  /* style */
+  background: none;
+  color: inherit;
+  font-weight: bold;
+  font-family: inherit;
+}
+
+.object-chip button:hover {
+  background: white;
+  color: black;
+}
+
+/* context menu */
+.command-menu {
+  border: 1px solid white;
+  background: gray;
+  color: white;
+}
+.command-menu ul {
+  display: table;
+  margin: 0;
+  padding: 0;
+}
+.command-menu li {
+  display: table-row;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+.command-menu button {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: .4em;
+}
+
 /* --- performance measurement widgets --- */
 
 .measuring-item {
