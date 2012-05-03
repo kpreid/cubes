@@ -327,7 +327,7 @@ html {
   margin: 1px 0;
   border-width: .1em;
   border-radius: .2em;
-  padding: 0 .2em;
+  padding: 0 0 0 .2em;
   
   /* style */
   border-style: outset;
@@ -341,9 +341,10 @@ html {
 
 .object-chip button {
   /* geometry */
-  margin: 0 -.15em;
-  padding: 0 .4em;
+  margin: 0;
+  padding: .2em .4em;
   border: none;
+  border-radius: .2em;
   
   /* style */
   background: none;
