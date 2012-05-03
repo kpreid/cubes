@@ -53,7 +53,6 @@ var CubesObjectUI;
       
       // Functions
       function openMenu(event) {
-        console.log("menu");
         event.stopPropagation();
         
         if (menuE) {
