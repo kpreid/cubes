@@ -27,33 +27,47 @@ var CubesObjectUI;
       this.bindByName = function (name) {
         if (bound) throw new Error("ObjectChip already bound");
         bound = true;
-
         targetName = name;
-        nameE.textContent = name;
-        chipE.className = baseClassName + (persistencePool.getIfLive(name) ? " object-chip-live" : " object-chip-named");
+        updateChip();
       };
       this.bindByObject = function (object) {
         if (bound) throw new Error("ObjectChip already bound");
         bound = true;
-
-        // Examine object
-        var label = null;
-        if (object.persistence) {
-          targetName = label = object.persistence.getName(); // TODO should be per-pool
-          chipE.className = baseClassName + " object-chip-live";
+        target = object;
+        updateChip();
+      };
+      
+      function updateChip() {
+        if (target !== null && targetName !== null) {
+          throw new Error("Inconsistent");
+          
+        } else if (target !== null) {
+          // Examine object
+          var label = null;
+          if (target.persistence) {
+            label = target.persistence.getName(); // TODO should be per-pool
+            chipE.className = baseClassName + " object-chip-live";
+          }
+          if (label === null) {
+            label = "a " + Persister.findType(target.constructor);
+            chipE.className = baseClassName + " object-chip-ephemeral";
+          }
+          
+          nameE.textContent = label;
+          
+        } else if (targetName !== null) {
+          nameE.textContent = targetName;
+          chipE.className = baseClassName + (persistencePool.getIfLive(targetName) ? " object-chip-live" : " object-chip-named");
+          
+        } else {
+          throw new Error("Can't happen");
         }
-        if (label === null) {
-          label = "a " + Persister.findType(object.constructor);
-          chipE.className = baseClassName + " object-chip-ephemeral";
-        }
-
-        // Initialize
-        nameE.textContent = label;
       }
       
-      // Functions
       function openMenu(event) {
         event.stopPropagation();
+        
+        updateChip();
         
         if (menuE) {
           return;
@@ -77,13 +91,14 @@ var CubesObjectUI;
             e.stopPropagation();
             dismiss();
             fn();
+            updateChip(); // TODO kludge; updates should be based on notifications
             return true;
           }, false);
           var li = document.createElement("li");
           li.appendChild(b);
           menuListE.appendChild(li);
         }
-
+        
         if (targetName !== null) {
           addControl("Delete", function () {
             if (window.confirm("Really delete “" + targetName + "”?")) {
@@ -91,8 +106,18 @@ var CubesObjectUI;
               persistencePool.get(targetName).persistence.ephemeralize();
             }
           });
-
+          
           // TODO add rename
+        }
+        
+        if (targetName === null && target !== null) {
+          addControl("Save As...", function () {
+            var response = window.prompt("Save " + nameE.textContent + " as:", nameE.textContent);
+            if (response !== null) {
+              target.persistence.ephemeralize();
+              persistencePool.persist(target, response);
+            }
+          });
         }
         
         //addControl("Export", function () {
