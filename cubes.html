@@ -64,6 +64,7 @@
     cursorInfoOverlay: id("cursor-info"),
     saveButton: id("save-button"),
     objectList: id("object-list"),
+    generateBlocksetList: id("generate_blockset"),
     // TODO combine error cases?
     webglError: [id("webgl-error-notice")],
     featureError: [id("feature-error-notice"), id("feature-error-text")],
@@ -156,6 +157,11 @@
     <table class="optionline">
       <tr><td>Name:<td><input id="generate_name" type="text" value="" style="width: 95%;">
         <p id="generate-name-conflict" style="display: none;" class="error">Name already in use.</p>
+      <tr><td>Blockset:
+      <td><select id="generate_blockset">
+        <!-- dynamic -->
+      </select>
+      <script>main.config.generate_blockset.bindControl("generate_blockset");</script>
       <tr><td>Shape: 
       <td><select id="generate_shape">
         <option value="fill">Flat-sided</option>

@@ -415,6 +415,29 @@ var CubesMain = (function () {
         });
       }
 
+      // Object list for blockset
+      // TODO: redundant with the object list; abstract this
+      if (pageElements.generateBlocksetList) {
+        var blocksetList = pageElements.generateBlocksetList;
+        function updateBlocksetList() {
+          while (blocksetList.firstChild) blocksetList.removeChild(blocksetList.firstChild);
+          persistencePool.forEach(function (name, type) {
+            if (type !== BlockSet) return;
+            var row = document.createElement("option");
+            blocksetList.appendChild(row);
+            row.value = name;
+            row.textContent = name;
+          });
+          blocksetList.value = config.generate_blockset.get();
+          return true;
+        }
+        updateBlocksetList();
+        persistencePool.listen({
+          added: updateBlocksetList,
+          deleted: updateBlocksetList
+        });
+      }
+      
       var shallLoadWorld = !config.alwaysGenerateWorld.get() && persistencePool.has(config.currentTopWorld.get());
 
       // Main startup sequence
