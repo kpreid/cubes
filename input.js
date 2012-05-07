@@ -251,9 +251,10 @@ var Input;
       el.blur();
     }
     
-    el.addEventListener("click", function () {
+    el.addEventListener("click", function (ev) {
       activate();
-      return true;
+      ev.stopPropagation();
+      return false;
     }, false);
     
     function generalListener(ev) {
@@ -287,11 +288,9 @@ var Input;
     this.element.className += " control-chip-conflict";
   }
   
-  function ControlBindingUI(rowContainer) {
+  function ControlBindingUI(bindingsCell, rowContainer) {
     var commands = Input.commands;
     
-    var bindings = Input.defaultBindings.slice();
-
     var commandToContainer = {};
     Object.keys(commands).forEach(function (commandName, index) {
       var row = document.createElement("tr");
@@ -301,21 +300,21 @@ var Input;
       row.appendChild(labelCell);
       labelCell.textContent = commands[commandName];
 
-      var bindingsCell = document.createElement("td");
-      row.appendChild(bindingsCell);
+      var controlsCell = document.createElement("td");
+      row.appendChild(controlsCell);
       
       var bindingsContainer = document.createElement("span");
-      bindingsCell.appendChild(bindingsContainer);
+      controlsCell.appendChild(bindingsContainer);
       commandToContainer[commandName] = bindingsContainer;
       
       var placeholderChip = new ControlChip(null, function (newControl) {
-        bindings.push([commandName, newControl]);
-        updateBindings();
+        bindingsCell.set(bindingsCell.get().concat([[commandName, newControl]]));
       });
-      bindingsCell.appendChild(placeholderChip.element);
+      controlsCell.appendChild(placeholderChip.element);
     });
     
     function updateBindings() {
+      var bindings = bindingsCell.get();
       var conflictMap = {};
       Object.keys(commandToContainer).forEach(function (key) {
         commandToContainer[key].textContent = "";
@@ -326,15 +325,17 @@ var Input;
         
         var container = commandToContainer[commandName];
         var chip = new ControlChip(control, function (newControl) {
-          bindings[index][1] = newControl;
-          updateBindings();
+          var newBindings = bindings.slice();
+          newBindings[index] = [newBindings[index][0], newControl];
+          bindingsCell.set(newBindings);
         }, function () {
+          var newBindings = bindings.slice();
           if (index < bindings.length - 1) {
-            bindings[index] = bindings.pop();
+            newBindings[index] = newBindings.pop();
           } else {
-            bindings.pop();
+            newBindings.pop();
           }
-          updateBindings();
+          bindingsCell.set(newBindings);
         });
         container.appendChild(chip.element);
         container.appendChild(document.createTextNode(" "));
@@ -349,8 +350,10 @@ var Input;
         }
       });
     }
-    
-    updateBindings();
+    bindingsCell.nowAndWhenChanged(function () {
+      updateBindings();
+      return true;
+    })
   }
   
   function Input_(config, eventReceiver, playerInput, hud, renderer, focusCell, save) {

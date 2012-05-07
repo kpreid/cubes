@@ -23,6 +23,7 @@ var CubesMain = (function () {
       Object.defineProperty(config, "resetAllOptions", {value: function () {
         Object.keys(config).forEach(function (k) { config[k].setToDefault(); });
       }});
+      defineOption("controls", "object", Input.defaultBindings);
       defineOption("fov", "number", 60);
       defineOption("renderDistance", "number", 100);
       defineOption("mouseTurnRate", "number", 4); // radians/second/half-screen-width

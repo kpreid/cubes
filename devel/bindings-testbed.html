@@ -20,6 +20,7 @@
   
   <script type="text/javascript" src="../deps/gl-matrix/gl-matrix.js"></script>
   <script type="text/javascript" src="../util.js"></script>
+  <script type="text/javascript" src="../storage.js"></script>
   <script type="text/javascript" src="../input.js"></script>
 </head>
 <body>
@@ -35,7 +36,7 @@
       </tbody>
     </table>
   <script type="text/javascript">
-    new CubesControlBindingUI(document.getElementById("controls-config"));
+    new CubesControlBindingUI(new Cell("test", Input.defaultBindings), document.getElementById("controls-config"));
   </script>
 </div>
 
