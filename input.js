@@ -34,6 +34,8 @@ var Input;
           }
         }
         break;
+      case "mousewheel":
+        return ["wheel", signum(ev.wheelDeltaX), signum(ev.wheelDeltaY)];
       default:
         return null;
     }
@@ -43,7 +45,7 @@ var Input;
     var el = document.createElement("span");
     el.className = "control-chip";
     this.element = el;
-    
+
     if (value === null) {
       el.textContent = "…";
       el.className += " control-chip-placeholder";
@@ -194,6 +196,15 @@ var Input;
         case "mouse":
           desc = "Mouse " + (value[1] + 1);
           break;
+        case "wheel":
+          switch (String(value)) {
+            case "wheel,0,-1": desc = "Wheel ↑"; break;
+            case "wheel,0,1" : desc = "Wheel ↓"; break;
+            case "wheel,-1,0": desc = "Wheel ←"; break;
+            case "wheel,1,0" : desc = "Wheel →"; break;
+            default: desc = "Wheel " + value.slice(1).toString(); break;
+          }
+          break;
         default:
           desc = String(value);
           break;
@@ -224,6 +235,7 @@ var Input;
     function generalListener(ev) {
       if (active) {
         set(parseEvent(ev));
+        ev.preventDefault();
         return false;
       } else {
         return true;
@@ -231,7 +243,10 @@ var Input;
     }
     
     el.addEventListener("keydown", generalListener, false);
+    el.addEventListener("keyup", generalListener, false);
     el.addEventListener("mousedown", generalListener, false);
+    el.addEventListener("mouseup", generalListener, false);
+    el.addEventListener("mousewheel", generalListener, false);
     
     // allow to become a mousedown
     el.addEventListener("contextmenu", function (ev) { 
@@ -272,7 +287,6 @@ var Input;
       
       function updateBindings() {
         while (insertMark.previousSibling) bindingsCell.removeChild(insertMark.previousSibling);
-        
         actions[key].forEach(function (binding, bindingIndex) {
           var chip = new ControlChip(binding, function (newBinding) {
             actions[key][bindingIndex] = newBinding;
