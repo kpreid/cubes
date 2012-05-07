@@ -41,9 +41,10 @@ var Input;
     }
   }
   
-  function ControlChip(value, set) {
+  function ControlChip(value, set, deleter) {
     var el = document.createElement("span");
     el.className = "control-chip";
+    el.style.position = "relative"; // context for delete button
     this.element = el;
     
     if (value === null) {
@@ -213,18 +214,40 @@ var Input;
     }
     
     var active = false;
+    var deleteButton;
     
     function activate() {
       if (active) return;
       active = true;
       el.tabIndex = 0;
       el.focus();
+      
+      if (deleter) {
+        deleteButton = document.createElement("button");
+        deleteButton.textContent = "×";
+        deleteButton.className = "control-unbind-button";
+        deleteButton.style.position = "absolute";
+        deleteButton.style.zIndex = "1";
+        el.parentElement.appendChild(deleteButton);
+        var inset = 0.2;
+        deleteButton.style.left = (el.offsetLeft + el.offsetWidth - deleteButton.offsetWidth * inset) + "px";
+        deleteButton.style.top = (el.offsetTop - deleteButton.offsetHeight * (1 - inset)) + "px";
+        deleteButton.addEventListener("mousedown", function (e) {
+          // mousedown, not click, because this has to be instant or it gets deleted by the blur handler
+          deleter();
+          return true;
+        }, false);
+      }
     }
     
     function deactivate() {
       if (!active) return;
       active = false;
       el.tabIndex = -1;
+      if (deleteButton) {
+        if (deleteButton.parentElement) deleteButton.parentElement.removeChild(deleteButton);
+        deleteButton = undefined;
+      }
       el.blur();
     }
     
@@ -256,7 +279,9 @@ var Input;
       return false;
     }, false);
     
-    el.addEventListener("blur", deactivate, false);
+    el.addEventListener("blur", function () {
+      setTimeout(deactivate, 0);
+    }, false);
   }
   ControlChip.prototype.conflict = function () {
     this.element.className += " control-chip-conflict";
@@ -312,6 +337,13 @@ var Input;
         var container = commandToContainer[commandName];
         var chip = new ControlChip(control, function (newControl) {
           bindings[index][1] = newControl;
+          updateBindings();
+        }, function () {
+          if (index < bindings.length - 1) {
+            bindings[index] = bindings.pop();
+          } else {
+            bindings.pop();
+          }
           updateBindings();
         });
         container.appendChild(chip.element);

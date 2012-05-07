@@ -347,6 +347,24 @@ html {
   outline: none;
 }
 
+.control-unbind-button {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: middle;
+  margin: 0;
+  padding: 0;
+  border-radius: 0.6em;
+  
+  border: 1px outset;
+  
+  background: red;
+  color: white;
+  font-family: "Arial", sans-serif;
+  font-weight: bold;
+  font-size: inherit;
+}
+
 /* --- object-UI widgets --- */
 
 .object-chip {
