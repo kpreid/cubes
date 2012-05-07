@@ -340,8 +340,10 @@ html {
 .control-chip.control-chip-placeholder:hover, 
 .control-chip.control-chip-placeholder:focus { opacity: 1.0; }
 
-.control-chip:focus {
-  border-color: red;
+.control-chip.control-chip-conflict { border-color: red; }
+
+.control-chip:focus, .control-chip.control-chip-conflict:focus {
+  border-color: #77F;
   outline: none;
 }
 

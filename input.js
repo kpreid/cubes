@@ -45,7 +45,7 @@ var Input;
     var el = document.createElement("span");
     el.className = "control-chip";
     this.element = el;
-
+    
     if (value === null) {
       el.textContent = "…";
       el.className += " control-chip-placeholder";
@@ -258,54 +258,77 @@ var Input;
     
     el.addEventListener("blur", deactivate, false);
   }
+  ControlChip.prototype.conflict = function () {
+    this.element.className += " control-chip-conflict";
+  }
   
   function ControlBindingUI(rowContainer) {
-    var actions = {
-      forward: [["key", "W".charCodeAt(0)]],
-      left: [["key", "A".charCodeAt(0)]]
+    var commands = {
+      forward: "forwardO",
+      backward: "backwardO",
+      right: "rightO",
+      left: "leftO",
     };
     
-    Object.keys(actions).forEach(function (key, index) {
+    var bindings = [
+      ["forward", ["key", "W".charCodeAt(0)]],
+      ["backward", ["key", "S".charCodeAt(0)]],
+      ["left", ["key", "A".charCodeAt(0)]],
+      ["right", ["key", "D".charCodeAt(0)]],
+    ];
+
+    var commandToContainer = {};
+    Object.keys(commands).forEach(function (commandName, index) {
       var row = document.createElement("tr");
       rowContainer.appendChild(row);
-      
+
       var nameCell = document.createElement("td");
       row.appendChild(nameCell);
-      nameCell.textContent = key;
-      
+      nameCell.textContent = commandName;
+
       var bindingsCell = document.createElement("td");
       row.appendChild(bindingsCell);
       
-      var placeholderChip = new ControlChip(null, function (newBinding) {
-        actions[key].push(newBinding);
+      var bindingsContainer = document.createElement("span");
+      bindingsCell.appendChild(bindingsContainer);
+      commandToContainer[commandName] = bindingsContainer;
+      
+      var placeholderChip = new ControlChip(null, function (newControl) {
+        bindings.push([commandName, newControl]);
         updateBindings();
       });
       bindingsCell.appendChild(placeholderChip.element);
-      var insertMark = placeholderChip.element;
-      
-      //var addButton = document.createElement("button");
-      //bindingsCell.appendChild(addButton);
-      //addButton.textContent = "+";
-      
-      function updateBindings() {
-        while (insertMark.previousSibling) bindingsCell.removeChild(insertMark.previousSibling);
-        actions[key].forEach(function (binding, bindingIndex) {
-          var chip = new ControlChip(binding, function (newBinding) {
-            actions[key][bindingIndex] = newBinding;
-            updateBindings();
-          });
-          bindingsCell.insertBefore(chip.element, insertMark);
-          bindingsCell.insertBefore(document.createTextNode(" "), insertMark);
-        });
-      }
-      updateBindings();
-      updateBindings();
-      
-      //placeholderChip.element.addEventListener("click", function () {
-      //  actions[key].push("1");
-      //  updateBindings();
-      //}, false);
     });
+    
+    function updateBindings() {
+      var conflictMap = {};
+      Object.keys(commandToContainer).forEach(function (key) {
+        commandToContainer[key].textContent = "";
+      });
+      bindings.forEach(function (bindingRecord, index) {
+        var commandName = bindingRecord[0];
+        var control = bindingRecord[1];
+        
+        var container = commandToContainer[commandName];
+        var chip = new ControlChip(control, function (newControl) {
+          bindings[index][1] = newControl;
+          updateBindings();
+        });
+        container.appendChild(chip.element);
+        container.appendChild(document.createTextNode(" "));
+        
+        var conflictList = conflictMap[control] || (conflictMap[control] = []);
+        conflictList.push(chip);
+        if (conflictList.length > 1) {
+          conflictList[conflictList.length - 1].conflict();
+        }
+        if (conflictList.length == 2) {
+          conflictList[0].conflict();
+        }
+      });
+    }
+    
+    updateBindings();
   }
   
   function Input_(config, eventReceiver, playerInput, hud, renderer, focusCell, save) {
