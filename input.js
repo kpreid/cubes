@@ -288,28 +288,18 @@ var Input;
   }
   
   function ControlBindingUI(rowContainer) {
-    var commands = {
-      forward: "forwardO",
-      backward: "backwardO",
-      right: "rightO",
-      left: "leftO",
-    };
+    var commands = Input.commands;
     
-    var bindings = [
-      ["forward", ["key", "W".charCodeAt(0)]],
-      ["backward", ["key", "S".charCodeAt(0)]],
-      ["left", ["key", "A".charCodeAt(0)]],
-      ["right", ["key", "D".charCodeAt(0)]],
-    ];
+    var bindings = Input.defaultBindings.slice();
 
     var commandToContainer = {};
     Object.keys(commands).forEach(function (commandName, index) {
       var row = document.createElement("tr");
       rowContainer.appendChild(row);
 
-      var nameCell = document.createElement("td");
-      row.appendChild(nameCell);
-      nameCell.textContent = commandName;
+      var labelCell = document.createElement("td");
+      row.appendChild(labelCell);
+      labelCell.textContent = commands[commandName];
 
       var bindingsCell = document.createElement("td");
       row.appendChild(bindingsCell);
@@ -950,6 +940,40 @@ var Input;
     switchMode(interfaceMode);
   }
   
+  Input_.commands = {};
+  Input_.defaultBindings = [];
+  function defcmd(name, label, bindings) {
+    Input_.commands[name] = label;
+    bindings.forEach(function (control) {
+      Input_.defaultBindings.push([name, control])
+    });
+  }
+  defcmd("left"    , "Left"    , [["key", "A".charCodeAt(0)], ["key", 37]]);
+  defcmd("right"   , "Right"   , [["key", "D".charCodeAt(0)], ["key", 39]]);
+  defcmd("forward" , "Forward" , [["key", "W".charCodeAt(0)], ["key", 38]]);
+  defcmd("backward", "Backward", [["key", "S".charCodeAt(0)], ["key", 40]]);
+  defcmd("up"      , "Up/Fly"  , [["key", "E".charCodeAt(0)]]);
+  defcmd("down"    , "Down"    , [["key", "C".charCodeAt(0)]]);
+  defcmd("jump"    , "Jump"    , [["key", " ".charCodeAt(0)]]);
+  defcmd("quick0", "Tool #1"   , [["key", "1".charCodeAt(0)]]);
+  defcmd("quick1", "Tool #2"   , [["key", "2".charCodeAt(0)]]);
+  defcmd("quick2", "Tool #3"   , [["key", "3".charCodeAt(0)]]);
+  defcmd("quick3", "Tool #4"   , [["key", "4".charCodeAt(0)]]);
+  defcmd("quick4", "Tool #5"   , [["key", "5".charCodeAt(0)]]);
+  defcmd("quick5", "Tool #6"   , [["key", "6".charCodeAt(0)]]);
+  defcmd("quick6", "Tool #7"   , [["key", "7".charCodeAt(0)]]);
+  defcmd("quick7", "Tool #8"   , [["key", "8".charCodeAt(0)]]);
+  defcmd("quick8", "Tool #9"   , [["key", "9".charCodeAt(0)]]);
+  defcmd("quick9", "Tool #10"  , [["key", "0".charCodeAt(0)]]);
+  defcmd("interfaceMode", "Mouselook"    , [["key", "Q".charCodeAt(0)]]);
+  defcmd("editTarget"   , "Edit block"   , [["key", "R".charCodeAt(0)]]);
+  defcmd("exitWorld"    , "Exit editing" , [["key", "F".charCodeAt(0)]]);
+  defcmd("subdatumInc"  , "Subdatum +1"  , [["key", "Z".charCodeAt(0)]]);
+  defcmd("subdatumDec"  , "Subdatum -1"  , [["key", "X".charCodeAt(0)]]);
+  defcmd("editBlockset" , "Edit blockset", [["key", "B".charCodeAt(0)]]);
+  Object.freeze(Input_.commands);
+  Object.freeze(Input_.defaultBindings); // should be recursive
+      
   CubesControlBindingUI = ControlBindingUI;
   Input = Input_;
 }());
