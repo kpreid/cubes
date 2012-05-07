@@ -1,9 +1,296 @@
 // Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
+var CubesControlBindingUI;
 var Input;
 (function () {
   "use strict";
+  
+  function parseEvent(ev) {
+    switch (ev.type) {
+      case "keydown":
+      case "keyup":
+        // NOTE: Per MDN <https://developer.mozilla.org/en/DOM/KeyboardEvent> the keyCode attribute is deprecated (but its replacement is not yet implemented in Gecko)
+        // TODO: Research the best way to express keybindings
+        return ["key", ev.keyCode];
+        break;
+      case "mousedown":
+      case "mouseup":
+        if (ev.buttons) { 
+          // Per <https://developer.mozilla.org/en/DOM/MouseEvent>
+          // This is the preferred definition because it supports >3 buttons.
+          // take lowest bit of buttons mask
+          var bit = 0, buttons = ev.buttons;
+          while (!(buttons & 1)) {
+            bit++;
+            buttons = buttons >> 1;
+          }
+          return ["mouse", bit];
+        } else {
+          switch (ev.button) {
+            case 0: return ["mouse", 0];
+            case 1: return ["mouse", 2];
+            case 2: return ["mouse", 1];
+          }
+        }
+        break;
+      default:
+        return null;
+    }
+  }
+  
+  function ControlChip(value, set) {
+    var el = document.createElement("span");
+    el.className = "control-chip";
+    this.element = el;
+    
+    if (value === null) {
+      el.textContent = "…";
+      el.className += " control-chip-placeholder";
+    } else {
+      var desc;
+      switch (value[0]) {
+        case "key":
+          switch (value[1]) {
+            // TODO are the constants available somewhere?
+            // I generated this table from MDN content
+            // <https://developer.mozilla.org/en/DOM/KeyboardEvent>
+            // perl -pe 's/^(.*?)\t(.*?)\t(.*?) key.$/case $2: desc = "$3";/; s/^DOM_VK_(.*?)\t(.*?)\t(.*?).$/case $2: desc = "\L$1";/;'
+            case   3: desc = "cancel"; break;
+            case   6: desc = "help"; break;
+            case   8: desc = "backspace"; break;
+            case   9: desc = "tab"; break;
+            case  12: desc = "clear"; break;
+            case  13: desc = "return"; break;
+            case  14: desc = "enter"; break;
+            case  16: desc = "shift"; break;
+            case  17: desc = "control"; break;
+            case  18: desc = "alt"; break;
+            case  19: desc = "pause"; break;
+            case  20: desc = "caps lock"; break;
+            case  27: desc = "escape"; break;
+            case  28: desc = "convert"; break;
+            case  29: desc = "nonconvert"; break;
+            case  30: desc = "accept"; break;
+            case  31: desc = "modechange"; break;
+            case  32: desc = "space"; break;
+            case  33: desc = "page up"; break;
+            case  34: desc = "page down"; break;
+            case  35: desc = "end"; break;
+            case  36: desc = "home"; break;
+            case  37: desc = "left"; break;
+            case  38: desc = "up"; break;
+            case  39: desc = "right"; break;
+            case  40: desc = "down"; break;
+            case  41: desc = "select"; break;
+            case  41: desc = "select"; break;
+            case  42: desc = "print"; break;
+            case  42: desc = "print"; break;
+            case  43: desc = "execute"; break;
+            case  43: desc = "execute"; break;
+            case  44: desc = "print screen"; break;
+            case  45: desc = "ins"; break;
+            case  46: desc = "del"; break;
+            case  48: desc = "0"; break;
+            case  49: desc = "1"; break;
+            case  50: desc = "2"; break;
+            case  51: desc = "3"; break;
+            case  52: desc = "4"; break;
+            case  53: desc = "5"; break;
+            case  54: desc = "6"; break;
+            case  55: desc = "7"; break;
+            case  56: desc = "8"; break;
+            case  57: desc = "9"; break;
+            case  59: desc = ";"; break;
+            case  61: desc = "="; break;
+            case  65: desc = "A"; break;
+            case  66: desc = "B"; break;
+            case  67: desc = "C"; break;
+            case  68: desc = "D"; break;
+            case  69: desc = "E"; break;
+            case  70: desc = "F"; break;
+            case  71: desc = "G"; break;
+            case  72: desc = "H"; break;
+            case  73: desc = "I"; break;
+            case  74: desc = "J"; break;
+            case  75: desc = "K"; break;
+            case  76: desc = "L"; break;
+            case  77: desc = "M"; break;
+            case  78: desc = "N"; break;
+            case  79: desc = "O"; break;
+            case  80: desc = "P"; break;
+            case  81: desc = "Q"; break;
+            case  82: desc = "R"; break;
+            case  83: desc = "S"; break;
+            case  84: desc = "T"; break;
+            case  85: desc = "U"; break;
+            case  86: desc = "V"; break;
+            case  87: desc = "W"; break;
+            case  88: desc = "X"; break;
+            case  89: desc = "Y"; break;
+            case  90: desc = "Z"; break;
+            case  91: desc = "⌘"; break;
+            case  93: desc = "menu"; break;
+            case  95: desc = "sleep"; break;
+            case  96: desc = "[0]"; break;
+            case  97: desc = "[1]"; break;
+            case  98: desc = "[2]"; break;
+            case  99: desc = "[3]"; break;
+            case 100: desc = "[4]"; break;
+            case 101: desc = "[5]"; break;
+            case 102: desc = "[6]"; break;
+            case 103: desc = "[7]"; break;
+            case 104: desc = "[8]"; break;
+            case 105: desc = "[9]"; break;
+            case 106: desc = "[*]"; break;
+            case 107: desc = "[+]"; break;
+            case 108: desc = "separator"; break;
+            case 109: desc = "[-]"; break;
+            case 110: desc = "[.]"; break;
+            case 111: desc = "[/]"; break;
+            case 112: desc = "F1"; break;
+            case 113: desc = "F2"; break;
+            case 114: desc = "F3"; break;
+            case 115: desc = "F4"; break;
+            case 116: desc = "F5"; break;
+            case 117: desc = "F6"; break;
+            case 118: desc = "F7"; break;
+            case 119: desc = "F8"; break;
+            case 120: desc = "F9"; break;
+            case 121: desc = "F10"; break;
+            case 122: desc = "F11"; break;
+            case 123: desc = "F12"; break;
+            case 124: desc = "F13"; break;
+            case 125: desc = "F14"; break;
+            case 126: desc = "F15"; break;
+            case 127: desc = "F16"; break;
+            case 128: desc = "F17"; break;
+            case 129: desc = "F18"; break;
+            case 130: desc = "F19"; break;
+            case 131: desc = "F20"; break;
+            case 132: desc = "F21"; break;
+            case 133: desc = "F22"; break;
+            case 134: desc = "F23"; break;
+            case 135: desc = "F24"; break;
+            case 144: desc = "num lock"; break;
+            case 145: desc = "scroll lock"; break;
+            case 188: desc = ","; break;
+            case 190: desc = "."; break;
+            case 191: desc = "/"; break;
+            case 192: desc = "\""; break;
+            case 192: desc = "`"; break;
+            case 219: desc = "["; break;
+            case 221: desc = "]"; break;
+            case 222: desc = "\\"; break; // platform hazard
+            case 224: desc = "meta"; break;
+            default:
+              if (value[1] > 33 && value[1] < 127) {
+                desc = String.fromCharCode(value[1]);
+              } else {
+                desc = "key " + value[1]; break;
+              }
+          }
+          break;
+        case "mouse":
+          desc = "Mouse " + (value[1] + 1);
+          break;
+        default:
+          desc = String(value);
+          break;
+      }
+      el.textContent = desc;
+    }
+    
+    var active = false;
+    
+    function activate() {
+      if (active) return;
+      active = true;
+      el.tabIndex = 0;
+      el.focus();
+    }
+    
+    function deactivate() {
+      if (!active) return;
+      active = false;
+      el.tabIndex = -1;
+    }
+    
+    el.addEventListener("click", function () {
+      activate();
+      return true;
+    }, false);
+    
+    function generalListener(ev) {
+      if (active) {
+        set(parseEvent(ev));
+        return false;
+      } else {
+        return true;
+      }
+    }
+    
+    el.addEventListener("keydown", generalListener, false);
+    el.addEventListener("mousedown", generalListener, false);
+    
+    // allow to become a mousedown
+    el.addEventListener("contextmenu", function (ev) { 
+      ev.preventDefault();
+      return false;
+    }, false);
+    
+    el.addEventListener("blur", deactivate, false);
+  }
+  
+  function ControlBindingUI(rowContainer) {
+    var actions = {
+      forward: [["key", "W".charCodeAt(0)]],
+      left: [["key", "A".charCodeAt(0)]]
+    };
+    
+    Object.keys(actions).forEach(function (key, index) {
+      var row = document.createElement("tr");
+      rowContainer.appendChild(row);
+      
+      var nameCell = document.createElement("td");
+      row.appendChild(nameCell);
+      nameCell.textContent = key;
+      
+      var bindingsCell = document.createElement("td");
+      row.appendChild(bindingsCell);
+      
+      var placeholderChip = new ControlChip(null, function (newBinding) {
+        actions[key].push(newBinding);
+        updateBindings();
+      });
+      bindingsCell.appendChild(placeholderChip.element);
+      var insertMark = placeholderChip.element;
+      
+      //var addButton = document.createElement("button");
+      //bindingsCell.appendChild(addButton);
+      //addButton.textContent = "+";
+      
+      function updateBindings() {
+        while (insertMark.previousSibling) bindingsCell.removeChild(insertMark.previousSibling);
+        
+        actions[key].forEach(function (binding, bindingIndex) {
+          var chip = new ControlChip(binding, function (newBinding) {
+            actions[key][bindingIndex] = newBinding;
+            updateBindings();
+          });
+          bindingsCell.insertBefore(chip.element, insertMark);
+          bindingsCell.insertBefore(document.createTextNode(" "), insertMark);
+        });
+      }
+      updateBindings();
+      updateBindings();
+      
+      //placeholderChip.element.addEventListener("click", function () {
+      //  actions[key].push("1");
+      //  updateBindings();
+      //}, false);
+    });
+  }
   
   function Input_(config, eventReceiver, playerInput, hud, renderer, focusCell, save) {
     var keymap = {};
@@ -592,5 +879,6 @@ var Input;
     switchMode(interfaceMode);
   }
   
+  CubesControlBindingUI = ControlBindingUI;
   Input = Input_;
 }());
