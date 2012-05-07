@@ -69,8 +69,9 @@ describe("BlockSet", function () {
     expect(blockset.get(3)).toBe(type3);
     
     var listener = {
-      tableChanged: function (id) { return true; },
-      texturingChanged: function (id) { return true; },
+      interest: function () { return true; },
+      tableChanged: function (id) {},
+      texturingChanged: function (id) {},
     };
     spyOn(listener, "tableChanged");
     blockset.listen(listener);

@@ -266,21 +266,18 @@ var Renderer = (function () {
 
     // --- Config bindings ---
     
-    var rebuildProgramL = {changed: function (v) {
+    var rebuildProgramL = {interest: function () { return true; }, changed: function (v) {
       buildProgram();
       updateViewport(); // note this is only to re-send uPixelsPerClipUnit; TODO have better updating scheme
       scheduleDraw();
-      return true;
     }};
-    var viewportL = {changed: function (v) {
+    var viewportL = {interest: function () { return true; }, changed: function (v) {
       updateViewport();
       scheduleDraw();
-      return true;
     }};
-    var projectionL = {changed: function (v) {
+    var projectionL = {interest: function () { return true; }, changed: function (v) {
       updateProjection();
       scheduleDraw();
-      return true;
     }};
     config.lighting.listen(rebuildProgramL);
     config.bumpMapping.listen(rebuildProgramL);

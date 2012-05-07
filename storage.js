@@ -92,11 +92,13 @@ function Cell(label, initialValue) {
 }
 // Returns a function to trigger the function now.
 Cell.prototype.whenChanged = function (func) {
+  var interest = true;
   this.listen({
-    changed: func,
+    interest: function () { return interest; },
+    changed: function () { interest = func.apply(null, arguments); }
   });
   var self = this;
-  return function () { func(self.get()); };
+  return function () { interest = func(self.get()); };
 };
 Cell.prototype.nowAndWhenChanged = function (func) {
   this.whenChanged(func)();
@@ -140,7 +142,6 @@ PersistentCell.prototype.bindControl = function (id) {
     case "Echeckbox":
       listener = function(value) {
         elem.checked = value;
-        return true;
       }
       elem.onchange = function () {
         self.set(elem.checked);
@@ -150,7 +151,6 @@ PersistentCell.prototype.bindControl = function (id) {
     case "Erange":
       listener = function(value) {
         elem.value = value;
-        return true;
       };
       elem.onchange = function () {
         self.set(parseFloat(elem.value));
@@ -161,7 +161,6 @@ PersistentCell.prototype.bindControl = function (id) {
     case "Eselect-one":
       listener = function(value) {
         elem.value = value;
-        return true;
       };
       elem.onchange = function () {
         self.set(elem.value);
@@ -172,7 +171,6 @@ PersistentCell.prototype.bindControl = function (id) {
     case "Tnumber":
       listener = function(value) {
         elem.value = value;
-        return true;
       };
       elem.onchange = function () {
         // TODO: Should be parseFloat iff the step is not an integer
@@ -184,12 +182,12 @@ PersistentCell.prototype.bindControl = function (id) {
       console.warn("Insufficient information to bind control", id, "(input type ", elem.type, ", value type", self.type, ")");
       listener = function(value) {
         elem.value = value;
-        return true;
       };
       elem.disabled = true;
   }
 
   this.listen({
+    interest: function () { return true; },
     changed: listener
   });
   listener(this.get());

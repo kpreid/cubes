@@ -431,10 +431,8 @@ var Player = (function () {
     // --- Initialization ---
     
     config.debugPlayerCollision.listen({
-      changed: function (v) {
-        scheduleDraw();
-        return true;
-      }
+      interest: function () { return true; },
+      changed: scheduleDraw
     });
     
     this.setWorld(initialWorld);

@@ -259,7 +259,10 @@ var CubesMain = (function () {
       
       startAnimationLoop();
     }
-    config.debugForceRender.listen({changed: function () { scheduleDraw(); return true; }});
+    config.debugForceRender.listen({
+      interest: function () { return true; },
+      changed: scheduleDraw
+    });
 
     function scheduleDraw() {
       drawingWasRequested = true;
@@ -404,12 +407,11 @@ var CubesMain = (function () {
           totalRow.appendChild(document.createElement("td"));
           totalRow.appendChild(nameCell);
           totalRow.appendChild(sizeCell);
-          
-          return true;
         }
         updateObjectList();
         config.currentTopWorld.whenChanged(updateObjectList); // TODO wrong listener (should be noting changes to worldH) and also unnecessarily rebuilding the list
         persistencePool.listen({
+          interest: function () { return true; },
           added: updateObjectList,
           deleted: updateObjectList
         });
@@ -429,10 +431,10 @@ var CubesMain = (function () {
             row.textContent = name;
           });
           blocksetList.value = config.generate_blockset.get();
-          return true;
         }
         updateBlocksetList();
         persistencePool.listen({
+          interest: function () { return true; },
           added: updateBlocksetList,
           deleted: updateBlocksetList
         });
@@ -544,10 +546,10 @@ var CubesMain = (function () {
     this.regenerateOK = genOKCell.readOnly;
     function recalcGenOK() {
       genOKCell.set(!persistencePool.has(config.generate_name.get()));
-      return true;
     }
     config.generate_name.whenChanged(recalcGenOK);
     persistencePool.listen({
+      interest: function () { return true; },
       added: recalcGenOK,
       deleted: recalcGenOK
     });

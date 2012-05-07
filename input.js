@@ -354,9 +354,10 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
   
   var updateDeferred = deferrer(updateMenuBlocks);
   var menuListener = {
+    interest: function () { return true; },
     // deferred because otherwise we act while in the middle of a rebuild
-    texturingChanged: function (id) { updateDeferred(); return true; },
-    tableChanged:     function (id) { updateDeferred(); return true; }
+    texturingChanged: function (id) { updateDeferred(); },
+    tableChanged:     function (id) { updateDeferred(); }
   };
   
   function setupIconButton(item, icon, blockID) {
@@ -546,14 +547,13 @@ function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, sav
   }
 
   playerInput.listen({
+    interest: function () { return true; },
     changedWorld: function (v) {
       // TODO: remember quick slot contents across worlds (add an input-state object to player's Places?)
       updateMenuBlocks();
-      return true;
     },
     changedTool: function (v) {
       updateMenuSelection();
-      return true;
     }
   });
 

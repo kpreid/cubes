@@ -173,7 +173,8 @@ var WorldRenderer = (function () {
       });
     }
     
-    var listenerB = {
+    var listenerBlockset = {
+      interest: isAlive,
       // TODO: Optimize by rerendering only if render data (not just texture image) changed, and only
       // chunks containing the changed block ID?
       texturingChanged: dirtyAll,
@@ -181,27 +182,26 @@ var WorldRenderer = (function () {
     }
     
     var listenerRenderDistance = {
+      interest: isAlive,
       changed: function (v) {
-        if (!isAlive()) return false;
         playerChunk = null; // TODO kludge. The effect of this is to reevaluate which chunks are visible
         addChunks.clear();
         scheduleDraw();
-        return true;
       }
     };
 
     var listenerRedraw = {
+      interest: isAlive,
       changed: function (v) {
         scheduleDraw();
-        return isAlive();
       }
     }
 
     function deleteResources() {
       deleteChunks();
       textureDebugR.deleteResources();
-      world.listen.cancel(listenerW);
-      blockSet.listen.cancel(listenerB);
+      world.listen.cancel(listenerWorld);
+      blockSet.listen.cancel(listenerBlockset);
       config.renderDistance.listen.cancel(listenerRenderDistance);
       world = blockSet = chunks = dirtyChunks = addChunks = textureDebugR = null;
     };
@@ -235,7 +235,7 @@ var WorldRenderer = (function () {
 
     // entry points for change listeners
     function dirtyBlock(vec) {
-      if (!isAlive()) return false;
+      if (!isAlive()) return;
       
       var x = vec[0];
       var y = vec[1];
@@ -247,7 +247,7 @@ var WorldRenderer = (function () {
       x -= xm;
       y -= ym;
       z -= zm;
-
+      
       setDirtyChunk(x,y,z);
       if (xm == 0)           setDirtyChunk(x-CHUNKSIZE,y,z);
       if (ym == 0)           setDirtyChunk(x,y-CHUNKSIZE,z);
@@ -255,21 +255,18 @@ var WorldRenderer = (function () {
       if (xm == CHUNKSIZE-1) setDirtyChunk(x+CHUNKSIZE,y,z);
       if (ym == CHUNKSIZE-1) setDirtyChunk(x,y+CHUNKSIZE,z);
       if (zm == CHUNKSIZE-1) setDirtyChunk(x,y,z+CHUNKSIZE);
-
+      
       // TODO: This is actually "Schedule updateSomeChunks()" and shouldn't actually require a frame redraw
       scheduleDraw();
-      
-      return true;
     }
 
     function dirtyAll() {
-      if (!isAlive()) return false;
+      if (!isAlive()) return;
       rerenderChunks();
-      return true;
     }
 
     function dirtyCircuit(circuit) {
-      if (!isAlive()) return false;
+      if (!isAlive()) return;
       var o = circuit.getOrigin();
       var r = circuitRenderers.get(o);
       if (r) {
@@ -277,24 +274,22 @@ var WorldRenderer = (function () {
       } else {
         addCircuits();
       }
-      return true;
     }
     
     function deletedCircuit(circuit) {
-      if (!isAlive()) return false;
+      if (!isAlive()) return;
       circuitRenderers.delete(circuit.getOrigin());
-      return true;
     }
 
-    var listenerW = {
+    var listenerWorld = {
+      interest: isAlive,
       dirtyBlock: dirtyBlock,
       dirtyAll: dirtyAll,
       dirtyCircuit: dirtyCircuit,
       deletedCircuit: deletedCircuit,
       audioEvent: function (position, type, kind) {
-        if (!isAlive()) return false;
+        if (!isAlive()) return;
         if (optAudio) optAudio.play(position, type, kind, 1);
-        return true;
       }
     };
     
@@ -691,8 +686,8 @@ var WorldRenderer = (function () {
 
     // --- init ---
 
-    world.listen(listenerW);
-    blockSet.listen(listenerB);
+    world.listen(listenerWorld);
+    blockSet.listen(listenerBlockset);
     config.renderDistance.listen(listenerRenderDistance);
     config.debugTextureAllocation.listen(listenerRedraw);
     Object.freeze(this);

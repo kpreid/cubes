@@ -467,8 +467,7 @@ var ObjectMap = (function () {
 }());
 
 // Utility for change/event listeners.
-// Each listener function must return true/false indicating whether it wants further events.
-// TODO: Add prompt removal
+// Each listener object must have a method "interest" yielding a boolean indicating whether it wants further events (if false, the listener will be removed and not notified).
 function Notifier(label) {
   "use strict";
   if (!(this instanceof Notifier))
@@ -477,27 +476,35 @@ function Notifier(label) {
   var listeners = [];
   this.notify = function (method) {
     //console.log("notify",label,method,Array.prototype.slice.call(arguments, 1));
-    for (var i = 0; i < listeners.length; i++) {
-      var listener = listeners[i];
-      var res;
-      try {
-        res = listener[method].apply(listener, Array.prototype.slice.call(arguments, 1));
-      } catch (e) {
-        if (!(method in listener)) {
-          throw new Error("Listener(" + label + ") is missing method " + method);
-        } else {
-          throw e;
-        }
-      }
-      if (res !== true) {
-        if (res !== false && typeof console !== "undefined") {
-          console.warn("Listener", listener, " did not return boolean.");
-        }
+    var i, listener;
+    
+    function checkInterest() {
+      if (!listener.interest()) {
         if (i < listeners.length - 1) {
           listeners[i] = listeners.pop();
         } else {
           listeners.pop();
         }
+        i--;
+        return false;
+      } else {
+        return true;
+      }
+    }
+    
+    for (i = 0; i < listeners.length; i++) {
+      listener = listeners[i];
+      if (checkInterest()) {
+        try {
+          listener[method].apply(listener, Array.prototype.slice.call(arguments, 1));
+        } catch (e) {
+          if (!(method in listener)) {
+            throw new Error("Listener(" + label + ") is missing method " + method);
+          } else {
+            throw e;
+          }
+        }
+        checkInterest(); // allow removal immediately afterward
       }
     }
   };

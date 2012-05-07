@@ -59,18 +59,17 @@ var BlockType = (function () {
     function rebuild() {
       recomputeWorldBlockProperties.call(self);
       self._notify("appearanceChanged");
-      return true;
     }
     function checkCircuits() {
       self.hasCircuits = self.world.getCircuits().length > 0;
-      return true;
     }
     world.listen({
+      interest: function () { return true; },
       dirtyBlock: rebuild,
       dirtyAll: rebuild,
       dirtyCircuit: checkCircuits,
       deletedCircuit: checkCircuits,
-      audioEvent: function () {return true;}
+      audioEvent: function () {}
     });
     
     recomputeWorldBlockProperties.call(this);
@@ -516,11 +515,11 @@ var BlockSet = (function () {
       var id = types.length;
 
       var listener = {
+        interest: function () { return true; },
         appearanceChanged: function () {
           self.persistence.dirty(); // TODO also need to dirty on other modifications to the block type, but there are no hooks for that. // TODO This is not a good strategy — we should be dirty in general because we contain a dirty unnamed object (and not if it is named).
           appearanceChangedQueue.enqueue(id);
           notifier.notify("texturingChanged", id);
-          return true;
         }
       };
 

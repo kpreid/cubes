@@ -125,10 +125,8 @@ var CubesAudio = (function () {
       
       readBlock();
       type.listen({
-        appearanceChanged: function () {
-          readBlock();
-          return true;
-        }
+        interest: function () { return true; },
+        appearanceChanged: readBlock
       });
     }
     
