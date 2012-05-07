@@ -336,12 +336,9 @@ html {
   font-family: "Helvetica", "Arial", sans-serif;
 }
 
-.control-chip.control-chip-placeholder {
-  opacity: 0.5;
-}
-.control-chip.control-chip-placeholder:hover {
-  opacity: 1.0;
-}
+.control-chip.control-chip-placeholder { opacity: 0.5; }
+.control-chip.control-chip-placeholder:hover, 
+.control-chip.control-chip-placeholder:focus { opacity: 1.0; }
 
 .control-chip:focus {
   border-color: red;
