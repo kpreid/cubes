@@ -49,7 +49,13 @@ var CubesObjectUI;
             chipE.className = baseClassName + " object-chip-live";
           }
           if (label === null) {
-            label = "a " + Persister.findType(target.constructor);
+            var label = "a ";
+            
+            if (target instanceof World) {
+              label += target.wx + "×" + target.wy + "×" + target.wz + " ";
+            }
+            label += Persister.findType(target.constructor);
+            
             chipE.className = baseClassName + " object-chip-ephemeral";
           }
           
