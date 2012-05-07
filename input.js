@@ -225,6 +225,7 @@ var Input;
       if (!active) return;
       active = false;
       el.tabIndex = -1;
+      el.blur();
     }
     
     el.addEventListener("click", function () {
@@ -234,8 +235,9 @@ var Input;
     
     function generalListener(ev) {
       if (active) {
-        set(parseEvent(ev));
+        deactivate();
         ev.preventDefault();
+        set(parseEvent(ev));
         return false;
       } else {
         return true;
