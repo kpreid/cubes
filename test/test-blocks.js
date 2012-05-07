@@ -35,7 +35,7 @@ describe("BlockSet", function () {
     blockset.add(btw);
     expect(pool.status.get()).toEqual(1);
     pool.flushNow();
-
+    
     // modifying a block type
     btw.world.s(0,0,0,1);
     expect(pool.status.get()).toEqual(1);
@@ -51,7 +51,7 @@ describe("BlockSet", function () {
     expect(blockset.lookup("foo")).toBe(1);
     expect(blockset.lookup("bar")).toBe(2);
   });
-
+  
   it("should give null for an unknown block name", function () {
     var blockset = new BlockSet([]);
     expect(blockset.lookup("foo")).toBe(null);
@@ -83,5 +83,19 @@ describe("BlockSet", function () {
     expect(blockset.get(3)).toBe(type1);
     
     expect(listener.tableChanged).toHaveBeenCalledWith(3);
-  })
+  });
+  
+  it("should not allow deletion of the last block type", function () {
+    var blockset = new BlockSet([]);
+    
+    expect(blockset.length).toBe(1);
+    expect(blockset.get(0)).toBe(BlockType.air);
+    
+    expect(function () {
+      blockset.deleteLast();
+    }).toThrow();
+    
+    expect(blockset.length).toBe(1);
+    expect(blockset.get(0)).toBe(BlockType.air);
+  });
 });

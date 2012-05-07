@@ -545,6 +545,10 @@ var BlockSet = (function () {
     };
     
     this.deleteLast = function () {
+      if (types.length <= 1) {
+        throw new Error("The 0th block type in a blockset may not be deleted.");
+      }
+      
       var type = types.pop();
       var id = types.length;
       
