@@ -373,7 +373,7 @@ var Player = (function () {
       changeWorld: function (direction) {
         switch (direction) {
           case 1:
-            if (currentPlace.selection === null) break;
+            if (currentPlace.selection === null) return;
             var cube = currentPlace.selection.cube;
             var x = cube[0], y = cube[1], z = cube[2];
             
@@ -404,17 +404,16 @@ var Player = (function () {
             currentPlace.body.flying = true;
             
             placeStack.push(oldPlace);
-            aimChanged();
             
             break;
           case -1:
             if (placeStack.length <= 0) return;
             currentPlace.delete();
             currentPlace = placeStack.pop();
-            aimChanged();
             break;
         }
         
+        aimChanged();
         aabbR.recompute();
         updateAudioListener();
         notifyChangedPlace();
