@@ -547,6 +547,7 @@
       }
       if (someBodyChanged) {
         self.persistence.dirty();
+        notifier.notify("bodiesChanged");
       }
     }
     

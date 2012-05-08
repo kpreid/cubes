@@ -28,6 +28,11 @@
     var z = v1[2] - v2[2];
     return x*x + y*y + z*z;
   }
+  
+  var angleStep = Math.PI/2;
+  function discreteRotation(angle) {
+    return Math.round(angle/angleStep) * angleStep;
+  }
 
   var rotationsByCode = CubeRotation.byCode;
 
@@ -229,6 +234,9 @@
       world.listen.cancel(listenerWorld);
       blockset.listen.cancel(listenerBlockset);
       config.renderDistance.listen.cancel(listenerRenderDistance);
+      subWRs.forEach(function (record) {
+        record.wr.deleteResources();
+      });
       world = blockset = chunks = nonemptyChunks = dirtyChunks = addChunks = textureDebugR = null;
     }
     function isAlive() {
@@ -332,6 +340,7 @@
       interest: isAlive,
       dirtyBlock: dirtyBlock,
       relitBlock: relitBlock,
+      bodiesChanged: scheduleDraw,
       dirtyAll: dirtyAll,
       dirtyCircuit: dirtyCircuit,
       deletedCircuit: deletedCircuit,
@@ -433,6 +442,10 @@
         // Schedule rendering more chunks
         scheduleDraw();
       }
+      
+      subWRs.forEach(function (record) {
+        record.wr.updateSomeChunks();
+      });
     }
     this.updateSomeChunks = updateSomeChunks;
     
@@ -493,6 +506,34 @@
       if (config.debugTextureAllocation.get()) {
         textureDebugR.draw();
       }
+      
+      // Draw subworlds.
+      subWRs.forEach(function (record) {
+        var body = record.body;
+        var bodyWorld = body.skin;
+        var wr = record.wr;
+        
+        var restoreView = renderer.saveView();
+        renderer.modifyModelview(function (m) {
+          mat4.translate(m, body.pos);
+          
+          // Translate to body AABB center
+          var aabb = body.aabb;
+          mat4.translate(m, [
+            (aabb[1] + aabb[0]) * 0.5,
+            (aabb[3] + aabb[2]) * 0.5,
+            (aabb[5] + aabb[4]) * 0.5
+          ]);
+          
+          // Apply rotation
+          mat4.rotateY(m, discreteRotation(body.yaw));
+          
+          // Translate to center world about AABB center
+          mat4.translate(m, [bodyWorld.wx * -0.5, bodyWorld.wy * -0.5, bodyWorld.wz * -0.5]);
+        });
+        wr.draw();
+        restoreView();
+      });
     }
     this.draw = draw;
     
@@ -782,13 +823,25 @@
       return dirtyChunks.size() + addChunks.size();
     }
     this.chunkRendersToDo = chunkRendersToDo;
-
+    
+    // --- bodies in the world ---
+    
+    var subWRs = [];
+    world.forEachBody(function (body) {
+      if (!body.skin) return;
+      subWRs.push({
+        body: body, 
+        wr: new WorldRenderer(body.skin, function () { return [0,0,0]; }, renderer, optAudio, scheduleDraw, false)
+      });
+    });
+    
     // --- init ---
-
+    
     world.listen(listenerWorld);
     blockset.listen(listenerBlockset);
     config.renderDistance.listen(listenerRenderDistance);
     config.debugTextureAllocation.listen(listenerRedraw);
+    
     Object.freeze(this);
   }
   

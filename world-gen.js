@@ -1124,9 +1124,25 @@
     playerBody.pos[2] = topWorld.wz/2;
     topWorld.addBody(playerBody);
     
+    var skinColorBlockset = new Blockset([new BlockType([1, 1, 1, 1])]);
+
+    var skinBlockset = new Blockset([]);
+    var sbt = new BlockType(null, new World([16,16,16], skinColorBlockset));
+    sbt.world.edit(function (x,y,z) {
+      var cx = x-7.5;
+      //var cy = y-7.5;
+      var cz = z-7.5;
+      return y == Math.floor(Math.abs(cx)) && (cx*cx+cz*cz) < 8*8 ? 1 : 0;
+    });
+    skinBlockset.add(sbt);
+    
+    var skin = new World([1, 1, 1], skinBlockset);
+    skin.s(0, 0, 0, 1);
+    skin.step(1); // update lighting
+    
     var testBodyAABB = new AAB(-0.5, 0.5, -0.5, 0.5, -0.5, 0.5);
     for (var tbi = 0; tbi < 10; tbi++) {
-      var body = new Body(topWorld, testBodyAABB);
+      var body = new Body(topWorld, testBodyAABB, skin);
       vec3.set([wx/2, wy, wz/2], body.pos);
       vec3.set([Math.random(), Math.random(), Math.random()], body.vel);
       topWorld.addBody(body);

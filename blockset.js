@@ -163,6 +163,7 @@
         interest: function () { return true; },
         dirtyBlock: rebuild,
         relitBlock: noop,
+        bodiesChanged: noop,
         dirtyAll: rebuild,
         dirtyCircuit: dirtyProperties,
         deletedCircuit: dirtyProperties,

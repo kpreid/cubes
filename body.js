@@ -17,7 +17,7 @@
   var POSITION_EPSILON = 1e-6; // close-but-not-intersecting objects are set to this separation
   var VELOCITY_EPSILON = 1e-6; // velocities below this are treated as zero
   
-  function Body(world, aabb) {
+  function Body(world, aabb, skin) {
     this.aabb = aabb;
     this.pos = new Float64Array(3);
     this.vel = new Float64Array(3);
@@ -25,6 +25,7 @@
     this.flying = false;
     this.noclip = false;
     this.isPlayerBody = false;
+    this.skin = skin || null;
     
     // non-persisted properties
     this.world = world;
@@ -46,6 +47,8 @@
       json.noclip = this.noclip;
     if (this.isPlayerBody !== false)
       json.isPlayerBody = this.isPlayerBody;
+    if (this.skin !== null)
+      json.skin = subSerialize(this.skin);
     return json;
   };
   
@@ -58,6 +61,7 @@
     if ("flying" in json) body.flying = !!json.flying;
     if ("noclip" in json) body.noclip = !!json.noclip;
     if ("isPlayerBody" in json) body.isPlayerBody = !!json.isPlayerBody;
+    if ("skin" in json) body.skin = unserialize(json.skin);
     return body;
   };
 

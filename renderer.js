@@ -431,9 +431,9 @@ This is what you can assume/should do:
     }
     this.setViewTo2D = setViewTo2D;
     function saveView() {
-      var savedMVMatrix = mvMatrix; mvMatrix = mat4.create();
-      var savedPMatrix = pMatrix;  pMatrix = mat4.create();
-      var savedView = viewPosition;
+      var savedMVMatrix = mvMatrix; mvMatrix = mat4.create(mvMatrix);
+      var savedPMatrix = pMatrix;  pMatrix = mat4.create(pMatrix);
+      var savedView = viewPosition; viewPosition = vec3.create(viewPosition);
       return function () {
         mvMatrix = savedMVMatrix;
         pMatrix = savedPMatrix;
@@ -444,6 +444,12 @@ This is what you can assume/should do:
       };
     }
     this.saveView = saveView;
+    
+    function modifyModelview(f) {
+      f(mvMatrix);
+      sendViewUniforms();
+    }
+    this.modifyModelview = modifyModelview;
     
     function setExposure(val) {
       exposure = val;
