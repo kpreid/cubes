@@ -357,7 +357,6 @@ var Input;
   }
   
   function Input_(config, eventReceiver, playerInput, hud, renderer, focusCell, save) {
-    var keymap = {};
     var interfaceMode;
     var expectingPointerLock = false;
     
@@ -388,7 +387,7 @@ var Input;
     }, false);
     eventReceiver.addEventListener("blur", function (event) {
       focusCell.set(false);
-      keymap = {};
+      resetHeldControls();
       return true;
     }, false);
     
@@ -408,90 +407,141 @@ var Input;
       return true;
     });
     
-    // --- Keyboard events ---
+    // --- Events for configurable controls ---
     
-    function interestingInMap(code) {
-      switch (code) {
-        case 'A'.charCodeAt(0): case 37:
-        case 'W'.charCodeAt(0): case 38:
-        case 'D'.charCodeAt(0): case 39:
-        case 'S'.charCodeAt(0): case 40:
-        case 'E'.charCodeAt(0):
-        case 'C'.charCodeAt(0):
-          return true;
-        default:
-          return false;
-      }
+    var heldControls = {};
+    var heldCommands = {};
+    function resetHeldControls() {
+      heldControls = {};
+      Object.keys(Input_.commands).forEach(function (k) { heldCommands[k] = 0; })
+      evalHeldControls();
     }
-    function evalKeys() {
-      var l = keymap['A'.charCodeAt(0)] || keymap[37];
-      var r = keymap['D'.charCodeAt(0)] || keymap[39];
-      var f = keymap['W'.charCodeAt(0)] || keymap[38];
-      var b = keymap['S'.charCodeAt(0)] || keymap[40];
-      var u = keymap['E'.charCodeAt(0)];
-      var d = keymap['C'.charCodeAt(0)];
+    
+    var commandFunctions = {};
+    function defhold(name) {
+      if (!(name in Input_.commands)) throw new Error("inconsistent table");
+      commandFunctions[name] = {
+        name: name,
+        map: true,
+        press: function () {}
+      };
+    }
+    function defaction(name, func) {
+      if (!(name in Input_.commands)) throw new Error("inconsistent table");
+      commandFunctions[name] = {
+        name: name,
+        map: false,
+        press: func
+      };
+    }
+    defhold("left");
+    defhold("right");
+    defhold("forward");
+    defhold("backward");
+    defhold("up");
+    defhold("down");
+    defaction("jump", function () {
+      playerInput.jump();
+    });
+    defaction("quick0", function () { quick(0); });
+    defaction("quick1", function () { quick(1); });
+    defaction("quick2", function () { quick(2); });
+    defaction("quick3", function () { quick(3); });
+    defaction("quick4", function () { quick(4); });
+    defaction("quick5", function () { quick(5); });
+    defaction("quick6", function () { quick(6); });
+    defaction("quick7", function () { quick(7); });
+    defaction("quick8", function () { quick(8); });
+    defaction("quick9", function () { quick(9); });
+    defaction("interfaceMode", function () {
+      switchMode(interfaceMode.mouselookKeyTransition);
+    });
+    defaction("enterWorld", function () {
+      playerInput.changeWorld(+1);
+    });
+    defaction("exitWorld", function () {
+      playerInput.changeWorld(-1);
+    });
+    defaction("subdatumInc", function () {
+      playerInput.tweakSubdata(+1);
+    });
+    defaction("subdatumDec", function () {
+      playerInput.tweakSubdata(-1);
+    });
+    defaction("editBlockset", function () {
+      switchMode(fullMenuMode);
+      eventReceiver.blur();
+    });
+    
+    var controlMap;
+    function rebuildControlMap(bindings) {
+      controlMap = {};
       
+      bindings.forEach(function (bindingRecord) {
+        var commandName = bindingRecord[0];
+        var control = bindingRecord[1];
+        controlMap[control] = commandFunctions[commandName];
+      })
+      resetHeldControls();
+      
+      return true;
+    }
+    config.controls.nowAndWhenChanged(rebuildControlMap);
+    
+    function evalHeldControls() {
       playerInput.movement = [
-        evalVel(r, l),
-        evalVel(u, d),
-        evalVel(b, f)
+        evalVel(heldCommands.right,    heldCommands.left),
+        evalVel(heldCommands.up,       heldCommands.down),
+        evalVel(heldCommands.backward, heldCommands.forward)
       ];
     }
     
-    eventReceiver.addEventListener("keydown", function (event) {
+    function controlPressHandler(event) {
       // avoid disturbing browser shortcuts
-      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.altKey || event.ctrlKey || event.metaKey) return true;
       
-      var code = event.keyCode || event.which;
+      var control = parseEvent(event);
+      var command = controlMap[control];
       
-      // handlers for 'action' keys (immediate effects)
-      switch (String.fromCharCode(code)) {
-        case "1": quick(0); return false;
-        case "2": quick(1); return false;
-        case "3": quick(2); return false;
-        case "4": quick(3); return false;
-        case "5": quick(4); return false;
-        case "6": quick(5); return false;
-        case "7": quick(6); return false;
-        case "8": quick(7); return false;
-        case "9": quick(8); return false;
-        case "0": quick(9); return false;
-        case "Q": 
-          switchMode(interfaceMode.mouselookKeyTransition);
-          return false;
-        case "R": playerInput.changeWorld(1);  return false;
-        case "\x1B"/*Esc*/:
-        case "F": playerInput.changeWorld(-1); return false;
-        case "Z": playerInput.tweakSubdata(-1); return false;
-        case "X": playerInput.tweakSubdata(1);  return false;
-        case "B": 
-          switchMode(fullMenuMode);
-          eventReceiver.blur();
-          return false;
-        case " ": playerInput.jump(); return false;
-      }
+      if (command) {
+        command.press();
       
-      // 'mode' keys such as movement directions go into the keymap
-      if (interestingInMap(code)) {
-        keymap[code] = true;
-        evalKeys();
+        if (!heldControls[control]) {
+          heldControls[control] = true;
+          heldCommands[command.name]++;
+          //console.log("hold +", control, command.name, heldCommands[command.name]);
+          evalHeldControls();
+        }
+        
+        event.stopPropagation();
         return false;
       } else {
         return true;
       }
-    }, false);
-    document.addEventListener("keyup", function (event) {
-      // on document to catch key-ups after focus changes etc.
-      var code = event.keyCode || event.which;
-      if (interestingInMap(code)) {
-        var wasSetInMap = keymap[code];
-        keymap[code] = false;
-        evalKeys();
-        return !wasSetInMap;
+    }
+    
+    function controlReleaseHandler(event) {
+      var control = parseEvent(event);
+      var command = controlMap[control];
+      
+      if (heldControls[control]) {
+        heldControls[control] = false;
+        heldCommands[command.name]--;
+        //console.log("hold -", control, command.name, heldCommands[command.name]);
+        evalHeldControls();
+        
+        event.stopPropagation();
+        return false;
       } else {
         return true;
       }
-    }, true);
+    }
+    
+    eventReceiver.addEventListener("keydown", controlPressHandler, false);
+    eventReceiver.addEventListener("keyup", controlReleaseHandler, false);
+    document.addEventListener("keyup", controlReleaseHandler, false);
+      // also on document to catch key-ups after focus changes etc.
+    resetHeldControls(); // init
     
     // --- Mouselook ---
     
@@ -969,10 +1019,10 @@ var Input;
   defcmd("quick8", "Tool #9"   , [["key", "9".charCodeAt(0)]]);
   defcmd("quick9", "Tool #10"  , [["key", "0".charCodeAt(0)]]);
   defcmd("interfaceMode", "Mouselook"    , [["key", "Q".charCodeAt(0)]]);
-  defcmd("editTarget"   , "Edit block"   , [["key", "R".charCodeAt(0)]]);
-  defcmd("exitWorld"    , "Exit editing" , [["key", "F".charCodeAt(0)]]);
-  defcmd("subdatumInc"  , "Subdatum +1"  , [["key", "Z".charCodeAt(0)]]);
-  defcmd("subdatumDec"  , "Subdatum -1"  , [["key", "X".charCodeAt(0)]]);
+  defcmd("enterWorld"   , "Edit block"   , [["key", "R".charCodeAt(0)]]);
+  defcmd("exitWorld"    , "Exit editing" , [["key", "F".charCodeAt(0)], ["key", 0x1b]]);
+  defcmd("subdatumDec"  , "Subdatum −1"  , [["key", "Z".charCodeAt(0)]]);
+  defcmd("subdatumInc"  , "Subdatum +1"  , [["key", "X".charCodeAt(0)]]);
   defcmd("editBlockset" , "Edit blockset", [["key", "B".charCodeAt(0)]]);
   Object.freeze(Input_.commands);
   Object.freeze(Input_.defaultBindings); // should be recursive
