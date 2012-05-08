@@ -747,7 +747,7 @@ var BlockSet = (function () {
               vec[0] = u; vec[1] = v; vec[2] = layer;
               mat4.multiplyVec3(transform, vec, vec);
               
-              world.gt(vec[0],vec[1],vec[2]).writeColor(255, texData, texelBase);
+              world.gtv(vec).writeColor(255, texData, texelBase);
               
               if (texData[texelBase+3] > 0) {
                 // A layer has significant content only if there is an UNOBSCURED opaque pixel.

@@ -215,7 +215,7 @@ var Player = (function () {
           var type, pos;
           (body.standingOn || IntVectorMap.empty).forEach(function (junk, pi) {
             pos = pi;
-            type = body.world.gt(pos[0],pos[1],pos[2]);
+            type = body.world.gtv(pos);
           });
           if (type) {
             audio.play(pos, type, "footstep", 0.5);

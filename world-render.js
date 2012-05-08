@@ -382,9 +382,9 @@ var WorldRenderer = (function () {
       particles.push(new renderer.BlockParticles(
         block,
         tileSize,
-        world.gt(block[0],block[1],block[2]),
+        world.gtv(block),
         true,
-        world.gRot(block[0],block[1],block[2])));
+        world.gRotv(block)));
     }
     this.renderDestroyBlock = renderDestroyBlock;
 
@@ -392,9 +392,9 @@ var WorldRenderer = (function () {
       particles.push(new renderer.BlockParticles(
         block,
         tileSize,
-        world.gt(block[0],block[1],block[2]),
+        world.gtv(block),
         false,
-        world.gRot(block[0],block[1],block[2])));
+        world.gRotv(block)));
     }
     this.renderCreateBlock = renderCreateBlock;
     

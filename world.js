@@ -179,6 +179,7 @@ var World = (function () {
     // --- Methods ---
     
     // Return the block ID at the given coordinates
+    function gv(v) { return g(v[0], v[1], v[2]); }
     function g(x,y,z) {
       if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
         return 0;
@@ -186,10 +187,12 @@ var World = (function () {
         return blocks[x*wy*wz + y*wz + z];
     }
     // Return the block type at the given coordinates
+    function gtv(v) { return gt(v[0], v[1], v[2]); }
     function gt(x,y,z) {
       return blockSet.get(g(x,y,z));
     }
     // Return the block subdatum at the given coordinates
+    function gSubv(v) { return gSub(v[0], v[1], v[2]); }
     function gSub(x,y,z) {
       if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
         return 0;
@@ -197,6 +200,7 @@ var World = (function () {
         return subData[x*wy*wz + y*wz + z];
     }
     // Return the block rotation at the given coordinates
+    function gRotv(v) { return gRot(v[0], v[1], v[2]); }
     function gRot(x,y,z) {
       if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
         return 0;
@@ -204,13 +208,15 @@ var World = (function () {
         return rotations[x*wy*wz + y*wz + z];
     }
     // Return the block lighting value at the given coordinates
+    function gLightv(v) { return gLight(v[0], v[1], v[2]); }
     function gLight(x,y,z) {
       if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
         return LIGHT_SKY;
       else
         return lighting[x*wy*wz + y*wz + z];
     }
-    function s(x,y,z,val,subdatum) { // TODO revisit making this not take a vec
+    function sv(v,val,subdatum) { return s(v[0], v[1], v[2], val, subdatum); }
+    function s(x,y,z,val,subdatum) {
       if (x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz)
         return;
       
@@ -270,18 +276,19 @@ var World = (function () {
       notifier.notify("dirtyBlock", vec);
       self.persistence.dirty();
     }
+    function sSubv(v, s) { return sSub(v[0], v[1], v[2], s); }
     function sSub(x,y,z,subdatum) {
       s(x,y,z,g(x,y,z),subdatum);
     }
-    function solid(x,y,z) {
-      return gt(x,y,z).solid;
-    }
+    function opaquev(v) { return opaque(v[0], v[1], v[2]); }
     function opaque(x,y,z) {
       return gt(x,y,z).opaque;
     }
+    function selectablev(v) { return selectable(v[0], v[1], v[2]); }
     function selectable(x,y,z) {
       return g(x,y,z) != 0;
     }
+    function inBoundsv(v) { return inBounds(v[0], v[1], v[2]); }
     function inBounds(x,y,z) {
       return !(x < 0 || y < 0 || z < 0 || x >= wx || y >= wy || z >= wz);
     }
@@ -705,30 +712,44 @@ var World = (function () {
     // --- Final init ---
     
     this.g = g;
+    this.gv = gv;
     this.gt = gt;
+    this.gtv = gtv;
     this.gRot = gRot;
+    this.gRotv = gRotv;
     this.gLight = gLight;
+    this.gLightv = gLightv;
     this.gSub = gSub;
+    this.gSubv = gSubv;
     this.s = s;
+    this.sv = sv;
     this.sSub = sSub;
-    this.solid = solid;
+    this.sSubv = sSubv;
     this.opaque = opaque;
+    this.opaquev = opaquev;
     this.selectable = selectable;
+    this.selectablev = selectablev;
     this.inBounds = inBounds;
+    this.inBoundsv = inBoundsv;
+
     this.raw = blocks;
     this.rawSubData = subData;
     this.rawRotations = rotations;
     this.rawLighting = lighting;
     this.notifyRawEdit = notifyRawEdit;
+
     this.raycast = raycast;
     this.getCircuits = function () { return circuits; }; // TODO should be read-only interface
     this.getCircuit = function (block) { return blockCircuits.get(block) || null; }
     this.edit = edit;
+
     this.step = step;
     this.polishLightInVicinity = polishLightInVicinity;
+
     this.setStandingOn = setStandingOn;
     this.getStandingOn = getStandingOn;
     this.audioEvent = audioEvent;
+
     this.listen = notifier.listen;
     this.serialize = serialize;
     

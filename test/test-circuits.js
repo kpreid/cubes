@@ -82,13 +82,13 @@ describe("Circuit", function() {
   it("should indicate 0", function () {
     t.putBlockUnderTest(t.ls.indicator);
     t.putInput(UNIT_NX, 0);
-    expect(t.world.gRot(t.center[0],t.center[1],t.center[2])).toEqual(CubeRotation.identity.code);
+    expect(t.world.gRotv(t.center)).toEqual(CubeRotation.identity.code);
   });
 
   it("should indicate 1", function () {
     t.putBlockUnderTest(t.ls.indicator);
     t.putInput(UNIT_NX, 2); // any value other than 1 should give the same result
-    expect(t.world.gRot(t.center[0],t.center[1],t.center[2])).toEqual(CubeRotation.z180.code);
+    expect(t.world.gRotv(t.center)).toEqual(CubeRotation.z180.code);
   });
 
   it("should reevaluate on subdata updates", function () {

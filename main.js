@@ -155,11 +155,11 @@ var CubesMain = (function () {
             cursorInfoElem.style.bottom = (sy + 1) / 2 * parseInt(computedStyle.height, 10) + "px";
             
             var world = player.getWorld();
-            var value = world.g(cube[0],cube[1],cube[2]);
-            var sub = world.gSub(cube[0],cube[1],cube[2]);
-            var type = world.gt(cube[0],cube[1],cube[2]);
-            var light = type.opaque ? world.gLight(empty[0],empty[1],empty[2])
-                                    : world.gLight(cube[0],cube[1],cube[2]);
+            var value = world.gv(cube);
+            var sub = world.gSubv(cube);
+            var type = world.gtv(cube);
+            var light = type.opaque ? world.gLightv(empty)
+                                    : world.gLightv(cube);
             var text = (
               value
               + (sub ? ":" + sub : "")

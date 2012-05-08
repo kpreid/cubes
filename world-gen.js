@@ -852,7 +852,7 @@ function generateWorlds(config, blockset) {
     var greenery = blockset.lookup("greenery");
     function roadBuilder(pos, vel, width) {
       return posLoop(pos, vel, 
-          function (p) { return topWorld.g(p[0],p[1],p[2]) == ground; }, 
+          function (p) { return topWorld.gv(p) == ground; }, 
           function (pos) {
         var perp = counterclockwise(vel);
         setvec(maddy(pos, 1, perp, -width-1), greenery, Math.floor(Math.random()*CubeRotation.count));
@@ -898,7 +898,7 @@ function generateWorlds(config, blockset) {
       // ground floor
       fill(addy(origin, -1), madd2y(origin, -1, u, usize-1, v, vsize-1), material);
       return posLoop(origin, vec3.scale(UNIT_PY, buildingFloorHeight, vec3.create()),
-          function (pos) { return topWorld.g(pos[0],pos[1],pos[2]) == air && pos[1] < height; }, 
+          function (pos) { return topWorld.gv(pos) == air && pos[1] < height; }, 
           function (pos) {
         // building walls ring
         var high = madd(madd(pos, u, usize-1), v, vsize-1);
@@ -932,12 +932,12 @@ function generateWorlds(config, blockset) {
       var blockBuilder = posLoop(
           madd(madd(center, perp, roadWidth + buildingOffset), direction, roadWidth + buildingOffset),
           vec3.scale(direction, buildingSize + buildingOffset, vec3.create()),
-          function (pos) { return topWorld.inBounds(pos[0],pos[1],pos[2]); },
+          function (pos) { return topWorld.inBoundsv(pos); },
           function (pos) {
         return [posLoop(
             madd(pos, UNIT_PY, 1),
             vec3.scale(perp, buildingSize + buildingOffset, vec3.create()),
-            function (pos) { return topWorld.inBounds(pos[0],pos[1],pos[2]); },
+            function (pos) { return topWorld.inBoundsv(pos); },
             function (pos) {
           if (Math.random() > 0.5)
             return [buildingBuilder(pos, direction, perp, buildingSize, buildingSize)];

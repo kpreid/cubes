@@ -44,13 +44,13 @@ var Circuit = (function () {
   var NONE = "NONE";
   
   function getRot(world, block) {
-    return CubeRotation.byCode[world.gRot(block[0],block[1],block[2])];
+    return CubeRotation.byCode[world.gRotv(block)];
   }
   
   function Circuit(world) {
     var blockSet = world.blockSet;
     function getBehavior(block) {
-      return world.gt(block[0],block[1],block[2]).behavior;
+      return world.gtv(block).behavior;
     }
     
     // Blocks making up the circuit
@@ -474,7 +474,7 @@ var Circuit = (function () {
       return function (state) {
         if (state.blockIn_world) {
           var bic = state.blockIn_cube;
-          out(state, state.blockIn_world.gSub(bic[0],bic[1],bic[2]));
+          out(state, state.blockIn_world.gSubv(bic));
         } else {
           out(state, null);
         }
@@ -497,7 +497,7 @@ var Circuit = (function () {
           nworld = world;
           ncube = neighborInner;
         }
-        out(state, nworld.g(ncube[0],ncube[1],ncube[2]));
+        out(state, nworld.gv(ncube));
       };
     };
     
@@ -507,9 +507,9 @@ var Circuit = (function () {
       return function (state) {
         var flag = !!input(state);
         //if (player && world === player.getWorld()) { console.log("evaluating indicator", block, inputs, "got", flag); }
-        var cur = world.gSub(block[0],block[1],block[2]);
+        var cur = world.gSubv(block);
         if (flag !== cur && state.allowWorldEdit) {
-          world.sSub(block[0],block[1],block[2], flag ? 1 : 0);
+          world.sSubv(block, flag ? 1 : 0);
         }
       };
     };
@@ -553,7 +553,7 @@ var Circuit = (function () {
     ic.faces = "<DYNAMIC>"; // bogus, shouldn't be noticed
     ic.getFaceUnrotated = function (world, block, face) {
       // TODO this is overly long considering how often it's called in a compile; perhaps have the block type cache some info?
-      var type = world.gt(block[0],block[1],block[2]);
+      var type = world.gtv(block);
       if (!type.world) {
         if (typeof console !== 'undefined')
           console.warn("IC behavior applied to non-world block type!");
@@ -570,7 +570,7 @@ var Circuit = (function () {
       return hasOut ? OUT : hasIn ? IN : NONE;
     };
     ic.compile = function (world, block, inputs) {
-      var type = world.gt(block[0],block[1],block[2]);
+      var type = world.gtv(block);
       if (!type.world) {
         if (typeof console !== 'undefined')
           console.warn("IC behavior applied to non-world block type!");
@@ -662,7 +662,7 @@ var Circuit = (function () {
       
       if ("blockOut_become" in state) {
         var blockID = state.blockOut_become;
-        effect = [blockID, outerWorld.gSub(cube[0],cube[1],cube[2])]; // TODO detect conflicts
+        effect = [blockID, outerWorld.gSubv(cube)]; // TODO detect conflicts
         outerWorld.audioEvent(cube, "become"); // TODO should be part of effect record
       } else {
         // Rotations are only assigned when the circuit is being evaluated in the normal case, not during an event
