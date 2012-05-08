@@ -1,12 +1,362 @@
 // Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
+var CubesControlBindingUI;
 var Input;
 (function () {
   "use strict";
   
+  function parseEvent(ev) {
+    switch (ev.type) {
+      case "keydown":
+      case "keyup":
+        // NOTE: Per MDN <https://developer.mozilla.org/en/DOM/KeyboardEvent> the keyCode attribute is deprecated (but its replacement is not yet implemented in Gecko)
+        // TODO: Research the best way to express keybindings
+        return ["key", ev.keyCode];
+        break;
+      case "mousedown":
+      case "mouseup":
+        if (ev.buttons) { 
+          // Per <https://developer.mozilla.org/en/DOM/MouseEvent>
+          // This is the preferred definition because it supports >3 buttons.
+          // take lowest bit of buttons mask
+          var bit = 0, buttons = ev.buttons;
+          while (!(buttons & 1)) {
+            bit++;
+            buttons = buttons >> 1;
+          }
+          return ["mouse", bit];
+        } else {
+          switch (ev.button) {
+            case 0: return ["mouse", 0];
+            case 1: return ["mouse", 2];
+            case 2: return ["mouse", 1];
+          }
+        }
+        break;
+      case "mousewheel":
+        return ["wheel", signum(ev.wheelDeltaX), signum(ev.wheelDeltaY)];
+      default:
+        return null;
+    }
+  }
+  
+  function ControlChip(value, set, deleter) {
+    var el = document.createElement("span");
+    el.className = "control-chip";
+    el.style.position = "relative"; // context for delete button
+    this.element = el;
+    
+    if (value === null) {
+      el.textContent = "…";
+      el.className += " control-chip-placeholder";
+    } else {
+      var desc;
+      switch (value[0]) {
+        case "key":
+          switch (value[1]) {
+            // TODO are the constants available somewhere?
+            // I generated this table from MDN content
+            // <https://developer.mozilla.org/en/DOM/KeyboardEvent>
+            // perl -pe 's/^(.*?)\t(.*?)\t(.*?) key.$/case $2: desc = "$3";/; s/^DOM_VK_(.*?)\t(.*?)\t(.*?).$/case $2: desc = "\L$1";/;'
+            case   3: desc = "cancel"; break;
+            case   6: desc = "help"; break;
+            case   8: desc = "backspace"; break;
+            case   9: desc = "tab"; break;
+            case  12: desc = "clear"; break;
+            case  13: desc = "return"; break;
+            case  14: desc = "enter"; break;
+            case  16: desc = "shift"; break;
+            case  17: desc = "control"; break;
+            case  18: desc = "alt"; break;
+            case  19: desc = "pause"; break;
+            case  20: desc = "caps lock"; break;
+            case  27: desc = "escape"; break;
+            case  28: desc = "convert"; break;
+            case  29: desc = "nonconvert"; break;
+            case  30: desc = "accept"; break;
+            case  31: desc = "modechange"; break;
+            case  32: desc = "space"; break;
+            case  33: desc = "page up"; break;
+            case  34: desc = "page down"; break;
+            case  35: desc = "end"; break;
+            case  36: desc = "home"; break;
+            case  37: desc = "←"; break;
+            case  38: desc = "↑"; break;
+            case  39: desc = "→"; break;
+            case  40: desc = "↓"; break;
+            case  41: desc = "select"; break;
+            case  41: desc = "select"; break;
+            case  42: desc = "print"; break;
+            case  42: desc = "print"; break;
+            case  43: desc = "execute"; break;
+            case  43: desc = "execute"; break;
+            case  44: desc = "print screen"; break;
+            case  45: desc = "ins"; break;
+            case  46: desc = "del"; break;
+            case  48: desc = "0"; break;
+            case  49: desc = "1"; break;
+            case  50: desc = "2"; break;
+            case  51: desc = "3"; break;
+            case  52: desc = "4"; break;
+            case  53: desc = "5"; break;
+            case  54: desc = "6"; break;
+            case  55: desc = "7"; break;
+            case  56: desc = "8"; break;
+            case  57: desc = "9"; break;
+            case  59: desc = ";"; break;
+            case  61: desc = "="; break;
+            case  65: desc = "A"; break;
+            case  66: desc = "B"; break;
+            case  67: desc = "C"; break;
+            case  68: desc = "D"; break;
+            case  69: desc = "E"; break;
+            case  70: desc = "F"; break;
+            case  71: desc = "G"; break;
+            case  72: desc = "H"; break;
+            case  73: desc = "I"; break;
+            case  74: desc = "J"; break;
+            case  75: desc = "K"; break;
+            case  76: desc = "L"; break;
+            case  77: desc = "M"; break;
+            case  78: desc = "N"; break;
+            case  79: desc = "O"; break;
+            case  80: desc = "P"; break;
+            case  81: desc = "Q"; break;
+            case  82: desc = "R"; break;
+            case  83: desc = "S"; break;
+            case  84: desc = "T"; break;
+            case  85: desc = "U"; break;
+            case  86: desc = "V"; break;
+            case  87: desc = "W"; break;
+            case  88: desc = "X"; break;
+            case  89: desc = "Y"; break;
+            case  90: desc = "Z"; break;
+            case  91: desc = "⌘"; break;
+            case  93: desc = "menu"; break;
+            case  95: desc = "sleep"; break;
+            case  96: desc = "[0]"; break;
+            case  97: desc = "[1]"; break;
+            case  98: desc = "[2]"; break;
+            case  99: desc = "[3]"; break;
+            case 100: desc = "[4]"; break;
+            case 101: desc = "[5]"; break;
+            case 102: desc = "[6]"; break;
+            case 103: desc = "[7]"; break;
+            case 104: desc = "[8]"; break;
+            case 105: desc = "[9]"; break;
+            case 106: desc = "[*]"; break;
+            case 107: desc = "[+]"; break;
+            case 108: desc = "separator"; break;
+            case 109: desc = "[-]"; break;
+            case 110: desc = "[.]"; break;
+            case 111: desc = "[/]"; break;
+            case 112: desc = "F1"; break;
+            case 113: desc = "F2"; break;
+            case 114: desc = "F3"; break;
+            case 115: desc = "F4"; break;
+            case 116: desc = "F5"; break;
+            case 117: desc = "F6"; break;
+            case 118: desc = "F7"; break;
+            case 119: desc = "F8"; break;
+            case 120: desc = "F9"; break;
+            case 121: desc = "F10"; break;
+            case 122: desc = "F11"; break;
+            case 123: desc = "F12"; break;
+            case 124: desc = "F13"; break;
+            case 125: desc = "F14"; break;
+            case 126: desc = "F15"; break;
+            case 127: desc = "F16"; break;
+            case 128: desc = "F17"; break;
+            case 129: desc = "F18"; break;
+            case 130: desc = "F19"; break;
+            case 131: desc = "F20"; break;
+            case 132: desc = "F21"; break;
+            case 133: desc = "F22"; break;
+            case 134: desc = "F23"; break;
+            case 135: desc = "F24"; break;
+            case 144: desc = "num lock"; break;
+            case 145: desc = "scroll lock"; break;
+            case 188: desc = ","; break;
+            case 190: desc = "."; break;
+            case 191: desc = "/"; break;
+            case 192: desc = "\""; break;
+            case 192: desc = "`"; break;
+            case 219: desc = "["; break;
+            case 221: desc = "]"; break;
+            case 222: desc = "\\"; break; // platform hazard
+            case 224: desc = "meta"; break;
+            default:
+              if (value[1] > 33 && value[1] < 127) {
+                desc = String.fromCharCode(value[1]);
+              } else {
+                desc = "key " + value[1]; break;
+              }
+          }
+          break;
+        case "mouse":
+          desc = "Mouse " + (value[1] + 1);
+          break;
+        case "wheel":
+          switch (String(value)) {
+            case "wheel,0,-1": desc = "Wheel ↑"; break;
+            case "wheel,0,1" : desc = "Wheel ↓"; break;
+            case "wheel,-1,0": desc = "Wheel ←"; break;
+            case "wheel,1,0" : desc = "Wheel →"; break;
+            default: desc = "Wheel " + value.slice(1).toString(); break;
+          }
+          break;
+        default:
+          desc = String(value);
+          break;
+      }
+      el.textContent = desc;
+    }
+    
+    var active = false;
+    var deleteButton;
+    
+    function activate() {
+      if (active) return;
+      active = true;
+      el.tabIndex = 0;
+      el.focus();
+      
+      if (deleter) {
+        deleteButton = document.createElement("button");
+        deleteButton.textContent = "×";
+        deleteButton.className = "control-unbind-button";
+        deleteButton.style.position = "absolute";
+        deleteButton.style.zIndex = "1";
+        el.parentElement.appendChild(deleteButton);
+        var inset = 0.2;
+        deleteButton.style.left = (el.offsetLeft + el.offsetWidth - deleteButton.offsetWidth * inset) + "px";
+        deleteButton.style.top = (el.offsetTop - deleteButton.offsetHeight * (1 - inset)) + "px";
+        deleteButton.addEventListener("mousedown", function (e) {
+          // mousedown, not click, because this has to be instant or it gets deleted by the blur handler
+          deleter();
+          return true;
+        }, false);
+      }
+    }
+    
+    function deactivate() {
+      if (!active) return;
+      active = false;
+      el.tabIndex = -1;
+      if (deleteButton) {
+        if (deleteButton.parentElement) deleteButton.parentElement.removeChild(deleteButton);
+        deleteButton = undefined;
+      }
+      el.blur();
+    }
+    
+    el.addEventListener("click", function (ev) {
+      activate();
+      ev.stopPropagation();
+      return false;
+    }, false);
+    
+    function generalListener(ev) {
+      if (active) {
+        deactivate();
+        ev.preventDefault();
+        set(parseEvent(ev));
+        return false;
+      } else {
+        return true;
+      }
+    }
+    
+    el.addEventListener("keydown", generalListener, false);
+    el.addEventListener("keyup", generalListener, false);
+    el.addEventListener("mousedown", generalListener, false);
+    el.addEventListener("mouseup", generalListener, false);
+    el.addEventListener("mousewheel", generalListener, false);
+    
+    // allow to become a mousedown
+    el.addEventListener("contextmenu", function (ev) { 
+      ev.preventDefault();
+      return false;
+    }, false);
+    
+    el.addEventListener("blur", function () {
+      setTimeout(deactivate, 0);
+    }, false);
+  }
+  ControlChip.prototype.conflict = function () {
+    this.element.className += " control-chip-conflict";
+  }
+  
+  function ControlBindingUI(bindingsCell, rowContainer) {
+    var commands = Input.commands;
+    
+    var commandToContainer = {};
+    Object.keys(commands).forEach(function (commandName, index) {
+      var row = document.createElement("tr");
+      rowContainer.appendChild(row);
+
+      var labelCell = document.createElement("td");
+      row.appendChild(labelCell);
+      labelCell.textContent = commands[commandName];
+
+      var controlsCell = document.createElement("td");
+      row.appendChild(controlsCell);
+      
+      var bindingsContainer = document.createElement("span");
+      controlsCell.appendChild(bindingsContainer);
+      commandToContainer[commandName] = bindingsContainer;
+      
+      var placeholderChip = new ControlChip(null, function (newControl) {
+        bindingsCell.set(bindingsCell.get().concat([[commandName, newControl]]));
+      });
+      controlsCell.appendChild(placeholderChip.element);
+    });
+    
+    function updateBindings() {
+      var bindings = bindingsCell.get();
+      var conflictMap = {};
+      Object.keys(commandToContainer).forEach(function (key) {
+        commandToContainer[key].textContent = "";
+      });
+      bindings.forEach(function (bindingRecord, index) {
+        var commandName = bindingRecord[0];
+        var control = bindingRecord[1];
+        
+        var container = commandToContainer[commandName];
+        var chip = new ControlChip(control, function (newControl) {
+          var newBindings = bindings.slice();
+          newBindings[index] = [newBindings[index][0], newControl];
+          bindingsCell.set(newBindings);
+        }, function () {
+          var newBindings = bindings.slice();
+          if (index < bindings.length - 1) {
+            newBindings[index] = newBindings.pop();
+          } else {
+            newBindings.pop();
+          }
+          bindingsCell.set(newBindings);
+        });
+        container.appendChild(chip.element);
+        container.appendChild(document.createTextNode(" "));
+        
+        var conflictList = conflictMap[control] || (conflictMap[control] = []);
+        conflictList.push(chip);
+        if (conflictList.length > 1) {
+          conflictList[conflictList.length - 1].conflict();
+        }
+        if (conflictList.length == 2) {
+          conflictList[0].conflict();
+        }
+      });
+    }
+    bindingsCell.nowAndWhenChanged(function () {
+      updateBindings();
+      return true;
+    })
+  }
+  
   function Input_(config, eventReceiver, playerInput, hud, renderer, focusCell, save) {
-    var keymap = {};
     var interfaceMode;
     var expectingPointerLock = false;
     
@@ -37,7 +387,7 @@ var Input;
     }, false);
     eventReceiver.addEventListener("blur", function (event) {
       focusCell.set(false);
-      keymap = {};
+      resetHeldControls();
       return true;
     }, false);
     
@@ -57,90 +407,176 @@ var Input;
       return true;
     });
     
-    // --- Keyboard events ---
+    // --- Events for configurable controls ---
     
-    function interestingInMap(code) {
-      switch (code) {
-        case 'A'.charCodeAt(0): case 37:
-        case 'W'.charCodeAt(0): case 38:
-        case 'D'.charCodeAt(0): case 39:
-        case 'S'.charCodeAt(0): case 40:
-        case 'E'.charCodeAt(0):
-        case 'C'.charCodeAt(0):
-          return true;
-        default:
-          return false;
-      }
+    var heldControls = {};
+    var heldCommands = {};
+    function resetHeldControls() {
+      heldControls = {};
+      Object.keys(Input_.commands).forEach(function (k) { heldCommands[k] = 0; })
+      evalHeldControls();
     }
-    function evalKeys() {
-      var l = keymap['A'.charCodeAt(0)] || keymap[37];
-      var r = keymap['D'.charCodeAt(0)] || keymap[39];
-      var f = keymap['W'.charCodeAt(0)] || keymap[38];
-      var b = keymap['S'.charCodeAt(0)] || keymap[40];
-      var u = keymap['E'.charCodeAt(0)];
-      var d = keymap['C'.charCodeAt(0)];
+    
+    var commandFunctions = {};
+    function defhold(name) {
+      if (!(name in Input_.commands)) throw new Error("inconsistent table");
+      commandFunctions[name] = {
+        name: name,
+        map: true,
+        press: function () {}
+      };
+    }
+    function defaction(name, func) {
+      if (!(name in Input_.commands)) throw new Error("inconsistent table");
+      commandFunctions[name] = {
+        name: name,
+        map: false,
+        press: func
+      };
+    }
+    defhold("left");
+    defhold("right");
+    defhold("forward");
+    defhold("backward");
+    defhold("up");
+    defhold("down");
+    defaction("jump", function () {
+      playerInput.jump();
+    });
+    defaction("quick0", function () { quick(0); });
+    defaction("quick1", function () { quick(1); });
+    defaction("quick2", function () { quick(2); });
+    defaction("quick3", function () { quick(3); });
+    defaction("quick4", function () { quick(4); });
+    defaction("quick5", function () { quick(5); });
+    defaction("quick6", function () { quick(6); });
+    defaction("quick7", function () { quick(7); });
+    defaction("quick8", function () { quick(8); });
+    defaction("quick9", function () { quick(9); });
+    defaction("interfaceMode", function () {
+      switchMode(interfaceMode.mouselookKeyTransition);
+    });
+    defaction("enterWorld", function () {
+      playerInput.changeWorld(+1);
+    });
+    defaction("exitWorld", function () {
+      playerInput.changeWorld(-1);
+    });
+    defaction("subdatumInc", function () {
+      playerInput.tweakSubdata(+1);
+    });
+    defaction("subdatumDec", function () {
+      playerInput.tweakSubdata(-1);
+    });
+    defaction("editBlockset", function () {
+      switchMode(fullMenuMode);
+      eventReceiver.blur();
+    });
+    defaction("useTool", function () {
+      playerInput.useTool();
+    });
+    defaction("deleteBlock", function () {
+      playerInput.deleteBlock();
+    });
+    
+    var controlMap;
+    function rebuildControlMap(bindings) {
+      controlMap = {};
       
+      bindings.forEach(function (bindingRecord) {
+        var commandName = bindingRecord[0];
+        var control = bindingRecord[1];
+        controlMap[control] = commandFunctions[commandName];
+        if (!commandFunctions[commandName]) {
+          if (typeof console !== "undefined") {
+            console.warn("No function for command", commandName);
+          }
+        }
+      })
+      resetHeldControls();
+      
+      return true;
+    }
+    config.controls.nowAndWhenChanged(rebuildControlMap);
+    
+    function evalHeldControls() {
       playerInput.movement = [
-        evalVel(r, l),
-        evalVel(u, d),
-        evalVel(b, f)
+        evalVel(heldCommands.right,    heldCommands.left),
+        evalVel(heldCommands.up,       heldCommands.down),
+        evalVel(heldCommands.backward, heldCommands.forward)
       ];
     }
     
-    eventReceiver.addEventListener("keydown", function (event) {
+    function controlPressHandler(event) {
       // avoid disturbing browser shortcuts
-      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.altKey || event.ctrlKey || event.metaKey) return true;
       
-      var code = event.keyCode || event.which;
+      var control = parseEvent(event);
+      var command = controlMap[control];
       
-      // handlers for 'action' keys (immediate effects)
-      switch (String.fromCharCode(code)) {
-        case "1": quick(0); return false;
-        case "2": quick(1); return false;
-        case "3": quick(2); return false;
-        case "4": quick(3); return false;
-        case "5": quick(4); return false;
-        case "6": quick(5); return false;
-        case "7": quick(6); return false;
-        case "8": quick(7); return false;
-        case "9": quick(8); return false;
-        case "0": quick(9); return false;
-        case "Q": 
-          switchMode(interfaceMode.mouselookKeyTransition);
-          return false;
-        case "R": playerInput.changeWorld(1);  return false;
-        case "\x1B"/*Esc*/:
-        case "F": playerInput.changeWorld(-1); return false;
-        case "Z": playerInput.tweakSubdata(-1); return false;
-        case "X": playerInput.tweakSubdata(1);  return false;
-        case "B": 
-          switchMode(fullMenuMode);
-          eventReceiver.blur();
-          return false;
-        case " ": playerInput.jump(); return false;
-      }
+      if (command) {
+        command.press();
       
-      // 'mode' keys such as movement directions go into the keymap
-      if (interestingInMap(code)) {
-        keymap[code] = true;
-        evalKeys();
+        if (!heldControls[control]) {
+          heldControls[control] = true;
+          heldCommands[command.name]++;
+          //console.log("hold +", control, command.name, heldCommands[command.name]);
+          evalHeldControls();
+        }
+        
+        event.stopPropagation();
         return false;
       } else {
         return true;
       }
-    }, false);
-    document.addEventListener("keyup", function (event) {
-      // on document to catch key-ups after focus changes etc.
-      var code = event.keyCode || event.which;
-      if (interestingInMap(code)) {
-        var wasSetInMap = keymap[code];
-        keymap[code] = false;
-        evalKeys();
-        return !wasSetInMap;
+    }
+    
+    function controlReleaseHandler(event) {
+      var control = parseEvent(event);
+      var command = controlMap[control];
+      
+      if (heldControls[control]) {
+        heldControls[control] = false;
+        heldCommands[command.name]--;
+        //console.log("hold -", control, command.name, heldCommands[command.name]);
+        evalHeldControls();
+        
+        event.stopPropagation();
+        return false;
       } else {
         return true;
       }
-    }, true);
+    }
+    
+    // Keyboard events
+    eventReceiver.addEventListener("keydown", controlPressHandler, false);
+    eventReceiver.addEventListener("keyup", controlReleaseHandler, false);
+    document.addEventListener("keyup", controlReleaseHandler, false);
+      // also on document to catch key-ups after focus changes etc.
+    
+    // Mouse events
+    eventReceiver.addEventListener("mousedown", function (event) {
+      updateMouseFromEvent(event);
+      if (delayedFocus) {
+        controlPressHandler(event);
+      } else {
+        // Don't respond to focus-granting click
+        eventReceiver.focus();
+      }
+      event.preventDefault(); // inhibits text selection
+      return false;
+    }, false);
+    eventReceiver.addEventListener("mouseup", controlReleaseHandler, false);
+    eventReceiver.addEventListener("mousewheel", controlPressHandler, false);
+    
+    eventReceiver.addEventListener("contextmenu", function (event) {
+      event.preventDefault(); // inhibits context menu (on the game world only) since we use right-click for our own purposes
+    }, false);
+    
+    // Initialization
+    resetHeldControls();
+    
+    // TODO: Implement repeat on held down button
     
     // --- Mouselook ---
     
@@ -253,29 +689,6 @@ var Input;
         document.exitPointerLock/*shimmed*/();
       }
     };
-    
-    // --- Clicks ---
-    
-    // Note: this has the side effect of inhibiting text selection on drag
-    eventReceiver.addEventListener("mousedown", function (event) {
-      updateMouseFromEvent(event);
-      if (delayedFocus) {
-        switch (event.button) {
-          case 0: playerInput.deleteBlock(); break;
-          case 2: playerInput.useTool(); break;
-        }
-      } else {
-        eventReceiver.focus();
-      }
-      event.preventDefault(); // inhibits text selection
-      return false;
-    }, false);
-    
-    // TODO: Implement repeat on held down button
-    
-    eventReceiver.addEventListener("contextmenu", function (event) {
-      event.preventDefault(); // inhibits context menu (on the game world only) since we use right-click for our own purposes
-    }, false);
     
     // --- Stepping ---
     
@@ -592,5 +1005,42 @@ var Input;
     switchMode(interfaceMode);
   }
   
+  Input_.commands = {};
+  Input_.defaultBindings = [];
+  function defcmd(name, label, bindings) {
+    Input_.commands[name] = label;
+    bindings.forEach(function (control) {
+      Input_.defaultBindings.push([name, control])
+    });
+  }
+  defcmd("useTool"    , "Place block",  [["mouse", 1]]);
+  defcmd("deleteBlock", "Delete block", [["mouse", 0]]);
+  defcmd("left"    , "Left"    , [["key", "A".charCodeAt(0)], ["key", 37]]);
+  defcmd("right"   , "Right"   , [["key", "D".charCodeAt(0)], ["key", 39]]);
+  defcmd("forward" , "Forward" , [["key", "W".charCodeAt(0)], ["key", 38]]);
+  defcmd("backward", "Backward", [["key", "S".charCodeAt(0)], ["key", 40]]);
+  defcmd("up"      , "Up/Fly"  , [["key", "E".charCodeAt(0)]]);
+  defcmd("down"    , "Down"    , [["key", "C".charCodeAt(0)]]);
+  defcmd("jump"    , "Jump"    , [["key", " ".charCodeAt(0)]]);
+  defcmd("quick0", "Tool #1"   , [["key", "1".charCodeAt(0)]]);
+  defcmd("quick1", "Tool #2"   , [["key", "2".charCodeAt(0)]]);
+  defcmd("quick2", "Tool #3"   , [["key", "3".charCodeAt(0)]]);
+  defcmd("quick3", "Tool #4"   , [["key", "4".charCodeAt(0)]]);
+  defcmd("quick4", "Tool #5"   , [["key", "5".charCodeAt(0)]]);
+  defcmd("quick5", "Tool #6"   , [["key", "6".charCodeAt(0)]]);
+  defcmd("quick6", "Tool #7"   , [["key", "7".charCodeAt(0)]]);
+  defcmd("quick7", "Tool #8"   , [["key", "8".charCodeAt(0)]]);
+  defcmd("quick8", "Tool #9"   , [["key", "9".charCodeAt(0)]]);
+  defcmd("quick9", "Tool #10"  , [["key", "0".charCodeAt(0)]]);
+  defcmd("interfaceMode", "Mouselook"    , [["key", "Q".charCodeAt(0)]]);
+  defcmd("enterWorld"   , "Edit block"   , [["key", "R".charCodeAt(0)]]);
+  defcmd("exitWorld"    , "Exit editing" , [["key", "F".charCodeAt(0)], ["key", 0x1b]]);
+  defcmd("subdatumDec"  , "Subdatum −1"  , [["key", "Z".charCodeAt(0)]]);
+  defcmd("subdatumInc"  , "Subdatum +1"  , [["key", "X".charCodeAt(0)]]);
+  defcmd("editBlockset" , "Edit blockset", [["key", "B".charCodeAt(0)]]);
+  Object.freeze(Input_.commands);
+  Object.freeze(Input_.defaultBindings); // should be recursive
+      
+  CubesControlBindingUI = ControlBindingUI;
   Input = Input_;
 }());

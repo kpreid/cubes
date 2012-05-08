@@ -245,7 +245,7 @@ html {
   font-size: 0.92em;
   border-collapse: collapse;
 }
-.sidebar table.fancy > tbody > tr > th {
+.sidebar table.fancy > * > tr > th {
   background: gray;
   background: rgba(255,255,255,0.1);
 }
@@ -314,6 +314,55 @@ html {
 .overlay .progress-bar {
   /* arbitrary fixed length for this use case */
   width: 20em;
+}
+
+/* --- control bindings UI --- */
+
+.control-chip {
+  display: inline-block;
+  margin: .1em;
+  padding: .1em;
+  min-width: 1.1em;
+  height: 1.1em;
+
+  background: #EEE;
+  color: black;
+  border: .15em outset #EEE;
+  border-radius: .2em;
+  
+  text-align: center;
+  vertical-align: middle;
+  
+  font-family: "Lucida Grande", "Helvetica", "Arial", sans-serif;
+}
+
+.control-chip.control-chip-placeholder { opacity: 0.5; }
+.control-chip.control-chip-placeholder:hover, 
+.control-chip.control-chip-placeholder:focus { opacity: 1.0; }
+
+.control-chip.control-chip-conflict { border-color: red; }
+
+.control-chip:focus, .control-chip.control-chip-conflict:focus {
+  border-color: #77F;
+  outline: none;
+}
+
+.control-unbind-button {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: middle;
+  margin: 0;
+  padding: 0;
+  border-radius: 0.6em;
+  
+  border: 1px outset;
+  
+  background: red;
+  color: white;
+  font-family: "Arial", sans-serif;
+  font-weight: bold;
+  font-size: inherit;
 }
 
 /* --- object-UI widgets --- */
