@@ -38,7 +38,7 @@ describe("Circuit", function() {
       // For looking at the test case in-game for debugging.
       dumpWorld: function (name) {
         var pool = new PersistencePool(localStorage, "cubes.object.");
-        if (pool.has(name)) pool.get(name).persistence.ephemeralize();
+        if (pool.has(name)) pool.ephemeralize(name);
         pool.persist(self.world, name);
         pool.flushNow();
       },
@@ -138,8 +138,6 @@ describe("Circuit", function() {
       t.putInput(UNIT_NX, 20);
       expect(t.readOutput(UNIT_PX)).toEqual(2);
       // TODO add non-integer input test cases once we can putInput them
-      
-      t.dumpWorld("count");
     });
   });
 

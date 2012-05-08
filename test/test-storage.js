@@ -48,4 +48,18 @@ describe("Persister", function () {
     
     expect(outer2.blockSet).toBe(inner2);
   });
+
+  it("handles renaming", function () {
+    sessionStorage.clear();
+    var pool = new PersistencePool(sessionStorage, "Persister-preserve-test.");
+    
+    var obj = new BlockSet([]);
+    pool.persist(obj, "foo");
+    pool.flushNow();
+    pool.ephemeralize("foo");
+    pool.persist(obj, "bar");
+    
+    expect(pool.get("foo")).toBe(null);
+    expect(pool.get("bar")).toBe(obj);
+  });
 });

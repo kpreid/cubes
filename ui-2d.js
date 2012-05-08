@@ -45,7 +45,7 @@ var CubesObjectUI;
           // Examine object
           var label = null;
           if (target.persistence) {
-            label = target.persistence.getName(); // TODO should be per-pool
+            label = persistencePool.getObjectName(target);
             chipE.className = baseClassName + " object-chip-live";
           }
           if (label === null) {
@@ -108,8 +108,7 @@ var CubesObjectUI;
         if (targetName !== null) {
           addControl("Delete", function () {
             if (window.confirm("Really delete “" + targetName + "”?")) {
-              // TODO unnecessary unserialization - change pool interface
-              persistencePool.get(targetName).persistence.ephemeralize();
+              persistencePool.ephemeralize(targetName);
             }
           });
           
@@ -120,7 +119,6 @@ var CubesObjectUI;
           addControl("Save As...", function () {
             var response = window.prompt("Save " + nameE.textContent + " as:", nameE.textContent);
             if (response !== null) {
-              target.persistence.ephemeralize();
               persistencePool.persist(target, response);
             }
           });

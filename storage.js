@@ -292,11 +292,13 @@ function PersistencePool(storage, objectPrefix) {
     if (!pool.available) {
       throw new Error("localStorage not supported by this browser; persistence not available");
     }
-    if (object.persistence.getName() === name) {
-      return;
+    var existingName = pool.getObjectName(object);
+    if (existingName !== null) {
+      if (existingName === name) return;
+      throw new Error("This object already has the name " + existingName);
     }
-    if (object.persistence.getName() !== null) {
-      throw new Error("This object already has the name " + name);
+    if (object.persistence._getPool() && object.persistence._getPool() !== pool) {
+      throw new Error("This object is already in a different pool.");
     }
     register(object, name);
     // TODO should take the persister, not the object, so we aren't assuming .persistence is correct
@@ -308,11 +310,14 @@ function PersistencePool(storage, objectPrefix) {
   this._write = function (name, data) { // TODO internal
     storage.setItem(objectPrefix + name, data);
   };
-  this._ephemeralize = function (name) { // TODO internal
+  this.ephemeralize = function (name) {
     console.log("Persister: ephemeralized", name);
     storage.removeItem(objectPrefix + name);
-    delete currentlyLiveObjects[name];
-    name = null;
+    if (Object.prototype.hasOwnProperty.call(currentlyLiveObjects, name)) {
+      var object = currentlyLiveObjects[name];
+      delete currentlyLiveObjects[name];
+      object.persistence._registerName(null, null);
+    }
     notifier.notify("deleted", name);
   };
   this._dirty = function (name) {
@@ -325,8 +330,10 @@ function PersistencePool(storage, objectPrefix) {
 
   Object.freeze(this);
 }
-
-// TODO: Refactor Persister and PersistencePool so that they don't need to call back and forth so much. .persist should probably go on the pool.
+PersistencePool.prototype.getObjectName = function (object) {
+  var p = object.persistence;
+  return p && p._getPool() === this ? p._getName() : null;
+};
 
 function Persister(object) {
   "use strict";
@@ -337,9 +344,8 @@ function Persister(object) {
   var dirty = false;
   
   function getObjName(obj) {
-    // TODO confirm that these are in the same pool.
-    if (obj && obj !== object && obj && obj.persistence && obj.persistence.getName() !== null) {
-      return obj.persistence.getName();
+    if (obj && obj !== object) {
+      return pool.getObjectName(obj);
     }
   }
   
@@ -347,14 +353,8 @@ function Persister(object) {
     pool = newPool;
     name = newName;
   };
-  this.getName = function () { return name; };
-  this.ephemeralize = function () {
-    if (name) {
-      pool._ephemeralize(name);
-      name = null;
-      pool = null;
-    }
-  }
+  this._getPool = function () { return pool; };
+  this._getName = function () { return name; };
   this.dirty = function () {
     if (name !== null && !dirty) {
       console.log("Persister: dirtied", name);

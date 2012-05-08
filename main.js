@@ -559,7 +559,7 @@ var CubesMain = (function () {
       worldH = world;
       if (player) player.setWorld(world);
 
-      var name = world.persistence.getName();
+      var name = persistencePool.getObjectName(world);
       if (name !== null) config.currentTopWorld.set(name);
       
       if (currentWorldChipContainer) {
