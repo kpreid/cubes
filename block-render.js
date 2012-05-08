@@ -21,17 +21,17 @@ function BlockRenderer(blockSet, renderer, resolution) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, rttFramebuffer);
   rttFramebuffer.width = resolution;
   rttFramebuffer.height = resolution;
-
+  
   var renderbuffer1 = gl.createRenderbuffer();
   gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer1);
   gl.renderbufferStorage(gl.RENDERBUFFER, gl.RGBA4, rttFramebuffer.width, rttFramebuffer.height);
   gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, renderbuffer1);
-
+  
   var renderbuffer2 = gl.createRenderbuffer();
   gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer2);
   gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, rttFramebuffer.width, rttFramebuffer.height);
   gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderbuffer2);
-
+  
   gl.bindTexture(gl.TEXTURE_2D, null);
   gl.bindRenderbuffer(gl.RENDERBUFFER, null);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -58,15 +58,15 @@ function BlockRenderer(blockSet, renderer, resolution) {
     var arrayC = imageData.data;
     var arrayGL = new Uint8Array(rttFramebuffer.width * rttFramebuffer.height * 4);
     gl.readPixels(0, 0, rttFramebuffer.width, rttFramebuffer.height, gl.RGBA, gl.UNSIGNED_BYTE, arrayGL);
-    { // copy into canvas data and flip y
-      var h = rttFramebuffer.height;
-      var w = rttFramebuffer.width * 4; // width in bytes
-      for (var y = h; y--; y >= 0) {
-        var nyl = (h - y) * w;
-        var pyl = y * w;
-        for (var i = w - 1; i >= 0; i--)
-          arrayC[nyl + i] = arrayGL[pyl + i];
-      }
+    
+    // copy into canvas data and flip y
+    var h = rttFramebuffer.height;
+    var w = rttFramebuffer.width * 4; // width in bytes
+    for (var y = h; y--; y >= 0) {
+      var nyl = (h - y) * w;
+      var pyl = y * w;
+      for (var i = w - 1; i >= 0; i--)
+        arrayC[nyl + i] = arrayGL[pyl + i];
     }
     
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -74,14 +74,12 @@ function BlockRenderer(blockSet, renderer, resolution) {
     return imageData;
   }
   
-  return {
-    blockToImageData: blockToImageData,
-    deleteResources: function () {
-      rttFramebuffer = null;
-      gl.deleteRenderbuffer(renderbuffer1);
-      gl.deleteRenderbuffer(renderbuffer2);
-      gl.deleteFramebuffer(rttFramebuffer);
-      singleBlockR.deleteResources();
-    }
+  this.blockToImageData = blockToImageData;
+  this.deleteResources = function () {
+    rttFramebuffer = null;
+    gl.deleteRenderbuffer(renderbuffer1);
+    gl.deleteRenderbuffer(renderbuffer2);
+    gl.deleteFramebuffer(rttFramebuffer);
+    singleBlockR.deleteResources();
   };
 }
