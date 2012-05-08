@@ -22,6 +22,9 @@ var WorldRenderer = (function () {
   function renderDistanceInfo(newRenderDistance) {
     // TODO add some visibility into whether this one-element cache is thrashing
     if (newRenderDistance !== lastSeenRenderDistance) {
+      //if (typeof console !== "undefined") console.log("Building renderDistanceInfo for " + newRenderDistance.toFixed(1));
+      lastSeenRenderDistance = newRenderDistance;
+      
       // The distance in chunk-lengths at which chunks are visible
       var chunkDistance = Math.ceil(newRenderDistance/CHUNKSIZE);
       
