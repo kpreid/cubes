@@ -251,8 +251,8 @@ html {
 }
 
 .sidebar table.fancy, .sidebar table.fancy > tbody > tr {
-  border-color gray;
-  border-color rgba(255,255,255,0.1);
+  border-color: gray;
+  border-color: rgba(255,255,255,0.1);
   border-style: solid;
 }
 .sidebar table.fancy {
