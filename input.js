@@ -472,6 +472,12 @@ var Input;
       switchMode(fullMenuMode);
       eventReceiver.blur();
     });
+    defaction("useTool", function () {
+      playerInput.useTool();
+    });
+    defaction("deleteBlock", function () {
+      playerInput.deleteBlock();
+    });
     
     var controlMap;
     function rebuildControlMap(bindings) {
@@ -481,6 +487,11 @@ var Input;
         var commandName = bindingRecord[0];
         var control = bindingRecord[1];
         controlMap[control] = commandFunctions[commandName];
+        if (!commandFunctions[commandName]) {
+          if (typeof console !== "undefined") {
+            console.warn("No function for command", commandName);
+          }
+        }
       })
       resetHeldControls();
       
@@ -537,11 +548,35 @@ var Input;
       }
     }
     
+    // Keyboard events
     eventReceiver.addEventListener("keydown", controlPressHandler, false);
     eventReceiver.addEventListener("keyup", controlReleaseHandler, false);
     document.addEventListener("keyup", controlReleaseHandler, false);
       // also on document to catch key-ups after focus changes etc.
-    resetHeldControls(); // init
+    
+    // Mouse events
+    eventReceiver.addEventListener("mousedown", function (event) {
+      updateMouseFromEvent(event);
+      if (delayedFocus) {
+        controlPressHandler(event);
+      } else {
+        // Don't respond to focus-granting click
+        eventReceiver.focus();
+      }
+      event.preventDefault(); // inhibits text selection
+      return false;
+    }, false);
+    eventReceiver.addEventListener("mouseup", controlReleaseHandler, false);
+    eventReceiver.addEventListener("mousewheel", controlPressHandler, false);
+    
+    eventReceiver.addEventListener("contextmenu", function (event) {
+      event.preventDefault(); // inhibits context menu (on the game world only) since we use right-click for our own purposes
+    }, false);
+    
+    // Initialization
+    resetHeldControls();
+    
+    // TODO: Implement repeat on held down button
     
     // --- Mouselook ---
     
@@ -654,29 +689,6 @@ var Input;
         document.exitPointerLock/*shimmed*/();
       }
     };
-    
-    // --- Clicks ---
-    
-    // Note: this has the side effect of inhibiting text selection on drag
-    eventReceiver.addEventListener("mousedown", function (event) {
-      updateMouseFromEvent(event);
-      if (delayedFocus) {
-        switch (event.button) {
-          case 0: playerInput.deleteBlock(); break;
-          case 2: playerInput.useTool(); break;
-        }
-      } else {
-        eventReceiver.focus();
-      }
-      event.preventDefault(); // inhibits text selection
-      return false;
-    }, false);
-    
-    // TODO: Implement repeat on held down button
-    
-    eventReceiver.addEventListener("contextmenu", function (event) {
-      event.preventDefault(); // inhibits context menu (on the game world only) since we use right-click for our own purposes
-    }, false);
     
     // --- Stepping ---
     
@@ -1001,6 +1013,8 @@ var Input;
       Input_.defaultBindings.push([name, control])
     });
   }
+  defcmd("useTool"    , "Place block",  [["mouse", 1]]);
+  defcmd("deleteBlock", "Delete block", [["mouse", 0]]);
   defcmd("left"    , "Left"    , [["key", "A".charCodeAt(0)], ["key", 37]]);
   defcmd("right"   , "Right"   , [["key", "D".charCodeAt(0)], ["key", 39]]);
   defcmd("forward" , "Forward" , [["key", "W".charCodeAt(0)], ["key", 38]]);
