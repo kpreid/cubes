@@ -716,6 +716,8 @@ var BlockSet = (function () {
       } else if (blockType.world) {
         (function () {
           var world = blockType.world;
+          var types = world.blockSet.getAll();
+          var opaques = types.map(function (t) { return t.opaque; });
           
           // To support non-cubical objects, we slice the entire volume of the block and generate as many tiles as needed. sliceWorld generates one such slice.
           
@@ -747,16 +749,16 @@ var BlockSet = (function () {
               vec[0] = u; vec[1] = v; vec[2] = layer;
               mat4.multiplyVec3(transform, vec, vec);
               
-              world.gtv(vec).writeColor(255, texData, texelBase);
+              types[world.gv(vec)].writeColor(255, texData, texelBase);
               
               if (texData[texelBase+3] > 0) {
                 // A layer has significant content only if there is an UNOBSCURED opaque pixel.
                 // If a layer is "empty" in this sense, it is not rendered.
                 // If it is empty from both directions, then it is deallocated.
-                if (!world.opaque(vec[0]+viewL[0],vec[1]+viewL[1],vec[2]+viewL[2])) {
+                if (!opaques[world.g(vec[0]+viewL[0],vec[1]+viewL[1],vec[2]+viewL[2])]) {
                   thisLayerNotEmptyL = true;
                 }
-                if (!world.opaque(vec[0]+viewH[0],vec[1]+viewH[1],vec[2]+viewH[2])) {
+                if (!opaques[world.g(vec[0]+viewH[0],vec[1]+viewH[1],vec[2]+viewH[2])]) {
                   thisLayerNotEmptyH = true;
                 }
               }
