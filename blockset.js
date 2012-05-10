@@ -4,6 +4,8 @@
 var BlockType = (function () {
   "use strict";
   
+  function noop() {}
+  
   // Global non-persistent serial numbers for block types, used in the sound render queue.
   var nextBlockTypeSerial = 0;
   
@@ -16,7 +18,7 @@ var BlockType = (function () {
     var self = this;
     
     var n = new Notifier("BlockType");
-    this._notify = n.notify; // should be private
+    this._notify = n.notify; // TODO should be private
     this.listen = n.listen;
     
     this._serial = nextBlockTypeSerial++;
@@ -32,32 +34,96 @@ var BlockType = (function () {
     this.solid = true;
     this.light = 0; // Light emission — float scale where 1.0 is an "ordinary light"
     
-    // Calculated properties:
-    // TODO make these readonly
-    //   opaque
-    //   hasCircuits
-    //   derivedColor
+    // Cached calculated properties
+    var opaque, hasCircuits, derivedColor;
+    var needsAnalysis = true;
+    Object.defineProperties(this, {
+      derivedColor: {
+        // The color which this block exhibits as a subcube.
+        enumerable: true,
+        get: function () {
+          if (needsAnalysis) doAnalysis();
+          return derivedColor;
+        }
+      },
+      hasCircuits: {
+        // Whether this block has any circuits; if not, they don't need to be reevaluated
+        enumerable: true,
+        get: function () {
+          if (needsAnalysis) doAnalysis();
+          return hasCircuits;
+        }
+      },
+      opaque: {
+        // Whether this block is 100% opaque at all of its outer faces.
+        enumerable: true,
+        get: function () {
+          if (needsAnalysis) doAnalysis();
+          return opaque;
+        }
+      }
+    });
+    
+    function doAnalysis() {
+      needsAnalysis = false;
+      if (!world) {
+        derivedColor = self.color || [0.5, 0.5, 0.5, 1.0];
+        hasCircuits = false;
+        opaque = self.color[3] >= 1;
+      } else {
+        var tileSize = world.wx; // assumed cubical
+        var tileLastIndex = tileSize - 1;
+        opaque = true;
+        var color = vec3.create();
+        var colorCount = 0;
+        for (var dim = 0; dim < 3; dim++) {
+          var ud = mod(dim+1,3);
+          var vd = mod(dim+2,3);
+          for (var u = 0; u < tileSize; u++)
+          for (var v = 0; v < tileSize; v++) {
+            var vec = [u,v,0];
+            opaque = opaque && world.opaque(vec[dim],vec[ud],vec[vd]);
+            vec[2] = tileLastIndex;
+            opaque = opaque && world.opaque(vec[dim],vec[ud],vec[vd]);
+
+            // raycast for color -- TODO use both sides
+            while (!world.opaque(vec[dim],vec[ud],vec[vd]) && vec[2] < tileSize) {
+              vec[2] += 1;
+            }
+            if (vec[2] < tileSize) {
+              var subCubeColor = [];
+              world.gt(vec[dim],vec[ud],vec[vd]).writeColor(1, subCubeColor, 0);
+              vec3.add(color, subCubeColor);
+              colorCount++;
+            }
+          }
+        }
+        derivedColor = self.color || vec3.scale(color, 1/colorCount);
+        hasCircuits = world.getCircuits().length;
+        // opaque is updated as we progress above
+      }
+    }
     
     // Hook up to world
     if (this.world) (function () {
       // TODO: update listener if world is set, or reject world setting
       // note there is no opportunity here to remove listener, but it is unlikely to be needed.
       function rebuild() {
-        recomputeBlockTypeDerivedProperties.call(self);
+        needsAnalysis = true;
         self._notify("appearanceChanged");
+      }
+      function dirtyProperties() {
+        needsAnalysis = true;
       }
       world.listen({
         interest: function () { return true; },
         dirtyBlock: rebuild,
         dirtyAll: rebuild,
-        dirtyCircuit: recomputeBlockTypeCircuitProperties.bind(self),
-        deletedCircuit: recomputeBlockTypeCircuitProperties.bind(self),
-        audioEvent: function () {}
+        dirtyCircuit: dirtyProperties,
+        deletedCircuit: dirtyProperties,
+        audioEvent: noop
       });
     }());
-    
-    recomputeBlockTypeDerivedProperties.call(self);
-    recomputeBlockTypeCircuitProperties.call(self);
     
     Object.seal(this);
   }
@@ -98,50 +164,6 @@ var BlockType = (function () {
       json.light = this.light;
     return json;
   };
-  
-  function recomputeBlockTypeDerivedProperties() {
-    var world = this.world;
-    
-    if (!world) {
-      this.opaque = this.color[3] >= 1;
-      this.derivedColor = this.color || [0.5, 0.5, 0.5, 1.0];
-      return;
-    } else {
-      var tileSize = world.wx; // assumed cubical
-      var tileLastIndex = tileSize - 1;
-      var opaque = true;
-      var color = vec3.create();
-      var colorCount = 0;
-      for (var dim = 0; dim < 3; dim++) {
-        var ud = mod(dim+1,3);
-        var vd = mod(dim+2,3);
-        for (var u = 0; u < tileSize; u++)
-        for (var v = 0; v < tileSize; v++) {
-          var vec = [u,v,0];
-          opaque = opaque && world.opaque(vec[dim],vec[ud],vec[vd]);
-          vec[2] = tileLastIndex;
-          opaque = opaque && world.opaque(vec[dim],vec[ud],vec[vd]);
-        
-          // raycast for color -- TODO use both sides
-          while (!world.opaque(vec[dim],vec[ud],vec[vd]) && vec[2] < tileSize) {
-            vec[2] += 1;
-          }
-          if (vec[2] < tileSize) {
-            var subCubeColor = [];
-            world.gt(vec[dim],vec[ud],vec[vd]).writeColor(1, subCubeColor, 0);
-            vec3.add(color, subCubeColor);
-            colorCount++;
-          }
-        }
-      }
-      this.opaque = opaque;
-      this.derivedColor = this.color || vec3.scale(color, 1/colorCount);
-    }
-  }
-  
-  function recomputeBlockTypeCircuitProperties() {
-    this.hasCircuits = this.world && this.world.getCircuits().length > 0;
-  }
   
   BlockType.air = new BlockType([0,0,0,0], null);
   BlockType.air.solid = false;
