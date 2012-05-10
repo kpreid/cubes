@@ -10,6 +10,12 @@
 // Main loop scheduling, scene drawing, performance statistics, etc.
 
 var CubesMain = (function () {
+  
+  function padRight(string, length) {
+    string = String(string);
+    return new Array(length - string.length + 1).join(" ") + string;
+  }
+  
   // rootURL should be the directory containing this script (unfortunately not directly available).
   function CubesMain(rootURL, timestep, storage) {
     var main = this;
@@ -285,8 +291,11 @@ var CubesMain = (function () {
     function startupMessage(text) {
       var t1 = Date.now();
       sceneInfo.data += text + "\n";
-      if (typeof console !== 'undefined')
-        console.log(t0 ? "(+"+(t1-t0)+" ms)" : "        ", text);
+      if (typeof console !== "undefined") {
+        console.log(t0 ? "(+" + padRight(t1-t0, 5) + " ms)"
+                       : "           ",
+                    text);
+      }
       t0 = t1;
     }
     
@@ -316,6 +325,8 @@ var CubesMain = (function () {
     }
     
     this.start = function (pageElements, callback) {
+      var tStart = Date.now();
+      
       var sceneInfoOverlay = pageElements.sceneInfoOverlay;
       
       currentWorldChipContainer = document.createElement("div");
@@ -506,7 +517,7 @@ var CubesMain = (function () {
 
           main.setTopWorld(world);
         },
-        "Creating your avatar...",
+        //"Creating your avatar...", // not currently expensive enough for a msg
         function () {
           player = main.player = new Player(config, worldH, renderer/*TODO facet? */, audio/*TODO facet? */, scheduleDraw);
         },
@@ -519,12 +530,13 @@ var CubesMain = (function () {
         function () {
           input = main.input = new Input(config, theCanvas, player.input, pageElements.hud, renderer, focusCell, main.save.bind(main));
           theCanvas.focus();
-        },
-        "Ready!",
-        function () {
+          
           readyToDraw = true;
           sceneInfoOverlay.insertBefore(measureDisplay.element, sceneInfoTextElem.nextSibling);
           startAnimationLoop();
+          
+          startupMessage("Ready!");
+          console.log("Total", Date.now() - tStart, "ms since start()");
           callback(null);
         }
       ], function (exception) {

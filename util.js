@@ -699,8 +699,8 @@ ProgressBar.prototype.setByTodoCount = function (count) {
 function fetchResource(url, type, callback) {
   "use strict";
   // TODO: review this code
-  if (typeof console !== "undefined")
-    console.log("Fetching", url);
+  //if (typeof console !== "undefined")
+  //  console.log("Fetching", url);
   var xhr = new XMLHttpRequest();
   xhr.open("GET", url, true);
   xhr.responseType = type;
@@ -708,8 +708,8 @@ function fetchResource(url, type, callback) {
     if (xhr.readyState != XMLHttpRequest.DONE) {
       return;
     }
-    if (typeof console !== "undefined")
-      console.log("completed", url, xhr.status);
+    //if (typeof console !== "undefined")
+    //  console.log("completed", url, xhr.status);
     if (xhr.status == 200) {
       callback(xhr.response, null);
     } else {
