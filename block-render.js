@@ -11,11 +11,13 @@
 // Renders single blocks from a world.
 
 function BlockRenderer(blockSet, renderer, resolution) {
+  "use strict";
+  
   var gl = renderer.context;
   
   var singleBlockWorld = new World([1,1,1], blockSet);
   singleBlockWorld.s(0,0,0,1);
-  singleBlockR = new WorldRenderer(singleBlockWorld, function () { return [0,0,0]; }, renderer, null, function (){}, false);
+  var singleBlockR = new WorldRenderer(singleBlockWorld, function () { return [0,0,0]; }, renderer, null, function (){}, false);
   
   var rttFramebuffer = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, rttFramebuffer);
