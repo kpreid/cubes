@@ -7,7 +7,7 @@ var WorldGen = (function () {
   
   var WorldGen = {
     newWorldBlockType: function (TS, blockSet) {
-      return new BlockType.World(new World([TS,TS,TS], blockSet));
+      return new BlockType(null, new World([TS,TS,TS], blockSet));
     },
     
     newProceduralBlockType: function (TS, blockSet, patfunc) {
@@ -45,12 +45,12 @@ var WorldGen = (function () {
     
       var colors = [];
       for (var i = 0; i < reds*greens*blues; i++) {
-        colors.push(new BlockType.Color([
+        colors.push(new BlockType([
           mod(i, reds) / (reds-1),
           mod(Math.floor(i/reds), greens) / (greens-1),
           mod(Math.floor(i/reds/greens), blues) / (blues-1),
           constAlpha
-        ]));
+        ], null));
       }
       return new BlockSet(colors);
     },
@@ -64,7 +64,7 @@ var WorldGen = (function () {
       var table = {};
       
       var ditheringSq = Math.pow(dithering, 2);
-      var idToColor = blockset.getAll().map(function (t) { return t.color; });
+      var idToColor = blockset.getAll().map(function (t) { return t.world ? null : t.color; });
       function compareMatchRecord(a,b) { return a[1] - b[1]; }
       
       function colorToID(r,g,b,a) {

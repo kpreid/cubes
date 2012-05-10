@@ -7,15 +7,13 @@ var BlockType = (function () {
   // Global non-persistent serial numbers for block types, used in the sound render queue.
   var nextBlockTypeSerial = 0;
   
-  function BlockType() {
-    throw new Error("abstract");
-  }
-  BlockType.prototype.reflectivity = 0.9; // This is not an instance property because I don't yet want to hardcode a particular value that gets saved.
-  
-  function _BlockTypeSuper() {
+  // Either color or world should be provided, or both.
+  // color is an array of 4 elements in the range [0,1].
+  function BlockType(color, world) {
     if (!(this instanceof BlockType)) {
       throw new Error("bad constructor call");
     }
+    var self = this;
     
     var n = new Notifier("BlockType");
     this._notify = n.notify; // should be private
@@ -23,17 +21,72 @@ var BlockType = (function () {
     
     this._serial = nextBlockTypeSerial++;
     
-    // (In principle) user-editable properties of block types.
+    // Appearance/structure
+    this.color = color || null;
+    this.world = world || null;
+    
+    // Properties
     this.automaticRotations = [0]; // TODO: This property is to be replaced by circuits.
     this.behavior = null;
     this.name = null;
     this.solid = true;
     this.light = 0; // Light emission — float scale where 1.0 is an "ordinary light"
+    
+    // Calculated properties:
+    // TODO make these readonly
+    //   opaque
+    //   hasCircuits
+    //   derivedColor
+    
+    // Hook up to world
+    if (this.world) (function () {
+      // TODO: update listener if world is set, or reject world setting
+      // note there is no opportunity here to remove listener, but it is unlikely to be needed.
+      function rebuild() {
+        recomputeBlockTypeDerivedProperties.call(self);
+        self._notify("appearanceChanged");
+      }
+      world.listen({
+        interest: function () { return true; },
+        dirtyBlock: rebuild,
+        dirtyAll: rebuild,
+        dirtyCircuit: recomputeBlockTypeCircuitProperties.bind(self),
+        deletedCircuit: recomputeBlockTypeCircuitProperties.bind(self),
+        audioEvent: function () {}
+      });
+    }());
+    
+    recomputeBlockTypeDerivedProperties.call(self);
+    recomputeBlockTypeCircuitProperties.call(self);
+    
+    Object.seal(this);
   }
+  BlockType.prototype.reflectivity = 0.9; // This is not an instance property because I don't yet want to hardcode a particular value that gets saved.
+  
+  BlockType.prototype.writeColor =
+      function (scale, target, offset) {
+    var color = this.derivedColor;
+    target[offset]   = scale*color[0];
+    target[offset+1] = scale*color[1];
+    target[offset+2] = scale*color[2];
+    target[offset+3] = scale*color[3];
+  };  
+  
+  BlockType.prototype.toString = function () {
+    var s = "[BlockType #" + this.serial;
+    if (world) s += " world";
+    if (color) s += " color " + this.color;
+    s += "]";
+    return s;
+  };
   
   BlockType.prototype.serialize = function (serialize) {
     var json = {};
     serialize.setUnserializer(json, BlockType);
+    if (this.color)
+      json.color = this.color;
+    if (this.world)
+      json.world = serialize(this.world);
     if (this.automaticRotations.length !== 1 || this.automaticRotations[0] !== 0)
       json.automaticRotations = this.automaticRotations;
     if (this.behavior && this.behavior.name)
@@ -46,157 +99,58 @@ var BlockType = (function () {
     return json;
   };
   
-  BlockType.World = function (world) {
-    _BlockTypeSuper.call(this);
-    
-    this.world = world;
-    this.opaque = undefined;
-    this.hasCircuits = false;
-    
-    // TODO: update listener if world is set, or reject world setting
-    // note there is no opportunity here to remove listener, but it is unlikely to be needed.
-    var self = this;
-    function rebuild() {
-      recomputeWorldBlockProperties.call(self);
-      self._notify("appearanceChanged");
-    }
-    function checkCircuits() {
-      self.hasCircuits = self.world.getCircuits().length > 0;
-    }
-    world.listen({
-      interest: function () { return true; },
-      dirtyBlock: rebuild,
-      dirtyAll: rebuild,
-      dirtyCircuit: checkCircuits,
-      deletedCircuit: checkCircuits,
-      audioEvent: function () {}
-    });
-    
-    recomputeWorldBlockProperties.call(this);
-    checkCircuits();
-    
-    Object.seal(this);
-  };
-  BlockType.World.prototype = Object.create(BlockType.prototype);
-  BlockType.World.prototype.constructor = BlockType.World;
-  
-  BlockType.World.prototype.toString = function () {
-    return "[BlockType #" + this.serial + " world]";
-  };
-  
-  Object.defineProperty(BlockType.World.prototype, "color", {
-    enumerable: true,
-    value: null
-  });
-  
-  BlockType.World.prototype.writeColor =
-      function (scale, target, offset) {
-    var color = this._color;
-    target[offset  ] = scale * color[0];
-    target[offset+1] = scale * color[1];
-    target[offset+2] = scale * color[2];
-    target[offset+3] = this.opaque ? scale : 0;
-  };
-  
-  // Internal function: Recalculate all the properties derived from a BlockType.World's world.
-  function recomputeWorldBlockProperties() {
-    // Compute opacity and representative color.
+  function recomputeBlockTypeDerivedProperties() {
     var world = this.world;
-    var tileSize = world.wx; // assumed cubical
-    var tileLastIndex = tileSize - 1;
-    var opaque = true;
-    var color = vec3.create();
-    var colorCount = 0;
-    for (var dim = 0; dim < 3; dim++) {
-      var ud = mod(dim+1,3);
-      var vd = mod(dim+2,3);
-      for (var u = 0; u < tileSize; u++)
-      for (var v = 0; v < tileSize; v++) {
-        var vec = [u,v,0];
-        opaque = opaque && world.opaque(vec[dim],vec[ud],vec[vd]);
-        vec[2] = tileLastIndex;
-        opaque = opaque && world.opaque(vec[dim],vec[ud],vec[vd]);
+    
+    if (!world) {
+      this.opaque = this.color[3] >= 1;
+      this.derivedColor = this.color || [0.5, 0.5, 0.5, 1.0];
+      return;
+    } else {
+      var tileSize = world.wx; // assumed cubical
+      var tileLastIndex = tileSize - 1;
+      var opaque = true;
+      var color = vec3.create();
+      var colorCount = 0;
+      for (var dim = 0; dim < 3; dim++) {
+        var ud = mod(dim+1,3);
+        var vd = mod(dim+2,3);
+        for (var u = 0; u < tileSize; u++)
+        for (var v = 0; v < tileSize; v++) {
+          var vec = [u,v,0];
+          opaque = opaque && world.opaque(vec[dim],vec[ud],vec[vd]);
+          vec[2] = tileLastIndex;
+          opaque = opaque && world.opaque(vec[dim],vec[ud],vec[vd]);
         
-        // raycast for color -- TODO use both sides
-        while (!world.opaque(vec[dim],vec[ud],vec[vd]) && vec[2] < tileSize) {
-          vec[2] += 1;
-        }
-        if (vec[2] < tileSize) {
-          var subCubeColor = [];
-          world.gt(vec[dim],vec[ud],vec[vd]).writeColor(1, subCubeColor, 0);
-          vec3.add(color, subCubeColor);
-          colorCount++;
+          // raycast for color -- TODO use both sides
+          while (!world.opaque(vec[dim],vec[ud],vec[vd]) && vec[2] < tileSize) {
+            vec[2] += 1;
+          }
+          if (vec[2] < tileSize) {
+            var subCubeColor = [];
+            world.gt(vec[dim],vec[ud],vec[vd]).writeColor(1, subCubeColor, 0);
+            vec3.add(color, subCubeColor);
+            colorCount++;
+          }
         }
       }
+      this.opaque = opaque;
+      this.derivedColor = this.color || vec3.scale(color, 1/colorCount);
     }
-    this.opaque = opaque;
-    this._color = vec3.scale(color, 1/colorCount); // TODO make property private
   }
   
-  BlockType.World.prototype.serialize = function (serialize) {
-    var json = BlockType.prototype.serialize.call(this, serialize);
-    json.world = serialize(this.world);
-    return json;
-  };
+  function recomputeBlockTypeCircuitProperties() {
+    this.hasCircuits = this.world && this.world.getCircuits().length > 0;
+  }
   
-  // rgba is an array of 4 elements in the range [0,1].
-  BlockType.Color = function (rgba) {
-    _BlockTypeSuper.call(this);
-    
-    this.color = rgba;
-    // TODO set up notification
-
-    Object.seal(this);
-  };
-  BlockType.Color.prototype = Object.create(BlockType.prototype);
-  BlockType.Color.prototype.constructor = BlockType.Color;
-  
-  BlockType.Color.prototype.toString = function () {
-    return "[BlockType #" + this.serial + " color " + this.color + "]";
-  };
-  
-  Object.defineProperty(BlockType.Color.prototype, "opaque", {
-    enumerable: true,
-    get: function () {
-      return this.color[3] >= 1;
-    }
-  });
-  Object.defineProperty(BlockType.Color.prototype, "world", {
-    enumerable: true,
-    value: null
-  });
-  Object.defineProperty(BlockType.Color.prototype, "hasCircuits", {
-    enumerable: true,
-    value: false
-  });
-  
-  BlockType.Color.prototype.writeColor =
-      function (scale, target, offset) {
-    target[offset]   = scale*this.color[0];
-    target[offset+1] = scale*this.color[1];
-    target[offset+2] = scale*this.color[2];
-    target[offset+3] = scale*this.color[3];
-  };
-  
-  BlockType.Color.prototype.serialize = function (serialize) {
-    var json = BlockType.prototype.serialize.call(this, serialize);
-    json.color = this.color;
-    return json;
-  };
-  
-  BlockType.air = new BlockType.Color([0,0,0,0]);
+  BlockType.air = new BlockType([0,0,0,0], null);
   BlockType.air.solid = false;
   
   Persister.types["BlockType"] = BlockType;
   BlockType.unserialize = function (json, unserialize) {
-    var self;
-    if (json.color) {
-      self = new BlockType.Color(json.color);
-    } else if (json.world) {
-      self = new BlockType.World(unserialize(json.world, World));
-    } else {
-      throw new Error("unknown BlockType serialization type");
-    }
+    var self = new BlockType(
+        json.color,
+        "world" in json ? unserialize(json.world, World) :  null);
     
     if (Object.prototype.hasOwnProperty.call(json, "automaticRotations"))
       self.automaticRotations = json.automaticRotations || [0];
@@ -633,7 +587,7 @@ var BlockSet = (function () {
     } else if (json.type === "textured") {
       // obsolete serialization type
       var blockTypes = json.worlds.map(function (world) {
-        return new BlockType.World(unserialize(world, World));
+        return new BlockType(null, unserialize(world, World));
       });
       return new BlockSet(blockTypes);
     } else if (json.type === "types") {
@@ -677,43 +631,7 @@ var BlockSet = (function () {
         pushVertex(vertices, mat4.multiplyVec3(transform, [0,1,depth]));
       }
       
-      if (blockType.color) { // TODO: factor this conditional into BlockType
-        var color = blockType.color;
-        var usageIndex = blockID.toString();
-        var coord = texgen.imageCoordsFor(usageIndex);
-        var pixu = coord[0], pixv = coord[1];
-        var r = 255 * color[0];
-        var g = 255 * color[1];
-        var b = 255 * color[2];
-        var a = 255 * color[3];
-        
-        for (var u = 0; u < tileSize; u++)
-        for (var v = 0; v < tileSize; v++) {
-          var c = ((pixv+v) * texWidth + pixu+u) * 4;
-          texData[c  ] = r;
-          texData[c+1] = g;
-          texData[c+2] = b;
-          texData[c+3] = a;
-        }
-        texgen.completed(usageIndex);
-        
-        var faceData = [];
-        TILE_MAPPINGS.forEach(function (m) {
-          var dimName = m[0];
-          var transform = m[1];
-          var verticesL = [];
-          var verticesH = [];
-          var texcoords = [];
-          // Texture is a solid color, so we only need one set of texcoords.
-          pushQuad(verticesL, texcoords, false, transform, 0, usageIndex);
-          pushQuad(verticesH, [],        true,  transform, 1, usageIndex);
-          faceData["l" + dimName] = {vertices: verticesL, texcoords: texcoords};
-          faceData["h" + dimName] = {vertices: verticesH, texcoords: texcoords};
-        });
-        for (var i = 0; i < CubeRotation.codeRange; i++) {
-          rotatedFaceData[i] = faceData;
-        }
-      } else if (blockType.world) {
+      if (blockType.world) {
         (function () {
           var world = blockType.world;
           var types = world.blockSet.getAll();
@@ -809,8 +727,42 @@ var BlockSet = (function () {
             rotatedFaceData[rot.code] = rotateFaceData(rot, faceData);
           });
         }());
-      } else {
-        throw new Error("Don't know how to render the BlockType");
+      } else /* no world, so use solid color */ {
+        var color = blockType.derivedColor;
+        var usageIndex = blockID.toString();
+        var coord = texgen.imageCoordsFor(usageIndex);
+        var pixu = coord[0], pixv = coord[1];
+        var r = 255 * color[0];
+        var g = 255 * color[1];
+        var b = 255 * color[2];
+        var a = 255 * color[3];
+        
+        for (var u = 0; u < tileSize; u++)
+        for (var v = 0; v < tileSize; v++) {
+          var c = ((pixv+v) * texWidth + pixu+u) * 4;
+          texData[c  ] = r;
+          texData[c+1] = g;
+          texData[c+2] = b;
+          texData[c+3] = a;
+        }
+        texgen.completed(usageIndex);
+        
+        var faceData = [];
+        TILE_MAPPINGS.forEach(function (m) {
+          var dimName = m[0];
+          var transform = m[1];
+          var verticesL = [];
+          var verticesH = [];
+          var texcoords = [];
+          // Texture is a solid color, so we only need one set of texcoords.
+          pushQuad(verticesL, texcoords, false, transform, 0, usageIndex);
+          pushQuad(verticesH, [],        true,  transform, 1, usageIndex);
+          faceData["l" + dimName] = {vertices: verticesL, texcoords: texcoords};
+          faceData["h" + dimName] = {vertices: verticesH, texcoords: texcoords};
+        });
+        for (var i = 0; i < CubeRotation.codeRange; i++) {
+          rotatedFaceData[i] = faceData;
+        }
       }
       
       // NOTE: This function does not notify texturingChanged because this is called lazily when clients ask about the new render data.

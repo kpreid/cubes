@@ -70,7 +70,7 @@ describe("Circuit", function() {
 
   function makeCircuitBlock(t) {
     var inner = makeTester();
-    var type = new BlockType.World(inner.world);
+    var type = new BlockType(null, inner.world);
     type.behavior = Circuit.behaviors.ic;
     inner.id = t.blockset.length;
     t.blockset.add(type);

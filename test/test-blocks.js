@@ -3,7 +3,7 @@
 
 describe("BlockType", function () {
   it("should persist block type attributes", function () {
-    var type = new BlockType.Color([1,1,1,1]);
+    var type = new BlockType([1,1,1,1], null);
     type.automaticRotations = [1,2];
     type.behavior = Circuit.behaviors.wire;
     type.name = "foo";
@@ -29,8 +29,8 @@ describe("BlockSet", function () {
     expect(pool.status.get()).toEqual(0);
     
     // adding block types
-    var btc = new BlockType.Color([1,1,1,1]);
-    var btw = new BlockType.World(new World([16,16,16], WorldGen.colorBlocks(2,2,2)));
+    var btc = new BlockType([1,1,1,1], null);
+    var btw = new BlockType(null, new World([16,16,16], WorldGen.colorBlocks(2,2,2)));
     blockset.add(btc);
     blockset.add(btw);
     expect(pool.status.get()).toEqual(1);
@@ -43,9 +43,9 @@ describe("BlockSet", function () {
   });
   
   it("should know block names", function () {
-    var type1 = new BlockType.Color([1,1,1,1]);
+    var type1 = new BlockType([1,1,1,1], null);
     type1.name = "foo";
-    var type2 = new BlockType.Color([1,1,1,1]);
+    var type2 = new BlockType([1,1,1,1], null);
     type2.name = "bar";
     var blockset = new BlockSet([type1, type2]);
     expect(blockset.lookup("foo")).toBe(1);
@@ -58,9 +58,9 @@ describe("BlockSet", function () {
   });
   
   it("should correctly delete a block type", function () {
-    var type1 = new BlockType.Color([1,1,1,1]);
-    var type2 = new BlockType.Color([1,1,0,1]);
-    var type3 = new BlockType.Color([1,0,0,1]);
+    var type1 = new BlockType([1,1,1,1], null);
+    var type2 = new BlockType([1,1,0,1], null);
+    var type3 = new BlockType([1,0,0,1], null);
     var blockset = new BlockSet([type1, type2, type3]);
     
     expect(blockset.get(0)).toBe(BlockType.air);
