@@ -818,9 +818,13 @@ var BlockSet = (function () {
       var someChanged = false;
       var allChanged = false;
       var l = blockSet.length;
+      
+      // TODO: Losing GL context should not require us to re-calculate texture data.
       if (!texgen || texgen.mustRebuild()) {
         texgen = new Texgen(blockSet.tileSize, renderer);
       }
+      
+      // If necessary, rebuild everything
       while (texgen.textureLost) {
         //if (typeof console !== "undefined") console.info("Performing full block texture rebuild.");
         texgen.textureLost = false;
@@ -830,10 +834,18 @@ var BlockSet = (function () {
         allChanged = true;
         toRerender = appearanceChangedQueue.getHead(); // we're caught up by definition
       }
+      
+      // Else rebuild only what is changed
+      var haveRebuilt = [];
       for (; toRerender.available; toRerender = toRerender.next) {
-        rebuildOne(toRerender.value);
-        someChanged = true;
+        var id = toRerender.value;
+        if (!haveRebuilt[id]) {
+          haveRebuilt[id] = true;
+          rebuildOne(id);
+          someChanged = true;
+        }
       }
+      
       if (allChanged) {
         // If textureLost, which might occur because it was resized, then we need to notify of *everything* changing
         for (var id = BlockSet.ID_EMPTY + 1; id < l; id++)
