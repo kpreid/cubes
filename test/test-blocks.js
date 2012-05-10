@@ -3,16 +3,20 @@
 
 describe("BlockType", function () {
   it("should persist block type attributes", function () {
-    var type = new BlockType([1,1,1,1], null);
+    var type = new BlockType([1,0,1,1], new World([1, 1, 1], new BlockSet([])));
     type.automaticRotations = [1,2];
     type.behavior = Circuit.behaviors.wire;
     type.name = "foo";
     type.solid = false;
+    type.light = Math.PI;
     var roundtrip = cyclicUnserialize(cyclicSerialize(type, Persister.findType), Persister.types);
+    expect(roundtrip.color).toEqual([1,0,1,1]);
+    expect(roundtrip.world).not.toBeNull();
     expect(roundtrip.automaticRotations).toEqual([1,2]);
     expect(roundtrip.behavior).toEqual(Circuit.behaviors.wire);
     expect(roundtrip.name).toEqual("foo");
     expect(roundtrip.solid).toEqual(false);
+    expect(roundtrip.light).toEqual(Math.PI);
   });
 });
 
