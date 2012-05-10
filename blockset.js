@@ -600,12 +600,51 @@ var BlockSet = (function () {
     }
   };
   
+  var blockRenderRes = 128;
+  
   function BlockSetRenderDataGenerator(blockSet, renderer, notifier /* TODO make this arg unnecessary */, appearanceChangedQueue) {
     var toRerender = appearanceChangedQueue.getHead();
     
     var texgen = null;
     var rotatedBlockFaceData = [EMPTY_BLOCKRENDER];
     var allTypesCached;
+    
+    var blockIconsW = [];
+    var blockIconsR = [];
+    var toRerenderIcon = appearanceChangedQueue.getHead();
+    var iconRenderer = new BlockRenderer(blockSet, renderer, blockRenderRes);
+    var iconCanvas = document.createElement("canvas");
+    var iconCtx = iconCanvas.getContext('2d');
+    iconCanvas.width = iconCanvas.height = blockRenderRes;
+    var iconTodoSet = {};
+    var iconRendererInterval;
+    for (var i = 0; i < BlockSet.ID_LIMIT; i++) {
+      blockIconsW[i] = new Cell("block icon", null);
+      blockIconsR[i] = blockIconsW[i].readOnly;
+      iconTodoSet[i] = true;
+    }
+    function freshenIcons() {
+      var start = false;
+      for (; toRerenderIcon.available; toRerenderIcon = toRerenderIcon.next) {
+        iconTodoSet[toRerenderIcon.value] = true;
+        start = true;
+      }
+      var nonempty = false;
+      if (!iconRendererInterval) {
+        iconRendererInterval = window.setInterval(function () {
+          for (var idStr in iconTodoSet) if (iconTodoSet.hasOwnProperty(idStr)) { 
+            var blockID = parseInt(idStr, 10);
+            iconCtx.putImageData(iconRenderer.blockToImageData(blockID, iconCtx), 0, 0);
+            blockIconsW[blockID].set(iconCanvas.toDataURL("image/png"));
+            delete iconTodoSet[idStr];
+            return;
+          }
+          // if not exited, set is empty
+          clearInterval(iconRendererInterval);
+          iconRendererInterval = undefined;
+        }, 0);
+      }
+    }
     
     function rebuildOne(blockID) {
       //if (typeof console !== "undefined") console.info("Rendering block type", blockID);
@@ -812,11 +851,14 @@ var BlockSet = (function () {
     }
     return function () {
       freshenTexture();
+      freshenIcons();
       rotatedBlockFaceData.bogus = rotatedBlockFaceData[BlockSet.ID_BOGUS] || EMPTY_BLOCKRENDER;
       return {
         texture: texgen.texture,
         rotatedBlockFaceData: rotatedBlockFaceData,
-        types: allTypesCached
+        types: allTypesCached,
+        icons: blockIconsR
+        // Note: icons is made up of Cells that can be listened to for the completion of the deferred icon rendering. However, these cells do not update when blocks change appearance unless the render data is re-obtained (i.e. freshenIcons happens). This is deliberate to save CPU time when the blocks are not *visible* (e.g. when a block is itself being edited, so the blockset containing it is not current).
       };
     }
   }

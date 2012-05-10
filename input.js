@@ -736,7 +736,6 @@ var Input;
     var QUICK_SLOT_COUNT = 10;
     
     var menuItemsByBlockId;
-    var canvasesByBlockId;
     var quickItemsByBlockId;
     var blockSetInMenu;
     
@@ -764,7 +763,7 @@ var Input;
     resetQuick();
     
     function forAllMenuBlocks(f) {
-      for (var i = 1; i < blockSetInMenu.length; i++) f(i, menuItemsByBlockId[i], canvasesByBlockId[i]);
+      for (var i = 1; i < blockSetInMenu.length; i++) f(i, menuItemsByBlockId[i]);
     }
     
     var updateDeferred = deferrer(updateMenuBlocks);
@@ -815,12 +814,10 @@ var Input;
       }
       
       menuItemsByBlockId = [];
-      canvasesByBlockId = [];
       quickItemsByBlockId = [];
       resetQuick();
       
-      var blockRenderRes = 128;
-      var blockRenderer = new BlockRenderer(blockSetInMenu, renderer, blockRenderRes);
+      var blockSetRender = blockSetInMenu.getRenderData(renderer);
       
       var sidecount = Math.ceil(Math.sqrt(blockSetInMenu.length));
       var size = Math.min(64, 300 / sidecount);
@@ -833,10 +830,6 @@ var Input;
         // element structure and style
         var item = menuItemsByBlockId[blockID] = document.createElement("tr");
         item.className = "menu-item";
-        var canvas = canvasesByBlockId[blockID] = document.createElement("canvas");
-        canvas.width = canvas.height = blockRenderRes;
-        var cctx = canvas.getContext('2d');
-        cctx.putImageData(blockRenderer.blockToImageData(blockID, cctx), 0, 0);
         
         function cell() {
           var cell = document.createElement("td");
@@ -847,13 +840,16 @@ var Input;
         
         cell().appendChild(document.createTextNode(blockID.toString()));
         
-        
         var iconCell = cell();
         var icon = document.createElement("img");
-        icon.src = canvas.toDataURL("image/png");
         icon.style.width = icon.style.height = size + "px"; // TODO don't do this in full menu mode
         iconCell.className = ""; // always shown
         iconCell.appendChild(icon);
+        blockSetRender.icons[blockID].nowAndWhenChanged(function (url) {
+          if (url !== null)
+            icon.src = url;
+          return true;
+        });
         
         // TODO: This code duplicates functionality of PersistentCell.bindControl — refactor so we can use that code here.
         
@@ -913,9 +909,8 @@ var Input;
         setupIconButton(item,icon,blockID);
         
         hud.blocksetAll.appendChild(item);
+        
       });
-      
-      blockRenderer.deleteResources();
       
       updateQuickBar();
     }
@@ -923,28 +918,30 @@ var Input;
     function updateQuickBar() {
       clearChildren(hud.quickBar);
       quickItemsByBlockId = [];
+      var r = blockSetInMenu.getRenderData(renderer);
       quickSlots.forEach(function (blockID, index) {
-        var canvas = canvasesByBlockId[blockID];
-        if (canvas) {
-          var item = document.createElement("span");
-          item.className = "menu-item";
-          
-          // keyboard shortcut hint
-          var hint = document.createElement("kbd");
-          hint.appendChild(document.createTextNode(((index+1) % 10).toString()));
-          hint.className = "menu-shortcut-key";
-          item.appendChild(hint);
-          
-          var icon = document.createElement("img");
-          icon.src = canvas.toDataURL("image/png");
-          icon.style.width = icon.style.height = "64px";
-          item.appendChild(icon);
-          
-          setupIconButton(item,icon,blockID);
-          hud.quickBar.appendChild(item);
-          
-          quickItemsByBlockId[blockID] = item;
-        }
+        var item = document.createElement("span");
+        item.className = "menu-item";
+        
+        // keyboard shortcut hint
+        var hint = document.createElement("kbd");
+        hint.appendChild(document.createTextNode(((index+1) % 10).toString()));
+        hint.className = "menu-shortcut-key";
+        item.appendChild(hint);
+        
+        var icon = document.createElement("img");
+        icon.style.width = icon.style.height = "64px";
+        r.icons[blockID].nowAndWhenChanged(function (url) {
+          if (url !== null)
+            icon.src = url;
+          return true;
+        });
+        item.appendChild(icon);
+        
+        setupIconButton(item,icon,blockID);
+        hud.quickBar.appendChild(item);
+        
+        quickItemsByBlockId[blockID] = item;
       });
       
       updateMenuSelection();

@@ -290,7 +290,10 @@ var Renderer = (function () {
     
     gl = WebGLUtils.create3DContext(canvas, {
       // Reduces fillrate cost (which is a problem due to the layered block rendering), and also avoids MSAA problems with the meetings of subcube edges. (TODO: Try to fix that in the fragment shader by enlarging the texture.)
-      antialias: false
+      antialias: false,
+      
+      // TODO: This is needed because otherwise BlockRenderer running async does GL operations which triggers an automatic clear. Instead, we should arrange so that BlockRenderer triggers an immediate (!) redraw.
+      preserveDrawingBuffer: true
     });
     if (DEBUG_GL) {
       gl = WebGLDebugUtils.makeDebugContext(gl);
