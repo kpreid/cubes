@@ -506,16 +506,18 @@ var CubesMain = (function () {
             return true;
           }, false);
           
-          var world = getOrDefaultOrMake(config.currentTopWorld.get(), "Default World", function () {
-            var blockset = getOrDefaultOrMake(config.generate_blockset.get(), "Default Blockset", function () {
-              startupMessage("  Creating default blockset...");
-              return WorldGen.newDefaultBlockset(Math.round(config.generate_tileSize.get()));
+          if (!worldH) { // If world was defined prior to start(), don't
+            var world = getOrDefaultOrMake(config.currentTopWorld.get(), "Default World", function () {
+              var blockset = getOrDefaultOrMake(config.generate_blockset.get(), "Default Blockset", function () {
+                startupMessage("  Creating default blockset...");
+                return WorldGen.newDefaultBlockset(Math.round(config.generate_tileSize.get()));
+              });
+              startupMessage("  Creating overworld...");
+              return generateWorlds(config, blockset);
             });
-            startupMessage("  Creating overworld...");
-            return generateWorlds(config, blockset);
-          });
-
-          main.setTopWorld(world);
+            
+            main.setTopWorld(world);
+          }
         },
         //"Creating your avatar...", // not currently expensive enough for a msg
         function () {

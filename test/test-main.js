@@ -8,10 +8,14 @@ describe("CubesMain", function() {
     return document.createElement("div");
   }
   
-  beforeEach(function () {
+  function doCreate(spec) {
     // We are using sessionStorage as a temporary Storage object for testing.
     sessionStorage.clear();
 
+    main = new CubesMain(TEST_URL_ROOT, 1/60, sessionStorage);
+  }
+  
+  function doStart(spec) {
     parts = {
       // TODO: Reduce the amount of this boilerplate needed.
       viewCanvas: document.createElement("canvas"),
@@ -30,12 +34,11 @@ describe("CubesMain", function() {
     container.style.display = "inline-block";
     container.style.width = "320px";
     var label = document.createElement("div");
-    label.innerText = "View of: " + this.getFullName();
+    label.innerText = "View of: " + spec.getFullName();
     container.appendChild(label);
     container.appendChild(parts.viewCanvas);
     document.body.appendChild(container);
     
-    main = new CubesMain(TEST_URL_ROOT, 1/60, sessionStorage);
     done = undefined;
     
     { // Configure for testing purposes
@@ -45,9 +48,9 @@ describe("CubesMain", function() {
       config.sound.set(false);
       
       // Use a small world to speed up tests. (This figure is currently arbitrary.)
-      config.generate_wx.set(40);
-      config.generate_wy.set(40);
-      config.generate_wz.set(40);
+      config.generate_wx.set(10);
+      config.generate_wy.set(10);
+      config.generate_wz.set(10);
     }
     
     main.start(parts, function (optError) {
@@ -55,17 +58,35 @@ describe("CubesMain", function() {
     });
     
     waitsFor(function () { return !!done; }, 10000);    
-  });
+  }
   
   it("should startup successfully", function() {
-    expect(done).toEqual([null]);
-    expect(parts.loadError[1].textContent).toEqual("");
+    doCreate(this);
+    doStart(this);
+    runs(function () {
+      expect(done).toEqual([null]);
+      expect(parts.loadError[1].textContent).toEqual("");      
+    });
   });
   
   it("should support world regeneration", function () {
-    var oldWorld = main.getTopWorld();
-    main.config.generate_name.set("foofoo");
-    main.regenerate();
-    expect(main.getTopWorld()).not.toBe(oldWorld);
+    doCreate(this);
+    doStart(this);
+    runs(function () {
+      var oldWorld = main.getTopWorld();
+      main.config.generate_name.set("foofoo");
+      main.regenerate();
+      expect(main.getTopWorld()).not.toBe(oldWorld);
+    });
+  });
+  
+  it("should accept an initial world", function () {
+    doCreate(this);
+    var world = new World([3, 3, 3], new BlockSet([]));
+    main.setTopWorld(world);
+    doStart(this);
+    runs(function () {
+      expect(main.getTopWorld()).toBe(world);
+    });
   });
 });
