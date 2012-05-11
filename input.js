@@ -807,6 +807,8 @@ var Input;
     }
     
     function updateMenuBlocks() {
+      if (!hud) return;
+      
       if (playerInput.blockSet !== blockSetInMenu) {
         if (blockSetInMenu) blockSetInMenu.listen.cancel(menuListener);
         blockSetInMenu = playerInput.blockSet;
@@ -916,6 +918,8 @@ var Input;
     }
     
     function updateQuickBar() {
+      if (!hud) return;
+      
       clearChildren(hud.quickBar);
       quickItemsByBlockId = [];
       var r = blockSetInMenu.getRenderData(renderer);

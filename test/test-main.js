@@ -15,11 +15,6 @@ describe("CubesMain", function() {
     parts = {
       // TODO: Reduce the amount of this boilerplate needed.
       viewCanvas: document.createElement("canvas"),
-      hud: {
-        menu: stubElem(),
-        blocksetAll: stubElem(),
-        quickBar: stubElem()
-      },
       sceneInfoOverlay: stubElem(),
       cursorInfoOverlay: stubElem(),
       loadError: [stubElem(), stubElem()]
