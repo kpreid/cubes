@@ -489,6 +489,7 @@ var WorldRenderer = (function () {
           var rotatedBlockFaceData = renderData.rotatedBlockFaceData;
           var BOGUS_BLOCK_DATA = rotatedBlockFaceData.bogus;
           var types = renderData.types;
+          var opaques = types.map(function (t) { return t.opaque; });
           var g = world.g;
 
           var adjnx = -wy*wz;
@@ -509,7 +510,7 @@ var WorldRenderer = (function () {
             var fy = vFacing[1]; var yfy = y + fy;
             var fz = vFacing[2]; var zfz = z + fz;
             // TODO between the g() and the inBounds() we're testing the neighbor twice
-            if (thisOpaque && types[g(xfx,yfy,zfz)].opaque) {
+            if (thisOpaque && opaques[g(xfx,yfy,zfz)]) {
               // this face is invisible
               return;
             } else {
@@ -547,7 +548,7 @@ var WorldRenderer = (function () {
             var rot = rotationsByCode[rotIndex];
             var btype = types[value];
             var faceData = (rotatedBlockFaceData[value] || BOGUS_BLOCK_DATA)[rotIndex];
-            thisOpaque = btype.opaque;
+            thisOpaque = opaques[value];
 
             // TODO: Uses the wrong lighting adj* for rotated blocks
             face(rot.nx, faceData.lx, adjnx);
