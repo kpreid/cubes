@@ -34,7 +34,7 @@ describe("Circuit", function() {
       center: [5, 5, 5],
       blockset: blockset,
       ls: ls,
-
+      
       // For looking at the test case in-game for debugging.
       dumpWorld: function (name) {
         var pool = new PersistencePool(localStorage, "cubes.object.");
@@ -42,7 +42,8 @@ describe("Circuit", function() {
         pool.persist(self.world, name);
         pool.flushNow();
       },
-
+      
+      // Modification operations
       putBlockUnderTest: function (id, subdatum) {
         self.world.s(this.center[0],this.center[1],this.center[2], id, subdatum);
       },
@@ -58,11 +59,22 @@ describe("Circuit", function() {
         }
         self.putNeighbor(offset, t.ls.constant, value);
       },
+      advance: function () {
+        this.world.step(1/60); // arbitrary number, all we want to do is cause 1 effect step (TODO smells funny)
+      },
+      
+      // Inspection operations
       readOutput: function (face) {
         var circuit = self.world.getCircuit(this.center);
         if (!circuit)
           throw new Error("There is no circuit at the center!");
         return circuit.getBlockOutput(this.center, face);
+      },
+      ogv: function (offset) {
+        return self.world.gv(vec3.add(this.center, offset, vec3.create()));
+      },
+      ogSubv: function (offset) {
+        return self.world.gSubv(vec3.add(this.center, offset, vec3.create()));
       }
     };
     return self;
@@ -116,6 +128,28 @@ describe("Circuit", function() {
     t.world = cyclicUnserialize(cyclicSerialize(t.world, Persister.findType), Persister.types);
     expect(t.readOutput(UNIT_PX)).toBeFalsy();
     expect(t.readOutput(UNIT_PZ)).toEqual(3);
+  });
+  
+  describe("become", function () {
+    it("should replace a block", function () {
+      var resultID = 3; // arbitrary
+      var subdatum = 101; // arbitrary
+      
+      // Create a block which uses become
+      var inner = makeCircuitBlock(t);
+      inner.putBlockUnderTest(t.ls.become);
+      inner.putInput(UNIT_NX, resultID);
+      
+      t.putBlockUnderTest(inner.id, subdatum);
+      
+      expect(t.ogv(ZEROVEC)).toEqual(inner.id);
+      expect(t.ogSubv(ZEROVEC)).toEqual(subdatum);
+      t.advance();
+      expect(t.ogv(ZEROVEC)).toEqual(resultID);
+      expect(t.ogSubv(ZEROVEC)).toEqual(subdatum);
+      
+      // The subdatum is deliberately preserved, for convenience in passing information to the replacement block.
+    });
   });
   
   describe("count", function () {
