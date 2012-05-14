@@ -157,10 +157,10 @@ var WorldGen = (function () {
         return cond(pick([speckle,layers]), p1, p2);
       }
       function cond(cond, p1, p2) {
-        return function (b) { return cond(b) ? p1(b) : p2(b); }
+        return function (b) { return cond(b) ? p1(b) : p2(b); };
       }
       function flat(id) {
-        return function (b) { return id; }
+        return function (b) { return id; };
       }
       function sphere(x,y,z,r,fill) {
         return function (b) {
@@ -169,7 +169,7 @@ var WorldGen = (function () {
                  Math.pow(b[2]-z+0.5, 2)
                  < r*r
                  ? fill(b) : 0;
-        }
+        };
       }
       function cube(x,y,z,r,fill) {
         return function (b) {
@@ -177,13 +177,13 @@ var WorldGen = (function () {
                  Math.abs(b[1]-y+0.5) <= r &&
                  Math.abs(b[2]-z+0.5) <= r
                  ? fill(b) : 0;
-        }
+        };
       }
       function plane(dim, low, high, fill) {
         return function (b) {
           var v = b[dim] + 0.5;
           return v > low && v < high ? fill(b) : 0;
-        }
+        };
       }
       function cone(axis, origin, fill) {
         var perpA = mod(axis + 1, 3);
@@ -196,17 +196,17 @@ var WorldGen = (function () {
       function union(p1, p2) { // p2 wherever p1 is empty, else p1
         return function (b) {
           return p1(b) || p2(b);
-        }
+        };
       }
       function intersection(p1, p2) { // p1 wherever p2 is nonempty, else empty
         return function (b) {
           return p2(b) ? p1(b) : 0;
-        }
+        };
       }
       function subtract(p1, p2) { // p1 wherever p2 is empty, else empty
         return function (b) {
           return p2(b) ? 0 : p1(b);
-        }
+        };
       }
 
       return Object.freeze({
