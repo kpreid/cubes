@@ -406,19 +406,22 @@ var World = (function () {
       var z = cube[2];
       var index = x*wy*wz + y*wz + z;
       if (newType.hasCircuits) {
-        queueEffect(cube, Circuit.executeCircuitInBlock(newType.world, self, cube, subData[index], null));
+        queueEffects(Circuit.executeCircuitInBlock(newType.world, self, cube, subData[index], null));
         
       } else {
         rotations[index] = 0;
       }
     }
     
-    function queueEffect(cube, effect) {
-      if (effect !== null) {
+    function queueEffects(addEffects) {
+      addEffects.forEach(function (record) {
+        var cube = record[0];
+        var effect = record[1];
+        if (!inBoundsv(cube)) return;
         var list = effects.get(cube);
         if (!list) effects.set(cube, list = []);
         list.push(effect);
-      }
+      });
     }
     
     // Called by clients which modify the raw state arrays
@@ -481,14 +484,33 @@ var World = (function () {
     function step(timestep) {
       // Handle delayed effects ("become") — first update everything, then
       // perform reactions.
+      
+      // Save current effect buffer and start new one, in case of effects caused
+      // by these updates.
       var curEffects = effects;
       effects = new IntVectorMap(); // for effects caused by these updates
+      // Apply effects.
       curEffects.forEach(function (effectList, cube) {
-        var effect = effectList[0]; // TODO note and react to conflicts
+        var effect = effectList[0];
+        var newID = effect[0];
+        var newSubdatum = effect[1];
+        var noConflict = true;
+        for (var i = 1; i < effectList.length; i++) {
+          effect = effectList[i];
+          if (!(newID === effect[0] && newSubdatum === effect[1])) {
+            noConflict = false;
+            break;
+          }
+        }
         var index = (cube[0]*wy + cube[1])*wz + cube[2];
-        blocks[index] = effect[0];
-        subData[index] = effect[1];
+        if (noConflict && (blocks[index] !== newID || subData[index] !== newSubdatum)) {
+          blocks[index] = newID;
+          subData[index] = newSubdatum;
+        } else {
+          curEffects.delete(cube); // inhibit update
+        }
       });
+      // Apply side-effects of effects.
       curEffects.forEach(function (effect, cube) {
         handleSet(cube);
       });
@@ -510,7 +532,7 @@ var World = (function () {
         if (type.hasCircuits) {
           // TODO: this seems a bit overly coupled
           var cube = [x,y,z];
-          queueEffect(cube, Circuit.executeCircuitInBlock(type.world, self, cube, gSub(x,y,z), {
+          queueEffects(Circuit.executeCircuitInBlock(type.world, self, cube, gSub(x,y,z), {
             blockIn_spontaneous: 1/spontaneousBaseRate
           }));
         }

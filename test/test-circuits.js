@@ -150,6 +150,28 @@ describe("Circuit", function() {
       
       // The subdatum is deliberately preserved, for convenience in passing information to the replacement block.
     });
+
+    it("should reject conflicts", function () {
+      // Note: This is really more a test of World effect management. However, it is not possible to test without assembling circuits and we're much more in a position to test it out here.
+      
+      var id1 = 1;
+      var id2 = 2;
+      
+      // Create a block which uses become twice (in two circuits)
+      var inner = makeCircuitBlock(t);
+      inner.world.s(0, 0, 0, t.ls.become);
+      inner.world.s(1, 0, 0, t.ls.constant, id1);
+      inner.world.s(0, 0, 2, t.ls.become);
+      inner.world.s(1, 0, 2, t.ls.constant, id2);
+      
+      t.putBlockUnderTest(inner.id);
+      
+      expect(t.ogv(ZEROVEC)).toEqual(inner.id);
+      t.advance();
+      expect(t.ogv(ZEROVEC)).toEqual(inner.id);
+      
+      // TODO test that two becomes to the same id do not conflict
+    });
   });
   
   describe("count", function () {

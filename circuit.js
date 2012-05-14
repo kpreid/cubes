@@ -417,8 +417,12 @@ var Circuit = (function () {
       var input = combineInputs(inputs, DIRECTIONS);
       return function (state) {
         var i = input(state);
-        if (typeof i === "number") {
-          state.blockOut_become = Math.floor(mod(i, 256));
+        if (typeof i === "number" && "blockOut_effects" in state) {
+          var cube = state.blockIn_cube;
+          var outerWorld = state.blockIn_world;
+          state.blockOut_effects.push(
+            [cube, [Math.floor(mod(i, 256)), outerWorld.gSubv(cube)]]);
+          outerWorld.audioEvent(cube, "become"); // TODO should be part of effect record
         }
       };
     };
@@ -652,28 +656,23 @@ var Circuit = (function () {
   }());
   
   Circuit.executeCircuitInBlock = function (blockWorld, outerWorld, cube, subDatum, extraState) {
-    var effect = null;
+    var effects = [];
     blockWorld.getCircuits().forEach(function (circuit) {
       var state = extraState ? Object.create(extraState) : {};
       state.blockIn_world = outerWorld;
       state.blockIn_cube = cube;
+      state.blockOut_effects = effects;
       
       circuit.evaluate(state);
       
-      if ("blockOut_become" in state) {
-        var blockID = state.blockOut_become;
-        effect = [blockID, outerWorld.gSubv(cube)]; // TODO detect conflicts
-        outerWorld.audioEvent(cube, "become"); // TODO should be part of effect record
-      } else {
-        // Rotations are only assigned when the circuit is being evaluated in the normal case, not during an event
-        if ("blockOut_rotation" in state && !extraState) {
-          outerWorld.rawRotations[cube[0]*outerWorld.wy*outerWorld.wz+cube[1]*outerWorld.wz+cube[2]] // TODO KLUDGE
-            = CubeRotation.canonicalCode(state.blockOut_rotation);
-          // This does not need a change notification, because rotations are not true state, but always a function of the world state (note that extraState must be omitted).
-        }
+      // Rotations are only assigned when the circuit is being evaluated in the normal case, not during an instantanous event such as the spontaneous event
+      if ("blockOut_rotation" in state && !extraState) {
+         outerWorld.rawRotations[(cube[0]*outerWorld.wy+cube[1])*outerWorld.wz+cube[2]] // TODO KLUDGE
+          = CubeRotation.canonicalCode(state.blockOut_rotation);
+        // This does not need a change notification, because rotations are not true state, but always a function of the world state (note that extraState must be omitted).
       }
     });
-    return effect;
+    return effects;
   };
   
   return Object.freeze(Circuit);
