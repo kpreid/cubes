@@ -185,6 +185,14 @@ var WorldGen = (function () {
           return v > low && v < high ? fill(b) : 0;
         }
       }
+      function cone(axis, origin, fill) {
+        var perpA = mod(axis + 1, 3);
+        var perpB = mod(axis + 2, 3);
+        return function (b) {
+          return Math.abs(Math.sqrt(Math.pow(b[perpA]-origin[perpA],2) +
+                                    Math.pow(b[perpB]-origin[perpB],2))*4 - Math.abs(b[axis]-origin[axis])) <= 2 ? fill(b) : 0;
+        };
+      }
       function union(p1, p2) { // p2 wherever p1 is empty, else p1
         return function (b) {
           return p1(b) || p2(b);
@@ -233,6 +241,7 @@ var WorldGen = (function () {
         sphere: sphere,
         cube: cube,
         plane: plane,
+        cone: cone,
 
         union: union,
         intersection: intersection,
@@ -335,9 +344,8 @@ var WorldGen = (function () {
       type = addOrUpdate(
           "logic.getNeighborID",
           Circuit.behaviors.getNeighborID,
-          f.union(function (b) {
-            return Math.abs(Math.sqrt(Math.pow(b[1]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - (TS-b[0])) <= 2 ? functionShapeColor : 0;
-          }, f.cube(0,TS/2,TS/2,TS/4,functionShapePat)));
+          f.union(f.cone(0, [TL,TL/2,TL/2], functionShapePat),
+                  f.cube(0,TS/2,TS/2,TS/4,functionShapePat)));
       selfRotating(0);
 
       type = addOrUpdate(
@@ -350,9 +358,7 @@ var WorldGen = (function () {
       type = addOrUpdate(
           "logic.getSubDatum",
           Circuit.behaviors.getSubDatum,
-          function (b) {
-            return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 2 ? functionShapeColor : 0;
-          });
+          f.cone(1, [TL/2,0,TL/2], functionShapePat));
 
       type = addOrUpdate(
           "logic.icInput",
@@ -401,10 +407,7 @@ var WorldGen = (function () {
       type = addOrUpdate(
           "logic.spontaneous",
           Circuit.behaviors.spontaneous,
-          function (b) {
-            // TODO: make this look more like a lightning bolt
-            return Math.abs(Math.sqrt(Math.pow(b[0]-HALF,2)+Math.pow(b[2]-HALF,2))*4 - b[1]) <= 2 ? colorToID(1,1,0) : 0;
-          });
+          f.cone(1, [TL/2,0,TL/2], f.flat(colorToID(1,1,0))));
 
       // IC blocks (require logic blocks on the next level down)
       if (baseICOutput !== null) {
