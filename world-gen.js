@@ -392,6 +392,13 @@ var WorldGen = (function () {
       selfRotating(TL-1);
 
       type = addOrUpdate(
+          "logic.put",
+          Circuit.behaviors.put,
+          f.union(f.cone(0, [TS,TL/2,TL/2], functionShapePat),
+                  f.cube(TS,TS/2,TS/2,TS/4,functionShapePat)));
+      selfRotating(0);
+      
+      type = addOrUpdate(
           "logic.setRotation",
           Circuit.behaviors.setRotation,
           f.intersection(

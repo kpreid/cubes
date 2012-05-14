@@ -45,6 +45,9 @@ describe("Circuit", function() {
       
       // Modification operations
       putBlockUnderTest: function (id, subdatum) {
+        if (id === undefined) {
+          throw new Error("missing block ID in putBlockUnderTest");
+        }
         self.world.s(this.center[0],this.center[1],this.center[2], id, subdatum);
       },
       putNeighbor: function (offset, id, subdatum) {
@@ -288,6 +291,25 @@ describe("Circuit", function() {
     });
   });
   
+  describe("put", function () {
+    it("should create blocks", function () {
+      var inner = makeCircuitBlock(t);
+      inner.putBlockUnderTest(t.ls.put, CubeRotation.identity.code);
+      inner.putInput(UNIT_NX, 2);
+      inner.world.s(0,0,0, t.ls.getSubDatum);
+      inner.world.s(0,0,1, t.ls.setRotation);
+      
+      t.putBlockUnderTest(inner.id, CubeRotation.identity.code);
+      expect(t.ogv(UNIT_PX)).toEqual(0);
+      t.advance();
+      expect(t.ogv(UNIT_PX)).toEqual(2);
+      
+      // TODO test rotated cases
+      
+      t.dumpWorld("put");
+    });
+  });
+
   it("should not crash given nonsense", function () {
     var rots = [CubeRotation.identity.code,
                 CubeRotation.y90.code,

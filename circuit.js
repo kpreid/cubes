@@ -534,6 +534,22 @@ var Circuit = (function () {
       };
     };
     
+    // Cause a neighbor to become another block, by numeric ID.
+    var put = nb("put", inputOnlyBeh);
+    put.compile = function (world, block, inputs) {
+      var input = combineInputs(inputs, DIRECTIONS);
+      var myLookVector = getRot(world, block).transformVector(UNIT_PX);
+      return function (state) {
+        var i = input(state);
+        if (typeof i === "number" && "blockOut_effects" in state) {
+          var cube = vec3.add(state.blockIn_cube, myLookVector, []);
+          var outerWorld = state.blockIn_world;
+          state.blockOut_effects.push([cube, [Math.floor(mod(i, 256)), 0]]);
+          outerWorld.audioEvent(cube, "become"); // TODO should be part of effect record
+        }
+      };
+    };
+    
     var setRotation = nb("setRotation", inputOnlyBeh);
     setRotation.compile = function (world, block, inputs) {
       var input = combineInputs(inputs, DIRECTIONS);
