@@ -503,7 +503,7 @@ var WorldGen = (function () {
           if (typeof console !== "undefined")
             console.warn("constant IC block is unavailable; addSpontaneousConversion fails");
         } else {
-          type.world.s(1,1,1, ls.constant, ls.targetID);
+          type.world.s(1,1,1, ls.constant, targetID);
           type.world.s(2,1,1, ls.gate);  type.world.s(2,1,2, ls.spontaneous);
           type.world.s(3,1,1, ls.become);
         }
