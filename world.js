@@ -491,21 +491,24 @@ var World = (function () {
       effects = new IntVectorMap(); // for effects caused by these updates
       // Apply effects.
       curEffects.forEach(function (effectList, cube) {
+        var index = (cube[0]*wy + cube[1])*wz + cube[2];
+
         var effect = effectList[0];
         var newID = effect[0];
-        var newSubdatum = effect[1];
+        var newSubdatum = effect[1] === undefined ? subData[index] : effect[1];
         var noConflict = true;
         for (var i = 1; i < effectList.length; i++) {
           effect = effectList[i];
-          if (!(newID === effect[0] && newSubdatum === effect[1])) {
+          if (!(newID === effect[0] && (newSubdatum === effect[1] || effect[1] === undefined))) {
             noConflict = false;
             break;
           }
         }
-        var index = (cube[0]*wy + cube[1])*wz + cube[2];
+        
         if (noConflict && (blocks[index] !== newID || subData[index] !== newSubdatum)) {
           blocks[index] = newID;
           subData[index] = newSubdatum;
+          audioEvent(cube, "become");
         } else {
           curEffects.delete(cube); // inhibit update
         }

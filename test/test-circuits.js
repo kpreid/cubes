@@ -85,6 +85,18 @@ describe("Circuit", function() {
 
   function makeCircuitBlock(t) {
     var inner = makeTester();
+    
+    // Make the circuit block and its rotation visible
+    var color = WorldGen.colorPicker(inner.world.blockSet, 0);
+    var r = color(1,0,0);
+    var g = color(0,1,0);
+    var b = color(0,0,1);
+    for (var i = 0; i < TS; i++) {
+      inner.world.s(i,0,0, r);
+      inner.world.s(0,i,0, g);
+      inner.world.s(0,0,i, b);
+    }
+    
     var type = new BlockType(null, inner.world);
     type.behavior = Circuit.behaviors.ic;
     inner.id = t.blockset.length;
@@ -304,9 +316,23 @@ describe("Circuit", function() {
       t.advance();
       expect(t.ogv(UNIT_PX)).toEqual(2);
       
-      // TODO test rotated cases
+      // test outer rotation
+      t.putBlockUnderTest(0);
+      t.putBlockUnderTest(inner.id, CubeRotation.y270.code);
+      console.log([t.ogv(UNIT_PX),t.ogv(UNIT_PY),t.ogv(UNIT_PZ),t.ogv(UNIT_NX),t.ogv(UNIT_NY),t.ogv(UNIT_NZ)]);
+      expect(t.ogv(UNIT_PZ)).toEqual(0);
+      t.advance();
+      console.log([t.ogv(UNIT_PX),t.ogv(UNIT_PY),t.ogv(UNIT_PZ),t.ogv(UNIT_NX),t.ogv(UNIT_NY),t.ogv(UNIT_NZ)]);
+      expect(t.ogv(UNIT_PZ)).toEqual(2);
       
       t.dumpWorld("put");
+      
+      // test inner rotation
+      inner.putBlockUnderTest(t.ls.put, CubeRotation.z90.code);
+      t.putBlockUnderTest(inner.id, CubeRotation.identity.code);
+      expect(t.ogv(UNIT_PY)).toEqual(0);
+      t.advance();
+      expect(t.ogv(UNIT_PY)).toEqual(2);
     });
   });
 

@@ -418,11 +418,9 @@ var Circuit = (function () {
       return function (state) {
         var i = input(state);
         if (typeof i === "number" && "blockOut_effects" in state) {
-          var cube = state.blockIn_cube;
           var outerWorld = state.blockIn_world;
           state.blockOut_effects.push(
-            [cube, [Math.floor(mod(i, 256)), outerWorld.gSubv(cube)]]);
-          outerWorld.audioEvent(cube, "become"); // TODO should be part of effect record
+            [ZEROVEC, [Math.floor(mod(i, 256))]]);
         }
       };
     };
@@ -542,10 +540,8 @@ var Circuit = (function () {
       return function (state) {
         var i = input(state);
         if (typeof i === "number" && "blockOut_effects" in state) {
-          var cube = vec3.add(state.blockIn_cube, myLookVector, []);
           var outerWorld = state.blockIn_world;
-          state.blockOut_effects.push([cube, [Math.floor(mod(i, 256)), 0]]);
-          outerWorld.audioEvent(cube, "become"); // TODO should be part of effect record
+          state.blockOut_effects.push([myLookVector, [Math.floor(mod(i, 256)), 0]]);
         }
       };
     };
@@ -688,7 +684,19 @@ var Circuit = (function () {
         // This does not need a change notification, because rotations are not true state, but always a function of the world state (note that extraState must be omitted).
       }
     });
-    return effects;
+    
+    // Transform from block reference frame to world reference frame.
+    // This is done now so that the effects of blockOut_rotation are already
+    // applied.
+    var theCubeRot = getRot(outerWorld, cube);
+    return effects.map(function (record) {
+      var relativeCube = record[0];
+      var effect = record[1];
+      return [
+        vec3.add(theCubeRot.transformVector(relativeCube), cube),
+        effect
+      ];
+    });
   };
   
   return Object.freeze(Circuit);
