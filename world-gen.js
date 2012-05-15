@@ -352,7 +352,7 @@ var WorldGen = (function () {
           "logic.getContact",
           Circuit.behaviors.getContact,
           // TODO better symbol
-          f.cube(TS/2,TS*1.40,TS/2,TS*0.45,functionShapePat));
+          f.cube(TS*-0.40,TS/2,TS/2,TS*0.45,functionShapePat));
       selfRotating(0);
 
       type = addOrUpdate(
@@ -441,7 +441,7 @@ var WorldGen = (function () {
             Circuit.behaviors.ic,
             f.sphere(TS/2,TS-0.5,TS/2,TS/2,specklePat));
         type.solid = true; // override circuit-block default
-        type.world.s(2,2,2, baseGetContact);
+        type.world.s(2,2,2, baseGetContact, CubeRotation.z270.code);
         type.world.s(1,2,2, baseICOutput);
         type.world.s(3,2,2, baseICOutput);
         type.world.s(2,1,2, baseICOutput);
@@ -570,7 +570,7 @@ var WorldGen = (function () {
         return Math.random() > b[1]/TS ? 0 : ground.g(b[0],b[1],b[2]);
       }));
       type.name = "weakGround";
-      type.world.s(1, 0, 0, ls.getContact);
+      type.world.s(1, 0, 0, ls.getContact, CubeRotation.z270.code);
       type.world.s(0, 1, 0, ls.constant, 0);
       type.world.s(1, 1, 0, ls.gate);
       type.world.s(2, 1, 0, ls.become);

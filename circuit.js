@@ -462,10 +462,15 @@ var Circuit = (function () {
     
     var getContact = nb("getContact", outputOnlyBeh);
     getContact.compile = function (world, block, inputs) {
+      var myLookVectorStr = getRot(world, block).transformVector(UNIT_NX, []).toString();
       var out = compileOutput(world, block, DIRECTIONS);
       return function (state) {
-        out(state, state.blockIn_world
-            ? state.blockIn_world.getStandingOn(state.blockIn_cube)
+        var world, faces;
+        out(state, (world = state.blockIn_world)
+            ? !!(
+                (faces = world.getStandingOn(state.blockIn_cube)) &&
+                faces[myLookVectorStr]
+              )
             : null);
       };
     };

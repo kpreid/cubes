@@ -2,7 +2,7 @@
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
 describe("Circuit", function() {
-  var TS = 16;
+  var TS = 10;
 
   var t;
   beforeEach(function () {
@@ -270,25 +270,35 @@ describe("Circuit", function() {
   });
   
   describe("getContact", function () {
-    it("should report top contact", function () {
-      var inner = makeCircuitBlock(t);
-      inner.putBlockUnderTest(t.ls.getContact);
-      inner.putNeighbor(UNIT_PX, t.ls.icOutput);
-      inner.world.s(0,0,0, t.ls.getSubDatum);
-      inner.world.s(0,0,1, t.ls.setRotation);
-      
-      t.putBlockUnderTest(inner.id, CubeRotation.identity.code);
-      expect(t.readOutput(UNIT_PX)).toBe(false);
-      
-      var body = new Body({noclip: new Cell("noclip", false)}, t.world, new AAB(-1, 1, -1, 1, -1, 1));
-      vec3.set(vec3.add([0.5, 2.01, 0.5], t.center), body.pos);
-      vec3.set([0, -5, 0], body.vel);
-      body.step(1/60, function () {});
-      expect(t.readOutput(UNIT_PX)).toBe(true);
-
-      vec3.set([0, 5, 0], body.vel);
-      body.step(1/60, function () {});
-      expect(t.readOutput(UNIT_PX)).toBe(false);
+    [CubeRotation.identity, CubeRotation.y90, CubeRotation.y180, CubeRotation.y270, CubeRotation.z90, CubeRotation.z270].forEach(function (rot) {
+      it("should report "+rot.transformVector([-1,0,0],[])+" contact", function () {
+        //console.group(this.getFullName());
+        var inner = makeCircuitBlock(t);
+        inner.putBlockUnderTest(t.ls.getContact, rot.code);
+        inner.putNeighbor(UNIT_PX, t.ls.icOutput);
+        inner.putNeighbor(UNIT_PY, t.ls.icOutput);
+        inner.putNeighbor(UNIT_PZ, t.ls.icOutput);
+        inner.putNeighbor(UNIT_NX, t.ls.icOutput);
+        inner.putNeighbor(UNIT_NY, t.ls.icOutput);
+        inner.putNeighbor(UNIT_NZ, t.ls.icOutput);
+        inner.world.s(0,0,0, t.ls.getSubDatum);
+        inner.world.s(0,0,1, t.ls.setRotation);
+        
+        t.putBlockUnderTest(inner.id, CubeRotation.identity.code);
+        expect(t.readOutput(UNIT_PX)).toBe(false);
+        
+        var body = new Body({noclip: new Cell("noclip", false)}, t.world, new AAB(-1, 1, -1, 1, -1, 1));
+        vec3.set(vec3.add(rot.transformVector([-1.51, 0, 0]),
+                          vec3.add([0.5, 0.5, 0.5], t.center)), body.pos);
+        vec3.set(rot.transformVector([5, 0, 0]), body.vel);
+        body.step(1/60, function () {});
+        expect(t.readOutput(UNIT_PX)).toBe(true);
+        
+        vec3.set(rot.transformVector([-5, 0, 0]), body.vel);
+        body.step(1/60, function () {});
+        expect(t.readOutput(UNIT_PX)).toBe(false);
+        //console.groupEnd();
+      });
     });
   });
   

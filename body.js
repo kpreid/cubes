@@ -120,7 +120,7 @@ var Body = (function () {
     
     // To resolve diagonal movement, we treat it as 3 orthogonal moves, updating nextPosIncr.
     var previousStandingOn = this.standingOn;
-    this.standingOn = null;
+    var curStandingOn = null;
     var nextPosIncr = vec3.create(curPos);
     if (this._config.noclip.get()) {
       nextPosIncr = nextPos;
@@ -150,24 +150,28 @@ var Body = (function () {
         
             var surfaceOffset = hitAABB.get(dim, 1-dir) - (nextPosIncr[dim] + bodyAABB.get(dim, dir));
             nextPosIncr[dim] += surfaceOffset - (dir ? 1 : -1) * EPSILON;
-            curVel[dim] /= 10;
-            if (dim === 1 && dir === 0) {
-              if (hit) {
-                // TODO: eliminate the need for this copy
-                var standingOnMap = new IntVectorMap();
-                hit.forEach(function (aab, cube) {
-                  standingOnMap.set(cube.slice(0, 3), true);
-                });
-                this.standingOn = standingOnMap;
-              } else {
-                this.standingOn = null;
-              }
+            curVel[dim] /= 10; // TODO justify this constant
+            
+            if (hit) {
+              if (!curStandingOn) curStandingOn = new IntVectorMap();
+              hit.forEach(function (aab, cube) {
+                var key = cube.slice(0, 3);
+                var faces = curStandingOn.get(key);
+                if (!faces) curStandingOn.set(key, faces = {});
+                var fkey = [0,0,0];
+                fkey[dim] = dir ? -1 : 1;
+                faces[fkey] = true;
+              });
+            }
+            if (dim === 1 && dir === 0) { // touched ground
               this.flying = false;
             }
           }
         }
       }
     }
+    
+    this.standingOn = curStandingOn;
     
     if (nextPosIncr[1] < 0) {
       // Prevent falling downward indefinitely, without preventing flying under the world (e.g. for editing the bottom of a block).
@@ -179,14 +183,13 @@ var Body = (function () {
       didMoveCallback();
     }
     
-    var currentStandingOn = this.standingOn || IntVectorMap.empty;
-    currentStandingOn.forEach(function (aab, cube) {
-      // TODO adjust this for multiple bodies
-      world.setStandingOn(cube, true);
+    if (curStandingOn) curStandingOn.forEach(function (faces, cube) {
+      // TODO adjust this for multiple bodies touching the same thing
+      world.setStandingOn(cube, faces);
     });
-    if (previousStandingOn) previousStandingOn.forEach(function (aab, cube) {
-      if (!currentStandingOn.has(cube)) {
-        world.setStandingOn(cube, false);
+    if (previousStandingOn) previousStandingOn.forEach(function (faces, cube) {
+      if (!(curStandingOn && curStandingOn.has(cube))) {
+        world.setStandingOn(cube, null);
       }
     });
   };

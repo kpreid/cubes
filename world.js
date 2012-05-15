@@ -678,9 +678,9 @@ var World = (function () {
     }
     
     // for use by bodies only
-    function setStandingOn(cube, value) {
-      if (value) {
-        standingOn.set(cube, true);
+    function setStandingOn(cube, faces) {
+      if (faces) {
+        standingOn.set(cube, faces);
       } else {
         standingOn.delete(cube);
       }
@@ -690,7 +690,7 @@ var World = (function () {
     }
     
     function getStandingOn(cube) {
-      return !!standingOn.get(cube);
+      return standingOn.get(cube);
     }
     
     function audioEvent(cube, mode) {
