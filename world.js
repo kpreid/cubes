@@ -411,6 +411,7 @@ var World = (function () {
       } else {
         rotations[index] = 0;
       }
+      measuring.blockEvals.inc(1);
     }
     
     function queueEffects(addEffects) {

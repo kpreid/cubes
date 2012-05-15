@@ -222,17 +222,19 @@ var measuring = (function () {
     Quantity.call(this, label);
     var souper = Object.getPrototypeOf(this);
     
+    // TODO it might be interesting to note out-of-bracket incs
+    
     var counter = 0;
     this.inc = function (amount) {
       if (amount === undefined) amount = 1;
       counter += amount;
     };
     this.start = function () {
-      counter = 0;
       souper.start.call(this);
     };
     this.end = function () {
       this.value = counter;
+      counter = 0;
       souper.end.call(this);
     };
   }
@@ -255,24 +257,25 @@ var measuring = (function () {
   TaskGroup.prototype = Object.create(ViewGroup.prototype);
   
   measuring.all = new TopGroup("Performance", [
-    measuring.queues = new ViewGroup("Queue sizes", [
-      measuring.chunkQueueSize = new Counter("Chunks"),
-      measuring.lightingQueueSize = new Counter("Lights"),
-      measuring.persistenceQueueSize = new Counter("Dirty objs")
-    ]),
     measuring.second = new ViewGroup("Per second", [
       measuring.simCount = new Counter("Steps"),
       measuring.frameCount = new Counter("Frames"),
       measuring.chunkCount = new Counter("Chunk calcs"),
-      measuring.lightUpdateCount = new Counter("Light updates"),
+      measuring.lightUpdateCount = new Counter("Light updates")
     ]),
     measuring.sim = new TaskGroup("Simulation", [
       measuring.collisionTests = new Counter("Collision tests"),
+      measuring.blockEvals = new Counter("Block evals")
     ]),
     measuring.chunk = new TaskGroup("Chunk calc", []),
     measuring.frame = new TaskGroup("Frame", [
       measuring.bundles = new Counter("Bundles"),
       measuring.vertices = new Counter("Vertices")
+    ]),
+    measuring.queues = new ViewGroup("Queue sizes", [
+      measuring.chunkQueueSize = new Counter("Chunks"),
+      measuring.lightingQueueSize = new Counter("Lights"),
+      measuring.persistenceQueueSize = new Counter("Dirty objs")
     ])
   ]);
   
