@@ -319,13 +319,9 @@ describe("Circuit", function() {
       // test outer rotation
       t.putBlockUnderTest(0);
       t.putBlockUnderTest(inner.id, CubeRotation.y270.code);
-      console.log([t.ogv(UNIT_PX),t.ogv(UNIT_PY),t.ogv(UNIT_PZ),t.ogv(UNIT_NX),t.ogv(UNIT_NY),t.ogv(UNIT_NZ)]);
       expect(t.ogv(UNIT_PZ)).toEqual(0);
       t.advance();
-      console.log([t.ogv(UNIT_PX),t.ogv(UNIT_PY),t.ogv(UNIT_PZ),t.ogv(UNIT_NX),t.ogv(UNIT_NY),t.ogv(UNIT_NZ)]);
       expect(t.ogv(UNIT_PZ)).toEqual(2);
-      
-      t.dumpWorld("put");
       
       // test inner rotation
       inner.putBlockUnderTest(t.ls.put, CubeRotation.z90.code);
