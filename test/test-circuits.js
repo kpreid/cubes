@@ -268,7 +268,30 @@ describe("Circuit", function() {
       expect(t.readOutput(UNIT_PZ)).toEqual(103);
     });
   });
+  
+  describe("getContact", function () {
+    it("should report top contact", function () {
+      var inner = makeCircuitBlock(t);
+      inner.putBlockUnderTest(t.ls.getContact);
+      inner.putNeighbor(UNIT_PX, t.ls.icOutput);
+      inner.world.s(0,0,0, t.ls.getSubDatum);
+      inner.world.s(0,0,1, t.ls.setRotation);
+      
+      t.putBlockUnderTest(inner.id, CubeRotation.identity.code);
+      expect(t.readOutput(UNIT_PX)).toBe(false);
+      
+      var body = new Body({noclip: new Cell("noclip", false)}, t.world, new AAB(-1, 1, -1, 1, -1, 1));
+      vec3.set(vec3.add([0.5, 2.01, 0.5], t.center), body.pos);
+      vec3.set([0, -5, 0], body.vel);
+      body.step(1/60, function () {});
+      expect(t.readOutput(UNIT_PX)).toBe(true);
 
+      vec3.set([0, 5, 0], body.vel);
+      body.step(1/60, function () {});
+      expect(t.readOutput(UNIT_PX)).toBe(false);
+    });
+  });
+  
   describe("getNeighborID", function () {
     it("should report inner block IDs according to rotation", function () {
       t.putBlockUnderTest(t.ls.getNeighborID, CubeRotation.identity.code);
