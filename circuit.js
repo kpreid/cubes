@@ -468,7 +468,7 @@ var Circuit = (function () {
         var world, faces;
         out(state, (world = state.blockIn_world)
             ? !!(
-                (faces = world.getStandingOn(state.blockIn_cube)) &&
+                (faces = world.getContacts(state.blockIn_cube)) &&
                 faces[myLookVectorStr]
               )
             : null);

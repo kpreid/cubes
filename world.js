@@ -86,8 +86,8 @@ var World = (function () {
     // Blocks which are to be modified according to circuit outputs
     var effects = new IntVectorMap();
     
-    // Blocks which a body is touching the top surface of (TODO: generalize this)
-    var standingOn = new IntVectorMap();
+    // Blocks which a body is touching. Values are of the form {facevector: true}.
+    var contacts = new IntVectorMap();
     
     var numToDisturbPerSec = cubeCount * spontaneousBaseRate;
     
@@ -678,19 +678,20 @@ var World = (function () {
     }
     
     // for use by bodies only
-    function setStandingOn(cube, faces) {
+    function setContacts(cube, faces) {
+      // TODO extend this to handle the existence of multiple bodies
       if (faces) {
-        standingOn.set(cube, faces);
+        contacts.set(cube, faces);
       } else {
-        standingOn.delete(cube);
+        contacts.delete(cube);
       }
       reeval(cube, gt(cube[0],cube[1],cube[2])); // should this be deferred?
       var circuit = blockCircuits.get(cube);
       if (circuit) circuit.refreshLocal();
     }
     
-    function getStandingOn(cube) {
-      return standingOn.get(cube);
+    function getContacts(cube) {
+      return contacts.get(cube);
     }
     
     function audioEvent(cube, mode) {
@@ -771,8 +772,8 @@ var World = (function () {
     this.step = step;
     this.polishLightInVicinity = polishLightInVicinity;
 
-    this.setStandingOn = setStandingOn;
-    this.getStandingOn = getStandingOn;
+    this.setContacts = setContacts;
+    this.getContacts = getContacts;
     this.audioEvent = audioEvent;
 
     this.listen = notifier.listen;

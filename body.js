@@ -15,7 +15,7 @@ var Body = (function () {
     this.pos = vec3.create();
     this.vel = vec3.create();
     this.yaw = Math.PI/4 * 5;
-    this.standingOn = null;
+    this.worldContacts = null;
     this.flying = false;
     this.cameraYLag = 0;
     this.debugHitAABBs = []; // filled by collision code
@@ -119,8 +119,8 @@ var Body = (function () {
     var alreadyColliding = intersectBodyAt(curPos);
     
     // To resolve diagonal movement, we treat it as 3 orthogonal moves, updating nextPosIncr.
-    var previousStandingOn = this.standingOn;
-    var curStandingOn = null;
+    var previousContacts = this.worldContacts;
+    var curContacts = null;
     var nextPosIncr = vec3.create(curPos);
     if (this._config.noclip.get()) {
       nextPosIncr = nextPos;
@@ -136,7 +136,7 @@ var Body = (function () {
           var hitAABB = unionHits(hit);
           resolveDirection: {
             // Walk-up-slopes
-            if (dim !== 1 /*moving horizontally*/ && this.standingOn /*not in air*/) {
+            if (dim !== 1 /*moving horizontally*/ && previousContacts /*not in air*/) {
               var upward = vec3.create(nextPosIncr);
               upward[1] = hitAABB.get(1, 1) - bodyAABB.get(1,0) + EPSILON;
               var delta = upward[1] - nextPosIncr[1];
@@ -153,11 +153,11 @@ var Body = (function () {
             curVel[dim] /= 10; // TODO justify this constant
             
             if (hit) {
-              if (!curStandingOn) curStandingOn = new IntVectorMap();
+              if (!curContacts) curContacts = new IntVectorMap();
               hit.forEach(function (aab, cube) {
                 var key = cube.slice(0, 3);
-                var faces = curStandingOn.get(key);
-                if (!faces) curStandingOn.set(key, faces = {});
+                var faces = curContacts.get(key);
+                if (!faces) curContacts.set(key, faces = {});
                 var fkey = [0,0,0];
                 fkey[dim] = dir ? -1 : 1;
                 faces[fkey] = true;
@@ -171,7 +171,7 @@ var Body = (function () {
       }
     }
     
-    this.standingOn = curStandingOn;
+    this.worldContacts = curContacts;
     
     if (nextPosIncr[1] < 0) {
       // Prevent falling downward indefinitely, without preventing flying under the world (e.g. for editing the bottom of a block).
@@ -183,13 +183,13 @@ var Body = (function () {
       didMoveCallback();
     }
     
-    if (curStandingOn) curStandingOn.forEach(function (faces, cube) {
+    if (curContacts) curContacts.forEach(function (faces, cube) {
       // TODO adjust this for multiple bodies touching the same thing
-      world.setStandingOn(cube, faces);
+      world.setContacts(cube, faces);
     });
-    if (previousStandingOn) previousStandingOn.forEach(function (faces, cube) {
-      if (!(curStandingOn && curStandingOn.has(cube))) {
-        world.setStandingOn(cube, null);
+    if (previousContacts) previousContacts.forEach(function (faces, cube) {
+      if (!(curContacts && curContacts.has(cube))) {
+        world.setContacts(cube, null);
       }
     });
   };
@@ -199,7 +199,7 @@ var Body = (function () {
   };
   
   Body.prototype.jump = function (jumpVel) {
-    if (this.standingOn) {
+    if (this.worldContacts) {
       this.addVelocity(jumpVel);
     }
   }

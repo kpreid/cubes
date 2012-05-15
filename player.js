@@ -213,7 +213,7 @@ var Player = (function () {
         function playFootstep() {
           footstepY = body.pos[1];
           var type, pos;
-          (body.standingOn || IntVectorMap.empty).forEach(function (junk, pi) {
+          (body.worldContacts || IntVectorMap.empty).forEach(function (faces, pi) {
             pos = pi;
             type = body.world.gtv(pos);
           });
