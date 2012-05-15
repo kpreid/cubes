@@ -212,13 +212,11 @@ var Player = (function () {
         }
         function playFootstep() {
           footstepY = body.pos[1];
-          var type, pos;
-          (body.worldContacts || IntVectorMap.empty).forEach(function (faces, pi) {
-            pos = pi;
-            type = body.world.gtv(pos);
-          });
+          // TODO play sounds for all blocks below or otherwise be less biased (getFloor gives arbitrary results)
+          var floor = body.getFloor();
+          var type = floor && body.world.gtv(floor);
           if (type) {
-            audio.play(pos, type, "footstep", 0.5);
+            audio.play(floor, type, "footstep", 0.5);
           }
         }
       });

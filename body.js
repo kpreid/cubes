@@ -193,13 +193,23 @@ var Body = (function () {
       }
     });
   };
-
+  
+  Body.prototype.getFloor = function () {
+    var floor = null;
+    (this.worldContacts || IntVectorMap.empty).forEach(function (faces, cube) {
+      if (faces["0,1,0"]) {
+        floor = cube;
+      }
+    });
+    return floor;
+  };
+  
   Body.prototype.addVelocity = function (dv) {
     vec3.add(this.vel, dv);
   };
   
   Body.prototype.jump = function (jumpVel) {
-    if (this.worldContacts) {
+    if (this.getFloor()) {
       this.addVelocity(jumpVel);
     }
   }
