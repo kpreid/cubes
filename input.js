@@ -49,7 +49,7 @@ var Input;
     
     if (value === null) {
       el.textContent = "…";
-      el.className += " control-chip-placeholder";
+      el.classList.add("control-chip-placeholder");
     } else {
       var desc;
       switch (value[0]) {
@@ -285,7 +285,7 @@ var Input;
     }, false);
   }
   ControlChip.prototype.conflict = function () {
-    this.element.className += " control-chip-conflict";
+    this.element.classList.add("control-chip-conflict");
   }
   
   function ControlBindingUI(bindingsCell, rowContainer) {
@@ -700,10 +700,12 @@ var Input;
     
     // --- Interface modes ---
     
+    var lastAppliedClass;
     function switchMode(newMode) {
       interfaceMode = newMode;
-      var e = document.body;
-      e.className = e.className.replace(/\s*ui-mode-\w+/, "") + " ui-mode-" + interfaceMode.uiClass;
+      var cl = document.body.classList;
+      if (lastAppliedClass) cl.remove(lastAppliedClass);
+      cl.add(lastAppliedClass = "ui-mode-" + interfaceMode.uiClass);
       updatePointerLock();
       applyMousePosition();
     }
@@ -728,6 +730,8 @@ var Input;
       uiClass: "full",
       focus: function (focused) { if (focused) switchMode(mouselookIMode); }
     };
+    
+    var allUIClasses = ["full", "menu", "hidden"];
     
     interfaceMode = mouselookIMode;
     
@@ -793,7 +797,7 @@ var Input;
         return false;
       };
       icon.onmousedown = icon.onselectstart = function () {
-        item.className = "menu-item selectedTool";
+        item.classList.add("selectedTool");
         return false; // inhibit selection
       };
       icon.oncontextmenu = function () {
@@ -801,7 +805,9 @@ var Input;
         return false;
       };
       icon.onmouseout = function () {
-        item.className = "menu-item " + (blockID === playerInput.tool ? " selectedTool" : "");
+        if (blockID !== playerInput.tool) {
+          item.classList.remove("selectedTool");
+        }
         return true;
       };
     }
@@ -845,7 +851,7 @@ var Input;
         var iconCell = cell();
         var icon = document.createElement("img");
         icon.style.width = icon.style.height = size + "px"; // TODO don't do this in full menu mode
-        iconCell.className = ""; // always shown
+        iconCell.classList.remove("block-details"); // always shown
         iconCell.appendChild(icon);
         blockSetRender.icons[blockID].nowAndWhenChanged(function (url) {
           if (url !== null)
@@ -856,7 +862,6 @@ var Input;
         // TODO: This code duplicates functionality of PersistentCell.bindControl — refactor so we can use that code here.
         
         var name = document.createElement("input");
-        name.className = "block-details";
         name.type = "text";
         name.value = blockType.name;
         name.onchange = function () {
@@ -866,7 +871,6 @@ var Input;
         cell().appendChild(name);
         
         var behavior = document.createElement("select");
-        behavior.className = "block-details";
         var currentBehavior = (blockType.behavior || {name:""}).name;
         var o = document.createElement("option");
         o.textContent = "—";
@@ -886,7 +890,6 @@ var Input;
         cell().appendChild(behavior);
         
         var solid = document.createElement("input");
-        solid.className = "block-details";
         solid.type = "checkbox";
         solid.checked = blockType.solid;
         solid.onchange = function () {
@@ -896,7 +899,6 @@ var Input;
         cell().appendChild(solid);
         
         var light = document.createElement("input");
-        light.className = "block-details";
         light.type = "range";
         light.min = 0;
         light.max = 4;
@@ -954,11 +956,12 @@ var Input;
     function updateMenuSelection() {
       var tool = playerInput.tool;
       forAllMenuBlocks(function (i, item) {
-        item.className = i === tool ? "menu-item selectedTool" : "menu-item";
+        item.classList[i === tool ? "add" : "remove"]("selectedTool");
       });
       quickItemsByBlockId.forEach(function (item, i) {
-        if (item !== undefined)
-          item.className = i === tool ? "menu-item selectedTool" : "menu-item";
+        if (item !== undefined) {
+          item.classList[i === tool ? "add" : "remove"]("selectedTool");
+        }
       });
     }
     

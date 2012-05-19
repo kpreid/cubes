@@ -662,7 +662,7 @@ function ProgressBar(rootElem) {
   }
   this.element = rootElem;
 
-  rootElem.className += " progress-bar";
+  rootElem.classList.add("progress-bar");
   var fill = document.createElement("div");
   fill.className = "progress-bar-fill";
   rootElem.appendChild(fill);

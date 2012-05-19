@@ -103,12 +103,11 @@ var measuring = (function () {
   TopGroup.prototype.constructor = TopGroup;
   TopGroup.prototype.createDisplay = function (document, stateContext) {
     var d = ViewGroup.prototype.createDisplay.call(this, document, stateContext);
-    var baseClassName = d.element.className;
     var toggle = createToggle(stateContext + ".graphsVisible", function (visible) {
-      d.element.className = baseClassName + (visible ? "" : " measuring-hide-sparklines");
+      d.element.classList[visible ? "remove" : "add"]("measuring-hide-sparklines");
     });
     var bogusval = document.createElement("span"); // strictly for layout :(
-    bogusval.className = "measuring-value";
+    bogusval.classList.add("measuring-value");
     d.header.parentNode.insertBefore(toggle, d.header.nextSibling);
     d.header.parentNode.insertBefore(bogusval, d.header.nextSibling);
     return d;

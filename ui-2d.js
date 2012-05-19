@@ -19,7 +19,7 @@ var CubesObjectUI;
       menuButtonE.addEventListener("mousedown", openMenu, false);
       menuButtonE.addEventListener("click", openMenu, false);
       var chipE = document.createElement("span");
-      var baseClassName = chipE.className = "presentation object-chip";
+      chipE.className = "presentation object-chip";
       chipE.style.position = "relative";
       chipE.appendChild(nameE);
       chipE.appendChild(menuButtonE);
@@ -46,7 +46,7 @@ var CubesObjectUI;
           var label = null;
           if (target.persistence) {
             label = persistencePool.getObjectName(target);
-            chipE.className = baseClassName + " object-chip-live";
+            chipE.classList.add("object-chip-live");
           }
           if (label === null) {
             var label = "a ";
@@ -56,15 +56,15 @@ var CubesObjectUI;
             }
             label += Persister.findType(target.constructor);
             
-            chipE.className = baseClassName + " object-chip-ephemeral";
+            chipE.classList.add("object-chip-ephemeral");
           }
           
           nameE.textContent = label;
           
         } else if (targetName !== null) {
           nameE.textContent = targetName;
-          chipE.className = baseClassName + (persistencePool.getIfLive(targetName) ? " object-chip-live" : " object-chip-named");
-          
+          chipE.classList.add(persistencePool.getIfLive(targetName) ? "object-chip-live" : "object-chip-named");
+
         } else {
           throw new Error("Can't happen");
         }

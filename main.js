@@ -400,7 +400,7 @@ var CubesMain = (function () {
             var size = persistencePool.getSize(name);
             totalSize += size;
             sizeCell.textContent = (size/1000).toFixed(0) + "K";
-            if (persistencePool.getIfLive(name) === worldH) row.className += " selected";
+            if (persistencePool.getIfLive(name) === worldH) row.classList.add("selected");
             
             row.addEventListener("click", function () {
               var obj = persistencePool.get(name);
