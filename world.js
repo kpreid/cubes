@@ -377,26 +377,18 @@ var World = (function () {
     }
     
     function edit(func) {
-      var val;
-      var vec = [0,0,0];
-      var types = blockSet.getAll();
       for (var x = 0; x < wx; x++) {
-        vec[0] = x;
         var xbase = x*wy*wz;
         for (var y = 0; y < wy; y++) {
-          vec[1] = y;
           var ybase = xbase + y*wz;
           for (var z = 0; z < wz; z++) {
-            vec[2] = z;
             var index = ybase + z;
-            blocks[index] = val = func(x,y,z,blocks[index]);
+            blocks[index] = func(x,y,z,blocks[index]);
             subData[index] = 0;
-            reeval([x,y,z], types[val]);
           }
         }
       }
-      notifier.notify("dirtyAll");
-      self.persistence.dirty();
+      self.notifyRawEdit();
     }
     
     // Perform actions related to block circuits immediately after a change
