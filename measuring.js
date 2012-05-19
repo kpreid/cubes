@@ -22,7 +22,7 @@ var measuring = (function () {
     toggler.className = "measuring-toggle";
     toggleState.nowAndWhenChanged(function (v) {
       if (v) {
-        toggler.textContent = "[-]";
+        toggler.textContent = "[−]" /* minus sign */;
       } else {
         toggler.textContent = "[+]";
       }
