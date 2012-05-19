@@ -18,7 +18,8 @@ var measuring = (function () {
   
   function createToggle(storageName, callback) {
     var toggleState = new PersistentCell(localStorage, storageName, "boolean", true);
-    var toggler = document.createElement("a");
+    var toggler = document.createElement("button");
+    toggler.className = "measuring-toggle";
     toggleState.nowAndWhenChanged(function (v) {
       if (v) {
         toggler.textContent = "[-]";

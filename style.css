@@ -27,9 +27,13 @@ html {
   text-shadow: 0 0 .3em #000;
   margin: 0 0;
   display: table;
+  pointer-events: none;
 }
 .overlay p, .overlay pre {
   margin: 0;
+}
+.overlay .object-chip {
+  pointer-events: auto;
 }
 
 #scene-info-overlay {
@@ -439,6 +443,8 @@ html {
   font-size: 9px;
   color: white;
 
+  pointer-events: none;
+
   /* root-only styles */
   background: black;
   background: rgba(80,80,80,0.5);
@@ -474,4 +480,18 @@ ul.measuring-group-contents, ol.measuring-group-contents {
 }
 .measuring-hide-sparklines .measuring-sparkline {
   display: none;
+}
+.measuring-toggle {
+  /* reset <button> style */
+  margin: 0;
+  border: none;
+  padding: 0;
+  color: inherit;
+  background: none;
+  font: inherit;
+  
+  /* specific style */
+  font-weight: bold;
+  
+  pointer-events: auto;
 }
