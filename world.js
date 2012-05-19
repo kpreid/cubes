@@ -4,6 +4,7 @@
 (function () {
   "use strict";
   
+  var AAB = cubes.util.AAB;
   var Circuit = cubes.Circuit;
   var Blockset = cubes.Blockset;
   var DirtyQueue = cubes.util.DirtyQueue;
@@ -869,4 +870,50 @@
   World.subdatumBound = 256;
   
   cubes.World = Object.freeze(World);
+  
+  // --- Selection objects ---
+  
+  function Selection(world) {
+    var bounds = new AAB(Infinity, -Infinity, Infinity, -Infinity, Infinity, -Infinity);
+    // TODO: Implement non-box selection. Bitmask array within the bounds.
+    
+    Object.defineProperties(this, {
+      world: {
+        enumerable: true,
+        get: function () { return world; }
+      },
+      bounds: {
+        enumerable: true,
+        get: function () { return bounds; }
+      }
+    });
+    
+    this.setToAAB = function (aab) {
+      bounds = aab;
+    };
+  }
+  // Invoke the callback with (cube, world) for each cube in the selection.
+  // Note that the cube argument is mutated and reused.
+  Selection.prototype.forEachCube = function (callback) {
+    var world = this.world;
+    var aab = this.bounds;
+    var lx = aab[0];
+    var hx = aab[1];
+    var ly = aab[2];
+    var hy = aab[3];
+    var lz = aab[4];
+    var hz = aab[5];
+    var vec = vec3.create();
+    for (var x = lx; x < hx; x++) {
+      vec[0] = x;
+      for (var y = ly; y < hy; y++) {
+        vec[1] = y;
+        for (var z = lz; z < hz; z++) {
+          vec[2] = z;
+          callback(vec, world);
+        }
+      }
+    }
+  };
+  cubes.Selection = Object.freeze(Selection);
 }());

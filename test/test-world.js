@@ -46,3 +46,43 @@ describe("World", function() {
     expect(world.playerBody.pos[1]).toBeLessThan(0);
   });
 });
+
+describe("Selection", function() {
+  var AAB = cubes.util.AAB;
+  var Selection = cubes.Selection;
+  var World = cubes.World;
+  var Blockset = cubes.Blockset;
+
+  var world;
+  beforeEach(function () {
+    world = new World([10, 10, 10], new Blockset([]));
+  });
+  
+  it("should exist", function () {
+    var selection = new Selection(world);
+  });
+  
+  it("should select a box", function () {
+    var selection = new Selection(world);
+    var b = new AAB(1, 3, 5, 7, 9, 11);
+    selection.setToAAB(b);
+    
+    expect(selection.bounds).toEqual(b);
+    
+    var calls = [
+      [1, 5, 9 ],
+      [1, 5, 10],
+      [1, 6, 9 ],
+      [1, 6, 10],
+      [2, 5, 9 ],
+      [2, 5, 10],
+      [2, 6, 9 ],
+      [2, 6, 10]
+    ];
+    selection.forEachCube(function (cube, w) {
+      expect(w).toBe(world);
+      expect(Array.prototype.slice.call(cube)).toEqual(calls.shift());
+    });
+    expect(calls.length).toBe(0);
+  });
+});
