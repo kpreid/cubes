@@ -136,7 +136,7 @@ var Body = (function () {
           var hitAABB = unionHits(hit);
           resolveDirection: {
             // Walk-up-slopes
-            if (dim !== 1 /*moving horizontally*/ && previousContacts /*not in air*/) {
+            if (dim !== 1 /*moving horizontally*/ && this.getFloor() /*not in air*/) {
               var upward = vec3.create(nextPosIncr);
               upward[1] = hitAABB.get(1, 1) - bodyAABB.get(1,0) + EPSILON;
               var delta = upward[1] - nextPosIncr[1];
