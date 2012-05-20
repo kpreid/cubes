@@ -6,6 +6,8 @@ const float cLightAmbient = 0.75;
 const vec3 cLight1Dir = vec3(0.4,-0.1,0);
 const vec3 cLight2Dir = vec3(-0.4,0.35,0.25);
 
+const vec4 luminanceCoeff = vec4(0.2126, 0.7152, 0.0722, 0);
+
 // What is the illumination from the given (unit vector) direction?
 float lightEnv(vec3 dir) {
   return max(0.0, dot(cLight1Dir, dir)) + max(0.0, dot(cLight2Dir, dir));
@@ -17,9 +19,11 @@ vec3 pow7vec3(vec3 x) {
   return y*y*x;
 }
 
-// Add amount of any component over 1.0 to all components (makes overbright colors turn to white)
+// Make over-1.0-in-some-component colors go to white
 vec3 spill(vec3 v) {
-  return v + vec3(max(1.0, max(v.r, max(v.g, v.b))) - 1.0);
+  vec3 overv = luminanceCoeff.rgb * (v - vec3(1.0));
+  float over = 1.4 * max(overv.r, max(overv.g, overv.b));
+  return mix(clamp(v, 0.0, 1.0), vec3(1.0), clamp(over, 0.0, 1.0));
 }
 
 float lighting() {
@@ -85,7 +89,7 @@ void main(void) {
   
   // Focus desaturation
   if (!uFocusCue) {
-    float gray = dot(color, vec4(0.2126, 0.7152, 0.0722, 0));
+    float gray = dot(color, luminanceCoeff);
     color = mix(color, vec4(gray, gray, gray, color.a), 0.5);
   }
   
