@@ -177,10 +177,7 @@ var Player = (function () {
     
     function computeExposure() {
       var world = currentPlace.world;
-      var wx = world.wx;
-      var wy = world.wy;
-      var wz = world.wz;
-      
+
       // TODO inefficient to rebuild this matrix — cache! This is the inverse of applyViewRot
       var matrix = mat4.identity();
       mat4.rotate(matrix, currentPlace.body.yaw, [0, 1, 0]);
@@ -197,7 +194,7 @@ var Player = (function () {
             x += face[0];
             y += face[1];
             z += face[2];
-            light += world.rawLighting[(x*wy+y)*wz+z];
+            light += world.gLight(x,y,z);
             hits++;
             return true;
           }
