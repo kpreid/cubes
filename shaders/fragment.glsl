@@ -54,9 +54,6 @@ float whiteNoise() {
 }
 
 void main(void) {
-    if (uStipple && mod(gl_FragCoord.x - gl_FragCoord.y, 2.0) < 1.0)
-      discard;
-    
     // color/lighting calculation
     // if the vertex normal is zero, then that means "do not use lighting"
 #if LIGHTING

@@ -412,11 +412,9 @@ var WorldRenderer = (function () {
       });
       
       // Draw circuits.
-      renderer.setStipple(true);
       circuitRenderers.forEach(function (cr) {
         cr.draw();
       });
-      renderer.setStipple(false);
       
       
       // Draw particles.
@@ -648,20 +646,21 @@ var WorldRenderer = (function () {
             var carr = circuitRenderer.colors.array;
             var value = circuit.getNetValue(net);
             var color;
+            var alpha = 0.5;
             if (value === null || value === undefined) {
-              color = [0,0,0,1];
+              color = [0,0,0,alpha];
             } else if (value === false) {
-              color = [0,0,0.2,1];
+              color = [0,0,0.2,alpha];
             } else if (value === true) {
-              color = [0.2,0.2,1,1];
+              color = [0.2,0.2,1,alpha];
             } else if (typeof value === 'number') {
               // TODO: represent negatives too
               if (value <= 1)
-                color = [value, 0, 0,1];
+                color = [value, 0, 0, alpha];
               else
-                color = [1, 1 - (1/value), 0,1];
+                color = [1, 1 - (1/value), 0, alpha];
             } else {
-              color = [1,1,1,1];
+              color = [1,1,1,alpha];
             }
             for (var i = 0, p = cbase; i < numVertices; i++) {
               carr[p++] = color[0];

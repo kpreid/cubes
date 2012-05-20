@@ -56,7 +56,6 @@ var Renderer = (function () {
     
     // Other local mirrors of GL state
     var fogDistance = 0;
-    var stipple = 0;
     var tileSize = 1;
     var focusCue = false;
     var currentTexture = undefined; // undefined=unknown/invalid, null=none, or texture
@@ -248,10 +247,6 @@ var Renderer = (function () {
       gl.uniform1f(uniforms.uTileSize, tileSize);
     }
     
-    function sendStipple() {
-      gl.uniform1i(uniforms.uStipple, stipple);
-    }
-    
     function sendProjection() {
       gl.uniformMatrix4fv(uniforms.uPMatrix, false, pMatrix);
       gl.uniform1f(uniforms.uFogDistance, fogDistance);
@@ -416,12 +411,6 @@ var Renderer = (function () {
       };
     }
     this.saveView = saveView;
-    
-    function setStipple(val) {
-      stipple = val ? 1 : 0;
-      sendStipple();
-    }
-    this.setStipple = setStipple;
     
     function setTileSize(val) {
       tileSize = val;

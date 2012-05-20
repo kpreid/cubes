@@ -8,17 +8,19 @@ varying float vFog;
 varying vec3 vNormal;
 varying float vDistanceFromEye;
 
+// View geometry
 uniform mat4 uPMatrix;
 uniform mat4 uMVMatrix;
 uniform vec3 uViewPosition;
 uniform float uFogDistance;
 uniform vec2 uPixelsPerClipUnit;
 
+// Texturing
 uniform bool uTextureEnabled;
 uniform sampler2D uSampler;
 uniform samplerCube uSkySampler;
 uniform sampler2D uNoiseSampler;
 uniform float uTileSize; // always integer, but used as float
 
-uniform bool uStipple;
+// Global rendering properties
 uniform bool uFocusCue;
