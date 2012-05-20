@@ -42,7 +42,9 @@ var Player = (function () {
 
     // kludge: Since UI sets pitch absolutely, it's not a place variable
     var pitch = 0;
-
+    
+    var exposure = 1.0;
+    
     var movement = vec3.create([0,0,0]);
     var mousePos = null; // or an [screen x, screen y] vector. Immutable value.
   
@@ -173,6 +175,50 @@ var Player = (function () {
       audio.setListener.apply(audio, currentPlace.body.getListenerParameters());
     }
     
+    function computeExposure() {
+      var world = currentPlace.world;
+      var wx = world.wx;
+      var wy = world.wy;
+      var wz = world.wz;
+      
+      // TODO inefficient to rebuild this matrix — cache! This is the inverse of applyViewRot
+      var matrix = mat4.identity();
+      mat4.rotate(matrix, currentPlace.body.yaw, [0, 1, 0]);
+      mat4.rotate(matrix, pitch, [1, 0, 0]);
+      
+      var pt1 = currentPlace.body.pos;
+      var light = 0;
+      var hits = 0;
+      function ray(look /* overwritten */) {
+        mat4.multiplyVec3(matrix, look);
+        var pt2 = vec3.add(pt1, look, vec3.create());
+        world.raycast(pt1, pt2, 20/*TODO magic number */, function (x,y,z,value,face) {
+          if (world.opaque(x,y,z)) { // TODO use appropriate test; what we actually want here is "is this a block which has a valid light value
+            x += face[0];
+            y += face[1];
+            z += face[2];
+            light += world.rawLighting[(x*wy+y)*wz+z];
+            hits++;
+            return true;
+          }
+        });
+      }
+      ray([0,0,-1]);
+      ray([-1,0,-1]);
+      ray([+1,0,-1]);
+      ray([0,-1,-1]);
+      ray([0,+1,-1]);
+      
+      var localLightFactor = (hits ? light / hits : world.lightOutside) * world.lightScale;
+      var compensation = 0.75;
+      
+      return 1/(((localLightFactor - 1) * compensation) + 1);
+    };
+    
+    this.getExposure = function () {
+      return exposure;
+    };
+    
     var footstepPhase = 0;
     var footstepPeriod = 1.4;
     var footstepY = 0;
@@ -220,6 +266,23 @@ var Player = (function () {
           }
         }
       });
+      
+      var newExposure = computeExposure();
+      if (newExposure !== exposure && !isNaN(newExposure)) {
+        var k = -0.7;
+        var decayDerivative = k*Math.exp(k*timestep);
+        var incrExposure = exposure + (exposure - newExposure) * decayDerivative * timestep;
+        if (Math.abs(incrExposure - exposure) < 1e-4) {
+          // cut off the exponential tail
+          exposure = newExposure;
+        } else {
+          exposure = incrExposure;
+        }
+        if (isNaN(exposure)) {
+          exposure = 1.0;
+        }
+        scheduleDraw();
+      }
     }
     
     this.stepYourselfAndWorld = function (timestep) {

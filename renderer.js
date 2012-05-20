@@ -56,6 +56,7 @@ var Renderer = (function () {
     
     // Other local mirrors of GL state
     var fogDistance = 0;
+    var exposure = 1.0;
     var tileSize = 1;
     var focusCue = false;
     var currentTexture = undefined; // undefined=unknown/invalid, null=none, or texture
@@ -243,6 +244,10 @@ var Renderer = (function () {
                                                 gl.drawingBufferHeight / 2);
     }
     
+    function sendExposure() {
+      gl.uniform1f(uniforms.uExposure, exposure);
+    }
+    
     function sendTileSize() {
       gl.uniform1f(uniforms.uTileSize, tileSize);
     }
@@ -254,6 +259,7 @@ var Renderer = (function () {
     
     function sendAllUniforms() {
       sendPixels();
+      sendExposure();
       sendTileSize();
       sendProjection();
       sendViewUniforms();
@@ -411,6 +417,12 @@ var Renderer = (function () {
       };
     }
     this.saveView = saveView;
+    
+    function setExposure(val) {
+      exposure = val;
+      sendExposure();
+    }
+    this.setExposure = setExposure;
     
     function setTileSize(val) {
       tileSize = val;

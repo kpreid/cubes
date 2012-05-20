@@ -123,7 +123,9 @@ var CubesMain = (function () {
     var lastGLErrors = [];
     function drawScene(playerRender) {
         var wrend = playerRender.getWorldRenderer();
-
+        
+        renderer.setExposure(player.getExposure());
+        
         renderer.setViewToSkybox(playerRender, focusCell.get());
         renderer.skybox.draw();
         gl.clear(gl.DEPTH_BUFFER_BIT);

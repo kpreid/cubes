@@ -46,6 +46,7 @@ function BlockRenderer(blockSet, renderer, resolution) {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     
     var restoreView = renderer.saveView();
+    renderer.setExposure(1.0);
     renderer.setViewToBlock();
     singleBlockWorld.s(0,0,0,blockID);
     singleBlockWorld.rawLighting[0] = singleBlockWorld.lightOutside;

@@ -77,6 +77,9 @@ void main(void) {
   vec4 fogColor = textureCube(uSkySampler, normalize(vFixedOrientationPosition));
   color = mix(color, fogColor, vFog);
   
+  // Exposure
+  color.rgb *= uExposure;
+  
   // Overbright goes to white
   color.rgb = spill(color.rgb);
   

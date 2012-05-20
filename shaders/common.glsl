@@ -24,3 +24,4 @@ uniform float uTileSize; // always integer, but used as float
 
 // Global rendering properties
 uniform bool uFocusCue;
+uniform float uExposure;
