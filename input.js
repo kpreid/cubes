@@ -292,13 +292,13 @@ var Input;
     var commands = Input.commands;
     
     var commandToContainer = {};
-    Object.keys(commands).forEach(function (commandName, index) {
+    Object.keys(commands).forEach(function (commandName) {
       var row = document.createElement("tr");
       rowContainer.appendChild(row);
 
       var labelCell = document.createElement("td");
       row.appendChild(labelCell);
-      labelCell.textContent = commands[commandName];
+      labelCell.textContent = commands[commandName].label;
 
       var controlsCell = document.createElement("td");
       row.appendChild(controlsCell);
@@ -417,22 +417,22 @@ var Input;
       evalHeldControls();
     }
     
+    // Construct commands augmented with implementation functions
     var commandFunctions = {};
+    function deffunbase(name) {
+      var command = Input_.commands[name];
+      if (!command) throw new Error("inconsistent table");
+      var cmdWithFunc = commandFunctions[name] = Object.create(command);
+      cmdWithFunc.name = name;
+      return cmdWithFunc;
+    }
     function defhold(name) {
-      if (!(name in Input_.commands)) throw new Error("inconsistent table");
-      commandFunctions[name] = {
-        name: name,
-        map: true,
-        press: function () {}
-      };
+      var cmdWithFunc = deffunbase(name);
+      cmdWithFunc.press = function () {};
     }
     function defaction(name, func) {
-      if (!(name in Input_.commands)) throw new Error("inconsistent table");
-      commandFunctions[name] = {
-        name: name,
-        map: false,
-        press: func
-      };
+      var cmdWithFunc = deffunbase(name);
+      cmdWithFunc.press = func;
     }
     defhold("left");
     defhold("right");
@@ -515,10 +515,19 @@ var Input;
       var command = controlMap[control];
       
       if (command) {
-        command.press();
-      
-        if (!heldControls[control]) {
-          heldControls[control] = true;
+        if (!heldControls.hasOwnProperty(control)) {
+          command.press();
+          var interval;
+          if (typeof command.repeatPeriod_ms === "number") {
+            var interval = setInterval(function () {
+              // TODO: Run key repeats from main loop to sync with simulation, instead of this
+              command.press();
+            }, command.repeatPeriod_ms);
+          } else {
+            interval = null;
+          }
+          
+          heldControls[control] = interval;
           heldCommands[command.name]++;
           //console.log("hold +", control, command.name, heldCommands[command.name]);
           evalHeldControls();
@@ -535,8 +544,9 @@ var Input;
       var control = parseEvent(event);
       var command = controlMap[control];
       
-      if (heldControls[control]) {
-        heldControls[control] = false;
+      if (heldControls.hasOwnProperty(control)) {
+        if (heldControls[control]) clearInterval(heldControls[control]);
+        delete heldControls[control];
         heldCommands[command.name]--;
         //console.log("hold -", control, command.name, heldCommands[command.name]);
         evalHeldControls();
@@ -546,6 +556,12 @@ var Input;
       } else {
         return true;
       }
+    }
+    
+    function controlMomentaryHandler(event) {
+      var r = controlPressHandler(event);
+      controlReleaseHandler(event);
+      return r;
     }
     
     // Keyboard events
@@ -567,7 +583,7 @@ var Input;
       return false;
     }, false);
     eventReceiver.addEventListener("mouseup", controlReleaseHandler, false);
-    eventReceiver.addEventListener("mousewheel", controlPressHandler, false);
+    eventReceiver.addEventListener("mousewheel", controlMomentaryHandler, false);
     
     eventReceiver.addEventListener("contextmenu", function (event) {
       event.preventDefault(); // inhibits context menu (on the game world only) since we use right-click for our own purposes
@@ -1011,21 +1027,24 @@ var Input;
   
   Input_.commands = {};
   Input_.defaultBindings = [];
-  function defcmd(name, label, bindings) {
-    Input_.commands[name] = label;
+  function defcmd(name, label, bindings, repeat) {
+    Input_.commands[name] = {
+      label: label,
+      repeatPeriod_ms: repeat
+    }
     bindings.forEach(function (control) {
       Input_.defaultBindings.push([name, control])
     });
   }
-  defcmd("useTool"    , "Place block",  [["mouse", 1]]);
-  defcmd("deleteBlock", "Delete block", [["mouse", 0]]);
+  defcmd("useTool"    , "Place block",  [["mouse", 1]], 250);
+  defcmd("deleteBlock", "Delete block", [["mouse", 0]], 250);
   defcmd("left"    , "Left"    , [["key", "A".charCodeAt(0)], ["key", 37]]);
   defcmd("right"   , "Right"   , [["key", "D".charCodeAt(0)], ["key", 39]]);
   defcmd("forward" , "Forward" , [["key", "W".charCodeAt(0)], ["key", 38]]);
   defcmd("backward", "Backward", [["key", "S".charCodeAt(0)], ["key", 40]]);
   defcmd("up"      , "Up/Fly"  , [["key", "E".charCodeAt(0)]]);
   defcmd("down"    , "Down"    , [["key", "C".charCodeAt(0)]]);
-  defcmd("jump"    , "Jump"    , [["key", " ".charCodeAt(0)]]);
+  defcmd("jump"    , "Jump"    , [["key", " ".charCodeAt(0)]], 1/60);
   defcmd("quick0", "Tool #1"   , [["key", "1".charCodeAt(0)]]);
   defcmd("quick1", "Tool #2"   , [["key", "2".charCodeAt(0)]]);
   defcmd("quick2", "Tool #3"   , [["key", "3".charCodeAt(0)]]);
@@ -1039,8 +1058,8 @@ var Input;
   defcmd("interfaceMode", "Mouselook"    , [["key", "Q".charCodeAt(0)]]);
   defcmd("enterWorld"   , "Edit block"   , [["key", "R".charCodeAt(0)]]);
   defcmd("exitWorld"    , "Exit editing" , [["key", "F".charCodeAt(0)], ["key", 0x1b]]);
-  defcmd("subdatumDec"  , "Subdatum −1"  , [["key", "Z".charCodeAt(0)]]);
-  defcmd("subdatumInc"  , "Subdatum +1"  , [["key", "X".charCodeAt(0)]]);
+  defcmd("subdatumDec"  , "Subdatum −1"  , [["key", "Z".charCodeAt(0)]], 100);
+  defcmd("subdatumInc"  , "Subdatum +1"  , [["key", "X".charCodeAt(0)]], 100);
   defcmd("editBlockset" , "Edit blockset", [["key", "B".charCodeAt(0)]]);
   Object.freeze(Input_.commands);
   Object.freeze(Input_.defaultBindings); // should be recursive
