@@ -54,32 +54,37 @@ float whiteNoise() {
 }
 
 void main(void) {
-    // color/lighting calculation
-    // if the vertex normal is zero, then that means "do not use lighting"
+  vec4 color = vColor;
+  
+  // Lighting
+  // if the vertex normal is zero, then that means "do not use lighting"
 #if LIGHTING
-    vec4 color = vec4(vec3(vColor) * (vNormal == vec3(0,0,0) ? 1.0 : lighting()),
-                      vColor.a);
-#else
-    vec4 color = vColor;
+  color.rgb *= (vNormal == vec3(0) ? 1.0 : lighting());
 #endif
-    
-    if (uTextureEnabled)
-      color *= texture2D(uSampler, vTextureCoord);
-    
-    // Note: This alpha test is needed for textures, but also for the block
-    // particles, which have static geometry.
-    if (color.a <= whiteNoise() * (254.0/255.0))
-      discard;
-    
-    color = vec4(spill(color.rgb), color.a);
-
-    vec4 fogColor = textureCube(uSkySampler, normalize(vFixedOrientationPosition));
-    gl_FragColor = color * (1.0-vFog) + fogColor * vFog;
-    
-    if (!uFocusCue) {
-      float gray = 0.2126*gl_FragColor.r
-                  +0.7152*gl_FragColor.g
-                  +0.0722*gl_FragColor.b;
-      gl_FragColor = 0.5 * gl_FragColor + 0.5 * vec4(vec3(gray), gl_FragColor.a);
-    }
+  
+  // Texturing
+  if (uTextureEnabled)
+    color *= texture2D(uSampler, vTextureCoord);
+  
+  // Convert alpha channel to stipple
+  if (color.a <= whiteNoise() * (254.0/255.0)) {
+    discard;
+  } else {
+    color.a = 1.0;
+  }
+  
+  // Fog/skybox
+  vec4 fogColor = textureCube(uSkySampler, normalize(vFixedOrientationPosition));
+  color = mix(color, fogColor, vFog);
+  
+  // Overbright goes to white
+  color.rgb = spill(color.rgb);
+  
+  // Focus desaturation
+  if (!uFocusCue) {
+    float gray = dot(color, vec4(0.2126, 0.7152, 0.0722, 0));
+    color = mix(color, vec4(gray, gray, gray, color.a), 0.5);
+  }
+  
+  gl_FragColor = color;
 }
