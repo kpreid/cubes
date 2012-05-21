@@ -12,7 +12,8 @@ This is what you can assume/should do:
   CULL_FACE: Enabled.
   lineWidth: Undefined.
   depthMask: True.
-  activeTexture: Undefined.
+  activeTexture: TEXTURE0.
+  Texture bound to TEXTURE0: Undefined.
   uParticleMode: False.
   Viewpoint-related properties (viewport, matrices, fog) are managed as a group by setViewTo*. They may be saved and restored using renderer.saveView.
   Vertex property arrays are managed as a group by RenderBundle and are otherwise undefined.
