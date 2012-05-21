@@ -58,6 +58,26 @@ var WorldRenderer = (function () {
     var gl = renderer.context;
     var config = renderer.config; // TODO eliminate need for this
     
+    // World properties cached and used by chunk calculation
+    var wx = world.wx;
+    var wy = world.wy;
+    var wz = world.wz;
+    var g = world.g;
+    var rawBlocks = world.raw;
+    var rawRotations = world.rawRotations;
+    var rawLighting = world.rawLighting;
+    var inBounds = world.inBounds;
+    var lightScale = world.lightScale;
+    var lightOutside = world.lightOutside;
+    
+    // Adjacent block index offsets
+    var adjnx = -wy*wz;
+    var adjpx = +wy*wz;
+    var adjny = -wz;
+    var adjpy = +wz;
+    var adjnz = -1;
+    var adjpz = +1;
+    
     // Table of all world rendering chunks which have RenderBundles created, indexed by [x,y,z] of the low-side coordinates (i.e. divisible by CHUNKSIZE).
     var chunks = new IntVectorMap();
 
@@ -469,21 +489,12 @@ var WorldRenderer = (function () {
     }
     
     function makeChunk(chunkKey) {
-      var wx = world.wx;
-      var wy = world.wy;
-      var wz = world.wz;
-      var rawBlocks = world.raw; // for efficiency
-      var rawRotations = world.rawRotations;
-      var rawLighting = world.rawLighting;
-      var inBounds = world.inBounds;
-      var lightScale = world.lightScale;
-      var lightOutside = world.lightOutside;
       var chunkOriginX = chunkKey[0];
       var chunkOriginY = chunkKey[1];
       var chunkOriginZ = chunkKey[2];
-      var chunkLimitX = Math.min(wx, chunkKey[0] + CHUNKSIZE);
-      var chunkLimitY = Math.min(wy, chunkKey[1] + CHUNKSIZE);
-      var chunkLimitZ = Math.min(wz, chunkKey[2] + CHUNKSIZE);
+      var chunkLimitX = Math.min(wx, chunkOriginX + CHUNKSIZE);
+      var chunkLimitY = Math.min(wy, chunkOriginY + CHUNKSIZE);
+      var chunkLimitZ = Math.min(wz, chunkOriginZ + CHUNKSIZE);
       var nonempty = true;
       var chunk = new renderer.RenderBundle(gl.TRIANGLES,
                                             function () { return renderData.texture; },
@@ -494,14 +505,6 @@ var WorldRenderer = (function () {
         var BOGUS_BLOCK_DATA = rotatedBlockFaceData.bogus;
         var types = renderData.types;
         var opaques = types.map(function (t) { return t.opaque; });
-        var g = world.g;
-
-        var adjnx = -wy*wz;
-        var adjpx = +wy*wz;
-        var adjny = -wz;
-        var adjpy = +wz;
-        var adjnz = -1;
-        var adjpz = +1;
         
         // these variables are used by face() and written by the loop
         var x,y,z;
