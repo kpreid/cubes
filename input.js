@@ -410,10 +410,17 @@ var Input;
     // --- Events for configurable controls ---
     
     var heldControls = {};
+    var commandState = {};
     var heldCommands = {};
     function resetHeldControls() {
       heldControls = {};
-      Object.keys(Input_.commands).forEach(function (k) { heldCommands[k] = 0; })
+      Object.keys(Input_.commands).forEach(function (k) { 
+        commandState[k] = {
+          command: commandFunctions[k],
+          controlCount: 0,
+          repeatPhase: 0
+        };
+      });
       evalHeldControls();
     }
     
@@ -507,6 +514,22 @@ var Input;
       ];
     }
     
+    function stepControlRepeat(timestep) {
+      for (var name in heldCommands) {
+        if (!heldCommands.hasOwnProperty(name)) continue;
+        var state = heldCommands[name];
+
+        var period = state.command.repeatPeriod;
+        if (typeof period !== "number") continue;
+        
+        state.repeatPhase += timestep;
+        while (state.repeatPhase > period) {
+          state.command.press();
+          state.repeatPhase -= period;
+        }
+      }
+    }
+    
     function controlPressHandler(event) {
       // avoid disturbing browser shortcuts
       if (event.altKey || event.ctrlKey || event.metaKey) return true;
@@ -517,19 +540,13 @@ var Input;
       if (command) {
         if (!heldControls.hasOwnProperty(control)) {
           command.press();
-          var interval;
-          if (typeof command.repeatPeriod_ms === "number") {
-            var interval = setInterval(function () {
-              // TODO: Run key repeats from main loop to sync with simulation, instead of this
-              command.press();
-            }, command.repeatPeriod_ms);
-          } else {
-            interval = null;
+          var state = commandState[command.name];
+          if (state.controlCount++ <= 0) {
+            heldControls[control] = true;
+            heldCommands[command.name] = state;
+            state.repeatPhase = -state.command.repeatDelay;
           }
-          
-          heldControls[control] = interval;
-          heldCommands[command.name]++;
-          //console.log("hold +", control, command.name, heldCommands[command.name]);
+          //console.log("hold +", control, command.name, commandState[command.name]);
           evalHeldControls();
         }
         
@@ -545,10 +562,12 @@ var Input;
       var command = controlMap[control];
       
       if (heldControls.hasOwnProperty(control)) {
-        if (heldControls[control]) clearInterval(heldControls[control]);
         delete heldControls[control];
-        heldCommands[command.name]--;
-        //console.log("hold -", control, command.name, heldCommands[command.name]);
+        var state = commandState[command.name];
+        if (--state.controlCount <= 0) {
+          delete heldCommands[command.name];
+        }
+        //console.log("hold -", control, command.name, commandState[command.name]);
         evalHeldControls();
         
         event.stopPropagation();
@@ -712,6 +731,8 @@ var Input;
       if (dx !== 0) {
         playerInput.yaw += dx*timestep;
       }
+      
+      stepControlRepeat(timestep);
     }
     
     // --- Interface modes ---
@@ -1027,17 +1048,18 @@ var Input;
   
   Input_.commands = {};
   Input_.defaultBindings = [];
-  function defcmd(name, label, bindings, repeat) {
+  function defcmd(name, label, bindings, repeat, rd) {
     Input_.commands[name] = {
       label: label,
-      repeatPeriod_ms: repeat
+      repeatPeriod: repeat,
+      repeatDelay: rd || 0
     }
     bindings.forEach(function (control) {
       Input_.defaultBindings.push([name, control])
     });
   }
-  defcmd("useTool"    , "Place block",  [["mouse", 1]], 250);
-  defcmd("deleteBlock", "Delete block", [["mouse", 0]], 250);
+  defcmd("useTool"    , "Place block",  [["mouse", 1]], 1/4); // TODO derive from movement speed
+  defcmd("deleteBlock", "Delete block", [["mouse", 0]], 1/4);
   defcmd("left"    , "Left"    , [["key", "A".charCodeAt(0)], ["key", 37]]);
   defcmd("right"   , "Right"   , [["key", "D".charCodeAt(0)], ["key", 39]]);
   defcmd("forward" , "Forward" , [["key", "W".charCodeAt(0)], ["key", 38]]);
@@ -1058,8 +1080,8 @@ var Input;
   defcmd("interfaceMode", "Mouselook"    , [["key", "Q".charCodeAt(0)]]);
   defcmd("enterWorld"   , "Edit block"   , [["key", "R".charCodeAt(0)]]);
   defcmd("exitWorld"    , "Exit editing" , [["key", "F".charCodeAt(0)], ["key", 0x1b]]);
-  defcmd("subdatumDec"  , "Subdatum −1"  , [["key", "Z".charCodeAt(0)]], 100);
-  defcmd("subdatumInc"  , "Subdatum +1"  , [["key", "X".charCodeAt(0)]], 100);
+  defcmd("subdatumDec"  , "Subdatum −1"  , [["key", "Z".charCodeAt(0)]], 1/20, 1/4);
+  defcmd("subdatumInc"  , "Subdatum +1"  , [["key", "X".charCodeAt(0)]], 1/20, 1/4);
   defcmd("editBlockset" , "Edit blockset", [["key", "B".charCodeAt(0)]]);
   Object.freeze(Input_.commands);
   Object.freeze(Input_.defaultBindings); // should be recursive
