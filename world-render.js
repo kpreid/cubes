@@ -80,6 +80,8 @@ var WorldRenderer = (function () {
     
     // Table of all world rendering chunks which have RenderBundles created, indexed by [x,y,z] of the low-side coordinates (i.e. divisible by CHUNKSIZE).
     var chunks = new IntVectorMap();
+    
+    var nonemptyChunks = new IntVectorMap();
 
     function compareByPlayerDistance(a,b) {
       return dist3sq(a, playerChunk) - dist3sq(b, playerChunk);
@@ -183,6 +185,7 @@ var WorldRenderer = (function () {
       });
       
       chunks = new IntVectorMap();
+      nonemptyChunks = new IntVectorMap();
       circuitRenderers = new IntVectorMap();
       dirtyChunks.clear();
       addChunks.clear();
@@ -226,7 +229,7 @@ var WorldRenderer = (function () {
       world.listen.cancel(listenerWorld);
       blockSet.listen.cancel(listenerBlockset);
       config.renderDistance.listen.cancel(listenerRenderDistance);
-      world = blockSet = chunks = dirtyChunks = addChunks = textureDebugR = null;
+      world = blockSet = chunks = nonemptyChunks = dirtyChunks = addChunks = textureDebugR = null;
     };
     function isAlive() {
       // Are we still interested in notifications etc?
@@ -359,6 +362,7 @@ var WorldRenderer = (function () {
           if (dist3sq(chunkKey, playerChunk) > dds) {
             chunk.deleteResources();
             chunks.delete(chunkKey);
+            nonemptyChunks.delete(chunkKey);
           }
         });
         
@@ -426,7 +430,7 @@ var WorldRenderer = (function () {
     function draw() {
       // Draw chunks.
       renderer.setTileSize(blockSet.tileSize);
-      chunks.forEach(function (chunk) {
+      nonemptyChunks.forEach(function (chunk) {
         if (renderer.aabbInView(chunk.aabb))
           chunk.draw();
       });
@@ -495,7 +499,7 @@ var WorldRenderer = (function () {
       var chunkLimitX = Math.min(wx, chunkOriginX + CHUNKSIZE);
       var chunkLimitY = Math.min(wy, chunkOriginY + CHUNKSIZE);
       var chunkLimitZ = Math.min(wz, chunkOriginZ + CHUNKSIZE);
-      var nonempty = true;
+      var nonempty = false;
       var chunk = new renderer.RenderBundle(gl.TRIANGLES,
                                             function () { return renderData.texture; },
                                             function (vertices, normals, texcoords) {
@@ -565,13 +569,21 @@ var WorldRenderer = (function () {
           face(rot.py, faceData.hy, adjpy);
           face(rot.pz, faceData.hz, adjpz);
         }
+        var wasNonempty = nonempty;
         nonempty = vertices.length > 0;
-        measuring.chunk.end();
-      }, {
-        aroundDraw: function (draw) {
-          if (nonempty) draw();
+        if (nonempty !== wasNonempty) {
+          if (nonempty) {
+            nonemptyChunks.set(chunkKey, chunk);
+          } else {
+            nonemptyChunks.delete(chunkKey);
+          }
         }
+        measuring.chunk.end();
       });
+      
+      // This is needed because when the calc function is first called by constructing the RenderBundle, 'chunk' has not yet been assigned.
+      if (nonempty)
+        nonemptyChunks.set(chunkKey, chunk);
       
       chunk.aabb = new AAB(
         chunkOriginX, chunkLimitX,
