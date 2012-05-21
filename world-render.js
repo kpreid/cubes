@@ -450,9 +450,9 @@ var WorldRenderer = (function () {
     var renderData; // updated as needed by chunk recalculate
 
     // returns whether no work was done
-    function calcChunk(xzkey) {
+    function calcChunk(chunkKey) {
       // This would call scheduleDraw() to render the revised chunks, except that calcChunk is only called within a draw. Therefore, the calls are commented out (to be reenabled if the architecture changes).
-      var c = chunks.get(xzkey);
+      var c = chunks.get(chunkKey);
       if (c) {
         if (c.dirtyChunk) {
           c.dirtyChunk = false;
@@ -463,117 +463,120 @@ var WorldRenderer = (function () {
           return true;
         }
       } else {
-        var wx = world.wx;
-        var wy = world.wy;
-        var wz = world.wz;
-        var rawBlocks = world.raw; // for efficiency
-        var rawRotations = world.rawRotations;
-        var rawLighting = world.rawLighting;
-        var inBounds = world.inBounds;
-        var lightScale = world.lightScale;
-        var lightOutside = world.lightOutside;
-        var chunkOriginX = xzkey[0];
-        var chunkOriginY = xzkey[1];
-        var chunkOriginZ = xzkey[2];
-        var chunkLimitX = Math.min(wx, xzkey[0] + CHUNKSIZE);
-        var chunkLimitY = Math.min(wy, xzkey[1] + CHUNKSIZE);
-        var chunkLimitZ = Math.min(wz, xzkey[2] + CHUNKSIZE);
-        var nonempty = true;
-        var chunk = new renderer.RenderBundle(gl.TRIANGLES,
-                                              function () { return renderData.texture; },
-                                              function (vertices, normals, texcoords) {
-          measuring.chunk.start();
-          renderData = blockSet.getRenderData(renderer);
-          var rotatedBlockFaceData = renderData.rotatedBlockFaceData;
-          var BOGUS_BLOCK_DATA = rotatedBlockFaceData.bogus;
-          var types = renderData.types;
-          var opaques = types.map(function (t) { return t.opaque; });
-          var g = world.g;
-
-          var adjnx = -wy*wz;
-          var adjpx = +wy*wz;
-          var adjny = -wz;
-          var adjpy = +wz;
-          var adjnz = -1;
-          var adjpz = +1;
-          
-          // these variables are used by face() and written by the loop
-          var x,y,z;
-          var thisOpaque;
-          var rawIndex;
-          var isAtBounds;
-          
-          function face(vFacing, data, lightingOffsetIndex) {
-            var fx = vFacing[0]; var xfx = x + fx;
-            var fy = vFacing[1]; var yfy = y + fy;
-            var fz = vFacing[2]; var zfz = z + fz;
-            // TODO between the g() and the inBounds() we're testing the neighbor twice
-            if (thisOpaque && opaques[g(xfx,yfy,zfz)]) {
-              // this face is invisible
-              return;
-            } else {
-              var faceVertices = data.vertices;
-              var faceTexcoords = data.texcoords;
-              var vl = faceVertices.length / 3;
-              for (var i = 0; i < vl; i++) {
-                var vi = i*3;
-                var ti = i*2;
-                vertices.push(faceVertices[vi  ]+x,
-                              faceVertices[vi+1]+y,
-                              faceVertices[vi+2]+z);
-                texcoords.push(faceTexcoords[ti], faceTexcoords[ti+1]);
-                var lightValue =
-                    !thisOpaque ? rawLighting[rawIndex] :
-                    (isAtBounds && !inBounds(xfx,yfy,zfz)) ? lightOutside :
-                    rawLighting[rawIndex+lightingOffsetIndex];
-                var light = Math.max(.01, lightValue * lightScale);
-                // the max is because a zero normal is special -- TODO kludge
-                normals.push(light*fx, light*fy, light*fz);
-              }
-            }
-          }
-          
-          for (x = chunkOriginX; x < chunkLimitX; x++)
-          for (y = chunkOriginY; y < chunkLimitY; y++)
-          for (z = chunkOriginZ; z < chunkLimitZ; z++) {
-            isAtBounds = x === chunkOriginX || x === chunkLimitX - 1 || y === 0 || y === wy - 1 || z === chunkOriginZ || z === chunkLimitZ - 1;
-            // raw array access inlined and simplified for efficiency
-            rawIndex = (x*wy+y)*wz+z;
-            var value = rawBlocks[rawIndex];
-            if (value === ID_EMPTY) continue;
-
-            var rotIndex = rawRotations[rawIndex];
-            var rot = rotationsByCode[rotIndex];
-            var btype = types[value];
-            var faceData = (rotatedBlockFaceData[value] || BOGUS_BLOCK_DATA)[rotIndex];
-            thisOpaque = opaques[value];
-
-            // TODO: Uses the wrong lighting adj* for rotated blocks
-            face(rot.nx, faceData.lx, adjnx);
-            face(rot.ny, faceData.ly, adjny);
-            face(rot.nz, faceData.lz, adjnz);
-            face(rot.px, faceData.hx, adjpx);
-            face(rot.py, faceData.hy, adjpy);
-            face(rot.pz, faceData.hz, adjpz);
-          }
-          nonempty = vertices.length > 0;
-          measuring.chunk.end();
-        }, {
-          aroundDraw: function (draw) {
-            if (nonempty) draw();
-          }
-        });
-        
-        chunk.aabb = new AAB(
-          chunkOriginX, chunkLimitX,
-          chunkOriginY, chunkLimitY,
-          chunkOriginZ, chunkLimitZ
-        );
-        
-        chunks.set(xzkey, chunk);
-        
+        chunks.set(chunkKey, makeChunk(chunkKey));
         return false;
       }
+    }
+    
+    function makeChunk(chunkKey) {
+      var wx = world.wx;
+      var wy = world.wy;
+      var wz = world.wz;
+      var rawBlocks = world.raw; // for efficiency
+      var rawRotations = world.rawRotations;
+      var rawLighting = world.rawLighting;
+      var inBounds = world.inBounds;
+      var lightScale = world.lightScale;
+      var lightOutside = world.lightOutside;
+      var chunkOriginX = chunkKey[0];
+      var chunkOriginY = chunkKey[1];
+      var chunkOriginZ = chunkKey[2];
+      var chunkLimitX = Math.min(wx, chunkKey[0] + CHUNKSIZE);
+      var chunkLimitY = Math.min(wy, chunkKey[1] + CHUNKSIZE);
+      var chunkLimitZ = Math.min(wz, chunkKey[2] + CHUNKSIZE);
+      var nonempty = true;
+      var chunk = new renderer.RenderBundle(gl.TRIANGLES,
+                                            function () { return renderData.texture; },
+                                            function (vertices, normals, texcoords) {
+        measuring.chunk.start();
+        renderData = blockSet.getRenderData(renderer);
+        var rotatedBlockFaceData = renderData.rotatedBlockFaceData;
+        var BOGUS_BLOCK_DATA = rotatedBlockFaceData.bogus;
+        var types = renderData.types;
+        var opaques = types.map(function (t) { return t.opaque; });
+        var g = world.g;
+
+        var adjnx = -wy*wz;
+        var adjpx = +wy*wz;
+        var adjny = -wz;
+        var adjpy = +wz;
+        var adjnz = -1;
+        var adjpz = +1;
+        
+        // these variables are used by face() and written by the loop
+        var x,y,z;
+        var thisOpaque;
+        var rawIndex;
+        var isAtBounds;
+        
+        function face(vFacing, data, lightingOffsetIndex) {
+          var fx = vFacing[0]; var xfx = x + fx;
+          var fy = vFacing[1]; var yfy = y + fy;
+          var fz = vFacing[2]; var zfz = z + fz;
+          // TODO between the g() and the inBounds() we're testing the neighbor twice
+          if (thisOpaque && opaques[g(xfx,yfy,zfz)]) {
+            // this face is invisible
+            return;
+          } else {
+            var faceVertices = data.vertices;
+            var faceTexcoords = data.texcoords;
+            var vl = faceVertices.length / 3;
+            for (var i = 0; i < vl; i++) {
+              var vi = i*3;
+              var ti = i*2;
+              vertices.push(faceVertices[vi  ]+x,
+                            faceVertices[vi+1]+y,
+                            faceVertices[vi+2]+z);
+              texcoords.push(faceTexcoords[ti], faceTexcoords[ti+1]);
+              var lightValue =
+                  !thisOpaque ? rawLighting[rawIndex] :
+                  (isAtBounds && !inBounds(xfx,yfy,zfz)) ? lightOutside :
+                  rawLighting[rawIndex+lightingOffsetIndex];
+              var light = Math.max(.01, lightValue * lightScale);
+              // the max is because a zero normal is special -- TODO kludge
+              normals.push(light*fx, light*fy, light*fz);
+            }
+          }
+        }
+        
+        for (x = chunkOriginX; x < chunkLimitX; x++)
+        for (y = chunkOriginY; y < chunkLimitY; y++)
+        for (z = chunkOriginZ; z < chunkLimitZ; z++) {
+          isAtBounds = x === chunkOriginX || x === chunkLimitX - 1 || y === 0 || y === wy - 1 || z === chunkOriginZ || z === chunkLimitZ - 1;
+          // raw array access inlined and simplified for efficiency
+          rawIndex = (x*wy+y)*wz+z;
+          var value = rawBlocks[rawIndex];
+          if (value === ID_EMPTY) continue;
+
+          var rotIndex = rawRotations[rawIndex];
+          var rot = rotationsByCode[rotIndex];
+          var btype = types[value];
+          var faceData = (rotatedBlockFaceData[value] || BOGUS_BLOCK_DATA)[rotIndex];
+          thisOpaque = opaques[value];
+
+          // TODO: Uses the wrong lighting adj* for rotated blocks
+          face(rot.nx, faceData.lx, adjnx);
+          face(rot.ny, faceData.ly, adjny);
+          face(rot.nz, faceData.lz, adjnz);
+          face(rot.px, faceData.hx, adjpx);
+          face(rot.py, faceData.hy, adjpy);
+          face(rot.pz, faceData.hz, adjpz);
+        }
+        nonempty = vertices.length > 0;
+        measuring.chunk.end();
+      }, {
+        aroundDraw: function (draw) {
+          if (nonempty) draw();
+        }
+      });
+      
+      chunk.aabb = new AAB(
+        chunkOriginX, chunkLimitX,
+        chunkOriginY, chunkLimitY,
+        chunkOriginZ, chunkLimitZ
+      );
+      
+      return chunk;
     }
     
     var CYL_RESOLUTION = 9;
