@@ -34,6 +34,7 @@ var CubesMain = (function () {
       defineOption("renderDistance", "number", 100);
       defineOption("mouseTurnRate", "number", 4); // radians/second/half-screen-width
       defineOption("lighting", "boolean", true);
+      defineOption("smoothLighting", "boolean", true);
       defineOption("bumpMapping", "boolean", true);
       defineOption("fsaa", "boolean", false);
       defineOption("cubeParticles", "boolean", false);

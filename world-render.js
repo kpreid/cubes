@@ -6,7 +6,7 @@ var WorldRenderer = (function () {
   
   // The side length of the chunks the world is broken into for rendering.
   // Smaller chunks are faster to update when the world changes, but have a higher per-frame cost.
-  var LIGHT_TEXTURE_SIZE = 32; // must be power of 2
+  var LIGHT_TEXTURE_SIZE = 16; // must be power of 2
   var CHUNKSIZE = LIGHT_TEXTURE_SIZE - 2;
   
   // 3D Euclidean distance, squared (for efficiency).

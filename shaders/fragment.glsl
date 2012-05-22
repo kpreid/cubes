@@ -37,8 +37,45 @@ vec4 sliceTexture3D(sampler2D sampler, vec3 coord) {
   return texture2D(uLightSampler, textureCoord);
 }
 
+const float lin_lo = -0.5;
+const float lin_hi = +0.5;
+vec4 sliceTexture3DLinBase(sampler2D sampler, vec3 coord) {
+  vec4 v = sliceTexture3D(sampler, coord);
+  // TODO distinguish "invalid" (inside block) from "zero light" by using more than a luminance texture
+  // TODO Fix light leaks through a diagonal edge/corner by discarding the opposite corner across an invalid diagonal
+
+  // We stuff amount-of-valid-samples in the alpha channel, and then divide by that at the end (in sliceTexture3DBilinear).
+  v.a = (v.r == 0.0) ? 0.0 : 1.0;
+  return v;
+}
+vec4 sliceTexture3DLinear(sampler2D sampler, vec3 coord, vec3 terp) {
+  return mix(sliceTexture3DLinBase(sampler, coord + lin_lo * terp),
+             sliceTexture3DLinBase(sampler, coord + lin_hi * terp),
+             mod(dot(coord, terp) - 0.5, 1.0));
+}
+vec4 sliceTexture3DBilinear(sampler2D sampler, vec3 coord, vec3 terp1, vec3 terp2) {
+  vec4 v = mix(sliceTexture3DLinear(sampler, coord + lin_lo * terp1, terp2),
+               sliceTexture3DLinear(sampler, coord + lin_hi * terp1, terp2),
+               mod(dot(coord, terp1) - 0.5, 1.0));
+  return v.a == 0.0 ? vec4(0.0) : v / v.a;
+}
+
 float lighting() {
-  float scalarLight = sliceTexture3D(uLightSampler, vGridPosition + vNormal * 0.1).r * 4.0/*TODO magic number */;
+  vec3 textureLookupPoint = vGridPosition + vNormal * 0.1;
+#if SMOOTH_LIGHTING
+  vec3 perp1, perp2;
+  if (vNormal.x != 0.0) {
+    perp1 = vec3(0.0, 1.0, 0.0);
+    perp2 = vec3(0.0, 0.0, 1.0);
+  } else {
+    perp1 = vec3(1.0, 0.0, 0.0);
+    perp2 = normalize(abs(cross(perp1, vNormal)));
+  }
+  vec4 textureValue = sliceTexture3DBilinear(uLightSampler, textureLookupPoint, perp1, perp2);
+#else
+  vec4 textureValue = sliceTexture3D(uLightSampler, textureLookupPoint);
+#endif
+  float scalarLight = textureValue.r * 4.0/*TODO magic number */;
   // 'cell' is a vector with components in [-1.0, 1.0] indicating this point's
   // offset from the center of its sub-cube
   vec3 normal;

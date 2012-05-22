@@ -86,6 +86,7 @@ var Renderer = (function () {
       
       var decls = {
         LIGHTING: config.lighting.get(),
+        SMOOTH_LIGHTING: config.smoothLighting.get(),
         BUMP_MAPPING: config.bumpMapping.get(),
         CUBE_PARTICLES: config.cubeParticles.get(),
         LIGHT_TEXTURE_SIZE: WorldRenderer.LIGHT_TEXTURE_SIZE
@@ -284,6 +285,7 @@ var Renderer = (function () {
       scheduleDraw();
     }};
     config.lighting.listen(rebuildProgramL);
+    config.smoothLighting.listen(rebuildProgramL);
     config.bumpMapping.listen(rebuildProgramL);
     config.cubeParticles.listen(rebuildProgramL);
     config.fov.listen(projectionL);
