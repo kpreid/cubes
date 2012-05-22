@@ -2,15 +2,17 @@ const float cModEpsilon = 1e-20;
 const float cTileCurvature = 0.2;
 const float cTileBumpDistance = 2.0;
 
-const float cLightAmbient = 0.75;
+const float cLightAmbient = 0.875;
+const float cLightDirectional = 0.5;
 const vec3 cLight1Dir = vec3(0.4,-0.1,0);
 const vec3 cLight2Dir = vec3(-0.4,0.35,0.25);
 
 const vec4 luminanceCoeff = vec4(0.2126, 0.7152, 0.0722, 0);
 
-// What is the illumination from the given (unit vector) direction?
+// Simple directional lighting used to give corners definition.
 float lightEnv(vec3 dir) {
-  return max(0.0, dot(cLight1Dir, dir)) + max(0.0, dot(cLight2Dir, dir));
+  return cLightAmbient + cLightDirectional * (max(0.0, dot(cLight1Dir, dir)) +
+                                              max(0.0, dot(cLight2Dir, dir)));
 }
 
 // Componentwise x^7. pow() is unsuitable for negative arguments.
@@ -61,8 +63,17 @@ vec4 sliceTexture3DBilinear(sampler2D sampler, vec3 coord, vec3 terp1, vec3 terp
 }
 
 float lighting() {
-  vec3 textureLookupPoint = vGridPosition + vNormal * 0.1;
+#if BUMP_MAPPING
+  // 'cell' is a vector with components in [-1.0, 1.0] indicating this point's
+  // offset from the center of its sub-cube
+  vec3 cell = (mod(vGridPosition * uTileSize + cModEpsilon, 1.0) - vec3(0.5)) * 2.0;
+  vec3 bump = cTileCurvature / max(1.0, vDistanceFromEye / cTileBumpDistance) * pow7vec3(cell);
+#else
+  vec3 bump = vec3(0.0);
+#endif
+  
 #if SMOOTH_LIGHTING
+  vec3 textureLookupPoint = vGridPosition + 0.1*vNormal + 0.4*bump;
   vec3 perp1, perp2;
   if (vNormal.x != 0.0) {
     perp1 = vec3(0.0, 1.0, 0.0);
@@ -73,19 +84,12 @@ float lighting() {
   }
   vec4 textureValue = sliceTexture3DBilinear(uLightSampler, textureLookupPoint, perp1, perp2);
 #else
+  vec3 textureLookupPoint = vGridPosition + 0.1*vNormal;
   vec4 textureValue = sliceTexture3D(uLightSampler, textureLookupPoint);
 #endif
-  float scalarLight = textureValue.r * 4.0/*TODO magic number */;
-  // 'cell' is a vector with components in [-1.0, 1.0] indicating this point's
-  // offset from the center of its sub-cube
-  vec3 normal;
-#if BUMP_MAPPING
-    vec3 cell = (mod(vGridPosition * uTileSize + cModEpsilon, 1.0) - vec3(0.5)) * 2.0;
-    normal = normalize(vNormal + cTileCurvature / max(1.0, vDistanceFromEye / cTileBumpDistance) * pow7vec3(cell));
-#else
-    normal = vNormal;
-#endif
-  return scalarLight * (cLightAmbient + lightEnv(normal));
+  float localLight = textureValue.r * 4.0/*TODO magic number */;
+  
+  return localLight * lightEnv(normalize(vNormal + bump));
 }
 
 float whiteNoise() {
