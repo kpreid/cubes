@@ -1001,8 +1001,26 @@ function generateWorlds(config, blockset) {
       break;
   }
   
-  // circuit test;
+  // initialize lighting approximately
+  (function () {
+    var lighting = topWorld.rawLighting;
+    var blocks = topWorld.raw;
+    var opaques = topWorld.blockSet.getAll().map(function (t) { return t.opaque; });
+    var initial = topWorld.lightOutside;
+    for (var x = 0; x < wx; x++)
+    for (var z = 0; z < wz; z++) {
+      var shade = initial;
+      for (var y = wy - 1; y >= 0; y--) {
+        var index = ((x * wy) + y) * wz + z;
+        if (opaques[blocks[index]]) {
+          shade = 0;
+        }
+        lighting[index] = shade;
+      }
+    }
+  }());
   
+  // circuit test
   (function () {
     var x = Math.floor(182/400*wx), y = Math.floor(wy/2)+3, z = Math.floor(191/400*wx);
     var constant = blockset.lookup("logic.constant");

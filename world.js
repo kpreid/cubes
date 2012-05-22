@@ -33,9 +33,6 @@ var World = (function () {
     }
   }());
   
-  // typical value a well-lit surface works out to in practice
-  var LIGHT_INITIAL_GUESS = LIGHT_SKY - 1;
-  
   function isCircuitPart(type) {
     return !!type.behavior;
   }
@@ -71,11 +68,10 @@ var World = (function () {
     // Persistent data arrays.
     var blocks = new Uint8Array(cubeCount);
     var subData = new Uint8Array(cubeCount);
+    var lighting = new Uint8Array(cubeCount);
     
     // Computed data arrays.
     var rotations = new Uint8Array(cubeCount);
-    var lighting = new Uint8Array(cubeCount);
-    for (var i = lighting.length - 1; i >= 0; i--) lighting[i] = LIGHT_SKY/2; // better initial value than 0
     
     // Maps from cube to its circuit object if any
     var blockCircuits = new IntVectorMap();
@@ -426,7 +422,6 @@ var World = (function () {
       blockCircuits = new IntVectorMap(); // TODO clear op instead of replacing objects?
       circuits = new IntVectorMap();
       var types = blockSet.getAll();
-      var opaques = types.map(function (t) { return t.opaque; });
       var vec = [0,0,0];
       for (var x = 0; x < wx; x++) {
         vec[0] = x;
@@ -457,19 +452,6 @@ var World = (function () {
               floodCircuit(circuit, vec);
             }
           }
-        }
-      }
-      
-      // Initialize lighting to something sane
-      for (var x = 0; x < wx; x++)
-      for (var z = 0; z < wz; z++) {
-        var shade = LIGHT_INITIAL_GUESS;
-        for (var y = wy - 1; y >= 0; y--) {
-          var index = ((x * wy) + y) * wz + z;
-          if (opaques[blocks[index]]) {
-            shade = 0;
-          }
-          lighting[index] = shade;
         }
       }
     }
@@ -608,6 +590,7 @@ var World = (function () {
       }
       
       var updateCount = 0;
+      var dirtied = false;
       while ((here = lightingUpdateQueue.dequeue()) && updateCount++ < 120) {
         
         var x = here[0];
@@ -654,6 +637,7 @@ var World = (function () {
       
         if (oldStoredValue !== newStoredValue) {
           lighting[index] = newStoredValue;
+          dirtied = true;
           notifier.notify("dirtyBlock", here);
         
           if (lightingUpdateQueue.size() < MAX_LIGHTING_QUEUE) {
@@ -668,6 +652,7 @@ var World = (function () {
       }
       
       measuring.lightUpdateCount.inc(updateCount);
+      if (dirtied) self.persistence.dirty();
     }
     
     // for use by bodies only
@@ -722,7 +707,8 @@ var World = (function () {
         blockSet: subSerialize(blockSet),
         blockCodeBase: RLE_BASE,
         blocks: rleBytes(blocks),
-        subData: rleBytes(subData)
+        subData: rleBytes(subData),
+        lightCache: rleBytes(lighting)
       };
       subSerialize.setUnserializer(json, World);
       return json;
@@ -804,6 +790,7 @@ var World = (function () {
     var str = json.blocks;
     unrleBytes(json.blocks, world.raw);
     unrleBytes(json.subData, world.rawSubData);
+    unrleBytes(json.lightCache, world.rawLighting);
     world.notifyRawEdit();
     return world;
   }
