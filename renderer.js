@@ -668,7 +668,7 @@ var Renderer = (function () {
       return geometry;
     }
     
-    function BlockParticles(location, tileSize, blockType, destroyMode, symm) {
+    function BlockParticles(location, tileSize, blockType, destroyMode, symm, lightTexture) {
       var blockWorld = blockType.world;
       var k = 2;
       var colorbuf = [0,0,0,0];
@@ -680,6 +680,7 @@ var Renderer = (function () {
         for (var y = 0; y < tileSize; y++)
         for (var z = 0; z < tileSize; z++) {
           if (!destroyMode) {
+            // TODO: creation particles should have emissive, not reflective light so they are not dark in dark areas
             if (x < k || x >= tileSize-k ||
                 y < k || y >= tileSize-k ||
                 z < k || z >= tileSize-k) {
@@ -706,18 +707,14 @@ var Renderer = (function () {
           sendAllUniforms();
           gl.uniform1i(uniforms.uParticleExplode, destroyMode ? 1 : 0);
           gl.uniform1f(uniforms.uParticleInterp, t());
+          gl.uniform3fv(uniforms.uParticleSystemPosition, location);
+          setLightTexture(lightTexture);
           
           geometry.subcubes.attrib(attribs.aParticleSubcube);
           gl.enableVertexAttribArray(attribs.aParticleSubcube);
           
-            var matrix = mat4.create(mvMatrix);
-            mat4.translate(matrix, location);
-            gl.uniformMatrix4fv(uniforms.uMVMatrix, false, matrix);
-              
-              draw();
-              
-            gl.uniformMatrix4fv(uniforms.uMVMatrix, false, mvMatrix);
-            
+          draw();
+          
           gl.disableVertexAttribArray(attribs.aParticleSubcube);
           switchProgram(blockProgramSetup);
         }

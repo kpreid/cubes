@@ -237,7 +237,18 @@ var WorldRenderer = (function () {
              y >= 0 && y - CHUNKSIZE < world.wy &&
              z >= 0 && z - CHUNKSIZE < world.wz;
     }
-
+    
+    function chunkContaining(cube) {
+      var x = cube[0];
+      var y = cube[1];
+      var z = cube[2];
+      return chunks.get([
+        x - mod(x, CHUNKSIZE),
+        y - mod(y, CHUNKSIZE),
+        z - mod(z, CHUNKSIZE)
+      ]);
+    }
+    
     // x,z must be multiples of CHUNKSIZE
     function setDirtyChunk(x, y, z) {
       var k = [x, y, z];
@@ -397,23 +408,25 @@ var WorldRenderer = (function () {
     }
     this.updateSomeChunks = updateSomeChunks;
 
-    function renderDestroyBlock(block) {
+    function renderDestroyBlock(cube) {
       particles.push(new renderer.BlockParticles(
-        block,
+        cube,
         tileSize,
-        world.gtv(block),
+        world.gtv(cube),
         true,
-        world.gRotv(block)));
+        world.gRotv(cube),
+        (chunkContaining(cube) || {}).getLightTexture()));
     }
     this.renderDestroyBlock = renderDestroyBlock;
 
-    function renderCreateBlock(block) {
+    function renderCreateBlock(cube) {
       particles.push(new renderer.BlockParticles(
-        block,
+        cube,
         tileSize,
-        world.gtv(block),
+        world.gtv(cube),
         false,
-        world.gRotv(block)));
+        world.gRotv(cube),
+        (chunkContaining(cube) || {}).getLightTexture()));
     }
     this.renderCreateBlock = renderCreateBlock;
     
@@ -625,6 +638,8 @@ var WorldRenderer = (function () {
         chunkOriginY, chunkLimitY,
         chunkOriginZ, chunkLimitZ
       );
+      
+      chunk.getLightTexture = function () { return lightTexture; };
       
       return chunk;
     }
