@@ -60,7 +60,6 @@ var Renderer = (function () {
     var exposure = 1.0;
     var tileSize = 1;
     var focusCue = false;
-    var currentTexture = undefined; // undefined=unknown/invalid, null=none, or texture
 
     // Shader programs, and attrib and uniform locations
     var blockProgramSetup = null;
@@ -108,7 +107,6 @@ var Renderer = (function () {
       gl.useProgram(newP.program);
       attribs = newP.attribs;
       uniforms = newP.uniforms;
-      currentTexture = undefined;
     }
     
     function initContext() {
@@ -437,9 +435,6 @@ var Renderer = (function () {
     this.setLineWidth = setLineWidth;
     
     function setTexture(texture) {
-      if (currentTexture === texture) return;
-      currentTexture = texture;
-      
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, texture);
       gl.uniform1i(uniforms.uSampler, 0);
@@ -450,9 +445,6 @@ var Renderer = (function () {
     //this.setTexture = setTexture; // currently used only inside RenderBundle
     
     function unsetTexture() {
-      if (currentTexture === null) return;
-      currentTexture = null;
-      
       gl.disableVertexAttribArray(permanentAttribs.aTextureCoord);
       gl.enableVertexAttribArray(permanentAttribs.aVertexColor);
     }
