@@ -287,7 +287,7 @@ var CubesMain = (function () {
     setInterval(function () {
       measuring.second.end();
       measuring.second.start();
-      measureDisplay.updateIfVisible();
+      if (measureDisplay) measureDisplay.updateIfVisible();
     }, 1000);
     
     var t0 = undefined;
