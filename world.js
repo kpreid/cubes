@@ -554,6 +554,7 @@ var World = (function () {
       var pt1 = vec3.create();
       var pt2 = vec3.create();
       var types = blockSet.getAll();
+      var opaques = types.map(function (t) { return t.opaque; });
       var here;
       
       // hoisted here so that it is only created once
@@ -564,7 +565,7 @@ var World = (function () {
           return false;
         }
         var type = types[id];
-        if (!type.opaque) {
+        if (!opaques[id]) {
           // TODO: implement attenuation and blocks with some opaque faces.
           incomingLight += type.light/LIGHT_SCALE;
           rayHits.push([rx,ry,rz]);
@@ -601,36 +602,41 @@ var World = (function () {
           continue;
       
         var index = x*wy*wz + y*wz + z;
-        var thisOccupied = blocks[index];
+        var thisBlock = blocks[index];
       
         var incomingLight = 0;
         var rayHits = [];
         var totalRays = 0;
-        for (var raySetI = lightRays.length - 1; raySetI >= 0; raySetI--) {
-          var raySetData = lightRays[raySetI];
-          
-          // If this is empty space, then...
-          if (!thisOccupied) {
-            // Cast rays only from adjacent opaque surfaces
-            var reflectFace = raySetData.reflectFace;
-            if (!types[g(x+reflectFace[0], y+reflectFace[1], z+reflectFace[2])].opaque)
-              continue;
-          }
-          
-          var rays = raySetData.rays;
-          for (var rayi = rays.length - 1; rayi >= 0; rayi--) {
-            var rayData = rays[rayi];
-            vec3.add(here, rayData[0], pt1);
-            vec3.add(here, rayData[1], pt2);
-            var found = false;
-            raycast(pt1, pt2, 30/*TODO magic number */, rayCallback);
-            if (!found) {
-              incomingLight += LIGHT_SKY;
+        if (opaques[thisBlock]) {
+          // Opaque blocks are always dark inside
+          totalRays = 1;
+        } else {
+          for (var raySetI = lightRays.length - 1; raySetI >= 0; raySetI--)   {
+            var raySetData = lightRays[raySetI];
+            
+            // If this is empty space, then...
+            if (!thisBlock) {
+              // Cast rays only from adjacent surfaces
+              var reflectFace = raySetData.reflectFace;
+              if (!g(x+reflectFace[0], y+reflectFace[1], z+reflectFace[2])) // TODO perhaps use reflectance or anything but "nonzero id"
+                continue;
             }
-            totalRays++;
+            
+            var rays = raySetData.rays;
+            for (var rayi = rays.length - 1; rayi >= 0; rayi--) {
+              var rayData = rays[rayi];
+              vec3.add(here, rayData[0], pt1);
+              vec3.add(here, rayData[1], pt2);
+              var found = false;
+              raycast(pt1, pt2, 30/*TODO magic number */, rayCallback);
+              if (!found) {
+                incomingLight += LIGHT_SKY;
+              }
+              totalRays++;
+            }
           }
         }
-        var newSample = incomingLight / totalRays;
+        var newSample = incomingLight / (totalRays || 1);
         var oldStoredValue = lighting[index];
         var newValue = newSample /* 0.75 * oldStoredValue + 0.25 * newSample -- old for softening randomization */;
         var newStoredValue = Math.round(Math.min(LIGHT_MAX, newValue));
