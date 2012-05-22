@@ -20,6 +20,7 @@ uniform bool uTextureEnabled;
 uniform sampler2D uSampler;
 uniform samplerCube uSkySampler;
 uniform sampler2D uNoiseSampler;
+uniform sampler2D uLightSampler;
 uniform float uTileSize; // always integer, but used as float
 
 // Global rendering properties

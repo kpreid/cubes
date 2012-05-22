@@ -26,14 +26,25 @@ vec3 spill(vec3 v) {
   return mix(clamp(v, 0.0, 1.0), vec3(1.0), clamp(over, 0.0, 1.0));
 }
 
+vec4 sliceTexture3D(sampler2D sampler, vec3 coord) {
+  ivec3 gridCell = ivec3(floor(mod(coord, vec3(float(LIGHT_TEXTURE_SIZE)))));
+  ivec2 textureIndex = ivec2(
+    gridCell.z,
+    gridCell.x * LIGHT_TEXTURE_SIZE + gridCell.y
+  );
+  vec2 textureCoord = (vec2(textureIndex) + vec2(0.5)) / vec2(float(LIGHT_TEXTURE_SIZE), float(LIGHT_TEXTURE_SIZE*LIGHT_TEXTURE_SIZE));
+  
+  return texture2D(uLightSampler, textureCoord);
+}
+
 float lighting() {
-  float scalarLight = length(vNormal);
+  float scalarLight = sliceTexture3D(uLightSampler, vGridPosition + vNormal * 0.1).r * 4.0/*TODO magic number */;
   // 'cell' is a vector with components in [-1.0, 1.0] indicating this point's
   // offset from the center of its sub-cube
   vec3 normal;
 #if BUMP_MAPPING
     vec3 cell = (mod(vGridPosition * uTileSize + cModEpsilon, 1.0) - vec3(0.5)) * 2.0;
-    normal = normalize(vNormal/scalarLight + cTileCurvature / max(1.0, vDistanceFromEye / cTileBumpDistance) * pow7vec3(cell));
+    normal = normalize(vNormal + cTileCurvature / max(1.0, vDistanceFromEye / cTileBumpDistance) * pow7vec3(cell));
 #else
     normal = vNormal;
 #endif

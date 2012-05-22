@@ -20,6 +20,7 @@ This is what you can assume/should do:
   Texture 0: RenderBundle-associated texture
   Texture 1: Skybox
   Texture 2: Luminance white noise
+  Texture 3: Local lighting
 */
 
 var Renderer = (function () {
@@ -86,7 +87,8 @@ var Renderer = (function () {
       var decls = {
         LIGHTING: config.lighting.get(),
         BUMP_MAPPING: config.bumpMapping.get(),
-        CUBE_PARTICLES: config.cubeParticles.get()
+        CUBE_PARTICLES: config.cubeParticles.get(),
+        LIGHT_TEXTURE_SIZE: WorldRenderer.LIGHT_TEXTURE_SIZE
       };
       
       blockProgramSetup = prepareProgram(gl, decls, permanentAttribs,
@@ -128,8 +130,10 @@ var Renderer = (function () {
     }
     
     function initConstantUniforms() {
+      gl.uniform1i(uniforms.uSampler, 0);
       gl.uniform1i(uniforms.uSkySampler, 1);
       gl.uniform1i(uniforms.uNoiseSampler, 2);
+      gl.uniform1i(uniforms.uLightSampler, 3);
     }
     
     function calculateFrustum() {
@@ -437,7 +441,6 @@ var Renderer = (function () {
     function setTexture(texture) {
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, texture);
-      gl.uniform1i(uniforms.uSampler, 0);
       
       gl.enableVertexAttribArray(permanentAttribs.aTextureCoord);
       gl.disableVertexAttribArray(permanentAttribs.aVertexColor);
@@ -449,6 +452,12 @@ var Renderer = (function () {
       gl.enableVertexAttribArray(permanentAttribs.aVertexColor);
     }
     //this.unsetTexture = unsetTexture;
+    
+    function setLightTexture(texture) {
+      gl.activeTexture(gl.TEXTURE3);
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+    }
+    this.setLightTexture = setLightTexture;
     
     function BufferAndArray(numComponents) {
       this.numComponents = numComponents;

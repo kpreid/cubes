@@ -6,7 +6,8 @@ var WorldRenderer = (function () {
   
   // The side length of the chunks the world is broken into for rendering.
   // Smaller chunks are faster to update when the world changes, but have a higher per-frame cost.
-  var CHUNKSIZE = 20;
+  var LIGHT_TEXTURE_SIZE = 32; // must be power of 2
+  var CHUNKSIZE = LIGHT_TEXTURE_SIZE - 2;
   
   // 3D Euclidean distance, squared (for efficiency).
   function dist3sq(v1, v2) {
@@ -67,16 +68,7 @@ var WorldRenderer = (function () {
     var rawRotations = world.rawRotations;
     var rawLighting = world.rawLighting;
     var inBounds = world.inBounds;
-    var lightScale = world.lightScale;
     var lightOutside = world.lightOutside;
-    
-    // Adjacent block index offsets
-    var adjnx = -wy*wz;
-    var adjpx = +wy*wz;
-    var adjny = -wz;
-    var adjpy = +wz;
-    var adjnz = -1;
-    var adjpz = +1;
     
     // Table of all world rendering chunks which have RenderBundles created, indexed by [x,y,z] of the low-side coordinates (i.e. divisible by CHUNKSIZE).
     var chunks = new IntVectorMap();
@@ -500,6 +492,14 @@ var WorldRenderer = (function () {
       var chunkLimitY = Math.min(wy, chunkOriginY + CHUNKSIZE);
       var chunkLimitZ = Math.min(wz, chunkOriginZ + CHUNKSIZE);
       var nonempty = false;
+
+      var lightTexture;
+      var mustRebuild = function () { return true; };
+      var ltData = new Uint8Array(LIGHT_TEXTURE_SIZE*LIGHT_TEXTURE_SIZE*LIGHT_TEXTURE_SIZE);
+      for (var i = 0; i < ltData.length; i++) {
+        ltData[i] = 127;
+      }
+      
       var chunk = new renderer.RenderBundle(gl.TRIANGLES,
                                             function () { return renderData.texture; },
                                             function (vertices, normals, texcoords) {
@@ -514,9 +514,8 @@ var WorldRenderer = (function () {
         var x,y,z;
         var thisOpaque;
         var rawIndex;
-        var isAtBounds;
         
-        function face(vFacing, data, lightingOffsetIndex) {
+        function face(vFacing, data) {
           var fx = vFacing[0]; var xfx = x + fx;
           var fy = vFacing[1]; var yfy = y + fy;
           var fz = vFacing[2]; var zfz = z + fz;
@@ -535,13 +534,7 @@ var WorldRenderer = (function () {
                             faceVertices[vi+1]+y,
                             faceVertices[vi+2]+z);
               texcoords.push(faceTexcoords[ti], faceTexcoords[ti+1]);
-              var lightValue =
-                  !thisOpaque ? rawLighting[rawIndex] :
-                  (isAtBounds && !inBounds(xfx,yfy,zfz)) ? lightOutside :
-                  rawLighting[rawIndex+lightingOffsetIndex];
-              var light = Math.max(.01, lightValue * lightScale);
-              // the max is because a zero normal is special -- TODO kludge
-              normals.push(light*fx, light*fy, light*fz);
+              normals.push(fx, fy, fz);
             }
           }
         }
@@ -549,26 +542,62 @@ var WorldRenderer = (function () {
         for (x = chunkOriginX; x < chunkLimitX; x++)
         for (y = chunkOriginY; y < chunkLimitY; y++)
         for (z = chunkOriginZ; z < chunkLimitZ; z++) {
-          isAtBounds = x === chunkOriginX || x === chunkLimitX - 1 || y === 0 || y === wy - 1 || z === chunkOriginZ || z === chunkLimitZ - 1;
           // raw array access inlined and simplified for efficiency
           rawIndex = (x*wy+y)*wz+z;
           var value = rawBlocks[rawIndex];
           if (value === ID_EMPTY) continue;
-
+          
           var rotIndex = rawRotations[rawIndex];
           var rot = rotationsByCode[rotIndex];
           var btype = types[value];
           var faceData = (rotatedBlockFaceData[value] || BOGUS_BLOCK_DATA)[rotIndex];
           thisOpaque = opaques[value];
-
-          // TODO: Uses the wrong lighting adj* for rotated blocks
-          face(rot.nx, faceData.lx, adjnx);
-          face(rot.ny, faceData.ly, adjny);
-          face(rot.nz, faceData.lz, adjnz);
-          face(rot.px, faceData.hx, adjpx);
-          face(rot.py, faceData.hy, adjpy);
-          face(rot.pz, faceData.hz, adjpz);
+          
+          face(rot.nx, faceData.lx);
+          face(rot.ny, faceData.ly);
+          face(rot.nz, faceData.lz);
+          face(rot.px, faceData.hx);
+          face(rot.py, faceData.hy);
+          face(rot.pz, faceData.hz);
         }
+        
+        for (x = chunkOriginX - 1; x <= chunkLimitX; x++)
+        for (y = chunkOriginY - 1; y <= chunkLimitY; y++)
+        for (z = chunkOriginZ - 1; z <= chunkLimitZ; z++) {
+          var ltIndex = ( (  mod(x, LIGHT_TEXTURE_SIZE) *LIGHT_TEXTURE_SIZE
+                           + mod(y, LIGHT_TEXTURE_SIZE))*LIGHT_TEXTURE_SIZE
+                         +   mod(z, LIGHT_TEXTURE_SIZE));
+          if (inBounds(x,y,z)) {
+            rawIndex = (x*wy+y)*wz+z;
+            ltData[ltIndex] = rawLighting[rawIndex];
+          } else {
+            ltData[ltIndex] = lightOutside;
+          }
+        }
+        
+        // Update lighting texture
+        if (mustRebuild()) {
+          lightTexture = gl.createTexture();
+          mustRebuild = renderer.currentContextTicket();
+          gl.bindTexture(gl.TEXTURE_2D, lightTexture);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+        } else {
+          gl.bindTexture(gl.TEXTURE_2D, lightTexture);
+        }
+        gl.texImage2D(gl.TEXTURE_2D,
+                      0, // level
+                      gl.LUMINANCE, // internalformat
+                      LIGHT_TEXTURE_SIZE, // width
+                      LIGHT_TEXTURE_SIZE*LIGHT_TEXTURE_SIZE, // height
+                      0, // border
+                      gl.LUMINANCE, // format
+                      gl.UNSIGNED_BYTE, // type
+                      ltData);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+                
         var wasNonempty = nonempty;
         nonempty = vertices.length > 0;
         if (nonempty !== wasNonempty) {
@@ -578,7 +607,13 @@ var WorldRenderer = (function () {
             nonemptyChunks.delete(chunkKey);
           }
         }
+        
         measuring.chunk.end();
+      }, {
+        aroundDraw: function (draw) {
+          renderer.setLightTexture(lightTexture);
+          draw();
+        }
       });
       
       // This is needed because when the calc function is first called by constructing the RenderBundle, 'chunk' has not yet been assigned.
@@ -713,6 +748,8 @@ var WorldRenderer = (function () {
     config.debugTextureAllocation.listen(listenerRedraw);
     Object.freeze(this);
   }
+  
+  WorldRenderer.LIGHT_TEXTURE_SIZE = LIGHT_TEXTURE_SIZE; // exposed for shader
 
   return WorldRenderer;
 }());;
