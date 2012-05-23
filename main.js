@@ -89,7 +89,7 @@ var CubesMain = (function () {
     
     // Game state, etc. objects
     var player;
-    var worldH;
+    var topWorldC = new Cell("topWorld", null);
     var input;
     var audio = new CubesAudio(config);
     
@@ -385,7 +385,7 @@ var CubesMain = (function () {
         var objectList = pageElements.objectList;
         function updateObjectList() {
           var totalSize = 0;
-          while (objectList.firstChild) objectList.removeChild(objectList.firstChild);
+          objectList.textContent = "";
           persistencePool.forEach(function (name, type) {
             var row = document.createElement("tr");
             objectList.appendChild(row);
@@ -407,7 +407,7 @@ var CubesMain = (function () {
             var size = persistencePool.getSize(name);
             totalSize += size;
             sizeCell.textContent = (size/1000).toFixed(0) + "K";
-            if (persistencePool.getIfLive(name) === worldH) row.classList.add("selected");
+            if (persistencePool.getIfLive(name) === topWorldC.get()) row.classList.add("selected");
             
             row.addEventListener("click", function () {
               var obj = persistencePool.get(name);
@@ -428,7 +428,10 @@ var CubesMain = (function () {
           totalRow.appendChild(sizeCell);
         }
         updateObjectList();
-        config.currentTopWorld.whenChanged(updateObjectList); // TODO wrong listener (should be noting changes to worldH) and also unnecessarily rebuilding the list
+        topWorldC.whenChanged(function () {
+          updateObjectList();
+          return true
+        }); // TODO unnecessarily rebuilding the list
         persistencePool.listen({
           interest: function () { return true; },
           added: updateObjectList,
@@ -441,7 +444,7 @@ var CubesMain = (function () {
       if (pageElements.generateBlocksetList) {
         var blocksetList = pageElements.generateBlocksetList;
         function updateBlocksetList() {
-          while (blocksetList.firstChild) blocksetList.removeChild(blocksetList.firstChild);
+          blocksetList.textContent = "";
           persistencePool.forEach(function (name, type) {
             if (type !== Blockset) return;
             var row = document.createElement("option");
@@ -513,7 +516,7 @@ var CubesMain = (function () {
             return true;
           }, false);
           
-          if (!worldH) { // If world was defined prior to start(), don't
+          if (!topWorldC.get()) { // If world was defined prior to start(), don't set up one
             var world = getOrDefaultOrMake(config.currentTopWorld.get(), "Default World", function () {
               var blockset = getOrDefaultOrMake(config.generate_blockset.get(), "Default Blockset", function () {
                 startupMessage("  Creating default blockset...");
@@ -528,7 +531,7 @@ var CubesMain = (function () {
         },
         //"Creating your avatar...", // not currently expensive enough for a msg
         function () {
-          player = main.player = new Player(config, worldH, renderer/*TODO facet? */, audio/*TODO facet? */, scheduleDraw);
+          player = main.player = new Player(config, topWorldC.get(), renderer/*TODO facet? */, audio/*TODO facet? */, scheduleDraw);
         },
         "Painting blocks...",
         function () {
@@ -577,7 +580,7 @@ var CubesMain = (function () {
     });
     
     this.setTopWorld = function (world) {
-      worldH = world;
+      topWorldC.set(world);
       if (player) player.setWorld(world);
 
       var name = persistencePool.getObjectName(world);
@@ -590,7 +593,7 @@ var CubesMain = (function () {
         currentWorldChipContainer.appendChild(chip.element);
       }
     };
-    this.getTopWorld = function () { return worldH; };
+    this.getTopWorld = function () { return topWorldC.get(); };
     
     this.save = function () {
       persistencePool.flushAsync();
