@@ -616,7 +616,9 @@ var Input;
     // --- Mouselook ---
     
     var CENTER = {};
-    var dx = 0;
+    var targetPitch = 0;
+    var targetYawRate = 0;
+    var yawRate = 0;
     var prevx = 0;
     
     function applyMousePosition() {
@@ -631,7 +633,7 @@ var Input;
       
       if (!focusCell.get() || mousePos === null) {
         playerInput.mousePos = null;
-        dx = 0;
+        yawRate = 0;
         return;
       } else {
         playerInput.mousePos = mousePos;
@@ -644,11 +646,11 @@ var Input;
       var directX = -Math.PI/2 * swingX;
       
       if (interfaceMode.mouselook) {
-        playerInput.pitch = directY;
+        targetPitch = directY;
         playerInput.yaw += (directX - prevx);
-        dx = -(config.mouseTurnRate.get()) * deadzone(swingX, 0.1);
+        targetYawRate = -(config.mouseTurnRate.get()) * deadzone(swingX, 0.1);
       } else {
-        dx = 0;
+        targetYawRate = 0;
       }
       prevx = directX;
     }
@@ -660,7 +662,7 @@ var Input;
     function updateMouseFromEvent(event) {
       if (document.pointerLockEnabled/*shimmed*/ || expectingPointerLock) {
         mousePos = CENTER;
-        dx = 0;
+        targetYawRate = 0;
       } else if (event && !expectingPointerLock) {
         mousePos = [event.clientX, event.clientY];
       }
@@ -728,8 +730,15 @@ var Input;
     // --- Stepping ---
     
     function step(timestep) {
-      if (dx !== 0) {
-        playerInput.yaw += dx*timestep;
+      if (!document.pointerLockEnabled) {
+        if (interfaceMode.mouselook) {
+          playerInput.pitch = exponentialStep(playerInput.pitch, targetPitch, timestep, -30, 1e-2);
+        }
+        yawRate = exponentialStep(yawRate, targetYawRate, timestep, -30, 1e-2);
+        
+        if (yawRate !== 0) {
+          playerInput.yaw += yawRate*timestep;
+        }
       }
       
       stepControlRepeat(timestep);
