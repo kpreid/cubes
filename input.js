@@ -611,8 +611,6 @@ var Input;
     // Initialization
     resetHeldControls();
     
-    // TODO: Implement repeat on held down button
-    
     // --- Mouselook ---
     
     var CENTER = {};
