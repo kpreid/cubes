@@ -39,27 +39,55 @@ vec4 sliceTexture3D(sampler2D sampler, vec3 coord) {
   return texture2D(uLightSampler, textureCoord);
 }
 
-const float lin_lo = -0.5;
-const float lin_hi = +0.5;
-vec4 sliceTexture3DLinBase(sampler2D sampler, vec3 coord) {
-  vec4 v = sliceTexture3D(sampler, coord);
+bool validSample(vec4 sample) {
   // TODO distinguish "invalid" (inside block) from "zero light" by using more than a luminance texture
-  // TODO Fix light leaks through a diagonal edge/corner by discarding the opposite corner across an invalid diagonal
-
-  // We stuff amount-of-valid-samples in the alpha channel, and then divide by that at the end (in sliceTexture3DBilinear).
-  v.a = (v.r == 0.0) ? 0.0 : 1.0;
+  return sample.r != 0.0;
+}
+vec4 lightSample(vec3 coord) {
+  vec4 v = sliceTexture3D(uLightSampler, coord);
+  // We stuff amount-of-valid-samples in the alpha channel, and then divide by that at the end (in interpolateLight).
+  v.a = validSample(v) ? 1.0 : 0.0;
   return v;
 }
-vec4 sliceTexture3DLinear(sampler2D sampler, vec3 coord, vec3 terp) {
-  return mix(sliceTexture3DLinBase(sampler, coord + lin_lo * terp),
-             sliceTexture3DLinBase(sampler, coord + lin_hi * terp),
-             mod(dot(coord, terp) - 0.5, 1.0));
-}
-vec4 sliceTexture3DBilinear(sampler2D sampler, vec3 coord, vec3 terp1, vec3 terp2) {
-  vec4 v = mix(sliceTexture3DLinear(sampler, coord + lin_lo * terp1, terp2),
-               sliceTexture3DLinear(sampler, coord + lin_hi * terp1, terp2),
-               mod(dot(coord, terp1) - 0.5, 1.0));
-  return v.a == 0.0 ? vec4(0.0) : v / v.a;
+const float lin_lo = -0.5;
+const float lin_hi = +0.5;
+vec4 interpolateLight(vec3 coord, vec3 dirA, vec3 dirB, vec3 bump) {
+  // Find interpolation coefficients
+  float mixA = mod(dot(coord, dirA) - 0.5, 1.0);
+  float mixB = mod(dot(coord, dirB) - 0.5, 1.0);
+  
+  // Ensure that mix <= 0.5, i.e. the 'near' side below is the side we are on
+  if (mixA > 0.5) {
+    dirA *= -1.0;
+    mixA = 1.0 - mixA;
+  }
+  if (mixB > 0.5) {
+    dirB *= -1.0;
+    mixB = 1.0 - mixB;
+  }
+  
+  // Apply bump direction
+  mixA += dot(bump, dirA);
+  mixB += dot(bump, dirB);
+  
+  // Retrieve texture samples
+  vec4 nearAB    = lightSample(coord + lin_lo * dirA + lin_lo * dirB);
+  vec4 nearAfarB = lightSample(coord + lin_lo * dirA + lin_hi * dirB);
+  vec4 nearBfarA = lightSample(coord + lin_hi * dirA + lin_lo * dirB);
+  vec4 farAB     = lightSample(coord + lin_hi * dirA + lin_hi * dirB);
+  
+  // Perform bilinear interpolation
+  if (!validSample(nearAfarB) && !validSample(nearBfarA)) {
+    // The far corner is on the other side of a diagonal wall, so should be
+    // omitted; there is only one sample to use.
+    return nearAB;
+  } else {
+    vec4 v = mix(mix(nearAB,    nearAfarB, mixB),
+                 mix(nearBfarA, farAB,     mixB),
+                 mixA);
+    // Scale result by number of good samples
+    return v.a == 0.0 ? vec4(0.0) : v / v.a;
+  }
 }
 
 float lighting() {
@@ -72,8 +100,10 @@ float lighting() {
   vec3 bump = vec3(0.0);
 #endif
   
+  // TODO: Try performing the light lookups in the vertex shader (if supported).
+  
+  vec3 textureLookupPoint = vGridPosition + 0.1*vNormal;
 #if SMOOTH_LIGHTING
-  vec3 textureLookupPoint = vGridPosition + 0.1*vNormal + 0.4*bump;
   vec3 perp1, perp2;
   if (vNormal.x != 0.0) {
     perp1 = vec3(0.0, 1.0, 0.0);
@@ -82,9 +112,8 @@ float lighting() {
     perp1 = vec3(1.0, 0.0, 0.0);
     perp2 = normalize(abs(cross(perp1, vNormal)));
   }
-  vec4 textureValue = sliceTexture3DBilinear(uLightSampler, textureLookupPoint, perp1, perp2);
+  vec4 textureValue = interpolateLight(textureLookupPoint, perp1, perp2, 0.3 * bump);
 #else
-  vec3 textureLookupPoint = vGridPosition + 0.1*vNormal;
   vec4 textureValue = sliceTexture3D(uLightSampler, textureLookupPoint);
 #endif
   float localLight = textureValue.r * 4.0/*TODO magic number */;
