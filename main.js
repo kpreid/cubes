@@ -592,8 +592,8 @@ var CubesMain = (function () {
       persistencePool.flushAsync();
     };
 
-    this.requestFullScreen = function () {
-      input.requestFullScreen();
+    this.requestFullscreen = function () {
+      input.requestFullscreen();
     };
 
     // Exposed for debugging access

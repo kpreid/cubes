@@ -108,15 +108,21 @@
 
 <div id="toggles">
   <button id="save-button" onclick="main.save(); document.getElementById('view-canvas').focus(); return false;">Save</button>
-  <button id="fullscreen-button" onclick="main.requestFullScreen(); document.getElementById('view-canvas').focus(); return false;">Full screen</button>
+  <button id="fullscreen-button" onclick="main.requestFullscreen(); document.getElementById('view-canvas').focus(); return false;">Full screen</button>
   <script>(function () {
     var button = document.getElementById("fullscreen-button");
     if (!GameShim.supports.fullscreen) {
-      button.style.display = 'none';
+      button.style.display = "none";
     } else {
-      document.addEventListener("fullscreenchange", function (event) {
-        button.style.display = document.fullscreenEnabled ? 'none' : 'block:';
-      });
+      var ourFullscreenElement = document.body; // TODO get this from Input
+      function listener(event) {
+        if (document.fullscreenElement === ourFullscreenElement) {
+          button.style.display = "none";
+        } else {
+          button.style.removeProperty("display");
+        }
+      }
+      document.addEventListener("fullscreenchange", listener, false);
     }
   }())</script>
   <button id="objectsbtn" onclick="this.style.display='none'; document.getElementById('objects').style.display='block'; document.getElementById('view-canvas').focus();">Worlds</button>

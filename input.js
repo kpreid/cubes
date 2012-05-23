@@ -658,7 +658,7 @@ var Input;
     });
     
     function updateMouseFromEvent(event) {
-      if (document.pointerLockEnabled/*shimmed*/ || expectingPointerLock) {
+      if (weHavePointerLock() || expectingPointerLock) {
         mousePos = CENTER;
         targetYawRate = 0;
       } else if (event && !expectingPointerLock) {
@@ -670,7 +670,7 @@ var Input;
     eventReceiver.addEventListener("mousemove", function (event) {
       updateMouseFromEvent(event);
       
-      if (document.pointerLockEnabled/*shimmed*/ || expectingPointerLock) {
+      if (weHavePointerLock() || expectingPointerLock) {
         // This is not in updateMouseFromEvent because movement* are updated only on mousemove events, even though they are provided on all events.
       
         // TODO this is duplicative-ish of applyMousePosition. We need a refactoring...
@@ -697,38 +697,46 @@ var Input;
     
     // game-shim.js provides these facilities as stubs if the browser does not, so this code contains no conditionals.
     
-    var fullScreenElement = document.body;
-    
-    //console.log("Pointer lock supported:", GameShim.supports.pointerLock);
+    var ourFullscreenElement = document.body;
+    var outPointerLockElement = eventReceiver;
     
     document.addEventListener("fullscreenchange"/*shimmed*/, updatePointerLock, false);
     document.addEventListener("fullscreenerror"/*shimmed*/, function (event) {
       console.info("Fullscreen entry error", event);
     }, false);
     
-    this.requestFullScreen = function () {
-      fullScreenElement.requestFullScreen/*shimmed*/(Element.ALLOW_KEYBOARD_INPUT /* TODO this is a webkitism */);
+    this.requestFullscreen = function () {
+      ourFullscreenElement.requestFullscreen/*shimmed*/();
     };
+    
+    function weHavePointerLock() {
+      // Second condition is because GameShim doesn't offer a shim for pointerLockElement if the browser doesn't have it at all, which is true for Chrome 21.0.1148.0 canary.
+      return !!document.pointerLockElement/*shimmed*/ == outPointerLockElement || (navigator.pointer && navigator.pointer.isLocked);
+    }
     
     function updatePointerLock() {
       if (interfaceMode.mouselook) {
-        eventReceiver.requestPointerLock/*shimmed*/();
+        outPointerLockElement.requestPointerLock/*shimmed*/();
         expectingPointerLock = GameShim.supports.pointerLock;
         updateMouseFromEvent(null);
-        setTimeout(function () {
-           // TODO should be on pointer lock callback but that's not supported by the shim
-           expectingPointerLock = false;
-           updateMouseFromEvent(null);
-        }, 20);
       } else {
         document.exitPointerLock/*shimmed*/();
       }
     };
     
+    window.addEventListener("pointerlockchange"/*shimmed*/, function (event) {
+      expectingPointerLock = false;
+      updateMouseFromEvent(null);
+    }, false);
+    
+    window.addEventListener("pointerlockerror"/*shimmed*/, function (event) {
+      expectingPointerLock = false;
+    }, false);
+    
     // --- Stepping ---
     
     function step(timestep) {
-      if (!document.pointerLockEnabled) {
+      if (!weHavePointerLock()) {
         if (interfaceMode.mouselook) {
           playerInput.pitch = exponentialStep(playerInput.pitch, targetPitch, timestep, -30, 1e-2);
         }
@@ -777,7 +785,9 @@ var Input;
     
     var allUIClasses = ["full", "menu", "hidden"];
     
-    interfaceMode = mouselookIMode;
+    // Initialize interface mode.
+    // If pointer lock is available, then we want to use it in mouselook mode, but we cannot enable it on page load; therefore we start in menu mode which does not want pointer lock.
+    interfaceMode = GameShim.supports.pointerLock ? menuMode : mouselookIMode;
     
     // --- Block menu ---
     
