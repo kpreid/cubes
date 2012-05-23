@@ -641,7 +641,7 @@ var Circuit = (function () {
       var table = DIRECTIONS.map(function (dir) {
         // TODO Give a nice way to detect whether our faces are connected so as to report accurately in notes
         notes["icInput_" + dir] = true;
-        return [compileOutput(world, block, [vec3.scale(dir, -1, [])]), "blockIn_input_" + dir];
+        return [compileOutput(world, block, [vec3.negate(dir, [])]), "blockIn_input_" + dir];
       });
       return function (state) {
         table.forEach(function (r) {
@@ -654,7 +654,7 @@ var Circuit = (function () {
     icOutput.compile = function (world, block, inputs, notes) {
       var table = [];
       DIRECTIONS.forEach(function (dir) {
-        var input = inputs[vec3.scale(dir, -1, [])];
+        var input = inputs[vec3.negate(dir, [])];
         if (input) {
           notes["icOutput_" + dir] = true;
           table.push(["blockOut_output_" + dir, input]);

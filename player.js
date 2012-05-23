@@ -45,7 +45,7 @@ var Player = (function () {
     
     var exposure = 1.0;
     
-    var movement = vec3.create([0,0,0]);
+    var movement = vec3.create();
     var mousePos = null; // or an [screen x, screen y] vector. Immutable value.
   
     var selectionR = new renderer.RenderBundle(gl.LINE_LOOP, null, function (vertices, normals, colors) {

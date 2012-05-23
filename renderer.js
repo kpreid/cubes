@@ -747,8 +747,8 @@ var Renderer = (function () {
       mat4.multiply(pMatrix, unproject, unproject);
       mat4.inverse(unproject);
 
-      var pt1 = fixedmultiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 0]));
-      var pt2 = fixedmultiplyVec3(unproject, vec3.create([glxy[0], glxy[1], 1]));
+      var pt1 = fixedmultiplyVec3(unproject, vec3.createFrom(glxy[0], glxy[1], 0));
+      var pt2 = fixedmultiplyVec3(unproject, vec3.createFrom(glxy[0], glxy[1], 1));
 
       return [pt1, pt2];
     }
@@ -808,9 +808,9 @@ var Renderer = (function () {
       // Sky texture
       var skyTexSize = 256;
       var log = Math.log;
-      var cSky = vec3.create([0.1,0.3,0.5]);
-      var cHorizon = vec3.create([0.7,0.8,1.0]);
-      var cGround = vec3.create([0.5,0.4,0.4]);
+      var cSky = vec3.createFrom(0.1,0.3,0.5);
+      var cHorizon = vec3.createFrom(0.7,0.8,1.0);
+      var cGround = vec3.createFrom(0.5,0.4,0.4);
       function clamp(x, low, high) {
         return Math.min(Math.max(x, low), high);
       }

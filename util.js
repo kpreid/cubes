@@ -64,13 +64,13 @@ function fixedmultiplyVec3(matrix, vector) {
   return vector;
 }
 
-var ZEROVEC = vec3.create([0,0,0]);
-var UNIT_PX = vec3.create([1,0,0]);
-var UNIT_PY = vec3.create([0,1,0]);
-var UNIT_PZ = vec3.create([0,0,1]);
-var UNIT_NX = vec3.create([-1,0,0]);
-var UNIT_NY = vec3.create([0,-1,0]);
-var UNIT_NZ = vec3.create([0,0,-1]);
+var ZEROVEC = vec3.createFrom(0,0,0);
+var UNIT_PX = vec3.createFrom(1,0,0);
+var UNIT_PY = vec3.createFrom(0,1,0);
+var UNIT_PZ = vec3.createFrom(0,0,1);
+var UNIT_NX = vec3.createFrom(-1,0,0);
+var UNIT_NY = vec3.createFrom(0,-1,0);
+var UNIT_NZ = vec3.createFrom(0,0,-1);
 
 function prepareShader(gl, type, sources, declarations) {
   // See note in license statement at the top of this file.  

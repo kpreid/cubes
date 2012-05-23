@@ -150,13 +150,17 @@ var CubesMain = (function () {
           var sy = -Infinity;
           var cube = sel.cube;
           var empty = vec3.add(sel.cube, sel.face, vec3.create());
+          var toScreenPoint = vec4.create();
           for (var dx = 0; dx <= 1; dx++)
           for (var dy = 0; dy <= 1; dy++)
           for (var dz = 0; dz <= 1; dz++) {
-            var vec = [cube[0]+dx,cube[1]+dy,cube[2]+dz,1];
-            renderer.transformPoint(vec);
-            sx = Math.min(sx, vec[0]/vec[3]);
-            sy = Math.max(sy, vec[1]/vec[3]);
+            toScreenPoint[0] = cube[0] + dx;
+            toScreenPoint[1] = cube[1] + dy;
+            toScreenPoint[2] = cube[2] + dz;
+            toScreenPoint[3] = 1;
+            renderer.transformPoint(toScreenPoint);
+            sx = Math.min(sx, toScreenPoint[0]/toScreenPoint[3]);
+            sy = Math.max(sy, toScreenPoint[1]/toScreenPoint[3]);
           }
           if (isFinite(sx) && isFinite(sy)) {
             var computedStyle = window.getComputedStyle(theCanvas,null);

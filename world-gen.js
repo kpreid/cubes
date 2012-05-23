@@ -853,10 +853,10 @@ function generateWorlds(config, blockset) {
       }
     }
     function clockwise(v) {
-      return vec3.create([-v[2], v[1], v[0]]);
+      return vec3.createFrom(-v[2], v[1], v[0]);
     }
     function counterclockwise(v) {
-      return vec3.create([v[2], v[1], -v[0]]);
+      return vec3.createFrom(v[2], v[1], -v[0]);
     }
     
     var greenery = blockset.lookup("greenery");
@@ -917,9 +917,9 @@ function generateWorlds(config, blockset) {
           fill(madd(worigin, wdir, 1), maddy(worigin, buildingFloorHeight-2, wdir, size-2), glass, frontFaceTo(clockwise(wdir)));
         }
         buildingWall(pos, u, usize);
-        buildingWall(high, vec3.scale(u, -1, vec3.create()), usize);
+        buildingWall(high, vec3.negate(u, vec3.create()), usize);
         buildingWall(madd(pos, u, usize-1), v, vsize);
-        buildingWall(madd(pos, v, vsize-1), vec3.scale(v, -1, vec3.create()), vsize);
+        buildingWall(madd(pos, v, vsize-1), vec3.negate(v, vec3.create()), vsize);
         // ceiling/floor
         fill(madd(pos, UNIT_PY, buildingFloorHeight-1), madd(high, UNIT_PY, buildingFloorHeight-1), material);
         return [];
