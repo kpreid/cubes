@@ -6,12 +6,12 @@ var WorldGen = (function () {
 
   
   var WorldGen = {
-    newWorldBlockType: function (TS, blockSet) {
-      return new BlockType(null, new World([TS,TS,TS], blockSet));
+    newWorldBlockType: function (TS, blockset) {
+      return new BlockType(null, new World([TS,TS,TS], blockset));
     },
     
-    newProceduralBlockType: function (TS, blockSet, patfunc) {
-      var type = WorldGen.newWorldBlockType(TS, blockSet);
+    newProceduralBlockType: function (TS, blockset, patfunc) {
+      var type = WorldGen.newWorldBlockType(TS, blockset);
       type.world.edit(function (x,y,z,value) {
         return patfunc([x,y,z]);
       });
@@ -1005,7 +1005,7 @@ function generateWorlds(config, blockset) {
   (function () {
     var lighting = topWorld.rawLighting;
     var blocks = topWorld.raw;
-    var opaques = topWorld.blockSet.getAll().map(function (t) { return t.opaque; });
+    var opaques = topWorld.blockset.getAll().map(function (t) { return t.opaque; });
     var initial = topWorld.lightOutside;
     for (var x = 0; x < wx; x++)
     for (var z = 0; z < wz; z++) {

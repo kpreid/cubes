@@ -778,7 +778,7 @@ var Input;
     
     var menuItemsByBlockId;
     var quickItemsByBlockId;
-    var blockSetInMenu;
+    var blocksetInMenu;
     
     function deferrer(func) {
       var set = false;
@@ -804,7 +804,7 @@ var Input;
     resetQuick();
     
     function forAllMenuBlocks(f) {
-      for (var i = 1; i < blockSetInMenu.length; i++) f(i, menuItemsByBlockId[i]);
+      for (var i = 1; i < blocksetInMenu.length; i++) f(i, menuItemsByBlockId[i]);
     }
     
     var updateDeferred = deferrer(updateMenuBlocks);
@@ -852,25 +852,25 @@ var Input;
     function updateMenuBlocks() {
       if (!hud) return;
       
-      if (playerInput.blockSet !== blockSetInMenu) {
-        if (blockSetInMenu) blockSetInMenu.listen.cancel(menuListener);
-        blockSetInMenu = playerInput.blockSet;
-        if (blockSetInMenu) blockSetInMenu.listen(menuListener);
+      if (playerInput.blockset !== blocksetInMenu) {
+        if (blocksetInMenu) blocksetInMenu.listen.cancel(menuListener);
+        blocksetInMenu = playerInput.blockset;
+        if (blocksetInMenu) blocksetInMenu.listen(menuListener);
       }
       
       menuItemsByBlockId = [];
       quickItemsByBlockId = [];
       resetQuick();
       
-      var blockSetRender = blockSetInMenu.getRenderData(renderer);
+      var blocksetRender = blocksetInMenu.getRenderData(renderer);
       
-      var sidecount = Math.ceil(Math.sqrt(blockSetInMenu.length));
+      var sidecount = Math.ceil(Math.sqrt(blocksetInMenu.length));
       var size = Math.min(64, 300 / sidecount);
       
       clearChildren(hud.blocksetAll);
       
       forAllMenuBlocks(function (blockID) {
-        var blockType = blockSetInMenu.get(blockID);
+        var blockType = blocksetInMenu.get(blockID);
         
         // element structure and style
         var item = menuItemsByBlockId[blockID] = document.createElement("tr");
@@ -890,7 +890,7 @@ var Input;
         icon.style.width = icon.style.height = size + "px"; // TODO don't do this in full menu mode
         iconCell.classList.remove("block-details"); // always shown
         iconCell.appendChild(icon);
-        blockSetRender.icons[blockID].nowAndWhenChanged(function (url) {
+        blocksetRender.icons[blockID].nowAndWhenChanged(function (url) {
           if (url !== null)
             icon.src = url;
           return true;
@@ -961,7 +961,7 @@ var Input;
       
       clearChildren(hud.quickBar);
       quickItemsByBlockId = [];
-      var r = blockSetInMenu.getRenderData(renderer);
+      var r = blocksetInMenu.getRenderData(renderer);
       quickSlots.forEach(function (blockID, index) {
         var item = document.createElement("span");
         item.className = "menu-item";
@@ -1023,17 +1023,17 @@ var Input;
     
     // invoked from UI
     this.addBlockType = function () {
-      playerInput.blockSet.add(WorldGen.newRandomBlockType(playerInput.blockSet.tileSize, playerInput.blockSet.get(1).world.blockSet));
+      playerInput.blockset.add(WorldGen.newRandomBlockType(playerInput.blockset.tileSize, playerInput.blockset.get(1).world.blockset));
     };
     
     // invoked from UI
     this.deleteLastBlockType = function () {
-      playerInput.blockSet.deleteLast();
+      playerInput.blockset.deleteLast();
     };
     
     // invoked from UI
     this.addCircuitBlocks = function () {
-      WorldGen.addLogicBlocks(playerInput.blockSet.tileSize, playerInput.blockSet, playerInput.blockSet.get(1).world.blockSet);
+      WorldGen.addLogicBlocks(playerInput.blockset.tileSize, playerInput.blockset, playerInput.blockset.get(1).world.blockset);
     };
     
     // invoked from UI

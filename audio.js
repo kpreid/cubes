@@ -47,7 +47,7 @@ var CubesAudio = (function () {
           counts[raw[i]]++;
         }
         
-        types = blockWorld.blockSet.getAll();
+        types = blockWorld.blockset.getAll();
         buffers = {};
       }
       

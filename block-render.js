@@ -10,12 +10,12 @@
 
 // Renders single blocks from a world.
 
-function BlockRenderer(blockSet, renderer, resolution) {
+function BlockRenderer(blockset, renderer, resolution) {
   "use strict";
   
   var gl = renderer.context;
   
-  var singleBlockWorld = new World([1,1,1], blockSet);
+  var singleBlockWorld = new World([1,1,1], blockset);
   singleBlockWorld.s(0,0,0,1);
   var singleBlockR = new WorldRenderer(singleBlockWorld, function () { return [0,0,0]; }, renderer, null, function (){}, false);
   

@@ -48,7 +48,6 @@ var Circuit = (function () {
   }
   
   function Circuit(world) {
-    var blockSet = world.blockSet;
     function getBehavior(block) {
       return world.gtv(block).behavior;
     }

@@ -46,7 +46,7 @@ describe("Persister", function () {
     var inner2 = pool2.get("inner");
     var outer2 = pool2.get("outer");
     
-    expect(outer2.blockSet).toBe(inner2);
+    expect(outer2.blockset).toBe(inner2);
   });
 
   it("handles renaming", function () {

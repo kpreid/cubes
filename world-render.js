@@ -91,10 +91,10 @@ var WorldRenderer = (function () {
     // Like chunks, but for circuits. Indexed by the circuit origin block.
     var circuitRenderers = new IntVectorMap();
 
-    var blockSet = world.blockSet;
+    var blockset = world.blockset;
     
     // Cached blockset characteristics
-    var tileSize = blockSet.tileSize;
+    var tileSize = blockset.tileSize;
     var pixelSize = 1/tileSize;
     var ID_EMPTY = BlockSet.ID_EMPTY;
     
@@ -131,7 +131,7 @@ var WorldRenderer = (function () {
 
     var textureDebugR = new renderer.RenderBundle(
         gl.TRIANGLE_STRIP,
-        function () { return blockSet.getRenderData(renderer).texture; },
+        function () { return blockset.getRenderData(renderer).texture; },
         function (vertices, normals, texcoords) {
       var x = 1;
       var y = 1;
@@ -163,8 +163,8 @@ var WorldRenderer = (function () {
       }
     });
     
-    var blockSet = world.blockSet;
-    var textured = blockSet.textured;
+    var blockset = world.blockset;
+    var textured = blockset.textured;
     
     // --- methods, internals ---
     
@@ -219,9 +219,9 @@ var WorldRenderer = (function () {
       deleteChunks();
       textureDebugR.deleteResources();
       world.listen.cancel(listenerWorld);
-      blockSet.listen.cancel(listenerBlockset);
+      blockset.listen.cancel(listenerBlockset);
       config.renderDistance.listen.cancel(listenerRenderDistance);
-      world = blockSet = chunks = nonemptyChunks = dirtyChunks = addChunks = textureDebugR = null;
+      world = blockset = chunks = nonemptyChunks = dirtyChunks = addChunks = textureDebugR = null;
     };
     function isAlive() {
       // Are we still interested in notifications etc?
@@ -421,7 +421,7 @@ var WorldRenderer = (function () {
 
     function draw() {
       // Draw chunks.
-      renderer.setTileSize(blockSet.tileSize);
+      renderer.setTileSize(blockset.tileSize);
       nonemptyChunks.forEach(function (chunk) {
         if (renderer.aabbInView(chunk.aabb))
           chunk.draw();
@@ -504,7 +504,7 @@ var WorldRenderer = (function () {
                                             function () { return renderData.texture; },
                                             function (vertices, normals, texcoords) {
         measuring.chunk.start();
-        renderData = blockSet.getRenderData(renderer);
+        renderData = blockset.getRenderData(renderer);
         var rotatedBlockFaceData = renderData.rotatedBlockFaceData;
         var BOGUS_BLOCK_DATA = rotatedBlockFaceData.bogus;
         var types = renderData.types;
@@ -743,7 +743,7 @@ var WorldRenderer = (function () {
     // --- init ---
 
     world.listen(listenerWorld);
-    blockSet.listen(listenerBlockset);
+    blockset.listen(listenerBlockset);
     config.renderDistance.listen(listenerRenderDistance);
     config.debugTextureAllocation.listen(listenerRedraw);
     Object.freeze(this);

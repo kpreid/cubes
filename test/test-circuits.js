@@ -87,7 +87,7 @@ describe("Circuit", function() {
     var inner = makeTester();
     
     // Make the circuit block and its rotation visible
-    var color = WorldGen.colorPicker(inner.world.blockSet, 0);
+    var color = WorldGen.colorPicker(inner.world.blockset, 0);
     var r = color(1,0,0);
     var g = color(0,1,0);
     var b = color(0,0,1);

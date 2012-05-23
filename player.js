@@ -127,7 +127,7 @@ var Player = (function () {
         w.raycast(pts[0], pts[1], 20, function (x,y,z,value,face) {
           if (w.selectable(x,y,z)) {
             var cube = Object.freeze([x,y,z]);
-            var type = w.blockSet.get(value);
+            var type = w.blockset.get(value);
             var subfound = false;
             if (!type.opaque && type.world) {
               // test against shape of noncubical block
@@ -353,7 +353,7 @@ var Player = (function () {
             var cube = currentPlace.selection.cube;
             var face = currentPlace.selection.face;
             var x = cube[0]+face[0], y = cube[1]+face[1], z = cube[2]+face[2];
-            var type = currentPlace.world.blockSet.get(currentPlace.tool);
+            var type = currentPlace.world.blockset.get(currentPlace.tool);
             if (currentPlace.world.g(x,y,z) === 0) {
               // TODO: rotation on create should be more programmable.
               var raypts = renderer.getAimRay(mousePos, player.render); // TODO depend on player orientation instead?
@@ -392,8 +392,8 @@ var Player = (function () {
               mod(currentPlace.world.gSub(x,y,z) + delta, World.subdatumBound));
         }
       },
-      get blockSet () { return currentPlace.world.blockSet; },
-      set blockSet (value) { throw new TypeError("player.input.blockSet read-only"); },
+      get blockset () { return currentPlace.world.blockset; },
+      set blockset (value) { throw new TypeError("player.input.blockset read-only"); },
       get movement () { throw new TypeError("player.input.movement write-only"); },
       set movement (value) { 
         vec3.set(value, movement);
@@ -413,7 +413,7 @@ var Player = (function () {
         inputNotifier.notify("changedTool");
       },
       enterWorld: function (blockID) {
-        var world = currentPlace.world.blockSet.get(blockID).world;
+        var world = currentPlace.world.blockset.get(blockID).world;
 
         if (!world) { return; } // TODO: UI message about this
 
@@ -438,7 +438,7 @@ var Player = (function () {
             var oldPlace = currentPlace;
             var blockID = currentPlace.world.g(x,y,z);
             
-            var world = currentPlace.world.blockSet.worldFor(blockID);
+            var world = currentPlace.world.blockset.worldFor(blockID);
             if (world == null) return; // TODO: UI message about this
             var tileSize = world.wx;
             

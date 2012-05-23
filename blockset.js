@@ -624,7 +624,7 @@ var BlockSet = (function () {
   
   var blockRenderRes = 128;
   
-  function BlockSetRenderDataGenerator(blockSet, renderer, notifier /* TODO make this arg unnecessary */, appearanceChangedQueue) {
+  function BlockSetRenderDataGenerator(blockset, renderer, notifier /* TODO make this arg unnecessary */, appearanceChangedQueue) {
     var toRerender = appearanceChangedQueue.getHead();
     
     var texgen = null;
@@ -634,7 +634,7 @@ var BlockSet = (function () {
     var blockIconsW = [];
     var blockIconsR = [];
     var toRerenderIcon = appearanceChangedQueue.getHead();
-    var iconRenderer = new BlockRenderer(blockSet, renderer, blockRenderRes);
+    var iconRenderer = new BlockRenderer(blockset, renderer, blockRenderRes);
     var iconCanvas = document.createElement("canvas");
     var iconCtx = iconCanvas.getContext('2d');
     iconCanvas.width = iconCanvas.height = blockRenderRes;
@@ -672,7 +672,7 @@ var BlockSet = (function () {
       //if (typeof console !== "undefined") console.info("Rendering block type", blockID);
       var tileSize = texgen.tileSize; // shadowing
       var tileLastIndex = tileSize - 1;
-      var blockType = blockSet.get(blockID);
+      var blockType = blockset.get(blockID);
       var rotatedFaceData = rotatedBlockFaceData[blockID] || (rotatedBlockFaceData[blockID] = {});
       
       var texWidth = texgen.textureSize;
@@ -695,7 +695,7 @@ var BlockSet = (function () {
       if (blockType.world) {
         (function () {
           var world = blockType.world;
-          var types = world.blockSet.getAll();
+          var types = world.blockset.getAll();
           var opaques = types.map(function (t) { return t.opaque; });
           
           // To support non-cubical objects, we slice the entire volume of the block and generate as many tiles as needed. sliceWorld generates one such slice.
@@ -832,11 +832,11 @@ var BlockSet = (function () {
     function freshenTexture() {
       var someChanged = false;
       var allChanged = false;
-      var l = blockSet.length;
+      var l = blockset.length;
       
       // TODO: Losing GL context should not require us to re-calculate texture data.
       if (!texgen || texgen.mustRebuild()) {
-        texgen = new Texgen(blockSet.tileSize, renderer);
+        texgen = new Texgen(blockset.tileSize, renderer);
       }
       
       // If necessary, rebuild everything
@@ -868,7 +868,7 @@ var BlockSet = (function () {
       }
       if (someChanged) {
         texgen.send();
-        allTypesCached = blockSet.getAll();
+        allTypesCached = blockset.getAll();
       }
     }
     return function () {

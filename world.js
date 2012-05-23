@@ -48,8 +48,8 @@ var World = (function () {
     }
   }
   
-  function World(sizes, blockSet) {
-    if (!blockSet) {
+  function World(sizes, blockset) {
+    if (!blockset) {
       // early catch of various mistakes that can lead to this
       throw new Error("missing BlockSet for new World");
     }
@@ -185,7 +185,7 @@ var World = (function () {
     // Return the block type at the given coordinates
     function gtv(v) { return gt(v[0], v[1], v[2]); }
     function gt(x,y,z) {
-      return blockSet.get(g(x,y,z));
+      return blockset.get(g(x,y,z));
     }
     // Return the block subdatum at the given coordinates
     function gSubv(v) { return gSub(v[0], v[1], v[2]); }
@@ -236,7 +236,7 @@ var World = (function () {
       var val = blocks[(x*wy + y)*wz + z];
       var neighbors = [[x-1,y,z], [x,y-1,z], [x,y,z-1], [x+1,y,z], [x,y+1,z], [x,y,z+1]];
       
-      var newType = blockSet.get(val);
+      var newType = blockset.get(val);
       reeval(vec, newType);
       queueLightAt(x,y,z);
       
@@ -421,7 +421,7 @@ var World = (function () {
       
       blockCircuits = new IntVectorMap(); // TODO clear op instead of replacing objects?
       circuits = new IntVectorMap();
-      var types = blockSet.getAll();
+      var types = blockset.getAll();
       var vec = [0,0,0];
       for (var x = 0; x < wx; x++) {
         vec[0] = x;
@@ -553,7 +553,7 @@ var World = (function () {
       
       var pt1 = vec3.create();
       var pt2 = vec3.create();
-      var types = blockSet.getAll();
+      var types = blockset.getAll();
       var opaques = types.map(function (t) { return t.opaque; });
       var here;
       
@@ -710,7 +710,7 @@ var World = (function () {
         wx: wx,
         wy: wy,
         wz: wz,
-        blockSet: subSerialize(blockSet),
+        blockset: subSerialize(blockset),
         blockCodeBase: RLE_BASE,
         blocks: rleBytes(blocks),
         subData: rleBytes(subData),
@@ -767,7 +767,7 @@ var World = (function () {
     this.wx = wx;
     this.wy = wy;
     this.wz = wz;
-    this.blockSet = blockSet;
+    this.blockset = blockset;
     this.lightMax = LIGHT_MAX;     // Maximum value in lighting array
     this.lightScale = LIGHT_SCALE; // Value which should be a unity/"normal" light level
     this.lightOutside = LIGHT_SKY; // Ambient outside-the-world light level
@@ -792,7 +792,7 @@ var World = (function () {
       }
     }
     
-    var world = new World([json.wx, json.wy, json.wz], unserialize(json.blockSet, BlockSet));
+    var world = new World([json.wx, json.wy, json.wz], unserialize(json.blockset || json.blockSet, BlockSet));
     var str = json.blocks;
     unrleBytes(json.blocks, world.raw);
     unrleBytes(json.subData, world.rawSubData);
