@@ -43,6 +43,16 @@ function signum(x) {
   return x > 0 ? 1 : x < 0 ? -1 : 0;
 }
 
+function exponentialStep(val0, zeroOffset, timestep, constant, cutoff) {
+  var decayDerivative = constant * Math.exp(constant * timestep);
+  var val1 = val0 + (val0 - zeroOffset) * decayDerivative * timestep;
+  if (Math.abs(val1 - zeroOffset) < cutoff) {
+    return zeroOffset;
+  } else {
+    return val1;
+  }
+}
+
 function fixedmultiplyVec3(matrix, vector) {
   "use strict";
   // glMatrix's multiplyVec3 doesn't work if the implicit fourth OUTPUT is not 1, so doesn't work for matrices such as inverted projection matrices

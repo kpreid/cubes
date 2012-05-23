@@ -266,15 +266,7 @@ var Player = (function () {
       
       var newExposure = computeExposure();
       if (newExposure !== exposure && !isNaN(newExposure)) {
-        var k = -0.7;
-        var decayDerivative = k*Math.exp(k*timestep);
-        var incrExposure = exposure + (exposure - newExposure) * decayDerivative * timestep;
-        if (Math.abs(incrExposure - exposure) < 1e-4) {
-          // cut off the exponential tail
-          exposure = newExposure;
-        } else {
-          exposure = incrExposure;
-        }
+        exposure = exponentialStep(exposure, newExposure, timestep, -0.7, 1e-3);
         if (isNaN(exposure)) {
           exposure = 1.0;
         }
