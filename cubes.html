@@ -117,20 +117,20 @@
       var ourFullscreenElement = document.body; // TODO get this from Input
       function listener(event) {
         if (document.fullscreenElement === ourFullscreenElement) {
-          button.style.display = "none";
+          button.style.visibility = "hidden";
         } else {
-          button.style.removeProperty("display");
+          button.style.removeProperty("visibility");
         }
       }
       document.addEventListener("fullscreenchange", listener, false);
     }
   }())</script>
-  <button id="objectsbtn" onclick="this.style.display='none'; document.getElementById('objects').style.display='block'; document.getElementById('view-canvas').focus();">Worlds</button>
-  <button id="optionsbtn" onclick="this.style.display='none'; document.getElementById('options').style.display='block'; document.getElementById('view-canvas').focus();">Options</button>
-  <button id="helpbtn" onclick="this.style.display='none'; document.getElementById('help').style.display='block'; document.getElementById('view-canvas').focus();">Help</button>
+  <button id="objectsbtn" onclick="document.getElementById('objects').style.display='block'; document.getElementById('view-canvas').focus();">Worlds</button>
+  <button id="optionsbtn" onclick="document.getElementById('options').style.display='block'; document.getElementById('view-canvas').focus();">Options</button>
+  <button id="helpbtn" onclick="document.getElementById('help').style.display='block'; document.getElementById('view-canvas').focus();">Help</button>
 </div>
 
-<div id="objects" class="sidebar" onclick="if (event.target.tagName == 'INPUT' || event.target.tagName == 'LABEL' || event.target.tagName == 'BUTTON' || event.target.tagName == 'TEXTAREA') return true; this.style.display='none'; document.getElementById('objectsbtn').style.display='inline'; document.getElementById('view-canvas').focus();" style="display: none;">
+<div id="objects" class="sidebar" onclick="if (event.target.tagName == 'INPUT' || event.target.tagName == 'LABEL' || event.target.tagName == 'BUTTON' || event.target.tagName == 'TEXTAREA') return true; this.style.display='none';  document.getElementById('view-canvas').focus();" style="display: none;">
   <h2>Saved Items</h2>
 
   <div id="local-save-ok" style="display: none">
@@ -224,7 +224,7 @@
   </form>
 </div>
 
-<div id="options" class="sidebar" onclick="if (event.target.tagName == 'INPUT' || event.target.tagName == 'LABEL' || event.target.tagName == 'BUTTON' || event.target.tagName == 'TEXTAREA') return true; this.style.display='none'; document.getElementById('optionsbtn').style.display='inline'; document.getElementById('view-canvas').focus();" style="display: none;">
+<div id="options" class="sidebar" onclick="if (event.target.tagName == 'INPUT' || event.target.tagName == 'LABEL' || event.target.tagName == 'BUTTON' || event.target.tagName == 'TEXTAREA') return true; this.style.display='none'; document.getElementById('view-canvas').focus();" style="display: none;">
   <p>Click to close.</p>
   
   <h2>Options</h2>
@@ -285,7 +285,7 @@
   </form>
 </div>
 
-<div id="help" class="sidebar" onclick="this.style.display='none'; document.getElementById('helpbtn').style.display='inline'; document.getElementById('view-canvas').focus();" style="display: none;">
+<div id="help" class="sidebar" onclick="this.style.display='none';  document.getElementById('view-canvas').focus();" style="display: none;">
   <h2>Help</h2>
   
   <p>Click to close this help.</p>
