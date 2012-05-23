@@ -82,7 +82,7 @@ describe("CubesMain", function() {
   
   it("should accept an initial world", function () {
     doCreate(this);
-    var world = new World([3, 3, 3], new BlockSet([]));
+    var world = new World([3, 3, 3], new Blockset([]));
     main.setTopWorld(world);
     doStart(this);
     runs(function () {

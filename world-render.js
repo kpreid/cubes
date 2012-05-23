@@ -96,7 +96,7 @@ var WorldRenderer = (function () {
     // Cached blockset characteristics
     var tileSize = blockset.tileSize;
     var pixelSize = 1/tileSize;
-    var ID_EMPTY = BlockSet.ID_EMPTY;
+    var ID_EMPTY = Blockset.ID_EMPTY;
     
     var particles = [];
     

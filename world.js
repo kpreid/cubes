@@ -51,7 +51,7 @@ var World = (function () {
   function World(sizes, blockset) {
     if (!blockset) {
       // early catch of various mistakes that can lead to this
-      throw new Error("missing BlockSet for new World");
+      throw new Error("missing Blockset for new World");
     }
     
     var self = this;
@@ -792,7 +792,7 @@ var World = (function () {
       }
     }
     
-    var world = new World([json.wx, json.wy, json.wz], unserialize(json.blockset || json.blockSet, BlockSet));
+    var world = new World([json.wx, json.wy, json.wz], unserialize(json.blockset || json.blockSet, Blockset));
     var str = json.blocks;
     unrleBytes(json.blocks, world.raw);
     unrleBytes(json.subData, world.rawSubData);

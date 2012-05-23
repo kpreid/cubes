@@ -393,7 +393,7 @@ var CubesMain = (function () {
             row.appendChild(sizeCell);
             switch (type) {
               case World: typeCell.textContent = "world"; break;
-              case BlockSet: typeCell.textContent = "blockset"; break;
+              case Blockset: typeCell.textContent = "blockset"; break;
               case BlockType: typeCell.textContent = "block type"; break;
               default: typeCell.textContent = "???"; break;
             }
@@ -439,7 +439,7 @@ var CubesMain = (function () {
         function updateBlocksetList() {
           while (blocksetList.firstChild) blocksetList.removeChild(blocksetList.firstChild);
           persistencePool.forEach(function (name, type) {
-            if (type !== BlockSet) return;
+            if (type !== Blockset) return;
             var row = document.createElement("option");
             blocksetList.appendChild(row);
             row.value = name;

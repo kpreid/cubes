@@ -39,7 +39,7 @@ var WorldGen = (function () {
     // levels in each channel.
     colorBlocks: function (reds, greens, blues, constAlpha) {
       if (constAlpha === undefined) constAlpha = 1.0;
-      var max = BlockSet.ID_LIMIT - 1;
+      var max = Blockset.ID_LIMIT - 1;
       if (reds*greens*blues >= max)
         throw new Error("Color resolution would result in " + reds*greens*blues + " (> " + max + ") colors.");
     
@@ -52,7 +52,7 @@ var WorldGen = (function () {
           constAlpha
         ], null));
       }
-      return new BlockSet(colors);
+      return new Blockset(colors);
     },
     
     // Given a blockset, return a function which returns the ID of the nearest color block in the blockset, optionally with random dithering. As the color selection process is expensive, the function is memoized; reusing it is cheaper.
@@ -519,7 +519,7 @@ var WorldGen = (function () {
       // --- default block worlds and block set ---
 
       var type;
-      var blockset = new BlockSet([]);
+      var blockset = new Blockset([]);
 
       // color cube - world base and bogus-placeholder
       blockset.add(type = genedit(rgbPat));
@@ -762,8 +762,8 @@ function generateWorlds(config, blockset) {
     // --- Parameters ---
     
     // Blocks
-    var air = BlockSet.ID_EMPTY;
-    var bedrock = BlockSet.ID_BOGUS;
+    var air = Blockset.ID_EMPTY;
+    var bedrock = Blockset.ID_BOGUS;
     var ground = 3; // TODO magic number
     var road = blockset.lookup("slab");
     

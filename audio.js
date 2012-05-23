@@ -41,7 +41,7 @@ var CubesAudio = (function () {
       function readBlock() {
         // Find volumes of material in the block
         counts = [];
-        for (var i = 0; i < BlockSet.ID_LIMIT; i++) counts.push(0);
+        for (var i = 0; i < Blockset.ID_LIMIT; i++) counts.push(0);
         var raw = blockWorld.raw;
         for (var i = raw.length - 1; i >= 0; i--) {
           counts[raw[i]]++;
@@ -61,7 +61,7 @@ var CubesAudio = (function () {
       
         var totalAmp = 0;
         var color = [];
-        for (var value = BlockSet.ID_EMPTY + 1; value < BlockSet.ID_LIMIT; value++) {
+        for (var value = Blockset.ID_EMPTY + 1; value < Blockset.ID_LIMIT; value++) {
           var count = counts[value];
           if (count == 0) continue;
       

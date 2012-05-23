@@ -345,7 +345,7 @@ var Player = (function () {
       listen: inputNotifier.listen,
       
       useTool: function () {
-        if (currentPlace.tool === BlockSet.ID_EMPTY) {
+        if (currentPlace.tool === Blockset.ID_EMPTY) {
           this.deleteBlock();
         } else {
           // create block

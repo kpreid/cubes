@@ -3,7 +3,7 @@
 
 describe("World", function() {
   it("should terminate an infinite raycast", function () {
-    var world = new World([1, 1000, 1000], new BlockSet([]));
+    var world = new World([1, 1000, 1000], new Blockset([]));
     var t0 = Date.now();
     world.raycast([-10, 0.5, 0.5], [20, 0.5000001, 0.5000001], Infinity, function () {});
     var t1 = Date.now();

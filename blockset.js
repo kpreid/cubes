@@ -192,7 +192,7 @@ var BlockType = (function () {
   return Object.freeze(BlockType);
 }());
 
-var BlockSet = (function () {
+var Blockset = (function () {
   "use strict";
   
   // Texture parameters
@@ -315,7 +315,7 @@ var BlockSet = (function () {
     var tileCountSqrt;    // Number of tiles which fit in one row/column of the texture
     
     // Texture holding tiles
-    // TODO: Confirm that WebGL garbage collects these, or add a delete method to BlockSet for use as needed
+    // TODO: Confirm that WebGL garbage collects these, or add a delete method to Blockset for use as needed
     // TODO: Arrange so that if mustRebuild, we only recreate the GL texture rather than repainting
     this.texture = gl.createTexture();
     this.mustRebuild = renderer.currentContextTicket();
@@ -456,7 +456,7 @@ var BlockSet = (function () {
     }
   }
   
-  function BlockSet(initialTypes) {
+  function Blockset(initialTypes) {
     var self = this;
     
     var tileSize = NaN;
@@ -468,7 +468,7 @@ var BlockSet = (function () {
     
     var renderDataTable = new ObjectMap(); // per-GL-context
     
-    var notifier = new Notifier("BlockSet");
+    var notifier = new Notifier("Blockset");
     
     var appearanceChangedQueue = new CatchupQueue();
     
@@ -535,14 +535,14 @@ var BlockSet = (function () {
     };
     
     this.get = function (blockID) {
-      return types[blockID] || types[BlockSet.ID_BOGUS] || types[BlockSet.ID_EMPTY];
+      return types[blockID] || types[Blockset.ID_BOGUS] || types[Blockset.ID_EMPTY];
     };
       
     // Return an ID_LIMIT-element array snapshotting the results of get().
     this.getAll = function () {
       var array = types.slice();
-      var bogus = types[BlockSet.ID_BOGUS] || types[BlockSet.ID_EMPTY];
-      for (var i = array.length; i < BlockSet.ID_LIMIT; i++) {
+      var bogus = types[Blockset.ID_BOGUS] || types[Blockset.ID_EMPTY];
+      for (var i = array.length; i < Blockset.ID_LIMIT; i++) {
         array[i] = bogus;
       }
       return array;
@@ -567,7 +567,7 @@ var BlockSet = (function () {
     this.getRenderData = function (renderer) {
       var rdf = renderDataTable.get(renderer);
       if (!rdf) {
-        renderDataTable.set(renderer, rdf = new BlockSetRenderDataGenerator(this, renderer, notifier, appearanceChangedQueue));
+        renderDataTable.set(renderer, rdf = new BlocksetRenderDataGenerator(this, renderer, notifier, appearanceChangedQueue));
       }
       return rdf();
     };
@@ -579,7 +579,7 @@ var BlockSet = (function () {
         type: "types",
         types: types.slice(1).map(function (type) { return serialize(type); })
       };
-      serialize.setUnserializer(json, BlockSet);
+      serialize.setUnserializer(json, Blockset);
       return json;
     };
 
@@ -589,42 +589,43 @@ var BlockSet = (function () {
   }
   
   // This block ID is always empty air.
-  BlockSet.ID_EMPTY = 0;
+  Blockset.ID_EMPTY = 0;
   
   // This block ID is used when an invalid block ID is met
-  BlockSet.ID_BOGUS = 1;
+  Blockset.ID_BOGUS = 1;
   
   // The maximum number of possible block types.
   // This value arises because worlds store blocks as bytes.
-  BlockSet.ID_LIMIT = 256;
+  Blockset.ID_LIMIT = 256;
   
-  Persister.types["BlockSet"] = BlockSet;
-  BlockSet.unserialize = function (json, unserialize) {
+  // TODO change this from "BlockSet" to "Blockset" — but we need to keep a migration path for old serializations, and there's no way to specify a preferred name, currently.
+  Persister.types["BlockSet"] = Blockset;
+  Blockset.unserialize = function (json, unserialize) {
     if (json.type === "colors") {
       // obsolete serialization type
       var colors = WorldGen.colorBlocks(4,4,4);
       var list = colors.getAll().slice(1, colors.length);
       list.push(list.shift());
-      return new BlockSet(list);
+      return new Blockset(list);
     } else if (json.type === "textured") {
       // obsolete serialization type
       var blockTypes = json.worlds.map(function (world) {
         return new BlockType(null, unserialize(world, World));
       });
-      return new BlockSet(blockTypes);
+      return new Blockset(blockTypes);
     } else if (json.type === "types") {
       var blockTypes = json.types.map(function (type) {
         return unserialize(type, BlockType);
       });
-      return new BlockSet(blockTypes);
+      return new Blockset(blockTypes);
     } else {
-      throw new Error("unknown BlockSet serialization type");
+      throw new Error("unknown Blockset serialization type");
     }
   };
   
   var blockRenderRes = 128;
   
-  function BlockSetRenderDataGenerator(blockset, renderer, notifier /* TODO make this arg unnecessary */, appearanceChangedQueue) {
+  function BlocksetRenderDataGenerator(blockset, renderer, notifier /* TODO make this arg unnecessary */, appearanceChangedQueue) {
     var toRerender = appearanceChangedQueue.getHead();
     
     var texgen = null;
@@ -640,7 +641,7 @@ var BlockSet = (function () {
     iconCanvas.width = iconCanvas.height = blockRenderRes;
     var iconTodoSet = {};
     var iconRendererInterval;
-    for (var i = 0; i < BlockSet.ID_LIMIT; i++) {
+    for (var i = 0; i < Blockset.ID_LIMIT; i++) {
       blockIconsW[i] = new Cell("block icon", null);
       blockIconsR[i] = blockIconsW[i].readOnly;
       iconTodoSet[i] = true;
@@ -843,7 +844,7 @@ var BlockSet = (function () {
       while (texgen.textureLost) {
         //if (typeof console !== "undefined") console.info("Performing full block texture rebuild.");
         texgen.textureLost = false;
-        for (var id = BlockSet.ID_EMPTY + 1; id < l && !texgen.textureLost; id++)
+        for (var id = Blockset.ID_EMPTY + 1; id < l && !texgen.textureLost; id++)
           rebuildOne(id);
         someChanged = true;
         allChanged = true;
@@ -863,7 +864,7 @@ var BlockSet = (function () {
       
       if (allChanged) {
         // If textureLost, which might occur because it was resized, then we need to notify of *everything* changing
-        for (var id = BlockSet.ID_EMPTY + 1; id < l; id++)
+        for (var id = Blockset.ID_EMPTY + 1; id < l; id++)
           notifier.notify("texturingChanged", id);
       }
       if (someChanged) {
@@ -874,7 +875,7 @@ var BlockSet = (function () {
     return function () {
       freshenTexture();
       freshenIcons();
-      rotatedBlockFaceData.bogus = rotatedBlockFaceData[BlockSet.ID_BOGUS] || EMPTY_BLOCKRENDER;
+      rotatedBlockFaceData.bogus = rotatedBlockFaceData[Blockset.ID_BOGUS] || EMPTY_BLOCKRENDER;
       return {
         texture: texgen.texture,
         rotatedBlockFaceData: rotatedBlockFaceData,
@@ -885,5 +886,5 @@ var BlockSet = (function () {
     }
   }
   
-  return Object.freeze(BlockSet);
+  return Object.freeze(Blockset);
 }());

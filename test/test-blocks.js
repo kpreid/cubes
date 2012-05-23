@@ -3,7 +3,7 @@
 
 describe("BlockType", function () {
   it("should persist block type attributes", function () {
-    var type = new BlockType([1,0,1,1], new World([1, 1, 1], new BlockSet([])));
+    var type = new BlockType([1,0,1,1], new World([1, 1, 1], new Blockset([])));
     type.automaticRotations = [1,2];
     type.behavior = Circuit.behaviors.wire;
     type.name = "foo";
@@ -20,13 +20,13 @@ describe("BlockType", function () {
   });
 });
 
-describe("BlockSet", function () {
+describe("Blockset", function () {
   it("should know when it is dirty", function () {
     sessionStorage.clear();
-    var pool = new PersistencePool(sessionStorage, "BlockSet-dirty-test.");
+    var pool = new PersistencePool(sessionStorage, "Blockset-dirty-test.");
     
     // creating a blockset
-    var blockset = new BlockSet([]);
+    var blockset = new Blockset([]);
     pool.persist(blockset, "obj");
     expect(pool.status.get()).toEqual(1);
     pool.flushNow();
@@ -51,13 +51,13 @@ describe("BlockSet", function () {
     type1.name = "foo";
     var type2 = new BlockType([1,1,1,1], null);
     type2.name = "bar";
-    var blockset = new BlockSet([type1, type2]);
+    var blockset = new Blockset([type1, type2]);
     expect(blockset.lookup("foo")).toBe(1);
     expect(blockset.lookup("bar")).toBe(2);
   });
   
   it("should give null for an unknown block name", function () {
-    var blockset = new BlockSet([]);
+    var blockset = new Blockset([]);
     expect(blockset.lookup("foo")).toBe(null);
   });
   
@@ -65,7 +65,7 @@ describe("BlockSet", function () {
     var type1 = new BlockType([1,1,1,1], null);
     var type2 = new BlockType([1,1,0,1], null);
     var type3 = new BlockType([1,0,0,1], null);
-    var blockset = new BlockSet([type1, type2, type3]);
+    var blockset = new Blockset([type1, type2, type3]);
     
     expect(blockset.get(0)).toBe(BlockType.air);
     expect(blockset.get(1)).toBe(type1);
@@ -91,7 +91,7 @@ describe("BlockSet", function () {
   });
   
   it("should not allow deletion of the last block type", function () {
-    var blockset = new BlockSet([]);
+    var blockset = new Blockset([]);
     
     expect(blockset.length).toBe(1);
     expect(blockset.get(0)).toBe(BlockType.air);

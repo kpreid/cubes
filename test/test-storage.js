@@ -33,7 +33,7 @@ describe("Persister", function () {
     
     var pool1 = new PersistencePool(sessionStorage, "Persister-preserve-test.");
     
-    var inner = new BlockSet([]);
+    var inner = new Blockset([]);
     var outer = new World([1,1,1], inner);
     pool1.persist(inner, "inner");
     pool1.persist(outer, "outer");
@@ -53,7 +53,7 @@ describe("Persister", function () {
     sessionStorage.clear();
     var pool = new PersistencePool(sessionStorage, "Persister-preserve-test.");
     
-    var obj = new BlockSet([]);
+    var obj = new Blockset([]);
     pool.persist(obj, "foo");
     pool.flushNow();
     pool.ephemeralize("foo");
