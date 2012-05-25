@@ -624,6 +624,7 @@ var WorldRenderer = (function () {
         measuring.chunk.end();
       }, {
         aroundDraw: function (draw) {
+          if (mustRebuild()) chunk.recompute(); // TODO kludge for light texture
           renderer.setLightTexture(lightTexture);
           draw();
         }
