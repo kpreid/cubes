@@ -15,9 +15,10 @@ var WorldGen = (function () {
       type.world.edit(function (x,y,z,value) {
         return patfunc([x,y,z]);
       });
+      WorldGen.initLighting(type.world);
       return type;
     },
-
+    
     newRandomBlockType: function (TS, blockset) {
       var f = WorldGen.blockFunctions(TS);
 
@@ -34,7 +35,16 @@ var WorldGen = (function () {
                   
       return WorldGen.newProceduralBlockType(TS, blockset, c);
     },
-
+    
+    initLighting: function (world) {
+      var value = world.lightOutside;
+      var lighting = world.rawLighting;
+      var count = lighting.length;
+      for (var i = 0; i < count; i++) {
+        lighting[i] = value;
+      }
+    },
+    
     // Generate a blockset containing RGB colors with the specified number of
     // levels in each channel.
     colorBlocks: function (reds, greens, blues, constAlpha) {
@@ -290,6 +300,7 @@ var WorldGen = (function () {
         type.world.edit(function (x,y,z,value) { // TODO duplicative of newProceduralBlockType
           return pattern([x,y,z]);
         });
+        WorldGen.initLighting(type.world);
         type.solid = false;
         type.behavior = behavior;
         return type;
