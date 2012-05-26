@@ -574,7 +574,14 @@ var WorldGen = (function () {
       type.world.s(0, 1, 0, ls.constant, 0);
       type.world.s(1, 1, 0, ls.gate);
       type.world.s(2, 1, 0, ls.become);
-
+      
+      // light source
+      blockset.add(type = genedit(
+        f.sphere(TS/2, TS/2, TS/2, TS/2, f.flat(brgb(1,1,1,1)))));
+      // TODO: fix lighting algorithm so making this color darker than 1 doesn't make a mess
+      type.name = "light";
+      type.light = 3;
+      
       // leaves/hedge
       blockset.add(type = genedit(function (b) {
         var edgeness = f.maxrad(b);
@@ -724,6 +731,7 @@ function generateWorlds(config, blockset) {
     var ground = 2;
     var pyramid = blockset.lookup("pyramid");
     var bump = blockset.lookup("bump");
+    var light = blockset.lookup("light");
     
     // Using raw array access because it lets us cache the altitude computation by iterating over y last, not because the overhead of .edit() is especially high.
     var raw = topWorld.raw;
@@ -746,9 +754,10 @@ function generateWorlds(config, blockset) {
                        altitude < 0 ? bedrock :
                        altitude == 0 ? ground :
                        /* altitude == 1 */
+                       random() > 0.997 ? light :
                        random() > 0.99 ? (rawSubData[index] = 4, pyramid) :
                        random() > 0.99 ? bump :
-                       0;
+                       air;
         }
       }
     }
