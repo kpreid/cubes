@@ -135,7 +135,7 @@ var measuring = (function () {
     var sparkCanvas = document.createElement("canvas");
     sparkCanvas.className = "measuring-sparkline";
     var sparkLength = sparkCanvas.width  = this.history.length;
-    sparkCanvas.height = 1; // updated later via computed style
+    var sparkHeight = sparkCanvas.height = 1; // updated later via computed style
     var sparkContext = sparkCanvas.getContext("2d");
     var lastUpdateIndex = 0;
 
@@ -154,14 +154,15 @@ var measuring = (function () {
         if (elementIsVisible(sparkCanvas)
             && lastUpdateIndex !== indexOffset /* there is new data */) {
           lastUpdateIndex = indexOffset;
-
+          
+          sparkHeight = parseInt(window.getComputedStyle(labelElem, null).height, 10) - 3;
+          if (sparkHeight != sparkCanvas.height) sparkCanvas.height = sparkHeight;
+          
           var history = this.history;
-          var sparkHeight = sparkCanvas.height =
-              parseInt(window.getComputedStyle(labelElem, null).height, 10) - 3;
           var fgColor = window.getComputedStyle(sparkCanvas, null).color;
           
           sparkContext.clearRect(0, 0, sparkLength, sparkHeight);
-
+          
           // Find maximum and minimum of graph
           var miny = 0 /* Infinity */; // assume 0 is a meaningful minimum
           var maxy = -Infinity;
