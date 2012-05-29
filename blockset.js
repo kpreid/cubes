@@ -282,18 +282,28 @@ var Blockset = (function () {
   function calcTexCoords(texgen, usageIndex, flipped) {
     var uv = texgen.uvFor(usageIndex);
     var tileUVSize = texgen.tileUVSize;
-    var texO = flipped ? tileUVSize : 0;
-    var texD = flipped ? 0 : tileUVSize;
     var uo = uv[0];
     var vo = uv[1];
-    return [
-      uo + texO,       vo + texO,
+    var c = [
+      uo,              vo,
       uo,              vo + tileUVSize,
       uo + tileUVSize, vo,
-      uo + texD,       vo + texD,
+      uo + tileUVSize, vo + tileUVSize,
       uo + tileUVSize, vo,
       uo,              vo + tileUVSize
     ];
+    if (flipped) {
+      // Reverse winding order
+      for (var i = 0; i < 6; i += 2) {
+        var tu = c[i];
+        var tv = c[i+1];
+        c[i] = c[10-i];
+        c[i+1] = c[11-i];
+        c[10-i] = tu;
+        c[11-i] = tv;
+      }
+    }
+    return c;
   }
   
   function Texgen(tileSize, renderer) {
@@ -681,16 +691,30 @@ var Blockset = (function () {
       
       function pushQuad(vertices, texcoords, flipped, transform, depth, usageIndex) {
         texcoords.push.apply(texcoords, calcTexCoords(texgen, usageIndex, flipped));
-        var a = flipped ? 1 : 0;
-        var b = flipped ? 0 : 1;
         
-        pushVertex(vertices, mat4.multiplyVec3(transform, [a,a,depth]));
-        pushVertex(vertices, mat4.multiplyVec3(transform, [0,1,depth]));
-        pushVertex(vertices, mat4.multiplyVec3(transform, [1,0,depth]));
+        var v1 = mat4.multiplyVec3(transform, [0,0,depth]);
+        var v2 = mat4.multiplyVec3(transform, [0,1,depth]);
+        var v3 = mat4.multiplyVec3(transform, [1,0,depth]);
+                                                          
+        var v4 = mat4.multiplyVec3(transform, [1,1,depth]);
+        var v5 = mat4.multiplyVec3(transform, [1,0,depth]);
+        var v6 = mat4.multiplyVec3(transform, [0,1,depth]);
         
-        pushVertex(vertices, mat4.multiplyVec3(transform, [b,b,depth]));
-        pushVertex(vertices, mat4.multiplyVec3(transform, [1,0,depth]));
-        pushVertex(vertices, mat4.multiplyVec3(transform, [0,1,depth]));
+        if (flipped) {
+          pushVertex(vertices, v6);
+          pushVertex(vertices, v5);
+          pushVertex(vertices, v4);
+          pushVertex(vertices, v3);
+          pushVertex(vertices, v2);
+          pushVertex(vertices, v1);
+        } else {
+          pushVertex(vertices, v1);
+          pushVertex(vertices, v2);
+          pushVertex(vertices, v3);
+          pushVertex(vertices, v4);
+          pushVertex(vertices, v5);
+          pushVertex(vertices, v6);
+        }
       }
       
       if (blockType.world) {
