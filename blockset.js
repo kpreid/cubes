@@ -195,6 +195,9 @@ var BlockType = (function () {
 var Blockset = (function () {
   "use strict";
   
+  var max = Math.max;
+  var min = Math.min;
+  
   // Texture parameters
   var TILE_MAPPINGS = [
     // in this matrix layout, the input (column) vector is the tile coords
@@ -279,18 +282,22 @@ var Blockset = (function () {
   }
   
   // Compute the texture coordinates for a tile as needed by WorldRenderer
-  function calcTexCoords(texgen, usageIndex, flipped) {
+  function calcTexCoords(texgen, usageIndex, flipped, ul, uh, vl, vh) {
     var uv = texgen.uvFor(usageIndex);
     var tileUVSize = texgen.tileUVSize;
+    ul *= tileUVSize;
+    uh *= tileUVSize;
+    vl *= tileUVSize;
+    vh *= tileUVSize;
     var uo = uv[0];
     var vo = uv[1];
     var c = [
-      uo,              vo,
-      uo,              vo + tileUVSize,
-      uo + tileUVSize, vo,
-      uo + tileUVSize, vo + tileUVSize,
-      uo + tileUVSize, vo,
-      uo,              vo + tileUVSize
+      uo + ul, vo + vl,
+      uo + ul, vo + vh,
+      uo + uh, vo + vl,
+      uo + uh, vo + vh,
+      uo + uh, vo + vl,
+      uo + ul, vo + vh
     ];
     if (flipped) {
       // Reverse winding order
@@ -689,16 +696,16 @@ var Blockset = (function () {
       var texWidth = texgen.textureSize;
       var texData = texgen.image;
       
-      function pushQuad(vertices, texcoords, flipped, transform, depth, usageIndex) {
-        texcoords.push.apply(texcoords, calcTexCoords(texgen, usageIndex, flipped));
+      function pushQuad(vertices, texcoords, flipped, transform, depth, usageIndex, ul, uh, vl, vh) {
+        texcoords.push.apply(texcoords, calcTexCoords(texgen, usageIndex, flipped, ul, uh, vl, vh));
         
-        var v1 = mat4.multiplyVec3(transform, [0,0,depth]);
-        var v2 = mat4.multiplyVec3(transform, [0,1,depth]);
-        var v3 = mat4.multiplyVec3(transform, [1,0,depth]);
+        var v1 = mat4.multiplyVec3(transform, [ul,vl,depth]);
+        var v2 = mat4.multiplyVec3(transform, [ul,vh,depth]);
+        var v3 = mat4.multiplyVec3(transform, [uh,vl,depth]);
                                                           
-        var v4 = mat4.multiplyVec3(transform, [1,1,depth]);
-        var v5 = mat4.multiplyVec3(transform, [1,0,depth]);
-        var v6 = mat4.multiplyVec3(transform, [0,1,depth]);
+        var v4 = mat4.multiplyVec3(transform, [uh,vh,depth]);
+        var v5 = mat4.multiplyVec3(transform, [uh,vl,depth]);
+        var v6 = mat4.multiplyVec3(transform, [ul,vh,depth]);
         
         if (flipped) {
           pushVertex(vertices, v6);
@@ -734,15 +741,13 @@ var Blockset = (function () {
           function makeSliceView(offset) {
             // the offset of the subcube which would block the view of this subcube if it is opaque.
             var view = vec3.create();
+            var ud = vec3.create();
+            var vd = vec3.create();
             var transform, vertices, texcoords;
+            var boundNU, boundPU, boundNV, boundPV;
             
             var self = {
-              // Does the layer we are constructing contain any visible unobscured pixels?
-              thisLayerNotEmpty: false,
-              
               init: function (t, vc, tc) {
-                self.thisLayerNotEmpty = false;
-                
                 transform = t;
                 vertices = vc;
                 texcoords = tc;
@@ -750,18 +755,36 @@ var Blockset = (function () {
                 view[0] = 0;
                 view[1] = 0;
                 view[2] = offset;
+                ud[0] = 1;
+                ud[1] = 0;
+                ud[2] = 0;
+                vd[0] = 0;
+                vd[1] = 1;
+                vd[2] = 0;
                 mat4.multiplyVec3(transform, view, view);
+                mat4.multiplyVec3(transform, ud, ud);
+                mat4.multiplyVec3(transform, vd, vd);
+                
+                boundNU = boundNV = +Infinity;
+                boundPU = boundPV = -Infinity;
               },
               
               visibleCube: function () {
                 if (!opaques[world.g(vec[0]+view[0],vec[1]+view[1],vec[2]+view[2])]) {
-                  self.thisLayerNotEmpty = true;
+                  var u = vec3.dot(vec, ud);
+                  var v = vec3.dot(vec, vd);
+                  boundNU = min(boundNU, u);
+                  boundPU = max(boundPU, u+1);
+                  boundNV = min(boundNV, v);
+                  boundPV = max(boundPV, v+1);
                 }
               },
               
+              isNotEmpty: function () { return isFinite(boundNU); },
+              
               considerQuad: function (usageIndex, layerCoordinate, flipped) {
-                if (self.thisLayerNotEmpty) {
-                  pushQuad(vertices, texcoords, flipped, transform, layerCoordinate/tileSize, usageIndex);
+                if (self.isNotEmpty()) {
+                  pushQuad(vertices, texcoords, flipped, transform, layerCoordinate/tileSize, usageIndex, boundNU/tileSize, boundPU/tileSize, boundNV/tileSize, boundPV/tileSize);
                 }
               }
             };
@@ -795,7 +818,7 @@ var Blockset = (function () {
               }
             }
             
-            if (!l.thisLayerNotEmpty && !h.thisLayerNotEmpty) {
+            if (!l.isNotEmpty() && !h.isNotEmpty()) {
               // We can reuse this tile iff it was blank or fully obscured
               texgen.deallocateUsage(usageIndex);
             } else {
@@ -808,7 +831,7 @@ var Blockset = (function () {
             
             // TODO: trigger rerender of chunks only if we made changes to the texcoords, not if only the colors changed
             
-            //console.log("id ", wi + 1, " dim ", dimName, " layer ", layer, (l.thisLayerNotEmpty || h.thisLayerNotEmpty) ? " allocated" : " skipped");
+            //console.log("id ", wi + 1, " dim ", dimName, " layer ", layer, (l.isNotEmpty() || h.isNotEmpty()) ? " allocated" : " skipped");
           }
           var faceData = [];
           TILE_MAPPINGS.forEach(function (m) {
@@ -864,8 +887,8 @@ var Blockset = (function () {
           var verticesH = [];
           var texcoords = [];
           // Texture is a solid color, so we only need one set of texcoords.
-          pushQuad(verticesL, texcoords, false, transform, 0, usageIndex);
-          pushQuad(verticesH, [],        true,  transform, 1, usageIndex);
+          pushQuad(verticesL, texcoords, false, transform, 0, usageIndex, 0, 1, 0, 1);
+          pushQuad(verticesH, [],        true,  transform, 1, usageIndex, 0, 1, 0, 1);
           faceData["l" + dimName] = {vertices: verticesL, texcoords: texcoords};
           faceData["h" + dimName] = {vertices: verticesH, texcoords: texcoords};
         });
