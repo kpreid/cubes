@@ -102,7 +102,7 @@ var Body = (function () {
     
     function unionHits(hit) {
       var union = [Infinity,-Infinity,Infinity,-Infinity,Infinity,-Infinity];
-      hit.forEach(function (aabb) {
+      hit.forEachValue(function (aabb) {
         body.debugHitAABBs.push(aabb); // TODO: misplaced for debug
         union[0] = Math.min(union[0], aabb[0]);
         union[1] = Math.max(union[1], aabb[1]);

@@ -581,7 +581,7 @@ var Circuit = (function () {
       }
       var hasIn = false;
       var hasOut = false;
-      type.world.getCircuits().forEach(function (circuit) {
+      type.world.getCircuits().forEachValue(function (circuit) {
         var notes = circuit.getNotes();
         hasIn  = hasIn  || notes["icInput_" + face];
         hasOut = hasOut || notes["icOutput_" + face];
@@ -597,7 +597,7 @@ var Circuit = (function () {
         return;
       }
       var circuitsArr = [];
-      type.world.getCircuits().forEach(function (circuit) {
+      type.world.getCircuits().forEachValue(function (circuit) {
         circuitsArr.push(circuit);
       });
       
@@ -673,7 +673,7 @@ var Circuit = (function () {
   
   Circuit.executeCircuitInBlock = function (blockWorld, outerWorld, cube, subDatum, extraState) {
     var effects = [];
-    blockWorld.getCircuits().forEach(function (circuit) {
+    blockWorld.getCircuits().forEachValue(function (circuit) {
       var state = extraState ? Object.create(extraState) : {};
       state.blockIn_world = outerWorld;
       state.blockIn_cube = cube;

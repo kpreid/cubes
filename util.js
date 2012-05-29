@@ -429,6 +429,13 @@ var IntVectorMap = (function () {
         f(table[skey], key);
       }
     };
+    // Iterate over values without keys (more efficient)
+    this.forEachValue = function (f) {
+      for (var skey in table) {
+        if (!hop.call(table, skey)) continue;
+        f(table[skey]);
+      }
+    };
     Object.defineProperty(this, "length", {
       get: function () { return count; }
     });

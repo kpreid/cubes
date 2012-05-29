@@ -169,10 +169,10 @@ var WorldRenderer = (function () {
     // --- methods, internals ---
     
     function deleteChunks() {
-      chunks.forEach(function (chunk) {
+      chunks.forEachValue(function (chunk) {
         chunk.deleteResources();
       });
-      circuitRenderers.forEach(function (cr) {
+      circuitRenderers.forEachValue(function (cr) {
         cr.deleteResources();
       });
       
@@ -187,7 +187,7 @@ var WorldRenderer = (function () {
       dirtyChunks.clear();
       chunks.forEach(function (chunk, coords) {
         chunk.dirtyChunk = true;
-        dirtyChunks.enqueue(coords, chunk);
+        dirtyChunks.enqueue(coords);
       });
     }
     
@@ -258,7 +258,7 @@ var WorldRenderer = (function () {
         // This routine is used only for "this block changed", so if there is
         // not already a chunk, we don't create it.
         chunk.dirtyChunk = true;
-        dirtyChunks.enqueue(k, chunk);
+        dirtyChunks.enqueue(k);
       }
     }
 
@@ -435,13 +435,13 @@ var WorldRenderer = (function () {
     function draw() {
       // Draw chunks.
       renderer.setTileSize(blockset.tileSize);
-      nonemptyChunks.forEach(function (chunk) {
+      nonemptyChunks.forEachValue(function (chunk) {
         if (renderer.aabbInView(chunk.aabb))
           chunk.draw();
       });
       
       // Draw circuits.
-      circuitRenderers.forEach(function (cr) {
+      circuitRenderers.forEachValue(function (cr) {
         cr.draw();
       });
       
