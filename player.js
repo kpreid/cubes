@@ -189,14 +189,20 @@ var Player = (function () {
       function ray(look /* overwritten */) {
         mat4.multiplyVec3(matrix, look);
         var pt2 = vec3.add(pt1, look, vec3.create());
+        var foundOpenSpace = false;
         world.raycast(pt1, pt2, 20/*TODO magic number */, function (x,y,z,value,face) {
           if (world.opaque(x,y,z)) { // TODO use appropriate test; what we actually want here is "is this a block which has a valid light value
-            x += face[0];
-            y += face[1];
-            z += face[2];
-            light += world.gLight(x,y,z);
-            hits++;
-            return true;
+            if (foundOpenSpace) {
+              x += face[0];
+              y += face[1];
+              z += face[2];
+              light += world.gLight(x,y,z);
+              hits++;
+              return true;
+            }
+          } else {
+            // This flag keeps the ray from stopping immediately if we are inside opaque blocks.
+            foundOpenSpace = true;
           }
         });
       }
