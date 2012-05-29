@@ -703,8 +703,46 @@ var Blockset = (function () {
           
           // data structures for slice loop
           var vec = vec3.create();
-          var viewL = vec3.create();
-          var viewH = vec3.create();
+          var l = makeSliceView(-1);
+          var h = makeSliceView(+1);
+          
+          // Holds the state which is duplicated for the two view directions of a layer.
+          function makeSliceView(offset) {
+            // the offset of the subcube which would block the view of this subcube if it is opaque.
+            var view = vec3.create();
+            var transform, vertices, texcoords;
+            
+            var self = {
+              // Does the layer we are constructing contain any visible unobscured pixels?
+              thisLayerNotEmpty: false,
+              
+              init: function (t, vc, tc) {
+                self.thisLayerNotEmpty = false;
+                
+                transform = t;
+                vertices = vc;
+                texcoords = tc;
+                
+                view[0] = 0;
+                view[1] = 0;
+                view[2] = offset;
+                mat4.multiplyVec3(transform, view, view);
+              },
+              
+              visibleCube: function () {
+                if (!opaques[world.g(vec[0]+view[0],vec[1]+view[1],vec[2]+view[2])]) {
+                  self.thisLayerNotEmpty = true;
+                }
+              },
+              
+              considerQuad: function (usageIndex, layerCoordinate, flipped) {
+                if (self.thisLayerNotEmpty) {
+                  pushQuad(vertices, texcoords, flipped, transform, layerCoordinate/tileSize, usageIndex);
+                }
+              }
+            };
+            return self;
+          }
           
           function sliceWorld(dimName, layer, transform, texcoordsL, texcoordsH, verticesL, verticesH) {
             var usageIndex = blockID + "," + dimName + "," + layer;
@@ -712,15 +750,8 @@ var Blockset = (function () {
             var coord = texgen.imageCoordsFor(usageIndex);
             var pixu = coord[0], pixv = coord[1];
             
-            var thisLayerNotEmptyL = false;
-            var thisLayerNotEmptyH = false;
-            
-            // viewL is the offset of the subcube which would block the view
-            // of this subcube if it is opaque.
-            viewL[0] = 0; viewL[1] = 0; viewL[2] = -1;
-            viewH[0] = 0; viewH[1] = 0; viewH[2] = +1;
-            mat4.multiplyVec3(transform, viewL, viewL);
-            mat4.multiplyVec3(transform, viewH, viewH);
+            l.init(transform, verticesL, texcoordsL);
+            h.init(transform, verticesH, texcoordsH);
             
             // extract surface plane of block from world
             for (var u = 0; u < tileSize; u++)
@@ -735,33 +766,25 @@ var Blockset = (function () {
                 // A layer has significant content only if there is an UNOBSCURED opaque pixel.
                 // If a layer is "empty" in this sense, it is not rendered.
                 // If it is empty from both directions, then it is deallocated.
-                if (!opaques[world.g(vec[0]+viewL[0],vec[1]+viewL[1],vec[2]+viewL[2])]) {
-                  thisLayerNotEmptyL = true;
-                }
-                if (!opaques[world.g(vec[0]+viewH[0],vec[1]+viewH[1],vec[2]+viewH[2])]) {
-                  thisLayerNotEmptyH = true;
-                }
+                l.visibleCube();
+                h.visibleCube();
               }
             }
             
-            if (!thisLayerNotEmptyL && !thisLayerNotEmptyH) {
+            if (!l.thisLayerNotEmpty && !h.thisLayerNotEmpty) {
               // We can reuse this tile iff it was blank or fully obscured
               texgen.deallocateUsage(usageIndex);
             } else {
               texgen.completed(usageIndex);
               
               // If the layer has unobscured content, and it is not an interior surface of an opaque block, then add it to rendering. Note that the TILE_MAPPINGS loop skips slicing interiors of opaque blocks, but they still need to have the last layer excluded because the choice of call to sliceWorld does not express that.
-              if (thisLayerNotEmptyL && (!blockType.opaque || layer === 0)) {
-                pushQuad(verticesL, texcoordsL, false, transform, layer/tileSize, usageIndex);
-              }
-              if (thisLayerNotEmptyH && (!blockType.opaque || layer === tileLastIndex)) {
-                pushQuad(verticesH, texcoordsH, true, transform, (layer+1)/tileSize, usageIndex);
-              }
+              if (!blockType.opaque || layer === 0)             l.considerQuad(usageIndex, layer, false);
+              if (!blockType.opaque || layer === tileLastIndex) h.considerQuad(usageIndex, layer+1, true);
             }
             
             // TODO: trigger rerender of chunks only if we made changes to the texcoords, not if only the colors changed
             
-            //console.log("id ", wi + 1, " dim ", dimName, " layer ", layer, (thisLayerNotEmptyL || thisLayerNotEmptyH) ? " allocated" : " skipped");
+            //console.log("id ", wi + 1, " dim ", dimName, " layer ", layer, (l.thisLayerNotEmpty || h.thisLayerNotEmpty) ? " allocated" : " skipped");
           }
           var faceData = [];
           TILE_MAPPINGS.forEach(function (m) {
