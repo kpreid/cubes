@@ -236,12 +236,19 @@
   <h2>Options</h2>
   
   <form onsubmit="return false;">
+    <h3>View</h3>
+    
     <div class="optionline">Field of view: <input type="range" step="any" min="45" max="140" value="60" size="4" id="fov"></div>
     <script>main.config.fov.bindControl("fov");</script>
     <div class="optionline">Draw distance: <input type="range" step="any" min="10" max="500" value="100" size="4" id="renderDistance"></div>
     <script>main.config.renderDistance.bindControl("renderDistance");</script>
     <div class="optionline">Turn rate: <input type="range" step="any" min="0" max="10" value="5" size="4" id="mouseTurnRate"></div>
     <script>main.config.mouseTurnRate.bindControl("mouseTurnRate");</script>
+    <div class="optionline"><label><input type="checkbox" id="pitchRelativeFlight"> Pitch-relative flight</label></div>
+    <script>main.config.pitchRelativeFlight.bindControl("pitchRelativeFlight");</script>
+
+    <h3>Graphics</h3>
+    
     <div class="optionline"><label><input type="checkbox" id="lighting"> Lighting</label></div>
     <script>main.config.lighting.bindControl("lighting");</script>
     <div class="optionline"><label><input type="checkbox" id="smoothLighting"> Smooth lighting</label></div>
@@ -250,13 +257,16 @@
     <script>main.config.bumpMapping.bindControl("bumpMapping");</script>
     <div class="optionline"><label><input type="checkbox" id="cubeParticles"> Cubical particles</label></div>
     <script>main.config.cubeParticles.bindControl("cubeParticles");</script>
+    <div class="optionline"><label><input type="checkbox" id="fsaa"> Fake 2× FSAA (I have fillrate to burn)</label></div>
+    <script>main.config.fsaa.bindControl("fsaa");</script>
+
+    <h3>Sound</h3>
+
     <div class="optionline"><label><input type="checkbox" id="enableSound"> Sound</label></div>
     <script>
       document.getElementById("enableSound").disabled = !cubes.Audio.supported;
       main.config.sound.bindControl("enableSound");
     </script>
-    <div class="optionline"><label><input type="checkbox" id="fsaa"> Fake 2× FSAA (I have fillrate to burn)</label></div>
-    <script>main.config.fsaa.bindControl("fsaa");</script>
     
     <h3>Controls</h3>
     

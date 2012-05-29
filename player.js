@@ -239,11 +239,16 @@
     var EPSILON = 1e-3;
     function stepPlayer(timestep) {
       var body = currentPlace.body;
-      
       var floor = body.getFloor();
       
+      // determine coordinate system for movement control
+      var controlOrientation = mat4.identity(mat4.create());
+      mat4.rotateY(controlOrientation, body.yaw);
+      if (body.flying && config.pitchRelativeFlight.get() /* && is mouselook mode? */) {
+        mat4.rotateX(controlOrientation, pitch);
+      }
+      
       // apply movement control to velocity
-      var controlOrientation = mat4.rotateY(mat4.identity(mat4.create()), body.yaw);
       var movAdj = vec3.create();
       mat4.multiplyVec3(controlOrientation, movement, movAdj);
       vec3.scale(movAdj, body.flying ? FLYING_SPEED : WALKING_SPEED);

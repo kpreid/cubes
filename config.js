@@ -20,22 +20,29 @@
       Object.keys(config).forEach(function (k) { config[k].setToDefault(); });
     }});
     
+    // controls/view options
     defineOption("controls", "object", Input.defaultBindings);
+    defineOption("pitchRelativeFlight", "boolean", false);
     defineOption("fov", "number", 60);
     defineOption("renderDistance", "number", 100);
     defineOption("mouseTurnRate", "number", 4); // radians/second/half-screen-width
+    
+    // rendering quality options
     defineOption("lighting", "boolean", true);
     defineOption("smoothLighting", "boolean", true);
     defineOption("bumpMapping", "boolean", true);
     defineOption("fsaa", "boolean", false);
     defineOption("cubeParticles", "boolean", false);
     defineOption("sound", "boolean", true);
+    
+    // debug-ish options
     defineOption("noclip", "boolean", false);
     defineOption("alwaysGenerateWorld", "boolean", false);
     defineOption("debugTextureAllocation", "boolean", false);
     defineOption("debugForceRender", "boolean", false);
     defineOption("debugPlayerCollision", "boolean", false);
-    
+
+    // world generation options
     defineOption("generate_wx", "number", 400);
     defineOption("generate_wy", "number", 128);
     defineOption("generate_wz", "number", 400);
