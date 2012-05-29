@@ -5,6 +5,9 @@ var measuring = (function () {
   "use strict";
   var measuring = {};
   
+  var max = Math.max;
+  var min = Math.min;
+  
   function numberWithCommas(x) {
     // source: http://stackoverflow.com/a/2901298/99692
     return (+x).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -168,12 +171,12 @@ var measuring = (function () {
           var maxy = -Infinity;
           for (var i = sparkLength - 1; i >= 0; i--) {
             var y = history[i];
-            miny = Math.min(y, miny);
-            maxy = Math.max(y, maxy);
+            miny = min(y, miny);
+            maxy = max(y, maxy);
           }
           
           // Establish viewport of graph. The maximum zoom is 1 value unit = 1px.
-          var viewScale = -Math.min(1, (sparkHeight - 1)/(maxy - miny));
+          var viewScale = -min(1, (sparkHeight - 1)/(maxy - miny));
           var viewOffset = -miny * viewScale + sparkHeight - 1;
 
           // Draw graph: first background fill, then line
@@ -195,7 +198,7 @@ var measuring = (function () {
   Quantity.prototype.end = function () {
     var hi = this.historyIndex;
     this.history[hi] = this.value;
-    this.historyIndex = mod(hi + 1, this.history.length);
+    this.historyIndex = (hi + 1) % this.history.length;
   };
   
   
