@@ -206,11 +206,10 @@ var Player = (function () {
           }
         });
       }
-      ray([0,0,-1]);
-      ray([-1,0,-1]);
-      ray([+1,0,-1]);
-      ray([0,-1,-1]);
-      ray([0,+1,-1]);
+      for (var x = -1; x <= 1; x++)
+      for (var y = -1; y <= 1; y++) {
+        ray([x/2, y/2, -1]);
+      }
       
       var localLightFactor = (hits ? light / hits : world.lightOutside) * world.lightScale;
       var compensation = 0.75;
