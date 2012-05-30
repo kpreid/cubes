@@ -361,7 +361,7 @@ var CubesMain = (function () {
       cursorInfo = dynamicText(cursorInfoTextElem);
       
       var shaders;
-
+      
       // Save button
       if (pageElements.saveButton) (function () {
         var saveButton = pageElements.saveButton;
@@ -541,6 +541,8 @@ var CubesMain = (function () {
         "Finishing...",
         function () {
           input = main.input = new Input(config, theCanvas, player.input, pageElements.hud, renderer, focusCell, main.save.bind(main));
+          
+          objectUI.setNormalFocusElement(theCanvas);
           theCanvas.focus();
           
           readyToDraw = true;
@@ -602,9 +604,12 @@ var CubesMain = (function () {
     this.requestFullscreen = function () {
       input.requestFullscreen();
     };
+    
+    // Exposed for use by document
+    this.config = config;
+    this.ui = objectUI;
 
     // Exposed for debugging access
-    this.config = config;
     this.pool = persistencePool;
     this.player = null;
   }

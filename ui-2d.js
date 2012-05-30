@@ -7,6 +7,12 @@ var CubesObjectUI;
   "use strict";
   
   function ObjectUI(persistencePool) {
+    var ui = this;
+    
+    var normalFocusElement;
+    
+    // --- Object chips ---
+    
     function ObjectChip() {
       var bound = false;
       var menuE;
@@ -150,9 +156,48 @@ var CubesObjectUI;
       
       Object.freeze(this);
     }
-    
     this.ObjectChip = ObjectChip;
+    
+    // --- Panel manager ---
+    
+    this.refocus = function () {
+      if (normalFocusElement) normalFocusElement.focus();
+    };
+    
+    var onymousPanels = {};
+    
+    this.registerPanel = function (name, element) {
+      onymousPanels[name] = element;
+      
+      element.style.display = "none";
+      
+      element.addEventListener("click", function (event) {
+        if (event.target.tagName == "INPUT" ||
+            event.target.tagName == "LABEL" ||
+            event.target.tagName == "BUTTON" ||
+            event.target.tagName == "TEXTAREA") {
+          return true;
+        } else {
+          element.style.display = "none";
+          ui.refocus();
+        }
+      })
+    };
+    this.openPanel = function (name) {
+      if (!Object.prototype.hasOwnProperty.call(onymousPanels, name)) throw new Error("unregistered panel");
+      
+      onymousPanels[name].style.display = "block";
+    };
+    
+    this.setNormalFocusElement = function (v) {
+      normalFocusElement = v;
+    }
+    
   }
+  ObjectUI.prototype.openPanelFromButton = function (name) {
+    this.openPanel(name);
+    this.refocus();
+  };
   
   CubesObjectUI = ObjectUI;
 })();

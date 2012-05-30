@@ -125,12 +125,13 @@
       document.addEventListener("fullscreenchange", listener, false);
     }
   }())</script>
-  <button id="objectsbtn" onclick="document.getElementById('objects').style.display='block'; document.getElementById('view-canvas').focus();">Worlds</button>
-  <button id="optionsbtn" onclick="document.getElementById('options').style.display='block'; document.getElementById('view-canvas').focus();">Options</button>
-  <button id="helpbtn" onclick="document.getElementById('help').style.display='block'; document.getElementById('view-canvas').focus();">Help</button>
+  <button onclick="main.ui.openPanelFromButton('objects');">Worlds</button>
+  <button onclick="main.ui.openPanelFromButton('options');">Options</button>
+  <button onclick="main.ui.openPanelFromButton('help');">Help</button>
 </div>
 
-<div id="objects" class="sidebar" onclick="if (event.target.tagName == 'INPUT' || event.target.tagName == 'LABEL' || event.target.tagName == 'BUTTON' || event.target.tagName == 'TEXTAREA') return true; this.style.display='none';  document.getElementById('view-canvas').focus();" style="display: none;">
+<div id="objects" class="sidebar" style="display: none;">
+  <script>main.ui.registerPanel("objects", document.getElementById("objects"))</script>
   <h2>Saved Items</h2>
 
   <div id="local-save-ok" style="display: none">
@@ -224,7 +225,8 @@
   </form>
 </div>
 
-<div id="options" class="sidebar" onclick="if (event.target.tagName == 'INPUT' || event.target.tagName == 'LABEL' || event.target.tagName == 'BUTTON' || event.target.tagName == 'TEXTAREA') return true; this.style.display='none'; document.getElementById('view-canvas').focus();" style="display: none;">
+<div id="options" class="sidebar" style="display: none;">
+  <script>main.ui.registerPanel("options", document.getElementById("options"))</script>
   <p>Click to close.</p>
   
   <h2>Options</h2>
@@ -285,7 +287,8 @@
   </form>
 </div>
 
-<div id="help" class="sidebar" onclick="this.style.display='none';  document.getElementById('view-canvas').focus();" style="display: none;">
+<div id="help" class="sidebar" style="display: none;">
+  <script>main.ui.registerPanel("help", document.getElementById("help"))</script>
   <h2>Help</h2>
   
   <p>Click to close this help.</p>
