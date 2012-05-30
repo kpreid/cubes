@@ -165,6 +165,12 @@ var CubesObjectUI;
     };
     
     var onymousPanels = {};
+    var currentlyOpenPanel = null;
+    
+    function closePanel(element) {
+      element.style.display = "none";
+      if (currentlyOpenPanel === element) currentlyOpenPanel = null;
+    }
     
     this.registerPanel = function (name, element) {
       onymousPanels[name] = element;
@@ -178,15 +184,19 @@ var CubesObjectUI;
             event.target.tagName == "TEXTAREA") {
           return true;
         } else {
-          element.style.display = "none";
+          closePanel(element);
           ui.refocus();
         }
       })
     };
     this.openPanel = function (name) {
       if (!Object.prototype.hasOwnProperty.call(onymousPanels, name)) throw new Error("unregistered panel");
+      var element = onymousPanels[name];
       
-      onymousPanels[name].style.display = "block";
+      if (currentlyOpenPanel) closePanel(currentlyOpenPanel);
+      
+      element.style.display = "block";
+      currentlyOpenPanel = element;
     };
     
     this.setNormalFocusElement = function (v) {
