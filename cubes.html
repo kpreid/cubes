@@ -199,29 +199,30 @@
     </div>
   </form>
   
-  <h2>Import/Export</h2>
+  <h2>Import</h2>
   
   <form onsubmit="return false;" style="text-align: center">
     <p>
-      <textarea id="loadfield" cols="20" rows="3" style="width: 80%;"></textarea>
+      <textarea id="load-field" cols="20" rows="3" style="width: 80%;"></textarea>
       <br>
       <button onclick="
-        document.getElementById('loadfield').value = JSON.stringify(cyclicSerialize(main.getTopWorld(), Persister.findType)); return false;
-      ">Text Export</button>
-      <button onclick="
-        while (document.getElementById('load-error').firstChild)
-          document.getElementById('load-error').removeChild(
-            document.getElementById('load-error').firstChild);
+        document.getElementById('load-error').textContent = '';
+        document.getElementById('load-result').textContent = '';
         try {
-          main.setTopWorld(cyclicUnserialize(JSON.parse(document.getElementById('loadfield').value), Persister.types));
+          var object = cyclicUnserialize(JSON.parse(document.getElementById('load-field').value), Persister.types);
+          var chip = new main.ui.ObjectChip();
+          chip.bindByObject(object);
+          document.getElementById('load-result').textContent = 'Imported object: ';
+          document.getElementById('load-result').appendChild(chip.element);
         } catch (e) {
           console.log(e);
-          document.getElementById('load-error').appendChild(document.createTextNode(e));
+          document.getElementById('load-error').textContent = String(e);
         }
         return false;
-      ">Text Import</button>
+      ">Import</button>
     </p>
     <p id="load-error" style="text-shadow: 0 0 .3em red;"></p>
+    <p id="load-result"></p>
   </form>
 </div>
 
