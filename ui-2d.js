@@ -43,6 +43,14 @@ var CubesObjectUI;
         updateChip();
       };
       
+      function getChipTarget() {
+        if (target !== null) {
+          return target;
+        } else {
+          return persistencePool.get(targetName);
+        }
+      }
+      
       function updateChip() {
         if (target !== null && targetName !== null) {
           throw new Error("Inconsistent");
@@ -130,9 +138,29 @@ var CubesObjectUI;
           });
         }
         
-        //addControl("Export", function () {
-        //  // TODO put serialization text up in a dialog box.
-        //});
+        addControl("Export", function () {
+          var panel = ui.openNewPanel();
+
+          var title = document.createElement("h2");
+          title.appendChild(document.createTextNode("Export of "));
+          var expchip = new ObjectChip();
+          expchip.bindByObject(getChipTarget());
+          title.appendChild(expchip.element);
+          panel.appendChild(title);
+          
+          var data = document.createElement("textarea");
+          data.cols = 20;
+          data.rows = 20;
+          data.readonly = true;
+          // TODO add class for style hooking
+          panel.appendChild(data);
+          
+          try {
+            data.value = JSON.stringify(cyclicSerialize(getChipTarget(), Persister.findType));
+          } catch (e) {
+            data.value = "Error: " + e;
+          }
+        });
         
         chipE.appendChild(menuE);
         var el;
@@ -166,17 +194,23 @@ var CubesObjectUI;
     
     var onymousPanels = {};
     var currentlyOpenPanel = null;
+    var currentlyOpenPanelName = null;
     
     function closePanel(element) {
       element.style.display = "none";
-      if (currentlyOpenPanel === element) currentlyOpenPanel = null;
+      if (currentlyOpenPanel === element) {
+        if (currentlyOpenPanelName === null) {
+          // anonymous panel is discarded
+          element.parentElement.removeChild(element);
+        }
+        
+        currentlyOpenPanel = null;
+        currentlyOpenPanelName = null;
+      }
     }
     
-    this.registerPanel = function (name, element) {
-      onymousPanels[name] = element;
-      
-      element.style.display = "none";
-      
+    function addPanelFeatures(element) {
+      element.classList.add("sidebar"); // TODO make class name more generic
       element.addEventListener("click", function (event) {
         if (event.target.tagName == "INPUT" ||
             event.target.tagName == "LABEL" ||
@@ -187,21 +221,47 @@ var CubesObjectUI;
           closePanel(element);
           ui.refocus();
         }
-      })
+      });
+    }
+    
+    this.registerPanel = function (name, element) {
+      onymousPanels[name] = element;
+      
+      element.style.display = "none";
+      addPanelFeatures(element);
     };
+    
     this.openPanel = function (name) {
-      if (!Object.prototype.hasOwnProperty.call(onymousPanels, name)) throw new Error("unregistered panel");
+      if (!Object.prototype.hasOwnProperty.call(onymousPanels, name)) {
+        throw new Error("unregistered panel");
+      }
       var element = onymousPanels[name];
       
       if (currentlyOpenPanel) closePanel(currentlyOpenPanel);
       
       element.style.display = "block";
       currentlyOpenPanel = element;
+      currentlyOpenPanelName = name;
     };
+    
+    this.openNewPanel = function () {
+      var element = document.createElement("div");
+      
+      // TODO make tree position customizable
+      document.body.appendChild(element);
+      addPanelFeatures(element);
+      
+      if (currentlyOpenPanel) closePanel(currentlyOpenPanel);
+      
+      currentlyOpenPanel = element;
+      currentlyOpenPanelName = null;
+      
+      return element;
+    }
     
     this.setNormalFocusElement = function (v) {
       normalFocusElement = v;
-    }
+    };
     
   }
   ObjectUI.prototype.openPanelFromButton = function (name) {
