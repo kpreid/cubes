@@ -767,10 +767,25 @@ var World = (function () {
     this.wx = wx;
     this.wy = wy;
     this.wz = wz;
-    this.blockset = blockset;
     this.lightMax = LIGHT_MAX;     // Maximum value in lighting array
     this.lightScale = LIGHT_SCALE; // Value which should be a unity/"normal" light level
     this.lightOutside = LIGHT_SKY; // Ambient outside-the-world light level
+    
+    Object.defineProperties(this, {
+      blockset: {
+        enumerable: true,
+        get: function () {
+          return blockset;
+        },
+        set: function (v) {
+          if (blockset !== v) {
+            blockset = v;
+            notifier.notify("changedBlockset");
+            this.persistence.dirty();
+          }
+        }
+      }
+    });
     
     Object.freeze(this);
   }

@@ -291,6 +291,7 @@ var WorldRenderer = (function () {
 
     function dirtyAll() {
       if (!isAlive()) return;
+      blockset = world.blockset;
       rerenderChunks();
     }
 
@@ -316,6 +317,7 @@ var WorldRenderer = (function () {
       dirtyAll: dirtyAll,
       dirtyCircuit: dirtyCircuit,
       deletedCircuit: deletedCircuit,
+      changedBlockset: dirtyAll,
       audioEvent: function (position, type, kind) {
         if (!isAlive()) return;
         if (optAudio) optAudio.play(position, type, kind, 1);

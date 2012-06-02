@@ -121,6 +121,7 @@ var BlockType = (function () {
         dirtyAll: rebuild,
         dirtyCircuit: dirtyProperties,
         deletedCircuit: dirtyProperties,
+        changedBlockset: rebuild,
         audioEvent: noop
       });
     }());
