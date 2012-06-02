@@ -631,7 +631,7 @@ var Input;
       
       if (!focusCell.get() || mousePos === null) {
         playerInput.mousePos = null;
-        yawRate = 0;
+        targetYawRate = 0;
         return;
       } else {
         playerInput.mousePos = mousePos;
