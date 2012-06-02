@@ -520,12 +520,16 @@ var World = (function () {
     }
     
     function polishLightInVicinity(center, radius, count) {
-      var diameter = 2 * radius;
-      var vec = [];
+      var lx = Math.max(center[0] - radius, 0);
+      var ly = Math.max(center[1] - radius, 0);
+      var lz = Math.max(center[2] - radius, 0);
+      var rx = Math.min(center[0] + radius, wx) - lx;
+      var ry = Math.min(center[1] + radius, wy) - ly;
+      var rz = Math.min(center[2] + radius, wz) - lz;
       for (var i = 0; i < count; i++) {
-        var x = Math.round(center[0] + (Math.random()-0.5) * radius);
-        var y = Math.round(center[1] + (Math.random()-0.5) * radius);
-        var z = Math.round(center[2] + (Math.random()-0.5) * radius);
+        var x = Math.round(lx + Math.random() * rx);
+        var y = Math.round(ly + Math.random() * ry);
+        var z = Math.round(lz + Math.random() * rz);
         
         // Skip blocks which are empty and surrounded by emptiness and therefore irrelevant
         if (!(g(x,y,z) ||
