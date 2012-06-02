@@ -108,12 +108,11 @@ html {
   border: 2px solid white;
   background: gray;
 }
-#quick-bar .selectedTool {
-  visibility: visible; /* show current tool even when menu is hidden */
-}
-.ui-mode-hidden #menu {
-  visibility: hidden;
-} 
+
+.ui-mode-hidden #menu { visibility: hidden; }
+.ui-mode-hidden #quick-bar .menu-item { visibility: visible; }
+.ui-mode-hidden #quick-bar { opacity: 0.75; }
+
 .ui-mode-menu #menu, .mode-full #menu {
   visibility: visible;
 } 
