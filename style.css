@@ -212,7 +212,7 @@ html {
   
   background: white;
   color: black;
-  font-family: 'Lucida Grande', sans-serif;
+  font: message-box;
 }
 
 #toggles {
@@ -337,7 +337,8 @@ html {
   text-align: center;
   vertical-align: middle;
   
-  font-family: "Lucida Grande", "Helvetica", "Arial", sans-serif;
+  font: icon;
+  font-size: 1em;
 }
 
 .control-chip.control-chip-placeholder { opacity: 0.5; }
@@ -387,6 +388,7 @@ html {
   border-color #888;
   background: #777;
   color: #FFF;
+  font: icon;
 }
 .object-chip.object-chip-named { background: #686; }
 .object-chip.object-chip-ephemeral { background: #866; }
@@ -416,6 +418,7 @@ html {
   border: 1px solid white;
   background: gray;
   color: white;
+  font: menu;
 }
 .command-menu ul {
   display: table;
