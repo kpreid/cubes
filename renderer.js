@@ -783,7 +783,7 @@ var Renderer = (function () {
     
     function generateNoiseTexture() {
       var texSize = 512;
-      var texPixels = texSize*texSize*4;
+      var texPixels = texSize*texSize;
       var image = new Uint8Array(texPixels);
       var random = Math.random;
       for (var i = 0; i < texPixels; i++) {
@@ -805,21 +805,23 @@ var Renderer = (function () {
       // Sky texture
       var skyTexSize = 256;
       var log = Math.log;
+      var sqrt = Math.sqrt;
       var cSky = vec3.createFrom(0.1,0.3,0.5);
       var cHorizon = vec3.createFrom(0.7,0.8,1.0);
       var cGround = vec3.createFrom(0.5,0.4,0.4);
       function clamp(x, low, high) {
         return Math.min(Math.max(x, low), high);
       }
+      var mixbuf = vec3.create();
       function mix(a, b, val) {
-        return vec3.add(vec3.scale(a, (1-val), vec3.create()), vec3.scale(b, val, vec3.create()));
+        return vec3.lerp(a, b, val, mixbuf);
       }
       function plot(sine) {
         // Note: this was formerly a GLSL function, which is why it uses the above utilities.
         // TODO: Try out doing this as render-to-texture
         return sine < 0.0
-            ? mix(cHorizon, cGround, clamp(log(1.0 + -sine * 120.0), 0.0, 1.0))
-            : mix(cHorizon, cSky, clamp(log(1.0 + sine * 2.0), 0.0, 1.0));
+            ? mix(cHorizon, cGround, clamp(log(1.0 - sine * 120.0), 0.0, 1.0))
+            : mix(cHorizon, cSky,    clamp(log(1.0 + sine *   2.0), 0.0, 1.0));
       }
       function proceduralImage(f) {
         var image = new Uint8Array(skyTexSize*skyTexSize*4);
@@ -838,13 +840,13 @@ var Renderer = (function () {
         return image;
       }
       var side = proceduralImage(function (base,x,y,z) {
-        return plot(-y / Math.sqrt(x*x+y*y+z*z));
+        return plot(-y / sqrt(x*x+y*y+z*z));
       });
       var top = proceduralImage(function (base,x,y,z) {
-        return plot(z / Math.sqrt(x*x+y*y+z*z));
+        return plot(z / sqrt(x*x+y*y+z*z));
       });
       var bottom = proceduralImage(function (base,x,y,z) {
-        return plot(-z / Math.sqrt(x*x+y*y+z*z));
+        return plot(-z / sqrt(x*x+y*y+z*z));
       });
       skyTexture = gl.createTexture();
       gl.activeTexture(gl.TEXTURE1);
