@@ -409,26 +409,27 @@ var WorldRenderer = (function () {
       }
     }
     this.updateSomeChunks = updateSomeChunks;
-
-    function renderDestroyBlock(cube) {
+    
+    function addParticles(cube, mode) {
+      var chunk = chunkContaining(cube);
+      var lightTexture = chunk ? chunk.getLightTexture() : null;
+      
       particles.push(new renderer.BlockParticles(
         cube,
         tileSize,
         world.gtv(cube),
-        true,
+        mode,
         world.gRotv(cube),
-        (chunkContaining(cube) || {}).getLightTexture()));
+        lightTexture));
+    }
+    
+    function renderDestroyBlock(cube) {
+      addParticles(cube, true);
     }
     this.renderDestroyBlock = renderDestroyBlock;
 
     function renderCreateBlock(cube) {
-      particles.push(new renderer.BlockParticles(
-        cube,
-        tileSize,
-        world.gtv(cube),
-        false,
-        world.gRotv(cube),
-        (chunkContaining(cube) || {}).getLightTexture()));
+      addParticles(cube, false);
     }
     this.renderCreateBlock = renderCreateBlock;
     
