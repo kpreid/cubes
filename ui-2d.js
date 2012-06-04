@@ -135,6 +135,10 @@
           });
         }
         
+        addControl("Inspect", function () {
+          ui.inspect(getChipTarget());
+        });
+        
         addControl("Export", function () {
           var panel = ui.openNewPanel();
 
@@ -258,9 +262,42 @@
     };
     
   }
+  
   ObjectUI.prototype.openPanelFromButton = function (name) {
     this.openPanel(name);
     this.refocus();
+  };
+  
+  ObjectUI.prototype.inspect = function (object) {
+    var panel = this.openNewPanel();
+    
+    var titleChip = new this.ObjectChip();
+    titleChip.bindByObject(object);
+    
+    panel.appendChild(mkelement("h2", "", "Inspecting ", titleChip.element));
+    
+    // TODO refactor this into something less hardcoded
+    if (object instanceof World) {
+      var blocksetChip = new this.ObjectChip();
+      blocksetChip.bindByObject(object.blockset);
+      
+      panel.appendChild(mkelement("table", "",
+        mkelement("tr", "",
+          mkelement("th", "", "Blockset:"),
+          mkelement("td", "", blocksetChip.element)
+        ),
+        mkelement("tr", "",
+          mkelement("th", "", "Size:"),
+          mkelement("td", "", String(object.wx), " × ", String(object.wy), " × ", String(object.wz))
+        ),
+      ));
+    } else if (object instanceof Blockset) {
+      
+      
+    } else {
+      panel.appendChild(mkelement("p", "",
+        mkelement("em", "", "No details available for this object.")));
+    }
   };
   
   cubes.ObjectUI = Object.freeze(ObjectUI);
