@@ -648,7 +648,7 @@ var World = (function () {
         if (oldStoredValue !== newStoredValue) {
           lighting[index] = newStoredValue;
           dirtied = true;
-          notifier.notify("dirtyBlock", here);
+          notifier.notify("relitBlock", here);
         
           if (lightingUpdateQueue.size() < MAX_LIGHTING_QUEUE) {
             rayHits.push([x,y,z]);

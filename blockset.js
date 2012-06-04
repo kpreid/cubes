@@ -118,6 +118,7 @@ var BlockType = (function () {
       world.listen({
         interest: function () { return true; },
         dirtyBlock: rebuild,
+        relitBlock: noop,
         dirtyAll: rebuild,
         dirtyCircuit: dirtyProperties,
         deletedCircuit: dirtyProperties,

@@ -186,7 +186,7 @@ var WorldRenderer = (function () {
     function rerenderChunks() {
       dirtyChunks.clear();
       chunks.forEach(function (chunk, coords) {
-        chunk.dirtyChunk = true;
+        chunk.dirtyGeometry = true;
         dirtyChunks.enqueue(coords);
       });
     }
@@ -250,25 +250,24 @@ var WorldRenderer = (function () {
     }
     
     // x,z must be multiples of CHUNKSIZE
-    function setDirtyChunk(x, y, z) {
+    function setDirtyChunk(x, y, z, dirtyType) {
       var k = [x, y, z];
       if (!chunkIntersectsWorld(k)) return;
       var chunk = chunks.get(k);
       if (chunk) {
         // This routine is used only for "this block changed", so if there is
         // not already a chunk, we don't create it.
-        chunk.dirtyChunk = true;
+        chunk[dirtyType] = true;
         dirtyChunks.enqueue(k);
       }
     }
-
-    // entry points for change listeners
-    function dirtyBlock(vec) {
+    
+    function dirtyChunksForBlock(cube, dirtyType) {
       if (!isAlive()) return;
       
-      var x = vec[0];
-      var y = vec[1];
-      var z = vec[2];
+      var x = cube[0];
+      var y = cube[1];
+      var z = cube[2];
       
       var xm = mod(x, CHUNKSIZE);
       var ym = mod(y, CHUNKSIZE);
@@ -277,16 +276,26 @@ var WorldRenderer = (function () {
       y -= ym;
       z -= zm;
       
-      setDirtyChunk(x,y,z);
-      if (xm == 0)           setDirtyChunk(x-CHUNKSIZE,y,z);
-      if (ym == 0)           setDirtyChunk(x,y-CHUNKSIZE,z);
-      if (zm == 0)           setDirtyChunk(x,y,z-CHUNKSIZE);
-      if (xm == CHUNKSIZE-1) setDirtyChunk(x+CHUNKSIZE,y,z);
-      if (ym == CHUNKSIZE-1) setDirtyChunk(x,y+CHUNKSIZE,z);
-      if (zm == CHUNKSIZE-1) setDirtyChunk(x,y,z+CHUNKSIZE);
+      setDirtyChunk(x,y,z, dirtyType);
+      if (xm == 0)           setDirtyChunk(x-CHUNKSIZE,y,z, dirtyType);
+      if (ym == 0)           setDirtyChunk(x,y-CHUNKSIZE,z, dirtyType);
+      if (zm == 0)           setDirtyChunk(x,y,z-CHUNKSIZE, dirtyType);
+      if (xm == CHUNKSIZE-1) setDirtyChunk(x+CHUNKSIZE,y,z, dirtyType);
+      if (ym == CHUNKSIZE-1) setDirtyChunk(x,y+CHUNKSIZE,z, dirtyType);
+      if (zm == CHUNKSIZE-1) setDirtyChunk(x,y,z+CHUNKSIZE, dirtyType);
       
-      // TODO: This is actually "Schedule updateSomeChunks()" and shouldn't actually require a frame redraw
+      // TODO: This is actually "Schedule updateSomeChunks()" and shouldn't actually require a frame redraw unless the update does something in view
       scheduleDraw();
+    }
+
+    // entry points for change listeners
+    function dirtyBlock(cube) {
+      dirtyChunksForBlock(cube, "dirtyGeometry");
+    }
+
+    function relitBlock(cube) {
+      // TODO: Do no light-texture work if lighting is disabled in config — but catch up when it is reenabled.
+      dirtyChunksForBlock(cube, "dirtyLighting");
     }
 
     function dirtyAll() {
@@ -314,6 +323,7 @@ var WorldRenderer = (function () {
     var listenerWorld = {
       interest: isAlive,
       dirtyBlock: dirtyBlock,
+      relitBlock: relitBlock,
       dirtyAll: dirtyAll,
       dirtyCircuit: dirtyCircuit,
       deletedCircuit: deletedCircuit,
@@ -388,17 +398,13 @@ var WorldRenderer = (function () {
       var count = 0;
       // Chunks to add
       while (addChunks.size() > 0 && Date.now() < deadline) {
-        if (!calcChunk(addChunks.dequeue())) {
-          count++;
-        }
+        count += calcChunk(addChunks.dequeue());
       }
       // Dirty chunks (only if visible)
       while (dirtyChunks.size() > 0 && Date.now() < deadline) {
         var chunkKey = dirtyChunks.dequeue();
         if (chunks.has(chunkKey)) {
-          if (!calcChunk(chunkKey)) {
-            count++;
-          }
+          count += calcChunk(chunkKey);
         }
       }
       measuring.chunkCount.inc(count);
@@ -480,24 +486,27 @@ var WorldRenderer = (function () {
     this.draw = draw;
     
     var renderData; // updated as needed by chunk recalculate
-
-    // returns whether no work was done
+    
+    // return value is for measuring only
     function calcChunk(chunkKey) {
-      // This would call scheduleDraw() to render the revised chunks, except that calcChunk is only called within a draw. Therefore, the calls are commented out (to be reenabled if the architecture changes).
+      var work = 0;
       var c = chunks.get(chunkKey);
       if (c) {
-        if (c.dirtyChunk) {
-          c.dirtyChunk = false;
+        if (c.dirtyGeometry) {
+          c.dirtyGeometry = false;
           c.recompute();
-          //scheduleDraw();
-          return false;
-        } else {
-          return true;
+          work = 1;
+        }
+        if (c.dirtyLighting) {
+          c.dirtyLighting = false;
+          c.recomputeLight();
+          work = 1;
         }
       } else {
         chunks.set(chunkKey, makeChunk(chunkKey));
-        return false;
+        work = 1;
       }
+      return work;
     }
     
     function makeChunk(chunkKey) {
@@ -512,9 +521,6 @@ var WorldRenderer = (function () {
       var lightTexture;
       var mustRebuild = function () { return true; };
       var ltData = new Uint8Array(LIGHT_TEXTURE_SIZE*LIGHT_TEXTURE_SIZE*LIGHT_TEXTURE_SIZE);
-      for (var i = 0; i < ltData.length; i++) {
-        ltData[i] = 127;
-      }
       
       var chunk = new renderer.RenderBundle(gl.TRIANGLES,
                                             function () { return renderData.texture; },
@@ -577,21 +583,41 @@ var WorldRenderer = (function () {
           face(rot.pz, faceData.hz);
         }
         
-        for (x = chunkOriginX - 1; x <= chunkLimitX; x++)
-        for (y = chunkOriginY - 1; y <= chunkLimitY; y++)
-        for (z = chunkOriginZ - 1; z <= chunkLimitZ; z++) {
-          var ltIndex = ( (  mod(x, LIGHT_TEXTURE_SIZE) *LIGHT_TEXTURE_SIZE
-                           + mod(y, LIGHT_TEXTURE_SIZE))*LIGHT_TEXTURE_SIZE
-                         +   mod(z, LIGHT_TEXTURE_SIZE));
-          if (inBounds(x,y,z)) {
-            rawIndex = (x*wy+y)*wz+z;
-            ltData[ltIndex] = rawLighting[rawIndex];
+        var wasNonempty = nonempty;
+        nonempty = vertices.length > 0;
+        if (nonempty !== wasNonempty) {
+          if (nonempty) {
+            nonemptyChunks.set(chunkKey, chunk);
           } else {
-            ltData[ltIndex] = lightOutside;
+            nonemptyChunks.delete(chunkKey);
           }
         }
         
-        // Update lighting texture
+        measuring.chunk.end();
+      }, {
+        aroundDraw: function (draw) {
+          if (mustRebuild()) sendLightTexture();
+          renderer.setLightTexture(lightTexture);
+          draw();
+        }
+      });
+      
+      function copyLightTexture() {
+        // Repack data
+        for (var x = chunkOriginX - 1; x <= chunkLimitX; x++)
+        for (var y = chunkOriginY - 1; y <= chunkLimitY; y++)
+        for (var z = chunkOriginZ - 1; z <= chunkLimitZ; z++) {
+          var ltIndex = ( (  mod(x, LIGHT_TEXTURE_SIZE) *LIGHT_TEXTURE_SIZE
+                           + mod(y, LIGHT_TEXTURE_SIZE))*LIGHT_TEXTURE_SIZE
+                         +   mod(z, LIGHT_TEXTURE_SIZE));
+          var rawIndex = (x*wy+y)*wz+z;
+          ltData[ltIndex] = inBounds(x,y,z) ? rawLighting[rawIndex] : lightOutside;
+        }
+        
+        sendLightTexture();
+      }
+      
+      function sendLightTexture() {
         if (mustRebuild()) {
           lightTexture = gl.createTexture();
           mustRebuild = renderer.currentContextTicket();
@@ -613,25 +639,7 @@ var WorldRenderer = (function () {
                       gl.UNSIGNED_BYTE, // type
                       ltData);
         gl.bindTexture(gl.TEXTURE_2D, null);
-                
-        var wasNonempty = nonempty;
-        nonempty = vertices.length > 0;
-        if (nonempty !== wasNonempty) {
-          if (nonempty) {
-            nonemptyChunks.set(chunkKey, chunk);
-          } else {
-            nonemptyChunks.delete(chunkKey);
-          }
-        }
-        
-        measuring.chunk.end();
-      }, {
-        aroundDraw: function (draw) {
-          if (mustRebuild()) chunk.recompute(); // TODO kludge for light texture
-          renderer.setLightTexture(lightTexture);
-          draw();
-        }
-      });
+      }
       
       // This is needed because when the calc function is first called by constructing the RenderBundle, 'chunk' has not yet been assigned.
       if (nonempty)
@@ -643,7 +651,14 @@ var WorldRenderer = (function () {
         chunkOriginZ, chunkLimitZ
       );
       
-      chunk.getLightTexture = function () { return lightTexture; };
+      chunk.recomputeLight = copyLightTexture;
+      
+      chunk.getLightTexture = function () {
+        if (mustRebuild()) sendLightTexture();
+        return lightTexture;
+      };
+      
+      copyLightTexture();
       
       return chunk;
     }
