@@ -21,8 +21,7 @@ var measuring = (function () {
   
   function createToggle(storageName, callback) {
     var toggleState = new PersistentCell(localStorage, storageName, "boolean", true);
-    var toggler = document.createElement("button");
-    toggler.className = "measuring-toggle";
+    var toggler = mkelement("button", "measuring-toggle");
     toggleState.nowAndWhenChanged(function (v) {
       if (v) {
         toggler.textContent = "[−]" /* minus sign */;
@@ -45,31 +44,26 @@ var measuring = (function () {
   }
   ViewGroup.prototype.createDisplay = function (document, stateContext) {
     var subContext = stateContext + "." + this.label;
-    var container = document.createElement("div");
-    container.className = "measuring-item measuring-group";
-    var list = document.createElement("ul");
-    list.className = "measuring-group-contents";
+    var container = mkelement("div", "measuring-item measuring-group");
+    var list = mkelement("ul", "measuring-group-contents");
     if (this.label) {
-      var header = document.createElement("div");
-      header.className = "measuring-group-header";
-      header.appendChild(createToggle(subContext + ".visible", function (visible) {
-        if (visible) {
-          list.style.removeProperty("display");
-        } else {
-          list.style.display = "none";
-        }
-      }));
-      header.appendChild(document.createTextNode(" " + this.label));
+      var header = mkelement("div", "measuring-group-header",
+        createToggle(subContext + ".visible", function (visible) {
+          if (visible) {
+            list.style.removeProperty("display");
+          } else {
+            list.style.display = "none";
+          }
+        }),
+        document.createTextNode(" " + this.label)
+      );
       container.appendChild(header);
     }
     container.appendChild(list);
     var updaters = [];
     this.elements.forEach(function (thing) {
-      var elem = document.createElement("li");
-      elem.className = "measuring-group-element";
-      list.appendChild(elem);
       var subdisplay = thing.createDisplay(document, subContext);
-      elem.appendChild(subdisplay.element);
+      list.appendChild(mkelement("li", "measuring-group-element", subdisplay.element));
       updaters.push(subdisplay.update.bind(subdisplay));
     });
 
@@ -110,8 +104,7 @@ var measuring = (function () {
     var toggle = createToggle(stateContext + ".graphsVisible", function (visible) {
       d.element.classList[visible ? "remove" : "add"]("measuring-hide-sparklines");
     });
-    var bogusval = document.createElement("span"); // strictly for layout :(
-    bogusval.classList.add("measuring-value");
+    var bogusval = mkelement("span", "measuring-value"); // strictly for layout :(
     d.header.parentNode.insertBefore(toggle, d.header.nextSibling);
     d.header.parentNode.insertBefore(bogusval, d.header.nextSibling);
     return d;
@@ -124,28 +117,20 @@ var measuring = (function () {
     this.historyIndex = 0;
   }
   Quantity.prototype.createDisplay = function (document, stateContext) {
-    var container = document.createElement("div");
-    container.className = "measuring-item measuring-quantity";
-    var labelElem = document.createElement("span");
-    labelElem.className = "measuring-label";
-    labelElem.textContent = this.label + ": ";
-    var valueElem = document.createElement("span");
-    valueElem.className = "measuring-value";
-    var valueText = document.createTextNode("");
-    valueElem.appendChild(valueText);
+    var labelElem, valueText, sparkCanvas;
+    var container = mkelement("div", "measuring-item measuring-quantity",
+      labelElem = mkelement("span", "measuring-label", this.label + ": "),
+      mkelement("span", "measuring-value",
+        valueText = document.createTextNode("")),
+      sparkCanvas = mkelement("canvas", "measuring-sparkline")
+    );
     
     // sparkline
-    var sparkCanvas = document.createElement("canvas");
-    sparkCanvas.className = "measuring-sparkline";
     var sparkLength = sparkCanvas.width  = this.history.length;
     var sparkHeight = sparkCanvas.height = 1; // updated later via computed style
     var sparkContext = sparkCanvas.getContext("2d");
     var lastUpdateIndex = 0;
-
-    container.appendChild(labelElem);
-    container.appendChild(valueElem);
-    container.appendChild(sparkCanvas);
-
+    
     var fillColor = "rgba(127,127,127,0.5)";
     
     return {

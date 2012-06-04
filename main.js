@@ -352,26 +352,27 @@ var CubesMain = (function () {
           var totalSize = 0;
           objectList.textContent = "";
           persistencePool.forEach(function (name, type) {
-            var row = document.createElement("tr");
-            objectList.appendChild(row);
-            var typeCell = document.createElement("td");
-            var nameCell = document.createElement("td");
-            var sizeCell = document.createElement("td");
-            row.appendChild(typeCell);
-            row.appendChild(nameCell);
-            row.appendChild(sizeCell);
+            var typeText;
             switch (type) {
-              case World: typeCell.textContent = "world"; break;
-              case Blockset: typeCell.textContent = "blockset"; break;
-              case BlockType: typeCell.textContent = "block type"; break;
-              default: typeCell.textContent = "???"; break;
+              case World: typeText = "world"; break;
+              case Blockset: typeText = "blockset"; break;
+              case BlockType: typeText = "block type"; break;
+              default: typeText = "???"; break;
             }
+            
             var chip = new objectUI.ObjectChip();
             chip.bindByName(name);
-            nameCell.appendChild(chip.element);
+
             var size = persistencePool.getSize(name);
             totalSize += size;
-            sizeCell.textContent = (size/1000).toFixed(0) + "K";
+            
+            var row;
+            objectList.appendChild(row = mkelement("tr", "",
+              mkelement("td", "", typeText),
+              mkelement("td", "", chip.element),
+              mkelement("td", "", (size/1000).toFixed(0) + "K")
+            ));
+            
             if (persistencePool.getIfLive(name) === topWorldC.get()) row.classList.add("selected");
             
             row.addEventListener("click", function () {
@@ -382,15 +383,11 @@ var CubesMain = (function () {
             });
           });
           
-          var totalRow = document.createElement("tr");
-          objectList.appendChild(totalRow);
-          var nameCell = document.createElement("th");
-          nameCell.textContent = "Total";
-          var sizeCell = document.createElement("td");
-          sizeCell.textContent = (totalSize/1000).toFixed(0) + "K";
-          totalRow.appendChild(document.createElement("td"));
-          totalRow.appendChild(nameCell);
-          totalRow.appendChild(sizeCell);
+          objectList.appendChild(mkelement("tr", "",
+            mkelement("th"),
+            mkelement("th", "", "Total"),
+            mkelement("td", "", (totalSize/1000).toFixed(0) + "K")
+          ));
         }
         updateObjectList();
         topWorldC.whenChanged(function () {
@@ -412,10 +409,9 @@ var CubesMain = (function () {
           blocksetList.textContent = "";
           persistencePool.forEach(function (name, type) {
             if (type !== Blockset) return;
-            var row = document.createElement("option");
-            blocksetList.appendChild(row);
+            var row = mkelement("option", "", name);
             row.value = name;
-            row.textContent = name;
+            blocksetList.appendChild(row);
           });
           blocksetList.value = config.generate_blockset.get();
         }

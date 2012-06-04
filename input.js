@@ -42,10 +42,8 @@ var Input;
   }
   
   function ControlChip(value, set, deleter) {
-    var el = document.createElement("span");
-    el.className = "control-chip";
+    var el = this.element = mkelement("span", "control-chip");
     el.style.position = "relative"; // context for delete button
-    this.element = el;
     
     if (value === null) {
       el.textContent = "…";
@@ -223,9 +221,7 @@ var Input;
       el.focus();
       
       if (deleter) {
-        deleteButton = document.createElement("button");
-        deleteButton.textContent = "×";
-        deleteButton.className = "control-unbind-button";
+        deleteButton = mkelement("button", "control-unbind-button", "×");
         deleteButton.style.position = "absolute";
         deleteButton.style.zIndex = "1";
         el.parentElement.appendChild(deleteButton);
@@ -293,24 +289,20 @@ var Input;
     
     var commandToContainer = {};
     Object.keys(commands).forEach(function (commandName) {
-      var row = document.createElement("tr");
-      rowContainer.appendChild(row);
-
-      var labelCell = document.createElement("td");
-      row.appendChild(labelCell);
-      labelCell.textContent = commands[commandName].label;
-
-      var controlsCell = document.createElement("td");
-      row.appendChild(controlsCell);
-      
-      var bindingsContainer = document.createElement("span");
-      controlsCell.appendChild(bindingsContainer);
-      commandToContainer[commandName] = bindingsContainer;
-      
       var placeholderChip = new ControlChip(null, function (newControl) {
         bindingsCell.set(bindingsCell.get().concat([[commandName, newControl]]));
       });
-      controlsCell.appendChild(placeholderChip.element);
+      
+      var bindingsContainer = mkelement("span");
+      commandToContainer[commandName] = bindingsContainer;
+      
+      var row = mkelement("tr", "", 
+        mkelement("td", "", commands[commandName].label),
+        mkelement("td", "",
+          bindingsContainer,
+          placeholderChip.element)
+      );
+      rowContainer.appendChild(row);
     });
     
     function updateBindings() {
@@ -890,12 +882,10 @@ var Input;
         var blockType = blocksetInMenu.get(blockID);
         
         // element structure and style
-        var item = menuItemsByBlockId[blockID] = document.createElement("tr");
-        item.className = "menu-item";
+        var item = menuItemsByBlockId[blockID] = mkelement("tr", "menu-item");
         
         function cell() {
-          var cell = document.createElement("td");
-          cell.className = "block-details";
+          var cell = mkelement("td", "block-details");
           item.appendChild(cell);
           return cell;
         }
@@ -980,23 +970,20 @@ var Input;
       quickItemsByBlockId = [];
       var r = blocksetInMenu.getRenderData(renderer);
       quickSlots.forEach(function (blockID, index) {
-        var item = document.createElement("span");
-        item.className = "menu-item";
+        var item, icon;
+        item = mkelement("span", "menu-item",
+          mkelement("kbd", "menu-shortcut-key", 
+            ((index+1) % 10).toString()
+          ),
+          icon = mkelement("img")
+        );
         
-        // keyboard shortcut hint
-        var hint = document.createElement("kbd");
-        hint.appendChild(document.createTextNode(((index+1) % 10).toString()));
-        hint.className = "menu-shortcut-key";
-        item.appendChild(hint);
-        
-        var icon = document.createElement("img");
         icon.style.width = icon.style.height = "64px";
         r.icons[blockID].nowAndWhenChanged(function (url) {
           if (url !== null)
             icon.src = url;
           return true;
         });
-        item.appendChild(icon);
         
         setupIconButton(item,icon,blockID);
         hud.quickBar.appendChild(item);

@@ -72,6 +72,20 @@ var UNIT_NX = vec3.createFrom(-1,0,0);
 var UNIT_NY = vec3.createFrom(0,-1,0);
 var UNIT_NZ = vec3.createFrom(0,0,-1);
 
+// Helper for constructing DOM.
+function mkelement(name, classes/* , child, child, ... */) {
+  var element = document.createElement(name);
+  element.className = classes;
+  for (var i = mkelement.length; i < arguments.length; i++) {
+    var childDes = arguments[i];
+    if (typeof childDes === "string") {
+      childDes = document.createTextNode(childDes);
+    }
+    element.appendChild(childDes);
+  }
+  return element;
+}
+
 function prepareShader(gl, type, sources, declarations) {
   // See note in license statement at the top of this file.  
   "use strict";
@@ -680,8 +694,7 @@ function ProgressBar(rootElem) {
   this.element = rootElem;
 
   rootElem.classList.add("progress-bar");
-  var fill = document.createElement("div");
-  fill.className = "progress-bar-fill";
+  var fill = mkelement("div", "progress-bar-fill");
   rootElem.appendChild(fill);
   
   this.set = function (value) {

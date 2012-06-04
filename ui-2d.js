@@ -19,16 +19,12 @@ var CubesObjectUI;
       var target = null, targetName = null;
       
       // Construct DOM
-      var nameE = document.createElement("span");
-      var menuButtonE = document.createElement("button");
-      menuButtonE.textContent = "▾";
+      var nameE = mkelement("span");
+      var menuButtonE = mkelement("button", "", "▾");
       menuButtonE.addEventListener("mousedown", openMenu, false);
       menuButtonE.addEventListener("click", openMenu, false);
-      var chipE = document.createElement("span");
-      chipE.className = "presentation object-chip";
+      var chipE = mkelement("span", "presentation object-chip", nameE, menuButtonE);
       chipE.style.position = "relative";
-      chipE.appendChild(nameE);
-      chipE.appendChild(menuButtonE);
       
       this.bindByName = function (name) {
         if (bound) throw new Error("ObjectChip already bound");
@@ -93,20 +89,21 @@ var CubesObjectUI;
           return;
         }
         
-        menuE = document.createElement("div");
+        var menuListE;
+        menuE = mkelement("div", "command-menu",
+          menuListE = mkelement("ul")
+        );
         menuE.tabIndex = 0; // make focusable
-        menuE.className = "command-menu";
         menuE.style.position = "absolute";
         menuE.style.zIndex = "1";
         menuE.style.right = (0) + "px";
         menuE.style.top = (menuButtonE.offsetTop + menuButtonE.offsetHeight) + "px";
         
-        var menuListE = document.createElement("ul");
-        menuE.appendChild(menuListE);
-        
         function addControl(label, fn) {
-          var b = document.createElement("button");
-          b.textContent = label;
+          var b;
+          menuListE.appendChild(mkelement("li", "",
+            b = mkelement("button", "", label)
+          ));
           b.addEventListener("click", function (e) {
             e.stopPropagation();
             dismiss();
@@ -114,9 +111,6 @@ var CubesObjectUI;
             updateChip(); // TODO kludge; updates should be based on notifications
             return true;
           }, false);
-          var li = document.createElement("li");
-          li.appendChild(b);
-          menuListE.appendChild(li);
         }
         
         if (targetName !== null) {
@@ -141,14 +135,11 @@ var CubesObjectUI;
         addControl("Export", function () {
           var panel = ui.openNewPanel();
 
-          var title = document.createElement("h2");
-          title.appendChild(document.createTextNode("Export of "));
           var expchip = new ObjectChip();
           expchip.bindByObject(getChipTarget());
-          title.appendChild(expchip.element);
-          panel.appendChild(title);
+          panel.appendChild(mkelement("h2", "", "Export of ", expchip.element));
           
-          var data = document.createElement("textarea");
+          var data = mkelement("textarea");
           data.cols = 20;
           data.rows = 20;
           data.readonly = true;
