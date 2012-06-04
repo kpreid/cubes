@@ -388,6 +388,7 @@ html {
   background: #777;
   color: #FFF;
   font: icon;
+  white-space: nowrap;
 }
 .object-chip.object-chip-named { background: #686; }
 .object-chip.object-chip-ephemeral { background: #866; }
@@ -432,9 +433,14 @@ html {
 }
 .command-menu button {
   display: block;
+  
   width: 100%;
   margin: 0;
   padding: .4em;
+  
+  border-radius: 0;  
+  text-align: inherit;
+  white-space: nowrap;
 }
 
 /* --- performance measurement widgets --- */
