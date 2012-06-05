@@ -532,13 +532,13 @@ var Input;
       if (command) {
         if (!heldControls.hasOwnProperty(control)) {
           command.press();
+          heldControls[control] = true;
           var state = commandState[command.name];
           if (state.controlCount++ <= 0) {
-            heldControls[control] = true;
             heldCommands[command.name] = state;
             state.repeatPhase = -state.command.repeatDelay;
           }
-          //console.log("hold +", control, command.name, commandState[command.name]);
+          //console.log("hold +", control, command.name, (commandState[command.name] || {}).controlCount);
           evalHeldControls();
         }
         
@@ -559,7 +559,7 @@ var Input;
         if (--state.controlCount <= 0) {
           delete heldCommands[command.name];
         }
-        //console.log("hold -", control, command.name, commandState[command.name]);
+        //console.log("hold -", control, command.name, (commandState[command.name] || {}).controlCount);
         evalHeldControls();
         
         event.stopPropagation();
