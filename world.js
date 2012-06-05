@@ -23,11 +23,11 @@ var World = (function () {
       var raysForDir = [];
       for (var rayx = -1; rayx <= 1; rayx += 1)
       for (var rayy = -1; rayy <= 1; rayy += 1) {
-        var ray = vec3.create(origin);
-        ray[dim] += 0.1*dir;
-        ray[mod(dim + 1, 3)] += 0.1*rayx;
-        ray[mod(dim + 2, 3)] += 0.1*rayy;
-        raysForDir.push([origin, ray]);
+        var ray = vec3.create();
+        ray[dim] = 0.1*dir;
+        ray[mod(dim + 1, 3)] = 0.1*rayx;
+        ray[mod(dim + 2, 3)] = 0.1*rayy;
+        raysForDir.push({origin: origin, direction: ray});
       }
       lightRays.push({reflectFace:reflectFace, rays:raysForDir});
     }
@@ -291,31 +291,35 @@ var World = (function () {
     
     /**
      * Call the callback with (x,y,z,value,face) of all blocks along the line
-     * segment from pt1, through pt2, of length 'radius'.
+     * segment from point 'origin' in vector direction 'direction' of length
+     * 'radius'. 'radius' may be infinite.
      *
      * 'face' is the normal vector of the face of that block that was entered.
      * It should not be used after the callback returns.
      *
      * If the callback returns a true value, the traversal will be stopped.
      */
-    function raycast(pt1, pt2, radius, callback) {
+    function raycast(origin, direction, radius, callback) {
       // From "A Fast Voxel Traversal Algorithm for Ray Tracing"
       // by John Amanatides and Andrew Woo, 1987
-      // http://www.cse.yorku.ca/~amana/research/grid.pdf
-      // http://citeseer.ist.psu.edu/viewdoc/summary?doi=10.1.1.42.3443
-      // The radius limit is my addition.
-      var x = Math.floor(pt1[0]);
-      var y = Math.floor(pt1[1]);
-      var z = Math.floor(pt1[2]);
-      var dx = pt2[0] - pt1[0];
-      var dy = pt2[1] - pt1[1];
-      var dz = pt2[2] - pt1[2];
+      // <http://www.cse.yorku.ca/~amana/research/grid.pdf>
+      // <http://citeseer.ist.psu.edu/viewdoc/summary?doi=10.1.1.42.3443>
+      // Extensions to the described algorithm:
+      //   • Imposed a distance limit.
+      //   • The face passed through to reach the current cube is provided to
+      //     the callback.
+      var x = Math.floor(origin[0]);
+      var y = Math.floor(origin[1]);
+      var z = Math.floor(origin[2]);
+      var dx = direction[0];
+      var dy = direction[1];
+      var dz = direction[2];
       var stepX = signum(dx);
       var stepY = signum(dy);
       var stepZ = signum(dz);
-      var tMaxX = intbound(pt1[0], dx);
-      var tMaxY = intbound(pt1[1], dy);
-      var tMaxZ = intbound(pt1[2], dz);
+      var tMaxX = intbound(origin[0], dx);
+      var tMaxY = intbound(origin[1], dy);
+      var tMaxZ = intbound(origin[2], dz);
       var tDeltaX = stepX/dx;
       var tDeltaY = stepY/dy;
       var tDeltaZ = stepZ/dz;
@@ -323,7 +327,7 @@ var World = (function () {
       
       if (dx === 0 && dy === 0 && dz === 0) throw new Error("Raycast in zero direction!");
       
-      // 't' is in units of (pt2-pt1), so adjust radius in blocks by that
+      // 't' is in units of 'direction', so adjust radius in blocks by that
       radius /= Math.sqrt(dx*dx+dy*dy+dz*dz);
       
       //console.log(stepX, stepY, stepZ, dx, dy, dz, tDeltaX, tDeltaY, tDeltaZ);
@@ -555,8 +559,7 @@ var World = (function () {
     function evaluateLightsInQueue() {
       measuring.lightingQueueSize.inc(lightingUpdateQueue.size());
       
-      var pt1 = vec3.create();
-      var pt2 = vec3.create();
+      var rayOrigin = vec3.create();
       var types = blockset.getAll();
       var opaques = types.map(function (t) { return t.opaque; });
       var here;
@@ -629,10 +632,9 @@ var World = (function () {
             var rays = raySetData.rays;
             for (var rayi = rays.length - 1; rayi >= 0; rayi--) {
               var rayData = rays[rayi];
-              vec3.add(here, rayData[0], pt1);
-              vec3.add(here, rayData[1], pt2);
+              vec3.add(here, rayData.origin, rayOrigin);
               var found = false;
-              raycast(pt1, pt2, 30/*TODO magic number */, rayCallback);
+              raycast(rayOrigin, rayData.direction, 30/*TODO magic number */, rayCallback);
               if (!found) {
                 incomingLight += LIGHT_SKY;
               }

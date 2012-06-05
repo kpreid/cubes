@@ -123,8 +123,8 @@ var Player = (function () {
       var foundCube = null, foundFace = null;
       if (mousePos !== null) {
         var w = currentPlace.world;
-        var pts = renderer.getAimRay(mousePos, player.render);
-        w.raycast(pts[0], pts[1], 20, function (x,y,z,value,face) {
+        var ray = renderer.getAimRay(mousePos, player.render);
+        w.raycast(ray.origin, ray.direction, 20, function (x,y,z,value,face) {
           if (w.selectable(x,y,z)) {
             var cube = Object.freeze([x,y,z]);
             var type = w.blockset.get(value);
@@ -133,8 +133,8 @@ var Player = (function () {
               // test against shape of noncubical block
               var w1 = type.world;
               var rot = CubeRotation.byCode[w.gRot(x,y,z)].inverse;
-              w1.raycast(_transformPointToSubworld(cube,w1,rot,pts[0]),
-                         _transformPointToSubworld(cube,w1,rot,pts[1]),
+              w1.raycast(_transformPointToSubworld(cube,w1,rot,ray.origin),
+                         rot.transformVector(ray.direction),
                          Infinity,
                          function (x1,y1,z1,v1,f1) {
                 if (w1.selectable(x1,y1,z1)) {
@@ -183,14 +183,13 @@ var Player = (function () {
       mat4.rotate(matrix, currentPlace.body.yaw, [0, 1, 0]);
       mat4.rotate(matrix, pitch, [1, 0, 0]);
       
-      var pt1 = currentPlace.body.pos;
+      var pos = currentPlace.body.pos;
       var light = 0;
       var hits = 0;
       function ray(look /* overwritten */) {
         mat4.multiplyVec3(matrix, look);
-        var pt2 = vec3.add(pt1, look, vec3.create());
         var foundOpenSpace = false;
-        world.raycast(pt1, pt2, 20/*TODO magic number */, function (x,y,z,value,face) {
+        world.raycast(pos, look, 20/*TODO magic number */, function (x,y,z,value,face) {
           if (world.opaque(x,y,z)) { // TODO use appropriate test; what we actually want here is "is this a block which has a valid light value
             if (foundOpenSpace) {
               x += face[0];
@@ -353,9 +352,9 @@ var Player = (function () {
             var type = currentPlace.world.blockset.get(currentPlace.tool);
             if (currentPlace.world.g(x,y,z) === 0) {
               // TODO: rotation on create should be more programmable.
-              var raypts = renderer.getAimRay(mousePos, player.render); // TODO depend on player orientation instead?
+              var ray = renderer.getAimRay(mousePos, player.render); // TODO depend on player orientation instead?
               var rotation = CubeRotation.nearestToDirection(
-                  vec3.subtract(raypts[0], raypts[1]),
+                  vec3.negate(ray.direction, vec3.create()),
                   [0,0,1],
                   type.automaticRotations.map(
                       function (code) { return CubeRotation.byCode[code]; }));

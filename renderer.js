@@ -733,10 +733,9 @@ var Renderer = (function () {
     
     // Returns a pair of points along the line through the given screen point.
     function getAimRay(screenPoint, playerRender) {
-      var glxy = [
-          screenPoint[0] / pagePixelWidth * 2 - 1, 
-        -(screenPoint[1] / pagePixelHeight * 2 - 1)
-      ];
+      // Screen point in Normalized Device Coordinates
+      var glNDCX =   screenPoint[0] / pagePixelWidth  * 2 - 1;
+      var glNDCY = -(screenPoint[1] / pagePixelHeight * 2 - 1);
       
       var unproject = mat4.identity(mat4.create());
       playerRender.applyViewRot(unproject);
@@ -744,10 +743,10 @@ var Renderer = (function () {
       mat4.multiply(pMatrix, unproject, unproject);
       mat4.inverse(unproject);
 
-      var pt1 = fixedmultiplyVec3(unproject, vec3.createFrom(glxy[0], glxy[1], 0));
-      var pt2 = fixedmultiplyVec3(unproject, vec3.createFrom(glxy[0], glxy[1], 1));
+      var origin = fixedmultiplyVec3(unproject, vec3.createFrom(glNDCX, glNDCY, 0));
+      var pt2    = fixedmultiplyVec3(unproject, vec3.createFrom(glNDCX, glNDCY, 1));
 
-      return [pt1, pt2];
+      return {origin: origin, direction: vec3.subtract(pt2, origin)};
     }
     this.getAimRay = getAimRay;
     
