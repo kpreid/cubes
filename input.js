@@ -204,6 +204,23 @@ var Input;
             default: desc = "Wheel " + value.slice(1).toString(); break;
           }
           break;
+        case "gamepad":
+          // TODO: Obtain a database of device button names.
+          var gamepadIndex = value[1];
+          var gamepadDesc = gamepadIndex > 0 ? String.fromCharCode(0x2081 + value[1]) : "";
+          var buttonDesc = String(value[3] + 1)
+          switch (value[2]) {
+            case "button":
+              desc = "\u2299" + gamepadDesc + " " + buttonDesc;
+              break;
+            case "axis":
+              desc = "\u2295" + gamepadDesc + " " + buttonDesc + (value[4] < 0 ? " −" : " +");
+              break;
+            default:
+              desc = String(value);
+              break;
+          }
+          break;
         default:
           desc = String(value);
           break;
@@ -213,12 +230,38 @@ var Input;
     
     var active = false;
     var deleteButton;
+    var gamepadTestLoop;
     
     function activate() {
       if (active) return;
       active = true;
       el.tabIndex = 0;
       el.focus();
+      
+      if (GameShim.supports.gamepad) (function () {
+        function scanArray(gamepadIndex, gamepadArray, type) {
+          for (var i = 0; i < gamepadArray.length; i++) {
+            var value = gamepadArray[i];
+            if (value > 0.5) {
+              deactivate();
+              set(["gamepad", gamepadIndex, type, i, 0.5])
+            } else if (value < -0.5 /* axis */) {
+              deactivate();
+              set(["gamepad", gamepadIndex, type, i, -0.5])
+            }
+          }
+        }
+        
+        gamepadTestLoop = setInterval(function () {
+          var gamepads = navigator.gamepads;
+          for (var gamepadIndex = 0; gamepadIndex < gamepads.length; gamepadIndex++) {
+            var gamepad = gamepads[gamepadIndex];
+            if (!gamepad) continue;
+            scanArray(gamepadIndex, gamepad.buttons, "button");
+            scanArray(gamepadIndex, gamepad.axes, "axis");
+          }
+        }, 100);
+      }());
       
       if (deleter) {
         deleteButton = mkelement("button", "control-unbind-button", "×");
@@ -245,6 +288,7 @@ var Input;
         deleteButton = undefined;
       }
       el.blur();
+      clearInterval(gamepadTestLoop);
     }
     
     el.addEventListener("click", function (ev) {
@@ -479,13 +523,31 @@ var Input;
     });
     
     var controlMap;
+    var gamepadControlState;
     function rebuildControlMap(bindings) {
       controlMap = {};
+      gamepadControlState = [];
       
       bindings.forEach(function (bindingRecord) {
         var commandName = bindingRecord[0];
         var control = bindingRecord[1];
         controlMap[control] = commandFunctions[commandName];
+        
+        if (control[0] === "gamepad") {
+          var padIndex = control[1];
+          var controlType = control[2];
+          var controlIndex = control[3];
+          var controlScale = control[4];
+          var pad = gamepadControlState[padIndex] || (
+            gamepadControlState[padIndex] = {
+              button: [],
+              axis: [],
+            }
+          );
+          // || to avoid crashing on bad data
+          (pad[controlType] || []).push({index: controlIndex, state: false, control: control, scale: controlScale});
+        }
+        
         if (!commandFunctions[commandName]) {
           if (typeof console !== "undefined") {
             console.warn("No function for command", commandName);
@@ -506,7 +568,30 @@ var Input;
       ];
     }
     
-    function stepControlRepeat(timestep) {
+    function readGamepadStateArray(gamepadArray, interestArray) {
+      interestArray.forEach(function (record) {
+        var oldState = record.state;
+        var newState = gamepadArray[record.index] / record.scale >= 1.0;
+        if (!oldState && newState) {
+          controlPress(record.control);
+        } else if (oldState && !newState) {
+          controlRelease(record.control);
+        }
+        record.state = newState;
+      });
+    }
+    
+    function stepControls(timestep) {
+      var gamepads = navigator.gamepads;
+      for (var gamepadIndex = 0; gamepadIndex < gamepads.length; gamepadIndex++) {
+        var padState = gamepadControlState[gamepadIndex];
+        if (!padState) continue;
+        var gamepad = gamepads[gamepadIndex];
+        if (!gamepad) continue;
+        readGamepadStateArray(gamepad.buttons, padState.button);
+        readGamepadStateArray(gamepad.axes, padState.axis);
+      }
+      
       for (var name in heldCommands) {
         if (!heldCommands.hasOwnProperty(name)) continue;
         var state = heldCommands[name];
@@ -522,11 +607,7 @@ var Input;
       }
     }
     
-    function controlPressHandler(event) {
-      // avoid disturbing browser shortcuts
-      if (event.altKey || event.ctrlKey || event.metaKey) return true;
-      
-      var control = parseEvent(event);
+    function controlPress(control) {
       var command = controlMap[control];
       
       if (command) {
@@ -541,16 +622,13 @@ var Input;
           //console.log("hold +", control, command.name, (commandState[command.name] || {}).controlCount);
           evalHeldControls();
         }
-        
-        event.stopPropagation();
-        return false;
-      } else {
         return true;
+      } else {
+        return false;
       }
     }
     
-    function controlReleaseHandler(event) {
-      var control = parseEvent(event);
+    function controlRelease(control) {
       var command = controlMap[control];
       
       if (heldControls.hasOwnProperty(control)) {
@@ -561,7 +639,29 @@ var Input;
         }
         //console.log("hold -", control, command.name, (commandState[command.name] || {}).controlCount);
         evalHeldControls();
-        
+        return true;
+      } else {
+        return false;
+      }
+    }
+    
+    function controlPressHandler(event) {
+      // avoid disturbing browser shortcuts
+      if (event.altKey || event.ctrlKey || event.metaKey) return true;
+      
+      var control = parseEvent(event);
+      if (controlPress(control)) {
+        event.stopPropagation();
+        return false;
+      } else {
+        return true;
+      }
+    }
+    
+    function controlReleaseHandler(event) {
+      var control = parseEvent(event);
+      
+      if (controlRelease(control)) {
         event.stopPropagation();
         return false;
       } else {
@@ -728,6 +828,8 @@ var Input;
     // --- Stepping ---
     
     function step(timestep) {
+      stepControls(timestep);
+
       if (!weHavePointerLock()) {
         if (interfaceMode.mouselook) {
           playerInput.pitch = exponentialStep(playerInput.pitch, targetPitch, timestep, -30, 1e-2);
@@ -738,8 +840,6 @@ var Input;
           playerInput.yaw += yawRate*timestep;
         }
       }
-      
-      stepControlRepeat(timestep);
     }
     
     // --- Interface modes ---
