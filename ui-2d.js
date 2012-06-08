@@ -69,6 +69,9 @@
               label += target.wx + "×" + target.wy + "×" + target.wz + " ";
             }
             label += Persister.findType(target.constructor);
+            if (target instanceof BlockType && target.name !== null) {
+              label += " “" + target.name + "”"
+            }
             
             chipE.classList.add("object-chip-ephemeral");
           }
