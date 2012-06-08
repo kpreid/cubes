@@ -475,7 +475,8 @@
         function () {
           theCanvas = pageElements.viewCanvas;
           try {
-          renderer = main.renderer = new Renderer(config, theCanvas, shaders, scheduleDraw);
+            renderer = main.renderer = new Renderer(config, theCanvas, shaders, scheduleDraw);
+            objectUI.setRenderer(renderer);
           } catch (e) {
             if (e instanceof Renderer.NoWebGLError) {
               pageElements.webglError[0].style.removeProperty("display");

@@ -4,6 +4,7 @@
 (function () {
   "use strict";
   
+  var Blockset = cubes.Blockset;
   var cyclicSerialize = cubes.storage.cyclicSerialize;
   var mkelement = cubes.util.mkelement;
   var Persister = cubes.storage.Persister;
@@ -261,43 +262,78 @@
       normalFocusElement = v;
     };
     
+    // --- Inspector ---
+    
+    this.inspect = function (object) {
+      var panel = this.openNewPanel();
+      
+      var titleChip = new this.ObjectChip();
+      titleChip.bindByObject(object);
+      
+      panel.appendChild(mkelement("h2", "", "Inspecting ", titleChip.element));
+      
+      // TODO refactor this into something less hardcoded
+      if (object instanceof World) {
+        var blocksetChip = new this.ObjectChip();
+        blocksetChip.bindByObject(object.blockset);
+        
+        panel.appendChild(mkelement("table", "",
+          mkelement("tr", "",
+            mkelement("th", "", "Blockset:"),
+            mkelement("td", "", blocksetChip.element)
+          ),
+          mkelement("tr", "",
+            mkelement("th", "", "Size:"),
+            mkelement("td", "", String(object.wx), " × ", String(object.wy), " × ", String(object.wz))
+          )
+        ));
+      } else if (object instanceof Blockset) {
+        // TODO listen to blockset
+        // TODO strip out this code from input subsystem
+        var blocksList = mkelement("ol");
+        panel.appendChild(blocksList);
+        var blocksetRender = renderer ? object.getRenderData(renderer) : null;
+        for (var blockID = 1; blockID < object.length; blockID++) (function (){
+          var blockType = object.get(blockID);
+          
+          // TODO refactor so we can have an icon for a lone BlockType and make ObjectChip have an icon
+          var icon = document.createElement("img");
+          icon.style.verticalAlign = "middle"; // TODO stylesheet
+          icon.style.width = icon.style.height = "1.2em";
+          if (blocksetRender) {
+            blocksetRender.icons[blockID].nowAndWhenChanged(function (url) {
+              if (url !== null)
+                icon.src = url;
+              return true;
+            });
+          }
+          
+          var blockChip = new ObjectChip();
+          blockChip.bindByObject(blockType);
+          
+          var item = mkelement("li", "", icon, blockChip.element);
+          
+          blocksList.appendChild(item);
+        }());
+        
+      } else {
+        panel.appendChild(mkelement("p", "", 
+          mkelement("em", "", "No details available for this object.")));
+      }
+    };
+    
+    // --- Support ---
+    
+    var renderer = null;
+    
+    this.setRenderer = function (v) {
+      renderer = v;
+    };
   }
   
   ObjectUI.prototype.openPanelFromButton = function (name) {
     this.openPanel(name);
     this.refocus();
-  };
-  
-  ObjectUI.prototype.inspect = function (object) {
-    var panel = this.openNewPanel();
-    
-    var titleChip = new this.ObjectChip();
-    titleChip.bindByObject(object);
-    
-    panel.appendChild(mkelement("h2", "", "Inspecting ", titleChip.element));
-    
-    // TODO refactor this into something less hardcoded
-    if (object instanceof World) {
-      var blocksetChip = new this.ObjectChip();
-      blocksetChip.bindByObject(object.blockset);
-      
-      panel.appendChild(mkelement("table", "",
-        mkelement("tr", "",
-          mkelement("th", "", "Blockset:"),
-          mkelement("td", "", blocksetChip.element)
-        ),
-        mkelement("tr", "",
-          mkelement("th", "", "Size:"),
-          mkelement("td", "", String(object.wx), " × ", String(object.wy), " × ", String(object.wz))
-        ),
-      ));
-    } else if (object instanceof Blockset) {
-      
-      
-    } else {
-      panel.appendChild(mkelement("p", "",
-        mkelement("em", "", "No details available for this object.")));
-    }
   };
   
   cubes.ObjectUI = Object.freeze(ObjectUI);
