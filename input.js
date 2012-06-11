@@ -1,10 +1,14 @@
 // Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
-var CubesControlBindingUI;
-var Input;
 (function () {
   "use strict";
+  
+  var Circuit = cubes.Circuit;
+  var exponentialStep = cubes.util.exponentialStep;
+  var mkelement = cubes.util.mkelement;
+  var signum = cubes.util.signum;
+  var WorldGen = cubes.WorldGen;
   
   function parseEvent(ev) {
     switch (ev.type) {
@@ -392,7 +396,7 @@ var Input;
     })
   }
   
-  function Input_(config, eventReceiver, playerInput, hud, renderer, focusCell, save) {
+  function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, save) {
     var interfaceMode;
     var expectingPointerLock = false;
     
@@ -450,7 +454,7 @@ var Input;
     var heldCommands = {};
     function resetHeldControls() {
       heldControls = {};
-      Object.keys(Input_.commands).forEach(function (k) { 
+      Object.keys(Input.commands).forEach(function (k) { 
         commandState[k] = {
           command: commandFunctions[k],
           controlCount: 0,
@@ -463,7 +467,7 @@ var Input;
     // Construct commands augmented with implementation functions
     var commandFunctions = {};
     function deffunbase(name) {
-      var command = Input_.commands[name];
+      var command = Input.commands[name];
       if (!command) throw new Error("inconsistent table");
       var cmdWithFunc = commandFunctions[name] = Object.create(command);
       cmdWithFunc.name = name;
@@ -1150,16 +1154,16 @@ var Input;
     switchMode(interfaceMode);
   }
   
-  Input_.commands = {};
-  Input_.defaultBindings = [];
+  Input.commands = {};
+  Input.defaultBindings = [];
   function defcmd(name, label, bindings, repeat, rd) {
-    Input_.commands[name] = {
+    Input.commands[name] = {
       label: label,
       repeatPeriod: repeat,
       repeatDelay: rd || 0
     }
     bindings.forEach(function (control) {
-      Input_.defaultBindings.push([name, control])
+      Input.defaultBindings.push([name, control])
     });
   }
   defcmd("useTool"    , "Place block",  [["mouse", 1]], 1/4); // TODO derive from movement speed
@@ -1187,9 +1191,9 @@ var Input;
   defcmd("subdatumDec"  , "Subdatum −1"  , [["key", "Z".charCodeAt(0)]], 1/20, 1/4);
   defcmd("subdatumInc"  , "Subdatum +1"  , [["key", "X".charCodeAt(0)]], 1/20, 1/4);
   defcmd("editBlockset" , "Edit blockset", [["key", "B".charCodeAt(0)]]);
-  Object.freeze(Input_.commands);
-  Object.freeze(Input_.defaultBindings); // should be recursive
+  Object.freeze(Input.commands);
+  Object.freeze(Input.defaultBindings); // should be recursive
       
-  CubesControlBindingUI = ControlBindingUI;
-  Input = Input_;
+  cubes.ControlBindingUI = Object.freeze(ControlBindingUI);
+  cubes.Input = Object.freeze(Input);
 }());

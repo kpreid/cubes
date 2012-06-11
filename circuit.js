@@ -1,8 +1,20 @@
 // Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
-var Circuit = (function () {
+(function () {
   "use strict";
+  
+  var AAB = cubes.util.AAB;
+  var CubeRotation = cubes.util.CubeRotation;
+  var mod = cubes.util.mod;
+  var UNIT_PX = cubes.util.UNIT_PX;
+  var UNIT_PY = cubes.util.UNIT_PY;
+  var UNIT_PZ = cubes.util.UNIT_PZ;
+  var UNIT_NX = cubes.util.UNIT_NX;
+  var UNIT_NY = cubes.util.UNIT_NY;
+  var UNIT_NZ = cubes.util.UNIT_NZ;
+  var ZEROVEC = cubes.util.ZEROVEC;
+  
   var DEBUG_WIRE = false;
   
   // These are slice'd because the circuit code does foo[aDirection] a lot, so we want the toString() behavior of real JS arrays. TODO: Review whether it would be better to use symbol strings (e.g. "px", "py", ...) or numbers for directions.
@@ -703,5 +715,5 @@ var Circuit = (function () {
     });
   };
   
-  return Object.freeze(Circuit);
+  cubes.Circuit = Object.freeze(Circuit);
 }());;

@@ -2,6 +2,16 @@
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
 describe("BlockType", function () {
+  "use strict";
+  
+  var Blockset = cubes.Blockset;
+  var BlockType = cubes.BlockType;
+  var Circuit = cubes.Circuit;
+  var cyclicSerialize = cubes.storage.cyclicSerialize;
+  var cyclicUnserialize = cubes.storage.cyclicUnserialize;
+  var Persister = cubes.storage.Persister;
+  var World = cubes.World;
+  
   it("should persist block type attributes", function () {
     var type = new BlockType([1,0,1,1], new World([1, 1, 1], new Blockset([])));
     type.automaticRotations = [1,2];
@@ -21,6 +31,13 @@ describe("BlockType", function () {
 });
 
 describe("Blockset", function () {
+  "use strict";
+  
+  var Blockset = cubes.Blockset;
+  var BlockType = cubes.BlockType;
+  var PersistencePool = cubes.storage.PersistencePool;
+  var World = cubes.World;
+
   it("should know when it is dirty", function () {
     sessionStorage.clear();
     var pool = new PersistencePool(sessionStorage, "Blockset-dirty-test.");
@@ -34,7 +51,7 @@ describe("Blockset", function () {
     
     // adding block types
     var btc = new BlockType([1,1,1,1], null);
-    var btw = new BlockType(null, new World([16,16,16], WorldGen.colorBlocks(2,2,2)));
+    var btw = new BlockType(null, new World([16,16,16], cubes.WorldGen.colorBlocks(2,2,2)));
     blockset.add(btc);
     blockset.add(btw);
     expect(pool.status.get()).toEqual(1);

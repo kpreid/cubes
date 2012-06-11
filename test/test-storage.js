@@ -2,6 +2,8 @@
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
 describe("Cell", function () {
+  var Cell = cubes.storage.Cell;
+  
   it("whenChanged should handle interest correctly", function () {
     var cell = new Cell("test1", 0);
     
@@ -27,6 +29,12 @@ describe("Cell", function () {
 })
 
 describe("Persister", function () {
+  "use strict";
+  
+  var Blockset = cubes.Blockset;
+  var PersistencePool = cubes.storage.PersistencePool;
+  var World = cubes.World;
+  
   it("should preserve references to other persistent objects", function () {
     // using existing types rather than ones invented for test because Persister.types is a global currently.
     sessionStorage.clear();

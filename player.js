@@ -1,8 +1,18 @@
 // Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
-var Player = (function () {
+(function () {
   "use strict";
+  
+  var AAB = cubes.util.AAB;
+  var Blockset = cubes.Blockset;
+  var Body = cubes.Body;
+  var CubeRotation = cubes.util.CubeRotation;
+  var exponentialStep = cubes.util.exponentialStep;
+  var mod = cubes.util.mod;
+  var Notifier = cubes.util.Notifier;
+  var World = cubes.World;
+  var WorldRenderer = cubes.WorldRenderer;
   
   // physics constants
   var WALKING_SPEED = 4; // cubes/s
@@ -493,5 +503,5 @@ var Player = (function () {
   
   Player.aabb = playerAABB;
   
-  return Player;
-}());;
+  cubes.Player = Object.freeze(Player);
+}());

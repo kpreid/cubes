@@ -2,6 +2,10 @@
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
 describe("World", function() {
+  var Blockset = cubes.Blockset;
+  var BlockType = cubes.BlockType;
+  var World = cubes.World;
+
   it("should terminate an infinite raycast", function () {
     var world = new World([1, 1000, 1000], new Blockset([]));
     var t0 = Date.now();

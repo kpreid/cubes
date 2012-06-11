@@ -2,6 +2,14 @@
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
 describe("WorldRenderer", function() {
+  "use strict";
+  
+  var Blockset = cubes.Blockset;
+  var Config = cubes.Config;
+  var Renderer = cubes.Renderer;
+  var World = cubes.World;
+  var WorldRenderer = cubes.WorldRenderer;
+  
   var shaders, renderer, world, wrend;
   
   function scheduleDraw() {}
@@ -10,7 +18,7 @@ describe("WorldRenderer", function() {
   beforeEach(function () {
     sessionStorage.clear();
     var canvas = document.createElement("canvas");
-    var config = new CubesConfig(sessionStorage, "cubes-test-dummy.option.");
+    var config = new Config(sessionStorage, "cubes-test-dummy.option.");
     Renderer.fetchShaders("../", function (s) {
       if (s === null) throw new Error("shader download failed");
       shaders = s;

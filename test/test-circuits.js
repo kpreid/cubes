@@ -2,8 +2,29 @@
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
 describe("Circuit", function() {
+  "use strict";
+  
+  var AAB = cubes.util.AAB;
+  var BlockType = cubes.BlockType;
+  var Body = cubes.Body;
+  var Cell = cubes.storage.Cell;
+  var Circuit = cubes.Circuit;
+  var CubeRotation = cubes.util.CubeRotation;
+  var cyclicSerialize = cubes.storage.cyclicSerialize;
+  var cyclicUnserialize = cubes.storage.cyclicUnserialize;
+  var Persister = cubes.storage.Persister;
+  var UNIT_PX = cubes.util.UNIT_PX;
+  var UNIT_PY = cubes.util.UNIT_PY;
+  var UNIT_PZ = cubes.util.UNIT_PZ;
+  var UNIT_NX = cubes.util.UNIT_NX;
+  var UNIT_NY = cubes.util.UNIT_NY;
+  var UNIT_NZ = cubes.util.UNIT_NZ;
+  var World = cubes.World;
+  var WorldGen = cubes.WorldGen;
+  var ZEROVEC = cubes.util.ZEROVEC;
+  
   var TS = 10;
-
+  
   var t;
   beforeEach(function () {
     t = makeTester();

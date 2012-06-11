@@ -1,7 +1,13 @@
 // Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
-describe("CubesMain", function() {
+describe("Main", function() {
+  "use strict";
+  
+  var Blockset = cubes.Blockset;
+  var Main = cubes.Main;
+  var World = cubes.World;
+  
   var main, done, parts;
   
   function stubElem() { 
@@ -12,7 +18,7 @@ describe("CubesMain", function() {
     // We are using sessionStorage as a temporary Storage object for testing.
     sessionStorage.clear();
 
-    main = new CubesMain(TEST_URL_ROOT, 1/60, sessionStorage);
+    main = new Main(TEST_URL_ROOT, 1/60, sessionStorage);
   }
   
   function doStart(spec) {

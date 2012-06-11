@@ -1,7 +1,9 @@
 // Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
-describe("CubeRotation", function() {
+describe("CubeRotation", function () {
+  var CubeRotation = cubes.util.CubeRotation;
+  
   beforeEach(function() {
     this.addMatchers({
       toEqualVector: function(expected) {
@@ -76,5 +78,4 @@ describe("CubeRotation", function() {
   testNamedRot("z90",      [-2,1,3]);
   testNamedRot("z180",     [-1,-2,3]);
   testNamedRot("z270",     [2,-1,3]);
-  
 });

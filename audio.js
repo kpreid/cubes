@@ -1,12 +1,15 @@
 // Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
-var CubesAudio = (function () {
+(function () {
+  var ID_EMPTY = cubes.Blockset.ID_EMPTY;
+  var ID_LIMIT = cubes.Blockset.ID_LIMIT;
+  
   var lAudioContext = typeof AudioContext !== "undefined" ? AudioContext
                     : typeof webkitAudioContext !== "undefined" ? webkitAudioContext : null;
   var supported = !!lAudioContext;
   
-  function CubesAudio(config) {
+  function Audio(config) {
     var context;
     if (supported) {
       context = new lAudioContext(); /* feature test point */
@@ -41,7 +44,7 @@ var CubesAudio = (function () {
       function readBlock() {
         // Find volumes of material in the block
         counts = [];
-        for (var i = 0; i < Blockset.ID_LIMIT; i++) counts.push(0);
+        for (var i = 0; i < ID_LIMIT; i++) counts.push(0);
         var raw = blockWorld.raw;
         for (var i = raw.length - 1; i >= 0; i--) {
           counts[raw[i]]++;
@@ -61,7 +64,7 @@ var CubesAudio = (function () {
       
         var totalAmp = 0;
         var color = [];
-        for (var value = Blockset.ID_EMPTY + 1; value < Blockset.ID_LIMIT; value++) {
+        for (var value = ID_EMPTY + 1; value < ID_LIMIT; value++) {
           var count = counts[value];
           if (count == 0) continue;
       
@@ -176,7 +179,7 @@ var CubesAudio = (function () {
       }
     });
   }
-  CubesAudio.supported = supported;
+  Audio.supported = supported;
 
-  return CubesAudio;
+  cubes.Audio = Object.freeze(Audio);
 }());

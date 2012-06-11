@@ -1,8 +1,13 @@
 // Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
-var Body = (function () {
+(function () {
   "use strict";
+  
+  var AAB = cubes.util.AAB;
+  var CubeRotation = cubes.util.CubeRotation;
+  var IntVectorMap = cubes.util.IntVectorMap;
+  var measuring = cubes.measuring;
   
   // physics constants
   var GRAVITY = 20; // cubes/s^2
@@ -214,5 +219,5 @@ var Body = (function () {
     }
   }
   
-  return Body;
+  cubes.Body = Object.freeze(Body);
 }());

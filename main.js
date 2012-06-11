@@ -9,7 +9,25 @@
 
 // Main loop scheduling, scene drawing, performance statistics, etc.
 
-var CubesMain = (function () {
+(function () {
+  // TODO should be strict mode
+  
+  var Audio = cubes.Audio;
+  var Blockset = cubes.Blockset;
+  var BlockType = cubes.BlockType;
+  var Cell = cubes.storage.Cell;
+  var Config = cubes.Config;
+  var dynamicText = cubes.util.dynamicText;
+  var Input = cubes.Input;
+  var measuring = cubes.measuring;
+  var mkelement = cubes.util.mkelement;
+  var ObjectUI = cubes.ObjectUI;
+  var PersistencePool = cubes.storage.PersistencePool;
+  var Player = cubes.Player;
+  var ProgressBar = cubes.util.ProgressBar;
+  var Renderer = cubes.Renderer;
+  var testSettersWork = cubes.util.testSettersWork;
+  var World = cubes.World;
   
   function padRight(string, length) {
     string = String(string);
@@ -17,10 +35,10 @@ var CubesMain = (function () {
   }
   
   // rootURL should be the directory containing this script (unfortunately not directly available).
-  function CubesMain(rootURL, timestep, storage) {
+  function Main(rootURL, timestep, storage) {
     var main = this;
     
-    var config = new CubesConfig(storage, "cubes.option.");
+    var config = new Config(storage, "cubes.option.");
     
     var persistencePool = new PersistencePool(storage, "cubes.object."); // note: storage may be undefined, pool  will be a stub
     
@@ -33,7 +51,7 @@ var CubesMain = (function () {
     var theCanvas;
     var renderer;
     
-    var audio = new CubesAudio(config);
+    var audio = new Audio(config);
     
     // HTML elements and other UI pieces
     var sceneInfo;
@@ -50,13 +68,12 @@ var CubesMain = (function () {
       return true;
     });
     
-    var objectUI = new CubesObjectUI(persistencePool);
+    var objectUI = new ObjectUI(persistencePool);
     
     // Game state, etc. objects
     var player;
     var topWorldC = new Cell("topWorld", null);
     var input;
-    var audio = new CubesAudio(config);
     
     var readyToDraw = false;
     
@@ -481,10 +498,10 @@ var CubesMain = (function () {
             var world = getOrDefaultOrMake(config.currentTopWorld.get(), "Default World", function () {
               var blockset = getOrDefaultOrMake(config.generate_blockset.get(), "Default Blockset", function () {
                 startupMessage("  Creating default blockset...");
-                return WorldGen.newDefaultBlockset(Math.round(config.generate_tileSize.get()));
+                return cubes.WorldGen.newDefaultBlockset(Math.round(config.generate_tileSize.get()));
               });
               startupMessage("  Creating overworld...");
-              return generateWorlds(config, blockset);
+              return cubes.generateWorlds(config, blockset);
             });
             
             main.setTopWorld(world);
@@ -526,7 +543,7 @@ var CubesMain = (function () {
     };
     
     this.regenerate = function () {
-      var world = generateWorlds(config, persistencePool.get(config.generate_blockset.get()));
+      var world = cubes.generateWorlds(config, persistencePool.get(config.generate_blockset.get()));
       persistencePool.persist(world, config.generate_name.get());
       this.setTopWorld(world);
     };
@@ -575,5 +592,5 @@ var CubesMain = (function () {
     this.player = null;
   }
   
-  return CubesMain;
+  cubes.Main = Main;
 }());

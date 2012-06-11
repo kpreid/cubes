@@ -2,6 +2,10 @@
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
 describe("WorldGen", function() {
+  "use strict";
+  
+  var WorldGen = cubes.WorldGen;
+  
   var TS = 8;
   
   it("should add logic blocks idempotently", function () {

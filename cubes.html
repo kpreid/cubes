@@ -16,16 +16,18 @@
   <script type="text/javascript" src="deps/gl-matrix/gl-matrix.js"></script>
   <script type="text/javascript" src="deps/game-shim/game-shim.js"></script>
   
+  <script type="text/javascript" src="module-initial.js"></script>
+  
   <!-- Framework -->
   <script type="text/javascript" src="util.js"></script>
   <script type="text/javascript" src="storage.js"></script>
   <script type="text/javascript" src="measuring.js"></script>
   
   <!-- Game components -->
+  <script type="text/javascript" src="circuit.js"></script>
   <script type="text/javascript" src="blockset.js"></script>
   <script type="text/javascript" src="world.js"></script>
   <script type="text/javascript" src="world-gen.js"></script>
-  <script type="text/javascript" src="circuit.js"></script>
   <script type="text/javascript" src="renderer.js"></script>
   <script type="text/javascript" src="world-render.js"></script>
   <script type="text/javascript" src="block-render.js"></script>
@@ -41,7 +43,7 @@
     This does not actually hook up the game to the UI or load the world; that is done by main.start() which is done onload.
   -->
   <script type="text/javascript">
-    var main = new CubesMain("./", 1/60 /* timestep */, localStorage);
+    var main = new cubes.Main("./", 1/60 /* timestep */, localStorage);
   </script>
 </head>
 <body class="ui-mode-hidden" onload='(function () {
@@ -250,7 +252,7 @@
     <script>main.config.cubeParticles.bindControl("cubeParticles");</script>
     <div class="optionline"><label><input type="checkbox" id="enableSound"> Sound</label></div>
     <script>
-      document.getElementById("enableSound").disabled = !CubesAudio.supported;
+      document.getElementById("enableSound").disabled = !cubes.Audio.supported;
       main.config.sound.bindControl("enableSound");
     </script>
     <div class="optionline"><label><input type="checkbox" id="fsaa"> Fake 2× FSAA (I have fillrate to burn)</label></div>
@@ -268,7 +270,7 @@
       </tbody>
     </table>
     <script type="text/javascript">
-      new CubesControlBindingUI(main.config.controls, document.getElementById("controls-config"));
+      new cubes.ControlBindingUI(main.config.controls, document.getElementById("controls-config"));
     </script>
     <p>To change a control binding, click on the current one and then press the key or mouse button you wish to use instead. To add an additional binding, click the “…”. To remove a binding, click on it and click the “×” button.</p>
     

@@ -23,8 +23,16 @@ This is what you can assume/should do:
   Texture 3: Local lighting
 */
 
-var Renderer = (function () {
+(function () {
   "use strict";
+  
+  var CubeRotation = cubes.util.CubeRotation;
+  var fetchResource = cubes.util.fetchResource;
+  var fixedmultiplyVec3 = cubes.util.fixedmultiplyVec3;
+  var IntVectorMap = cubes.util.IntVectorMap;
+  var mod = cubes.util.mod;
+  var Player = cubes.Player;
+  var prepareProgram = cubes.util.prepareProgram;
   
   var DEBUG_GL = false;
   
@@ -89,7 +97,7 @@ var Renderer = (function () {
         SMOOTH_LIGHTING: config.smoothLighting.get(),
         BUMP_MAPPING: config.bumpMapping.get(),
         CUBE_PARTICLES: config.cubeParticles.get(),
-        LIGHT_TEXTURE_SIZE: WorldRenderer.LIGHT_TEXTURE_SIZE
+        LIGHT_TEXTURE_SIZE: cubes/* for late binding */.WorldRenderer.LIGHT_TEXTURE_SIZE
       };
       
       blockProgramSetup = prepareProgram(gl, decls, permanentAttribs,
@@ -204,7 +212,7 @@ var Renderer = (function () {
       var fov = config.fov.get();
       var aspectRatio = gl.drawingBufferWidth / gl.drawingBufferHeight;
       
-      var nearestApproachToPlayer = Player.aabb.minimumRadius();
+      var nearestApproachToPlayer = cubes.Player.aabb.minimumRadius(); // TODO should get this from creator
       var nearPlane = nearestApproachToPlayer 
                       / Math.sqrt(1 + Math.pow(Math.tan(fov/180*Math.PI/2), 2)
                                       * (Math.pow(aspectRatio, 2) + 1));
@@ -937,5 +945,5 @@ var Renderer = (function () {
     }
   };
   
-  return Object.freeze(Renderer);
+  cubes.Renderer = Object.freeze(Renderer);
 }());

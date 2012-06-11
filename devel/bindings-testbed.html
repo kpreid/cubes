@@ -19,6 +19,8 @@
   <link rel="stylesheet" href="../style.css" type="text/css">
   
   <script type="text/javascript" src="../deps/gl-matrix/gl-matrix.js"></script>
+  <script type="text/javascript" src="../deps/game-shim/game-shim.js"></script>
+  <script type="text/javascript" src="../module-initial.js"></script>
   <script type="text/javascript" src="../util.js"></script>
   <script type="text/javascript" src="../storage.js"></script>
   <script type="text/javascript" src="../input.js"></script>
@@ -36,7 +38,7 @@
       </tbody>
     </table>
   <script type="text/javascript">
-    new CubesControlBindingUI(new Cell("test", Input.defaultBindings), document.getElementById("controls-config"));
+    new cubes.ControlBindingUI(new cubes.storage.Cell("test", cubes.Input.defaultBindings), document.getElementById("controls-config"));
   </script>
 </div>
 

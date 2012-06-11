@@ -3,8 +3,11 @@
 
 // Global option structure.
 
-var CubesConfig = (function () {
+(function () {
   "use strict";
+  
+  var Input = cubes.Input;
+  var PersistentCell = cubes.storage.PersistentCell;
   
   function Config(storage, storagePrefix) {
     var config = this;
@@ -45,5 +48,5 @@ var CubesConfig = (function () {
     defineOption("currentTopWorld", "string", "Untitled");
   }
   
-  return Config;
+  cubes.Config = Object.freeze(Config);
 }());

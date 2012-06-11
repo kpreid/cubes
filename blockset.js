@@ -1,8 +1,20 @@
 // Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
-var BlockType = (function () {
+(function () {
   "use strict";
+  
+  var CatchupQueue = cubes.util.CatchupQueue;
+  var Cell = cubes.storage.Cell;
+  var Circuit = cubes.Circuit;
+  var CubeRotation = cubes.util.CubeRotation;
+  var max = Math.max;
+  var min = Math.min;
+  var mod = cubes.util.mod;
+  var Notifier = cubes.util.Notifier;
+  var ObjectMap = cubes.util.ObjectMap;
+  var Persister = cubes.storage.Persister;
+  var World = cubes.World;
   
   function noop() {}
   
@@ -191,14 +203,7 @@ var BlockType = (function () {
     return self;
   };
   
-  return Object.freeze(BlockType);
-}());
-
-var Blockset = (function () {
-  "use strict";
-  
-  var max = Math.max;
-  var min = Math.min;
+  cubes.BlockType = Object.freeze(BlockType);
   
   // Texture parameters
   var TILE_MAPPINGS = [
@@ -654,7 +659,7 @@ var Blockset = (function () {
     var blockIconsW = [];
     var blockIconsR = [];
     var toRerenderIcon = appearanceChangedQueue.getHead();
-    var iconRenderer = new BlockRenderer(blockset, renderer, blockRenderRes);
+    var iconRenderer = new cubes./* late lookup */BlockRenderer(blockset, renderer, blockRenderRes);
     var iconCanvas = document.createElement("canvas");
     var iconCtx = iconCanvas.getContext('2d');
     iconCanvas.width = iconCanvas.height = blockRenderRes;
@@ -958,5 +963,5 @@ var Blockset = (function () {
     }
   }
   
-  return Object.freeze(Blockset);
+  cubes.Blockset = Object.freeze(Blockset);
 }());

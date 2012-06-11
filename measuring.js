@@ -1,12 +1,14 @@
 // Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
-var measuring = (function () {
+(function () {
   "use strict";
-  var measuring = {};
+  var measuring = cubes.measuring = {};
   
   var max = Math.max;
   var min = Math.min;
+  var mkelement = cubes.util.mkelement;
+  var PersistentCell = cubes.storage.PersistentCell;
   
   function numberWithCommas(x) {
     // source: http://stackoverflow.com/a/2901298/99692
@@ -268,5 +270,5 @@ var measuring = (function () {
     ])
   ]);
   
-  return measuring;
+  // Object.freeze(measuring);
 }());

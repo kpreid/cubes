@@ -1,8 +1,18 @@
 // Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
-var World = (function () {
+(function () {
   "use strict";
+  
+  var Circuit = cubes.Circuit;
+  var Blockset = cubes.Blockset;
+  var DirtyQueue = cubes.util.DirtyQueue;
+  var IntVectorMap = cubes.util.IntVectorMap;
+  var measuring = cubes.measuring;
+  var mod = cubes.util.mod;
+  var Notifier = cubes.util.Notifier;
+  var Persister = cubes.storage.Persister;
+  var signum = cubes.util.signum;
   
   var spontaneousBaseRate = 0.0003; // probability of block spontaneous effect call per block per second
   
@@ -824,7 +834,5 @@ var World = (function () {
   
   World.subdatumBound = 256;
   
-  Object.freeze(World);
-  
-  return World;
+  cubes.World = Object.freeze(World);
 }());

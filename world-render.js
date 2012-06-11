@@ -1,8 +1,19 @@
 // Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
-var WorldRenderer = (function () {
+(function () {
   "use strict";
+  
+  var AAB = cubes.util.AAB;
+  var Blockset = cubes.Blockset;
+  var CubeRotation = cubes.util.CubeRotation;
+  var DirtyQueue = cubes.util.DirtyQueue;
+  var IntVectorMap = cubes.util.IntVectorMap;
+  var measuring = cubes.measuring;
+  var mod = cubes.util.mod;
+  var UNIT_PX = cubes.util.UNIT_PX;
+  var UNIT_PY = cubes.util.UNIT_PY;
+  var ZEROVEC = cubes.util.ZEROVEC;
   
   // The side length of the chunks the world is broken into for rendering.
   // Smaller chunks are faster to update when the world changes, but have a higher per-frame cost.
@@ -785,6 +796,5 @@ var WorldRenderer = (function () {
   
   WorldRenderer.LIGHT_TEXTURE_SIZE = LIGHT_TEXTURE_SIZE; // exposed for shader
 
-  return WorldRenderer;
-}());;
-
+  cubes.WorldRenderer = Object.freeze(WorldRenderer);
+}());

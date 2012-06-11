@@ -12,6 +12,7 @@
   
   <script type="text/javascript" src="../deps/gl-matrix/gl-matrix.js"></script>
   <script type="text/javascript" src="../deps/game-shim/game-shim.js"></script>
+  <script type="text/javascript" src="../module-initial.js"></script>
   <script type="text/javascript" src="../util.js"></script>
   <script type="text/javascript" src="../storage.js"></script>
   <script type="text/javascript" src="../measuring.js"></script>
@@ -19,7 +20,8 @@
 <body>
   
 <script type="text/javascript">
-
+  var measuring = cubes.measuring;
+  
   // Fast callbacks
   // Source: http://dbaron.org/log/20100309-faster-timeouts
   (function() {

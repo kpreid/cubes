@@ -1,10 +1,11 @@
 // Copyright 2012 Kevin Reid under the terms of the MIT License as detailed
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
-var CubesObjectUI;
-
 (function () {
   "use strict";
+  
+  var mkelement = cubes.util.mkelement;
+  var World = cubes.World;
   
   function ObjectUI(persistencePool) {
     var ui = this;
@@ -260,5 +261,5 @@ var CubesObjectUI;
     this.refocus();
   };
   
-  CubesObjectUI = ObjectUI;
+  cubes.ObjectUI = Object.freeze(ObjectUI);
 })();
