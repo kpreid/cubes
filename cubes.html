@@ -212,7 +212,7 @@
         document.getElementById('load-error').textContent = '';
         document.getElementById('load-result').textContent = '';
         try {
-          var object = cyclicUnserialize(JSON.parse(document.getElementById('load-field').value), Persister.types);
+          var object = cubes.storage.cyclicUnserialize(JSON.parse(document.getElementById('load-field').value), cubes.storage.Persister.types);
           var chip = new main.ui.ObjectChip();
           chip.bindByObject(object);
           document.getElementById('load-result').textContent = 'Imported object: ';

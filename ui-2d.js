@@ -4,6 +4,7 @@
 (function () {
   "use strict";
   
+  var cyclicSerialize = cubes.storage.cyclicSerialize;
   var mkelement = cubes.util.mkelement;
   var Persister = cubes.storage.Persister;
   var World = cubes.World;
