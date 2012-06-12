@@ -5,6 +5,7 @@
   "use strict";
   
   var mkelement = cubes.util.mkelement;
+  var Persister = cubes.storage.Persister;
   var World = cubes.World;
   
   function ObjectUI(persistencePool) {
