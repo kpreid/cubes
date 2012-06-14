@@ -21,6 +21,7 @@
   var JUMP_SPEED = 8; // cubes/s
   var MAX_STEP_UP = 0.57; // cubes
   var CONTROL_STIFFNESS = 0.18;
+  var AIRSTEER_STIFFNESS = 0.03;
   
   var playerAABB = new AAB(
     -0.35, 0.35, // x
@@ -238,17 +239,21 @@
     function stepPlayer(timestep) {
       var body = currentPlace.body;
       
+      var floor = body.getFloor();
+      
       // apply movement control to velocity
       var controlOrientation = mat4.rotateY(mat4.identity(mat4.create()), body.yaw);
       var movAdj = vec3.create();
       mat4.multiplyVec3(controlOrientation, movement, movAdj);
       vec3.scale(movAdj, body.flying ? FLYING_SPEED : WALKING_SPEED);
-
+      
+      var stiffness = !body.flying && !floor ? AIRSTEER_STIFFNESS : CONTROL_STIFFNESS;
+      
       body.addVelocity([
-        (movAdj[0] - body.vel[0]) * CONTROL_STIFFNESS,
-        body.flying ? (movAdj[1] - body.vel[1]) * CONTROL_STIFFNESS
-        : movAdj[1] !== 0 ? (movAdj[1] - body.vel[1]) * CONTROL_STIFFNESS + timestep * GRAVITY : 0,
-        (movAdj[2] - body.vel[2]) * CONTROL_STIFFNESS]);
+        (movAdj[0] - body.vel[0]) * stiffness,
+        body.flying ? (movAdj[1] - body.vel[1]) * stiffness
+        : movAdj[1] !== 0 ? (movAdj[1] - body.vel[1]) * stiffness + timestep * GRAVITY : 0,
+        (movAdj[2] - body.vel[2]) * stiffness]);
 
       body.step(timestep, function () {
         updateAudioListener();
@@ -270,7 +275,6 @@
         function playFootstep() {
           footstepY = body.pos[1];
           // TODO play sounds for all blocks below or otherwise be less biased (getFloor gives arbitrary results)
-          var floor = body.getFloor();
           var type = floor && body.world.gtv(floor);
           if (type) {
             audio.play(floor, type, "footstep", 0.5);
