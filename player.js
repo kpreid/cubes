@@ -278,13 +278,15 @@
         }
       });
       
-      var newExposure = computeExposure();
-      if (newExposure !== exposure && !isNaN(newExposure)) {
-        exposure = exponentialStep(exposure, newExposure, timestep, -0.7, 1e-3);
-        if (isNaN(exposure)) {
-          exposure = 1.0;
+      if (config.lighting.get()) {
+        var newExposure = computeExposure();
+        if (newExposure !== exposure && !isNaN(newExposure)) {
+          exposure = exponentialStep(exposure, newExposure, timestep, -0.7, 1e-3);
+          if (isNaN(exposure)) {
+            exposure = 1.0;
+          }
+          scheduleDraw();
         }
-        scheduleDraw();
       }
     }
     

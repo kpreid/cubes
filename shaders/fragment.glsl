@@ -163,7 +163,9 @@ void main(void) {
   color = mix(color, fogColor, vFog);
   
   // Exposure
+#if LIGHTING
   color.rgb *= uExposure;
+#endif
   
   // Overbright goes to white
   color.rgb = spill(color.rgb);
