@@ -180,6 +180,12 @@
     var currentlyOpenPanel = null;
     var currentlyOpenPanelName = null;
     
+    function innerOpenPanel(element, name) {
+      currentlyOpenPanel = element;
+      currentlyOpenPanelName = name;
+      panelContainer.style.removeProperty("display");
+    }
+    
     function closePanel(element) {
       element.style.display = "none";
       if (currentlyOpenPanel === element) {
@@ -193,6 +199,7 @@
         
         currentlyOpenPanel = null;
         currentlyOpenPanelName = null;
+        panelContainer.style.display = "none";
       }
     }
     
@@ -226,16 +233,15 @@
       
       if (currentlyOpenPanel) closePanel(currentlyOpenPanel);
       
-      element.style.display = "block";
-      currentlyOpenPanel = element;
-      currentlyOpenPanelName = name;
+      element.style.removeProperty("display");
+      innerOpenPanel(element, name);
     };
     
     this.openNewPanel = function (closeCallback) {
       var element = document.createElement("div");
       
       // TODO make tree position customizable
-      document.body.appendChild(element);
+      panelContainer.appendChild(element);
       addPanelFeatures(element);
       element.cubes_elementDiscardCallback = closeCallback;
       if (element.cubes_elementDiscardCallback !== closeCallback && typeof console !== "undefined") {
@@ -246,6 +252,7 @@
       
       currentlyOpenPanel = element;
       currentlyOpenPanelName = null;
+      innerOpenPanel(element, null);
       
       return element;
     };
@@ -576,6 +583,11 @@
     
     this.setRenderer = function (v) {
       renderer = v;
+    };
+    
+    var panelContainer = null;
+    this.setPanelContainer = function (v) {
+      panelContainer = v;
     };
   }
   

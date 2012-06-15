@@ -256,6 +256,9 @@
     function animationFrameHandler() {
       doSimulationSteps();
       
+      // It would be nice if we could just notice whenever a relayout occurs, but there's no hook for this, so checking every step will have to do. This handles the case where the window is not resized but an internal-to-the-page effect reshapes the viewport (e.g. panels).
+      renderer.checkForViewportChange();
+      
       if (drawingWasRequested && readyToDraw && !renderer.contextLost) {
         drawingWasRequested = false;
         
@@ -355,6 +358,8 @@
       sceneInfoOverlay.appendChild(persistenceProgressBar.element);
       
       worldOverlayContainer = pageElements.worldOverlays;
+      
+      objectUI.setPanelContainer(pageElements.panelContainer);
       
       var shaders;
             

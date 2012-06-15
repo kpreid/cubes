@@ -31,8 +31,8 @@ describe("Main", function() {
     };
 
     // Make canvas visible
-    parts.viewCanvas.width = 320;
-    parts.viewCanvas.height = 240;
+    parts.viewCanvas.style.width = "320px";
+    parts.viewCanvas.style.height = "240px";
     var container = document.createElement("div");
     container.style.margin = "3px";
     container.style.background = "#EEE";

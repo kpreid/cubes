@@ -1,23 +1,14 @@
-/* ensure that our viewport canvas fills the window */
-html, body, .viewport { margin: 0; border: 0; width: 100%; height: 100%; }
-
-html {
+html, body {
   background: gray; /* ordinarily invisible, but makes initial loading better */
 }
 
 .viewport {
-  display: block; /* avoid invoking CSS line layout. */
   cursor: crosshair;
 }
 
-@media screen {
-  .overlay-bounds {
-    display: block;
-    position: relative;
-    overflow: hidden;
-    width: 100%;
-    height: 100%;
-  }
+.overlay-bounds {
+  position: relative;
+  overflow: hidden;
 }
 
 .overlay {
@@ -45,6 +36,46 @@ html {
 #save-button {
   text-shadow: 0 0 .5em #F00;
   font-weight: bold;
+}
+
+/* --- main UI layout --- */
+
+/* ensure that our content fills the window and has no layout-quirk scrollbars */
+html, body {
+  margin: 0;
+  border: 0;
+  width: 100%;
+  height: 100%;
+  xoverflow: hidden;
+}
+
+body {
+  overflow: hidden; /* suppress extra margin in moz flexbox */
+  display: -moz-box;
+  display: -webkit-box;
+  display: box;
+     -moz-box-orient: horizontal;
+  -webkit-box-orient: horizontal;
+          box-orient: horizontal;
+}
+
+.overlay-bounds {
+  display: -moz-box;
+     -moz-box-flex: 1;
+  -webkit-box-flex: 1;
+          box-flex: 1;
+}
+.viewport {
+  -moz-box-flex: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.sidebar-container {
+  overflow-y: auto;
+  overflow-x: hidden;
+  width: 20em;
 }
 
 /* --- block menu --- */
@@ -143,18 +174,12 @@ html {
   right: 6px;
   text-align: right;
 }
-.sidebar {
-  position: absolute;
-  top: 0px;
-  right: 0px;
-  width: 20em;
-  max-height: 100%;
-  overflow: auto;
+
+/* --- sidebars (panels) --- */
+
+.sidebar-container {
   color: white;
-  background: black;
-  background: rgba(80,80,80,0.7);
-  margin: 0;
-  padding: 0;
+  background: #555;
 }
 .sidebar > * {
   margin-left: 0.8em;

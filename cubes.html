@@ -59,6 +59,7 @@
     worldOverlays: id("world-overlays"),
     saveButton: id("save-button"),
     objectList: id("object-list"),
+    panelContainer: id("sidebar-container"),
     generateBlocksetList: id("generate_blockset"),
     // TODO combine error cases?
     webglError: [id("webgl-error-notice")],
@@ -82,6 +83,29 @@
       <div id="quick-bar"></div>
     </div>
   </div>
+  <div id="toggles">
+    <button id="save-button" onclick="main.save(); document.getElementById('view-canvas').focus(); return false;">Save</button>
+    <button id="fullscreen-button" onclick="main.requestFullscreen(); document.getElementById('view-canvas').focus(); return false;">Full screen</button>
+    <script>(function () {
+      var button = document.getElementById("fullscreen-button");
+      if (!GameShim.supports.fullscreen) {
+        button.style.display = "none";
+      } else {
+        var ourFullscreenElement = document.body; // TODO get this from Input
+        function listener(event) {
+          if (document.fullscreenElement === ourFullscreenElement) {
+            button.style.visibility = "hidden";
+          } else {
+            button.style.removeProperty("visibility");
+          }
+        }
+        document.addEventListener("fullscreenchange", listener, false);
+      }
+    }())</script>
+    <button onclick="main.ui.openPanelFromButton('objects');">Worlds</button>
+    <button onclick="main.ui.openPanelFromButton('options');">Options</button>
+    <button onclick="main.ui.openPanelFromButton('help');">Help</button>
+  </div>
 </div>
 
 <div id="error-notices">
@@ -99,32 +123,10 @@
   </div>
 </div>
 
-<div id="toggles">
-  <button id="save-button" onclick="main.save(); document.getElementById('view-canvas').focus(); return false;">Save</button>
-  <button id="fullscreen-button" onclick="main.requestFullscreen(); document.getElementById('view-canvas').focus(); return false;">Full screen</button>
-  <script>(function () {
-    var button = document.getElementById("fullscreen-button");
-    if (!GameShim.supports.fullscreen) {
-      button.style.display = "none";
-    } else {
-      var ourFullscreenElement = document.body; // TODO get this from Input
-      function listener(event) {
-        if (document.fullscreenElement === ourFullscreenElement) {
-          button.style.visibility = "hidden";
-        } else {
-          button.style.removeProperty("visibility");
-        }
-      }
-      document.addEventListener("fullscreenchange", listener, false);
-    }
-  }())</script>
-  <button onclick="main.ui.openPanelFromButton('objects');">Worlds</button>
-  <button onclick="main.ui.openPanelFromButton('options');">Options</button>
-  <button onclick="main.ui.openPanelFromButton('help');">Help</button>
-</div>
+<div id="sidebar-container" class="sidebar-container" style="display: none;">
 
 <div id="objects" class="sidebar" style="display: none;">
-  <script>main.ui.registerPanel("objects", document.getElementById("objects"))</script>
+  <script>main.ui.registerPanel("objects", document.getElementById("objects"));</script>
   <h2>Saved Items</h2>
 
   <div id="local-save-ok" style="display: none">
@@ -344,5 +346,15 @@
   
   <p>Editing the circuit behaviors can cause the game to enter inconsistent states. Circular connections in circuits result in indeterminate behavior.</p>
 </div>
+
+</div><!--sidebar-container-->
+<script>
+  function cubes_resizeSidebar() {
+    document.getElementById("sidebar-container").style.height = window.innerHeight + "px";
+    return true;
+  }
+  window.addEventListener("resize", cubes_resizeSidebar, true);
+  cubes_resizeSidebar();
+</script>
 
 </body></html>

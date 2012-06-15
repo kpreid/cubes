@@ -52,6 +52,10 @@ This is what you can assume/should do:
     // --- State ---
     
     var renderer = this;
+
+    var canvasComputedStyle = window.getComputedStyle(canvas, null);
+    var lastSeenStyleWidth = canvasComputedStyle.width;
+    var lastSeenStyleHeight = canvasComputedStyle.height;
     
     var gl = null;
     
@@ -183,9 +187,13 @@ This is what you can assume/should do:
     }
     
     function updateViewport() {
-      var computedStyle = window.getComputedStyle(canvas,null);
-      pagePixelWidth = parseInt(computedStyle.width, 10);
-      pagePixelHeight = parseInt(computedStyle.height, 10);
+      // allow canvas to flex-shrink, then get actual size
+      canvas.width = 1;
+      canvas.height = 1;
+      pagePixelWidth = parseInt(canvasComputedStyle.width, 10);
+      pagePixelHeight = parseInt(canvasComputedStyle.height, 10);
+      lastSeenStyleWidth = canvasComputedStyle.width;
+      lastSeenStyleHeight = canvasComputedStyle.height;
       
       // Specify canvas resolution
       pixelScale = config.fsaa.get() ? 2 : 1;
@@ -352,6 +360,14 @@ This is what you can assume/should do:
       return function () { return contextSerial !== s; };
     }
     this.currentContextTicket = currentContextTicket;
+    
+    this.checkForViewportChange = function () {
+      if (lastSeenStyleWidth !== canvasComputedStyle.width ||
+          lastSeenStyleHeight !== canvasComputedStyle.height) {
+        updateViewport();
+        scheduleDraw();
+      }
+    };
     
     // View-switching: Each of these produces a self-consistent state of variables and uniforms.
     // The state managed by these view routines is:
