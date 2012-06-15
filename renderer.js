@@ -31,7 +31,6 @@ This is what you can assume/should do:
   var fixedmultiplyVec3 = cubes.util.fixedmultiplyVec3;
   var IntVectorMap = cubes.util.IntVectorMap;
   var mod = cubes.util.mod;
-  var Player = cubes.Player;
   var prepareProgram = cubes.util.prepareProgram;
   
   var DEBUG_GL = false;
@@ -74,7 +73,6 @@ This is what you can assume/should do:
     var blockProgramSetup = null;
     var particleProgramSetup = null;
   
-    var currentProgramSetup = null;
     var attribs, uniforms;
     
     var contextLost = false;
@@ -163,7 +161,7 @@ This is what you can assume/should do:
         return function (point) {
           vec3.subtract(point, origin, vecbuf);
           return vec3.dot(vecbuf, normal) > 0;
-        }
+        };
       }
       var lbn = dehomog(mat4.multiplyVec4(matrix, [-1,-1,-1,1]));
       var lbf = dehomog(mat4.multiplyVec4(matrix, [-1,-1, 1,1]));
@@ -512,10 +510,13 @@ This is what you can assume/should do:
     function RenderBundle(primitive, optGetTexture, calcFunc, options) {
       options = options || {};
       
-      var v = new BufferAndArray(3);
-      var n = new BufferAndArray(3);
-      if (!optGetTexture) var c = new BufferAndArray(4);
-      if (optGetTexture) var t = new BufferAndArray(2);
+      var v, n, c, t;
+      v = new BufferAndArray(3);
+      n = new BufferAndArray(3);
+      if (optGetTexture)
+        t = new BufferAndArray(2);
+      else
+        c = new BufferAndArray(4);
       var mustRebuild = currentContextTicket();
       
       if (calcFunc !== null) {
@@ -534,13 +535,13 @@ This is what you can assume/should do:
             mustRebuild = currentContextTicket();
           }
 
-          v.load(vertices) && v.send(gl.STATIC_DRAW);
-          n.load(normals, v) && n.send(gl.STATIC_DRAW);
+          if (v.load(vertices)) v.send(gl.STATIC_DRAW);
+          if (n.load(normals, v)) n.send(gl.STATIC_DRAW);
 
           if (optGetTexture) {
-            t.load(texcoords, v) && t.send(gl.STATIC_DRAW);
+            if (t.load(texcoords, v)) t.send(gl.STATIC_DRAW);
           } else {
-            c.load(colors, v) && c.send(gl.STATIC_DRAW);
+            if (c.load(colors, v)) c.send(gl.STATIC_DRAW);
           }
         };
 
@@ -591,7 +592,7 @@ This is what you can assume/should do:
         n.deleteResources();        this.normals   = n = null;
         if (c) c.deleteResources(); this.colors    = c = null;
         if (t) t.deleteResources(); this.texcoords = t = null;
-      }
+      };
     }
     this.RenderBundle = RenderBundle;
     
@@ -611,7 +612,7 @@ This is what you can assume/should do:
       function arr() { 
         return new Float32Array(tileSize*tileSize*tileSize * verticesPerParticle * 3);
       }
-      if (!geometry) {
+      if (!geometry) (function () {
         var r = CubeRotation.byCode[symm];
         var positions = new BufferAndArray(3);
         var subcubes  = new BufferAndArray(3);
@@ -620,25 +621,26 @@ This is what you can assume/should do:
         var sa = subcubes .array = arr();
         var na = normals  .array = arr();
         var index = 0;
+        function doVertex(record) {
+          var v = r.transformPoint(record[0]);
+          var normal = r.transformVector(record[1]);
+          pa[index+0] = (v[0] - 0.5)/tileSize;
+          pa[index+1] = (v[1] - 0.5)/tileSize;
+          pa[index+2] = (v[2] - 0.5)/tileSize;
+          sa[index+0] = subcube[0];
+          sa[index+1] = subcube[1];
+          sa[index+2] = subcube[2];
+          na[index+0] = normal[0];
+          na[index+1] = normal[1];
+          na[index+2] = normal[2];
+          index += 3;
+        }
         for (var x = 0; x < tileSize; x++)
         for (var y = 0; y < tileSize; y++)
         for (var z = 0; z < tileSize; z++) {
           var subcube = r.transformPoint([(x+0.5)/tileSize, (y+0.5)/tileSize, (z+0.5)/tileSize]);
           if (cubeParticles) {
-            genericCubeVertices.forEach(function (record) {
-              var v = r.transformPoint(record[0]);
-              var normal = r.transformVector(record[1]);
-              pa[index+0] = (v[0] - 0.5)/tileSize;
-              pa[index+1] = (v[1] - 0.5)/tileSize;
-              pa[index+2] = (v[2] - 0.5)/tileSize;
-              sa[index+0] = subcube[0];
-              sa[index+1] = subcube[1];
-              sa[index+2] = subcube[2];
-              na[index+0] = normal[0];
-              na[index+1] = normal[1];
-              na[index+2] = normal[2];
-              index += 3;
-            });
+            genericCubeVertices.forEach(doVertex);
           } else {
             pa[index+0] = 0;
             pa[index+1] = 0;
@@ -663,7 +665,7 @@ This is what you can assume/should do:
           vpp: verticesPerParticle
         };
         blockParticleVerticesCache.set(cacheKey, geometry);
-      }
+      }());
       if (geometry.ticket()) {
         geometry.positions.renew();
         geometry.subcubes .renew();

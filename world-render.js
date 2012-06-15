@@ -174,9 +174,6 @@
       }
     });
     
-    var blockset = world.blockset;
-    var textured = blockset.textured;
-    
     // --- methods, internals ---
     
     function deleteChunks() {
@@ -208,7 +205,7 @@
       // chunks containing the changed block ID?
       texturingChanged: dirtyAll,
       tableChanged: dirtyAll
-    }
+    };
     
     var listenerRenderDistance = {
       interest: isAlive,
@@ -224,7 +221,7 @@
       changed: function (v) {
         scheduleDraw();
       }
-    }
+    };
 
     function deleteResources() {
       deleteChunks();
@@ -233,7 +230,7 @@
       blockset.listen.cancel(listenerBlockset);
       config.renderDistance.listen.cancel(listenerRenderDistance);
       world = blockset = chunks = nonemptyChunks = dirtyChunks = addChunks = textureDebugR = null;
-    };
+    }
     function isAlive() {
       // Are we still interested in notifications etc?
       return !!world;
@@ -288,12 +285,12 @@
       z -= zm;
       
       setDirtyChunk(x,y,z, dirtyType);
-      if (xm == 0)           setDirtyChunk(x-CHUNKSIZE,y,z, dirtyType);
-      if (ym == 0)           setDirtyChunk(x,y-CHUNKSIZE,z, dirtyType);
-      if (zm == 0)           setDirtyChunk(x,y,z-CHUNKSIZE, dirtyType);
-      if (xm == CHUNKSIZE-1) setDirtyChunk(x+CHUNKSIZE,y,z, dirtyType);
-      if (ym == CHUNKSIZE-1) setDirtyChunk(x,y+CHUNKSIZE,z, dirtyType);
-      if (zm == CHUNKSIZE-1) setDirtyChunk(x,y,z+CHUNKSIZE, dirtyType);
+      if (xm === 0)           setDirtyChunk(x-CHUNKSIZE,y,z, dirtyType);
+      if (ym === 0)           setDirtyChunk(x,y-CHUNKSIZE,z, dirtyType);
+      if (zm === 0)           setDirtyChunk(x,y,z-CHUNKSIZE, dirtyType);
+      if (xm === CHUNKSIZE-1) setDirtyChunk(x+CHUNKSIZE,y,z, dirtyType);
+      if (ym === CHUNKSIZE-1) setDirtyChunk(x,y+CHUNKSIZE,z, dirtyType);
+      if (zm === CHUNKSIZE-1) setDirtyChunk(x,y,z+CHUNKSIZE, dirtyType);
       
       // TODO: This is actually "Schedule updateSomeChunks()" and shouldn't actually require a frame redraw unless the update does something in view
       scheduleDraw();
@@ -719,8 +716,8 @@
       return 6*CYL_RESOLUTION;
     }
     
-    var CENTER = [.5,.5,.5];
-    var CYL_RADIUS = Math.round(.08 * tileSize) / tileSize;
+    var CENTER = [0.5, 0.5, 0.5];
+    var CYL_RADIUS = Math.round(0.08 * tileSize) / tileSize;
     function makeCircuitRenderer(circuit) {
       var dyns;
       var circuitRenderer = new renderer.RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {
@@ -735,7 +732,7 @@
           var numVertices = calcCylinder(
             vec3.add(record[1], CENTER, vec3.create()),
             vec3.add(record[2], CENTER, vec3.create()),
-            .1,
+            0.1,
             vertices, normals);
           for (var i = 0; i < numVertices; i++)
             colors.push(1,1,1,1); 

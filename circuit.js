@@ -36,12 +36,6 @@
     "0,0,-1": "-Z"
   });
   
-  function blockOutputKeys(block) {
-    return DIRECTIONS.map(function (direction) {
-      return block + "/" + direction;
-    });
-  }
-  
   function dirKeys(value) {
     var o = {};
     DIRECTIONS.forEach(function (direction) {
@@ -327,7 +321,7 @@
         // look up specific face output
         return localState[Array.prototype.slice.call(block) + "/" + Array.prototype.slice.call(face)];
       }
-    } 
+    };
     this.describeBlock = function (block) {
       var graph = cGraph[block];
       if (!graph) return "Wire";
@@ -377,7 +371,7 @@
       });
       return function (state, value) {
         keys.forEach(function (key) { state[key] = value; });
-      }
+      };
     }
     function combineInputs(inputs, faces) {
       // TODO: combine more cleverly than 'or'
@@ -429,7 +423,6 @@
       return function (state) {
         var i = input(state);
         if (typeof i === "number" && "blockOut_effects" in state) {
-          var outerWorld = state.blockIn_world;
           state.blockOut_effects.push(
             [ZEROVEC, [Math.floor(mod(i, 256))]]);
         }
@@ -556,7 +549,6 @@
       return function (state) {
         var i = input(state);
         if (typeof i === "number" && "blockOut_effects" in state) {
-          var outerWorld = state.blockIn_world;
           state.blockOut_effects.push([myLookVector, [Math.floor(mod(i, 256)), 0]]);
         }
       };
@@ -716,4 +708,4 @@
   };
   
   cubes.Circuit = Object.freeze(Circuit);
-}());;
+}());

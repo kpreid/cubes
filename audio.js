@@ -1,18 +1,22 @@
 // Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
+/*global AudioContext: false, webkitAudioContext: false */
+
 (function () {
+  "use strict";
+  
   var ID_EMPTY = cubes.Blockset.ID_EMPTY;
   var ID_LIMIT = cubes.Blockset.ID_LIMIT;
   
-  var lAudioContext = typeof AudioContext !== "undefined" ? AudioContext
+  var LAudioContext = typeof AudioContext !== "undefined" ? AudioContext
                     : typeof webkitAudioContext !== "undefined" ? webkitAudioContext : null;
-  var supported = !!lAudioContext;
+  var supported = !!LAudioContext;
   
   function Audio(config) {
     var context;
     if (supported) {
-      context = new lAudioContext(); /* feature test point */
+      context = new LAudioContext(); /* feature test point */
     }
   
     // TODO: leaks garbage block types and uses serial numbers. Use WeakMap instead once Chrome supports it
@@ -42,11 +46,13 @@
       var types, counts, buffers;
       
       function readBlock() {
+        var i;
+        
         // Find volumes of material in the block
         counts = [];
-        for (var i = 0; i < ID_LIMIT; i++) counts.push(0);
+        for (i = 0; i < ID_LIMIT; i++) counts.push(0);
         var raw = blockWorld.raw;
-        for (var i = raw.length - 1; i >= 0; i--) {
+        for (i = raw.length - 1; i >= 0; i--) {
           counts[raw[i]]++;
         }
         
@@ -55,64 +61,66 @@
       }
       
       function subSynth(duration, variation, echo, noise, gain) {
+        var i;
+        
         var bsSamples = Math.round(duration * bsSampleRate);
-      
+        
         var b = context.createBuffer(1, bsSamples, bsSampleRate);
         var a = b.getChannelData(0);
-    
+        
         var basePitch = 40;
-      
+        
         var totalAmp = 0;
         var color = [];
         for (var value = ID_EMPTY + 1; value < ID_LIMIT; value++) {
           var count = counts[value];
-          if (count == 0) continue;
-      
+          if (count === 0) continue;
+        
           types[value].writeColor(1, color, 0);
           //var luminance = Math.floor((0.2126*color[0]+0.7152*color[1]+0.0722*color[2])*16)/16;
-
+          
           for (var c = 0; c < 3; c++) {
             var luminance = color[c];
             var pitch = basePitch * Math.exp(3*luminance) * (1 - variation/2+Math.random()*variation);
             var pitchInSampleUnits = pitch / bsSampleRate;
-
-            for (var i = 0; i < bsSamples; i++) {
+            
+            for (i = 0; i < bsSamples; i++) {
               //a[i] += spanCount*square(i * pitchInSampleUnits);
               a[i] += count*Math.floor((i*pitchInSampleUnits) % 1 * 2);
             }
             totalAmp += count;
           }
         }
-
+        
         var normalize = totalAmp > 0 ? gain/totalAmp : 0;
-        for (var i = 0; i < bsSamples; i++) {
+        for (i = 0; i < bsSamples; i++) {
           a[i] *= normalize;
         }
-
+        
         if (noise) {
-          for (var i = 0; i < bsSamples; i++) {
+          for (i = 0; i < bsSamples; i++) {
             var interp = i/bsSamples;
             a[i] = a[i]*(1-interp) + Math.random()*interp*0.2;
           }
         }
-    
+      
         var decay = -5/bsSamples;
-        for (var i = 0; i < bsSamples; i++) {
+        for (i = 0; i < bsSamples; i++) {
           a[i] *= Math.exp(i*decay);
         }
-
+        
         if (echo > 0) {
-          var lookback = Math.floor(.04 * bsSampleRate);
-          for (var i = 0; i < bsSamples; i++) {
+          var lookback = Math.floor(0.04 * bsSampleRate);
+          for (i = 0; i < bsSamples; i++) {
             a[i] += i >= lookback ? a[i-lookback]*echo : 0;
           }
         }
-      
+        
         if (!isFinite(a[0])) {
           if (typeof console !== "undefined")
             console.error("Synthesis produced bad data: ", a[0]);
         }
-      
+        
         return b;
       }
       

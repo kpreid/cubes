@@ -5,6 +5,7 @@
   "use strict";
   
   var Blockset = cubes.Blockset;
+  var BlockType = cubes.BlockType;
   var cyclicSerialize = cubes.storage.cyclicSerialize;
   var mkelement = cubes.util.mkelement;
   var Persister = cubes.storage.Persister;
@@ -63,14 +64,14 @@
             chipE.classList.add("object-chip-live");
           }
           if (label === null) {
-            var label = "a ";
+            label = "a ";
             
             if (target instanceof World) {
               label += target.wx + "×" + target.wy + "×" + target.wz + " ";
             }
             label += Persister.findType(target.constructor);
             if (target instanceof BlockType && target.name !== null) {
-              label += " “" + target.name + "”"
+              label += " “" + target.name + "”";
             }
             
             chipE.classList.add("object-chip-ephemeral");
@@ -259,7 +260,7 @@
       currentlyOpenPanelName = null;
       
       return element;
-    }
+    };
     
     this.setNormalFocusElement = function (v) {
       normalFocusElement = v;
@@ -290,13 +291,13 @@
             mkelement("td", "", String(object.wx), " × ", String(object.wy), " × ", String(object.wz))
           )
         ));
-      } else if (object instanceof Blockset) {
+      } else if (object instanceof Blockset) (function () {
         // TODO listen to blockset
         // TODO strip out this code from input subsystem
         var blocksList = mkelement("ol");
         panel.appendChild(blocksList);
         var blocksetRender = renderer ? object.getRenderData(renderer) : null;
-        for (var blockID = 1; blockID < object.length; blockID++) (function (){
+        function row(blockID) {
           var blockType = object.get(blockID);
           
           // TODO refactor so we can have an icon for a lone BlockType and make ObjectChip have an icon
@@ -317,9 +318,10 @@
           var item = mkelement("li", "", icon, blockChip.element);
           
           blocksList.appendChild(item);
-        }());
+        }
+        for (var blockID = 1; blockID < object.length; blockID++) row(blockID);
         
-      } else {
+      }()); else {
         panel.appendChild(mkelement("p", "", 
           mkelement("em", "", "No details available for this object.")));
       }

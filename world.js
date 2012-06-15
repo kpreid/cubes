@@ -18,7 +18,6 @@
   
   var LIGHT_MAX = 255;
   var LIGHT_SCALE = 4/LIGHT_MAX;
-  var LIGHT_LAMP = LIGHT_MAX;
   var LIGHT_SKY = Math.round(1/LIGHT_SCALE);
   var MAX_LIGHTING_QUEUE = 3000;
   
@@ -119,7 +118,6 @@
         // This is a check for trouble in the circuit fill logic
         if (typeof console !== "undefined")
           console.warn("Unindexed circuit at " + circuit.getOrigin() + "!");
-        debugger;
       }
       circuit.compile();
       circuit.refreshLocal();
@@ -132,7 +130,7 @@
       var q = [start.slice()];
       
       var block;
-      while (block = q.pop()) {
+      while ((block = q.pop())) {
         if (isCircuitPart(gt(block[0],block[1],block[2]))) {
           var existing = blockCircuits.get(block);
           if (existing === circuit) {
@@ -168,7 +166,7 @@
                          blockCircuits.get([x+1,y,z]),
                          blockCircuits.get([x,y+1,z]),
                          blockCircuits.get([x,y,z+1])];
-      var circuit = undefined;
+      var circuit;
       adjCircuits.forEach(function (c) {
         if (!c) return;
         if (!circuit) {
@@ -264,7 +262,7 @@
         deleteCircuit(blockCircuits.get(vec));
         neighbors.forEach(function (neighbor) {
           if (isCircuitPart(gt(neighbor[0],neighbor[1],neighbor[2]))) becomeCircuit(neighbor);
-        })
+        });
       }
       
       // Update neighbors, which may have circuit inputs depending on this block
@@ -292,7 +290,7 @@
     }
     function selectablev(v) { return selectable(v[0], v[1], v[2]); }
     function selectable(x,y,z) {
-      return g(x,y,z) != 0;
+      return g(x,y,z) !== 0;
     }
     function inBoundsv(v) { return inBounds(v[0], v[1], v[2]); }
     function inBounds(x,y,z) {
@@ -429,21 +427,24 @@
     
     // Called by clients which modify the raw state arrays
     function notifyRawEdit() {
+      var x, y, z, xbase, ybase;
+      var vec = [0,0,0];
+      var types = blockset.getAll();
+      
       // Rebuild world circuits and reeval block circuits
       notifier.notify("dirtyAll");
       self.persistence.dirty();
       
       blockCircuits = new IntVectorMap(); // TODO clear op instead of replacing objects?
       circuits = new IntVectorMap();
-      var types = blockset.getAll();
-      var vec = [0,0,0];
-      for (var x = 0; x < wx; x++) {
+      
+      for (x = 0; x < wx; x++) {
         vec[0] = x;
-        var xbase = x*wy*wz;
-        for (var y = 0; y < wy; y++) {
+        xbase = x*wy*wz;
+        for (y = 0; y < wy; y++) {
           vec[1] = y;
-          var ybase = xbase + y*wz;
-          for (var z = 0; z < wz; z++) {
+          ybase = xbase + y*wz;
+          for (z = 0; z < wz; z++) {
             vec[2] = z;
             reeval(vec, types[blocks[ybase + z]]);
           }
@@ -451,13 +452,13 @@
       }
       
       // In-block circuits (handled by reeval) determine rotations, which determine in-this-world circuit connectivity, so all floodCircuit must happen after all reeval.
-      for (var x = 0; x < wx; x++) {
+      for (x = 0; x < wx; x++) {
         vec[0] = x;
-        var xbase = x*wy*wz;
-        for (var y = 0; y < wy; y++) {
+        xbase = x*wy*wz;
+        for (y = 0; y < wy; y++) {
           vec[1] = y;
-          var ybase = xbase + y*wz;
-          for (var z = 0; z < wz; z++) {
+          ybase = xbase + y*wz;
+          for (z = 0; z < wz; z++) {
             vec[2] = z;
             var value = blocks[ybase + z];
             if (isCircuitPart(types[value]) && !blockCircuits.get(vec)) {
@@ -767,7 +768,7 @@
 
     this.raycast = raycast;
     this.getCircuits = function () { return circuits; }; // TODO should be read-only interface
-    this.getCircuit = function (block) { return blockCircuits.get(block) || null; }
+    this.getCircuit = function (block) { return blockCircuits.get(block) || null; };
     this.edit = edit;
 
     this.step = step;
@@ -824,13 +825,12 @@
     }
     
     var world = new World([json.wx, json.wy, json.wz], unserialize(json.blockset || json.blockSet, Blockset));
-    var str = json.blocks;
     unrleBytes(json.blocks, world.raw);
     unrleBytes(json.subData, world.rawSubData);
     unrleBytes(json.lightCache, world.rawLighting);
     world.notifyRawEdit();
     return world;
-  }
+  };
   
   World.subdatumBound = 256;
   

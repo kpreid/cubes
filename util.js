@@ -8,6 +8,8 @@
 // believe that it is obviously the authors' intent to make this code free to
 // use.
 
+/*global WeakMap: false */
+
 (function () {
   "use strict";
   var util = cubes.util = {};
@@ -16,6 +18,7 @@
     try {
       var y = 0;
       var o = Object.freeze({
+        get x() { return 17; },
         set x(v) { y = v; }
       });
       o.x = 43;
@@ -58,7 +61,7 @@
   }
   util.fixedmultiplyVec3 = fixedmultiplyVec3;
   
-  var ZEROVEC = util.ZEROVEC = vec3.createFrom(0,0,0);
+                util.ZEROVEC = vec3.createFrom(0,0,0);
   var UNIT_PX = util.UNIT_PX = vec3.createFrom(1,0,0);
   var UNIT_PY = util.UNIT_PY = vec3.createFrom(0,1,0);
   var UNIT_PZ = util.UNIT_PZ = vec3.createFrom(0,0,1);
@@ -70,7 +73,8 @@
   function mkelement(name, classes/* , child, child, ... */) {
     var element = document.createElement(name);
     element.className = classes;
-    for (var i = mkelement.length; i < arguments.length; i++) {
+    var i;
+    for (i = 2; i < arguments.length; i++) {
       var childDes = arguments[i];
       if (typeof childDes === "string") {
         childDes = document.createTextNode(childDes);
@@ -137,14 +141,15 @@
       throw new Error(gl.getProgramInfoLog(program));
     }
     
+    var i, name;
     var attribs = Object.create(boundAttribLocations);
-    for (var i = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES) - 1; i >= 0; i--) {
-      var name = gl.getActiveAttrib(program, i).name;
+    for (i = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES) - 1; i >= 0; i--) {
+      name = gl.getActiveAttrib(program, i).name;
       attribs[name] = gl.getAttribLocation(program, name);
     }
     var uniforms = {};
-    for (var i = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS) - 1; i >= 0; i--) {
-      var name = gl.getActiveUniform(program, i).name;
+    for (i = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS) - 1; i >= 0; i--) {
+      name = gl.getActiveUniform(program, i).name;
       uniforms[name] = gl.getUniformLocation(program, name);
     }
     
@@ -157,7 +162,7 @@
   util.prepareProgram = prepareProgram;
   
   // Axis-Aligned Box data type. (We'd usually say Axis-Aligned Bounding Box, but that's what it's being used for, not what it does.
-  var AAB = util.AAB = (function () {
+  util.AAB = (function () {
     function AAB(lx,hx,ly,hy,lz,hz) {
       // Data properties are named numerically so that code can be written generically across dimensions.
       // TODO: Check that l < h? Do we want to require that?
@@ -177,9 +182,10 @@
     };
     
     // Intersection test
+    // TODO this may be incorrect; write test cases for it
     AAB.prototype.intersects = function (other) {
       for (var dim = 0; dim < 3; dim++)
-        if (this[dim*2] < other[dim*2+1] || a2[dim*2+1] < a1[dim*2])
+        if (this[dim*2+1] < other[dim*2] || other[dim*2+1] < this[dim*2])
           return false;
       return true;
     };
@@ -544,7 +550,7 @@
         }
         
       }
-    }
+    };
     return Object.freeze(this);
   }
   util.Notifier = Notifier;

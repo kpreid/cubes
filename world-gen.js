@@ -18,6 +18,11 @@
   var round = Math.round;
   var sin = Math.sin;
   var sqrt = Math.sqrt;
+  var UNIT_PX = cubes.util.UNIT_PX;
+  var UNIT_PY = cubes.util.UNIT_PY;
+  var UNIT_PZ = cubes.util.UNIT_PZ;
+  var UNIT_NX = cubes.util.UNIT_NX;
+  var UNIT_NZ = cubes.util.UNIT_NZ;
   var World = cubes.World;
   
   var WorldGen = cubes.WorldGen = Object.freeze({
@@ -158,14 +163,14 @@
       }
       
       // condition functions
-      function te(b) { return b[1] == TL ?1:0; }
-      function tp(b) { return b[1] == TL-1 ?1:0; }
-      function be(b) { return b[1] == 0 ?1:0; }
-      function bp(b) { return b[1] == 1 ?1:0; }
-      function se(b) { return (b[2] == 0 || b[2] == TL   || b[0] == 0 || b[0] == TL  ) ?1:0; }
-      function sp(b) { return (b[2] == 1 || b[2] == TL-1 || b[0] == 1 || b[0] == TL-1) ?1:0; }
-      function xe(b) { return (b[0] == 0 || b[0] == TL) ?1:0; }
-      function ze(b) { return (b[2] == 0 || b[2] == TL) ?1:0; }
+      function te(b) { return b[1] === TL ?1:0; }
+      function tp(b) { return b[1] === TL-1 ?1:0; }
+      function be(b) { return b[1] === 0 ?1:0; }
+      function bp(b) { return b[1] === 1 ?1:0; }
+      function se(b) { return (b[2] === 0 || b[2] === TL   || b[0] === 0 || b[0] === TL  ) ?1:0; }
+      function sp(b) { return (b[2] === 1 || b[2] === TL-1 || b[0] === 1 || b[0] === TL-1) ?1:0; }
+      function xe(b) { return (b[0] === 0 || b[0] === TL) ?1:0; }
+      function ze(b) { return (b[2] === 0 || b[2] === TL) ?1:0; }
       function e(b) { return s(b) > 1 ?1:0; }
       function c(b) { return s(b) > 2 ?1:0; }
       function speckle(b) { return (floor(b[0]/4) + b[1] + floor(b[2]/2)) % 4; }
@@ -181,8 +186,8 @@
       function pickFillCond(p1, p2) {
         return cond(pick([speckle,layers]), p1, p2);
       }
-      function cond(cond, p1, p2) {
-        return function (b) { return cond(b) ? p1(b) : p2(b); };
+      function cond(test, p1, p2) {
+        return function (b) { return test(b) ? p1(b) : p2(b); };
       }
       function flat(id) {
         return function (b) { return id; };
@@ -348,7 +353,6 @@
           "logic.count",
           Circuit.behaviors.count,
           function (b) {
-            var mx = b[0] - TL/2;
             var my = b[1] - TL/2;
             var mz = b[2] - TL/2;
             return (b[0] > 2 &&
@@ -413,8 +417,8 @@
       type = addOrUpdate(
           "logic.nor",
           Circuit.behaviors.nor,
-          f.union(f.sphere(TS/2-TS*.2,TS/2,TS/2, TS*3/16, functionShapePat),
-                  f.sphere(TS/2+TS*.2,TS/2,TS/2, TS*3/16, functionShapePat)));
+          f.union(f.sphere(TS/2-TS*0.2,TS/2,TS/2, TS*3/16, functionShapePat),
+                  f.sphere(TS/2+TS*0.2,TS/2,TS/2, TS*3/16, functionShapePat)));
       selfRotating(TL-1);
 
       type = addOrUpdate(
@@ -478,7 +482,7 @@
     },
 
     newDefaultBlockset: function (TS) {
-      var t0 = Date.now();
+      //var t0 = Date.now();
       // Given an object facing the +z direction, these will rotate that face to...
       var sixFaceRotations = [0/*+z*/, 2/*-z*/, 4/*+y*/, 4+2/*-y*/, 16+8/*-x*/, 16+11/*+x*/];
 
@@ -500,7 +504,6 @@
 
       // layer 3
       var fullLogicAndColors = WorldGen.colorBlocks(6, 6, 6);
-      var onlyColorCount = fullLogicAndColors.length; // before logic added
       WorldGen.addLogicBlocks(TS, fullLogicAndColors, baseLogicAndColors);
       var colorSet = fullLogicAndColors; // TODO dup
       var brgb = WorldGen.colorPicker(colorSet, 0);
@@ -540,7 +543,7 @@
         type.automaticRotations = sixFaceRotations;
       }
 
-      var t15 = Date.now();
+      //var t15 = Date.now();
 
       // --- default block worlds and block set ---
 
@@ -552,16 +555,16 @@
 
       // ground block
       blockset.add(type = genedit(
-        f.cond(f.te, f.cond(f.speckle, f.flat(brgb(.67,.34,.34)), f.flat(brgb(.67,0,0))),
-          f.cond(f.tp, f.flat(brgb(1,.34,.34)),
-            f.cond(f.speckle, f.flat(brgb(.34,0,0)), f.flat(brgb(0,0,0)))))));
+        f.cond(f.te, f.cond(f.speckle, f.flat(brgb(0.67,0.34,0.34)), f.flat(brgb(0.67,0,0))),
+          f.cond(f.tp, f.flat(brgb(1,0.34,0.34)),
+            f.cond(f.speckle, f.flat(brgb(0.34,0,0)), f.flat(brgb(0,0,0)))))));
       var ground = type.world;
 
       // ground block #2
       blockset.add(type = genedit(
-        f.cond(f.te, f.cond(f.speckle, f.flat(brgb(.34,.67,.34)), f.flat(brgb(0,.34,0))),
-          f.cond(f.tp, f.flat(brgb(.34,1,.34)),
-            f.cond(f.speckle, f.flat(brgb(0,.34,0)), f.flat(brgb(0,1,1)))))));
+        f.cond(f.te, f.cond(f.speckle, f.flat(brgb(0.34,0.67,0.34)), f.flat(brgb(0,0.34,0))),
+          f.cond(f.tp, f.flat(brgb(0.34,1,0.34)),
+            f.cond(f.speckle, f.flat(brgb(0,0.34,0)), f.flat(brgb(0,1,1)))))));
 
       // pyramid thing
       var pyr1 = blockset.length;
@@ -621,13 +624,13 @@
 
       // pillar thing
       blockset.add(type = genedit(function (b) {
-        return max(abs(b[0] - TS/2), abs(b[2] - TS/2)) <= TS/4 ? brgbDither(.5,.5,0) : 0;
+        return max(abs(b[0] - TS/2), abs(b[2] - TS/2)) <= TS/4 ? brgbDither(0.5,0.5,0) : 0;
       }));
 
       // glass sheet for buildings
       blockset.add(type = genedit(
         f.cond(function (b) { return (f.xe(b) || f.te(b) || f.be(b)) && b[2] == TL; },
-          f.flat(brgb(.9,.9,.9)),
+          f.flat(brgb(0.9,0.9,0.9)),
           f.flat(0))));
       type.name = "glass";
       addRotation(type);
@@ -640,7 +643,7 @@
       }));
       type.name = "slab";
 
-      var roundMaterial = brgb(.2,.2,.2);
+      var roundMaterial = brgb(0.2,0.2,0.2);
 
       // quarter-round (edge) block
       blockset.add(type = genedit(function (b) {
@@ -716,10 +719,10 @@
       blockset.get(firstRandom).name = "random.first";
       blockset.get(lastRandom).name = "random.last";
 
-      var t1 = Date.now();
+      //var t1 = Date.now();
       WorldGen.addLogicBlocks(TS, blockset, fullLogicAndColors);
 
-      var t2 = Date.now();
+      //var t2 = Date.now();
       //console.log("Blockset generation", t15 - t0, "ms mid ", t1 - t15, "ms adding logic", t2 - t1, "ms");
 
       return blockset;
@@ -728,8 +731,6 @@
   
   // TODO: refactor this into WorldGen methods
   function generateWorlds(config, blockset) {
-    "use strict";
-    
     var topWorld = new World([
       config.generate_wx.get(),
       config.generate_wy.get(),
@@ -771,10 +772,10 @@
             raw[index] = y < bottom ? air :
                          altitude > 1 ? air :
                          altitude < 0 ? bedrock :
-                         altitude == 0 ? ground :
+                         altitude === 0 ? ground :
                          /* altitude == 1 */
                          random() > 0.997 ? light :
-                         random() > 0.99 ? (rawSubData[index] = 4, pyramid) :
+                         random() > 0.99 ? ((rawSubData[index] = 4) && pyramid) :
                          random() > 0.99 ? bump :
                          air;
           }
@@ -849,12 +850,6 @@
         r[2] = base[2] + d1[2] * s1 + d2[2] * s2;
         return r;
       }
-      function getvec(vec) {
-        return topWorld.g(vec[0],vec[1],vec[2]);
-      }
-      function setvec(vec, val,subdatum) {
-        topWorld.s(vec[0],vec[1],vec[2],val,subdatum);
-      }
       function fill(corner1, corner2, material, subdata) {
         var lx = min(corner1[0], corner2[0]);
         var ly = min(corner1[1], corner2[1]);
@@ -893,8 +888,8 @@
             function (p) { return topWorld.gv(p) == ground; }, 
             function (pos) {
           var perp = counterclockwise(vel);
-          setvec(maddy(pos, 1, perp, -width-1), greenery, floor(random()*CubeRotation.count));
-          setvec(maddy(pos, 1, perp, +width+1), greenery, floor(random()*CubeRotation.count));
+          topWorld.sv(maddy(pos, 1, perp, -width-1), greenery, floor(random()*CubeRotation.count));
+          topWorld.sv(maddy(pos, 1, perp, +width+1), greenery, floor(random()*CubeRotation.count));
           fill(madd(pos, perp, -width), madd(pos, perp, width), road);
           return [];
         });
@@ -1011,10 +1006,6 @@
     }
     
     switch (config.generate_shape.get()) {
-      case "fill":
-      default:
-        generateSimpleBumpy(function () { return 0; });
-        break;
       case "island":
         generateSimpleBumpy(function (x,z,terrain) {
           var nx = x/wx*2 - 1;
@@ -1026,6 +1017,10 @@
         break;
       case "city":
         generateCity();
+        break;
+      /*case "fill":*/
+      default:
+        generateSimpleBumpy(function () { return 0; });
         break;
     }
     

@@ -13,7 +13,6 @@
   var SERIAL_TYPE_NAME = "()";
   
   function cyclicSerialize(root, typeNameFunc, getName) {
-    "use strict";
     if (!getName) getName = function () { return null; };
     var seen = [];
     function serialize(obj) {
@@ -49,7 +48,6 @@
   storage.cyclicSerialize = cyclicSerialize;
 
   function cyclicUnserialize(json, unserializers, lookupName) {
-    "use strict";
     if (!lookupName) lookupName = function () { throw new Error("got name w/ no lookup function"); };
     var seen = [];
 
@@ -113,7 +111,6 @@
   storage.Cell = Cell;
   
   function PersistentCell(storage, storageName, type, defaultValue) {
-    "use strict";
     Cell.call(this, storageName, defaultValue);
     
     this.type = type;
@@ -121,7 +118,7 @@
     this.set = function (newV) {
       bareSet(newV);
       storage.setItem(storageName, JSON.stringify(newV));
-    }
+    };
     this.setToDefault = function () { this.set(defaultValue); };
     
     var valueString = storage.getItem(storageName);
@@ -150,7 +147,7 @@
       case "Echeckbox":
         listener = function(value) {
           elem.checked = value;
-        }
+        };
         elem.onchange = function () {
           self.set(elem.checked);
           return true;
@@ -203,7 +200,6 @@
   storage.PersistentCell = PersistentCell;
   
   function PersistencePool(storage, objectPrefix) {
-    "use strict";
     var pool = this;
     
     // constants
@@ -231,7 +227,6 @@
     }
     
     this.flushAsync = function () {
-      var currentlyDirty = [];
       var n = dirtyQueue.size();
       function loop() {
         if (n-- <= 0) return; // avoid inf loop if things are constantly dirty
@@ -296,7 +291,7 @@
     };
     this.persist = function (object, name) {
       if (pool.has(name)) {
-        throw new Error("The name " + newName + " is already in use.");
+        throw new Error("The name " + name + " is already in use.");
       }
       if (!pool.available) {
         throw new Error("localStorage not supported by this browser; persistence not available");
@@ -332,7 +327,7 @@
     this._dirty = function (name) {
       dirtyQueue.enqueue(name);
       updateStatus();
-    }
+    };
     this.listen = notifier.listen;
     this.available = !!storage;
     this.status = status.readOnly;
@@ -346,9 +341,6 @@
   storage.PersistencePool = PersistencePool;
   
   function Persister(object) {
-    "use strict";
-    
-    var persister = this;
     var pool = null;
     var name = null;
     var dirty = false;
@@ -390,8 +382,8 @@
   Persister.findType = function (constructor) {
     var ts = Persister.types;
     for (var k in ts) {
-      if (ts[k] === constructor
-          && Object.prototype.hasOwnProperty.call(ts, k)) {
+      if (ts[k] === constructor &&
+          Object.prototype.hasOwnProperty.call(ts, k)) {
         return k;
       }
     }

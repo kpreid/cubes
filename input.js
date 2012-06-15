@@ -27,7 +27,6 @@
         // NOTE: Per MDN <https://developer.mozilla.org/en/DOM/KeyboardEvent> the keyCode attribute is deprecated (but its replacement is not yet implemented in Gecko)
         // TODO: Research the best way to express keybindings
         return ["key", ev.keyCode];
-        break;
       case "mousedown":
       case "mouseup":
         if (ev.buttons) { 
@@ -222,7 +221,7 @@
           // TODO: Obtain a database of device button names.
           var gamepadIndex = value[1];
           var gamepadDesc = gamepadIndex > 0 ? String.fromCharCode(0x2081 + value[1]) : "";
-          var buttonDesc = String(value[3] + 1)
+          var buttonDesc = String(value[3] + 1);
           switch (value[2]) {
             case "button":
               desc = "\u2299" + gamepadDesc + " " + buttonDesc;
@@ -258,10 +257,10 @@
             var value = gamepadArray[i];
             if (value > 0.5) {
               deactivate();
-              set(["gamepad", gamepadIndex, type, i, 0.5])
+              set(["gamepad", gamepadIndex, type, i, 0.5]);
             } else if (value < -0.5 /* axis */) {
               deactivate();
-              set(["gamepad", gamepadIndex, type, i, -0.5])
+              set(["gamepad", gamepadIndex, type, i, -0.5]);
             }
           }
         }
@@ -340,7 +339,7 @@
   }
   ControlChip.prototype.conflict = function () {
     this.element.classList.add("control-chip-conflict");
-  }
+  };
   
   function ControlBindingUI(bindingsCell, rowContainer) {
     var commands = Input.commands;
@@ -403,7 +402,7 @@
     bindingsCell.nowAndWhenChanged(function () {
       updateBindings();
       return true;
-    })
+    });
   }
   
   function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, save) {
@@ -567,7 +566,7 @@
             console.warn("No function for command", commandName);
           }
         }
-      })
+      });
       resetHeldControls();
       
       return true;
@@ -804,7 +803,7 @@
     // game-shim.js provides these facilities as stubs if the browser does not, so this code contains no conditionals.
     
     var ourFullscreenElement = document.body;
-    var outPointerLockElement = eventReceiver;
+    var ourPointerLockElement = eventReceiver;
     
     document.addEventListener("fullscreenchange"/*shimmed*/, updatePointerLock, false);
     document.addEventListener("fullscreenerror"/*shimmed*/, function (event) {
@@ -817,18 +816,19 @@
     
     function weHavePointerLock() {
       // Second condition is because GameShim doesn't offer a shim for pointerLockElement if the browser doesn't have it at all, which is true for Chrome 21.0.1148.0 canary.
-      return !!document.pointerLockElement/*shimmed*/ == outPointerLockElement || (navigator.pointer && navigator.pointer.isLocked);
+      return document.pointerLockElement/*shimmed*/ === ourPointerLockElement ||
+             (navigator.pointer && navigator.pointer.isLocked);
     }
     
     function updatePointerLock() {
       if (interfaceMode.mouselook) {
-        outPointerLockElement.requestPointerLock/*shimmed*/();
+        ourPointerLockElement.requestPointerLock/*shimmed*/();
         expectingPointerLock = GameShim.supports.pointerLock;
         updateMouseFromEvent(null);
       } else {
         document.exitPointerLock/*shimmed*/();
       }
-    };
+    }
     
     window.addEventListener("pointerlockchange"/*shimmed*/, function (event) {
       expectingPointerLock = false;
@@ -889,8 +889,6 @@
       focus: function (focused) { if (focused) switchMode(mouselookIMode); }
     };
     
-    var allUIClasses = ["full", "menu", "hidden"];
-    
     // Initialize interface mode.
     // If pointer lock is available, then we want to use it in mouselook mode, but we cannot enable it on page load; therefore we start in menu mode which does not want pointer lock.
     interfaceMode = GameShim.supports.pointerLock ? menuMode : mouselookIMode;
@@ -913,7 +911,7 @@
           }, 0);
           set = true;
         }
-      }
+      };
     }
     
     function resetQuick() {
@@ -998,15 +996,15 @@
         // element structure and style
         var item = menuItemsByBlockId[blockID] = mkelement("tr", "menu-item");
         
-        function cell() {
+        function mkcell() {
           var cell = mkelement("td", "block-details");
           item.appendChild(cell);
           return cell;
         }
         
-        cell().appendChild(document.createTextNode(blockID.toString()));
+        mkcell().appendChild(document.createTextNode(blockID.toString()));
         
-        var iconCell = cell();
+        var iconCell = mkcell();
         var icon = document.createElement("img");
         icon.style.width = icon.style.height = size + "px"; // TODO don't do this in full menu mode
         iconCell.classList.remove("block-details"); // always shown
@@ -1026,7 +1024,7 @@
           blockType.name = name.value;
           return true;
         };
-        cell().appendChild(name);
+        mkcell().appendChild(name);
         
         var behavior = document.createElement("select");
         var currentBehavior = (blockType.behavior || {name:""}).name;
@@ -1040,12 +1038,12 @@
           o.value = name;
           o.selected = name === currentBehavior;
           behavior.appendChild(o);
-        })
+        });
         behavior.onchange = function () {
           blockType.behavior = Circuit.behaviors[behavior.value];
           return true;
         };
-        cell().appendChild(behavior);
+        mkcell().appendChild(behavior);
         
         var solid = document.createElement("input");
         solid.type = "checkbox";
@@ -1054,7 +1052,7 @@
           blockType.solid = solid.checked;
           return true;
         };
-        cell().appendChild(solid);
+        mkcell().appendChild(solid);
         
         var light = document.createElement("input");
         light.type = "range";
@@ -1066,7 +1064,7 @@
           blockType.light = parseFloat(light.value);
           return true;
         };
-        cell().appendChild(light);
+        mkcell().appendChild(light);
         
         setupIconButton(item,icon,blockID);
         
@@ -1171,9 +1169,9 @@
       label: label,
       repeatPeriod: repeat,
       repeatDelay: rd || 0
-    }
+    };
     bindings.forEach(function (control) {
-      Input.defaultBindings.push([name, control])
+      Input.defaultBindings.push([name, control]);
     });
   }
   defcmd("useTool"    , "Place block",  [["mouse", 1]], 1/4); // TODO derive from movement speed

@@ -154,8 +154,8 @@
   
   BlockType.prototype.toString = function () {
     var s = "[BlockType #" + this.serial;
-    if (world) s += " world";
-    if (color) s += " color " + this.color;
+    if (this.world) s += " world";
+    if (this.color) s += " color " + this.color;
     s += "]";
     return s;
   };
@@ -253,13 +253,14 @@
   function rotateVertices(rot, vertices) {
     var out = [];
     var t = [];
+    var i;
     if (rot.isReflection) {
-      for (var i = vertices.length - 3; i >= 0; i -= 3) {
+      for (i = vertices.length - 3; i >= 0; i -= 3) {
         rot.transformPoint([vertices[i], vertices[i+1], vertices[i+2]], t);
         out.push(t[0],t[1],t[2]);
       }
     } else {
-      for (var i = 0; i < vertices.length; i += 3) {
+      for (i = 0; i < vertices.length; i += 3) {
         rot.transformPoint([vertices[i], vertices[i+1], vertices[i+2]], t);
         out.push(t[0],t[1],t[2]);
       }
@@ -447,7 +448,7 @@
                     gl.UNSIGNED_BYTE, // type
                     this.image);
       gl.bindTexture(gl.TEXTURE_2D, null);
-    }
+    };
     
     function tileAlloc() {
       var n = 0;
@@ -625,20 +626,21 @@
   // TODO change this from "BlockSet" to "Blockset" — but we need to keep a migration path for old serializations, and there's no way to specify a preferred name, currently.
   Persister.types["BlockSet"] = Blockset;
   Blockset.unserialize = function (json, unserialize) {
+    var blockTypes;
     if (json.type === "colors") {
       // obsolete serialization type
-      var colors = WorldGen.colorBlocks(4,4,4);
+      var colors = cubes.WorldGen.colorBlocks(4,4,4);
       var list = colors.getAll().slice(1, colors.length);
       list.push(list.shift());
       return new Blockset(list);
     } else if (json.type === "textured") {
       // obsolete serialization type
-      var blockTypes = json.worlds.map(function (world) {
+      blockTypes = json.worlds.map(function (world) {
         return new BlockType(null, unserialize(world, World));
       });
       return new Blockset(blockTypes);
     } else if (json.type === "types") {
-      var blockTypes = json.types.map(function (type) {
+      blockTypes = json.types.map(function (type) {
         return unserialize(type, BlockType);
       });
       return new Blockset(blockTypes);
@@ -911,6 +913,7 @@
       var someChanged = false;
       var allChanged = false;
       var l = blockset.length;
+      var id;
       
       // TODO: Losing GL context should not require us to re-calculate texture data.
       if (!texgen || texgen.mustRebuild()) {
@@ -921,7 +924,7 @@
       while (texgen.textureLost) {
         //if (typeof console !== "undefined") console.info("Performing full block texture rebuild.");
         texgen.textureLost = false;
-        for (var id = Blockset.ID_EMPTY + 1; id < l && !texgen.textureLost; id++)
+        for (id = Blockset.ID_EMPTY + 1; id < l && !texgen.textureLost; id++)
           rebuildOne(id);
         someChanged = true;
         allChanged = true;
@@ -931,7 +934,7 @@
       // Else rebuild only what is changed
       var haveRebuilt = [];
       for (; toRerender.available; toRerender = toRerender.next) {
-        var id = toRerender.value;
+        id = toRerender.value;
         if (!haveRebuilt[id]) {
           haveRebuilt[id] = true;
           rebuildOne(id);
@@ -941,7 +944,7 @@
       
       if (allChanged) {
         // If textureLost, which might occur because it was resized, then we need to notify of *everything* changing
-        for (var id = Blockset.ID_EMPTY + 1; id < l; id++)
+        for (id = Blockset.ID_EMPTY + 1; id < l; id++)
           notifier.notify("texturingChanged", id);
       }
       if (someChanged) {
@@ -960,7 +963,7 @@
         icons: blockIconsR
         // Note: icons is made up of Cells that can be listened to for the completion of the deferred icon rendering. However, these cells do not update when blocks change appearance unless the render data is re-obtained (i.e. freshenIcons happens). This is deliberate to save CPU time when the blocks are not *visible* (e.g. when a block is itself being edited, so the blockset containing it is not current).
       };
-    }
+    };
   }
   
   cubes.Blockset = Object.freeze(Blockset);

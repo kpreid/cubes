@@ -13,6 +13,7 @@
   var Notifier = cubes.util.Notifier;
   var World = cubes.World;
   var WorldRenderer = cubes.WorldRenderer;
+  var ZEROVEC = cubes.util.ZEROVEC;
   
   // physics constants
   var WALKING_SPEED = 4; // cubes/s
@@ -113,7 +114,7 @@
       renderAABB(currentPlace.body.pos, playerAABB, 0,0,1);
       currentPlace.body.debugHitAABBs.forEach(function (aabb) {
         renderAABB(ZEROVEC, aabb, 0,1,0);
-      })
+      });
     }, {aroundDraw: function (draw) {
       if (!config.debugPlayerCollision.get()) return;
       renderer.setLineWidth(2);
@@ -225,7 +226,7 @@
       var compensation = 0.75;
       
       return 1/(((localLightFactor - 1) * compensation) + 1);
-    };
+    }
     
     this.getExposure = function () {
       return exposure;
@@ -451,7 +452,7 @@
             var blockID = currentPlace.world.g(x,y,z);
             
             var world = currentPlace.world.blockset.worldFor(blockID);
-            if (world == null) return; // TODO: UI message about this
+            if (!world) return; // TODO: UI message about this
             var tileSize = world.wx;
             
             currentPlace = new Place(world);

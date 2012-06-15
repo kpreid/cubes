@@ -48,8 +48,9 @@
     var subContext = stateContext + "." + this.label;
     var container = mkelement("div", "measuring-item measuring-group");
     var list = mkelement("ul", "measuring-group-contents");
+    var header = null;
     if (this.label) {
-      var header = mkelement("div", "measuring-group-header",
+      header = mkelement("div", "measuring-group-header",
         createToggle(subContext + ".visible", function (visible) {
           if (visible) {
             list.style.removeProperty("display");
@@ -88,7 +89,7 @@
         }
       }
     };
-  }
+  };
   ViewGroup.prototype.start = function () {
     this.elements.forEach(function (e) { e.start(); });
   };
@@ -110,7 +111,7 @@
     d.header.parentNode.insertBefore(toggle, d.header.nextSibling);
     d.header.parentNode.insertBefore(bogusval, d.header.nextSibling);
     return d;
-  }
+  };
   
   function Quantity(label) {
     this.label = label;
@@ -141,8 +142,8 @@
         valueText.data = String(this.show());
         
         var indexOffset = this.historyIndex;
-        if (elementIsVisible(sparkCanvas)
-            && lastUpdateIndex !== indexOffset /* there is new data */) {
+        if (elementIsVisible(sparkCanvas) &&
+            lastUpdateIndex !== indexOffset /* there is new data */) {
           lastUpdateIndex = indexOffset;
           
           sparkHeight = parseInt(window.getComputedStyle(labelElem, null).height, 10) - 3;
@@ -156,7 +157,8 @@
           // Find maximum and minimum of graph
           var miny = 0 /* Infinity */; // assume 0 is a meaningful minimum
           var maxy = -Infinity;
-          for (var i = sparkLength - 1; i >= 0; i--) {
+          var i;
+          for (i = sparkLength - 1; i >= 0; i--) {
             var y = history[i];
             miny = min(y, miny);
             maxy = max(y, maxy);
@@ -168,19 +170,20 @@
 
           // Draw graph: first background fill, then line
           sparkContext.fillStyle = fillColor;
-          for (var i = sparkLength - 1; i >= 0; i--) {
-            var scaley = history[(i + indexOffset) % sparkLength] * viewScale + viewOffset;
+          var scaley;
+          for (i = sparkLength - 1; i >= 0; i--) {
+            scaley = history[(i + indexOffset) % sparkLength] * viewScale + viewOffset;
             sparkContext.fillRect(i, scaley, 1, sparkHeight);
           }
           sparkContext.fillStyle = fgColor;
-          for (var i = sparkLength - 1; i >= 0; i--) {
-            var scaley = history[(i + indexOffset) % sparkLength] * viewScale + viewOffset;
+          for (i = sparkLength - 1; i >= 0; i--) {
+            scaley = history[(i + indexOffset) % sparkLength] * viewScale + viewOffset;
             sparkContext.fillRect(i, scaley, 1, 1);
           }
         }
       }.bind(this)
     };
-  }
+  };
   Quantity.prototype.start = function () {};
   Quantity.prototype.end = function () {
     var hi = this.historyIndex;

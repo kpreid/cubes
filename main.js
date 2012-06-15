@@ -10,7 +10,7 @@
 // Main loop scheduling, scene drawing, performance statistics, etc.
 
 (function () {
-  // TODO should be strict mode
+  "use strict";
   
   var Audio = cubes.Audio;
   var Blockset = cubes.Blockset;
@@ -173,11 +173,11 @@
         
         // Per-frame debug/stats info
         var frameDesc = "";
-        {
-          var pp = player.render.getPosition();
-          var d = 2;
-          frameDesc += "XYZ: " + pp[0].toFixed(d) + "," + pp[1].toFixed(d) + "," + pp[2].toFixed(d) + "\n";
-        }
+        
+        var pp = player.render.getPosition();
+        var d = 2;
+        frameDesc += "XYZ: " + pp[0].toFixed(d) + "," + pp[1].toFixed(d) + "," + pp[2].toFixed(d) + "\n";
+        
         if (errs.length) {
           lastGLErrors = errs;
           frameDesc += "GL errors:";
@@ -276,7 +276,7 @@
       if (measureDisplay) measureDisplay.updateIfVisible();
     }, 1000);
     
-    var t0 = undefined;
+    var t0;
     function startupMessage(text) {
       var t1 = Date.now();
       sceneInfo.data += text + "\n";
@@ -363,7 +363,7 @@
       }());
       
       // Object list
-      if (pageElements.objectList) {
+      if (pageElements.objectList) (function () {
         var objectList = pageElements.objectList;
         function updateObjectList() {
           var totalSize = 0;
@@ -409,18 +409,18 @@
         updateObjectList();
         topWorldC.whenChanged(function () {
           updateObjectList();
-          return true
+          return true;
         }); // TODO unnecessarily rebuilding the list
         persistencePool.listen({
           interest: function () { return true; },
           added: updateObjectList,
           deleted: updateObjectList
         });
-      }
+      }());
 
       // Object list for blockset
       // TODO: redundant with the object list; abstract this
-      if (pageElements.generateBlocksetList) {
+      if (pageElements.generateBlocksetList) (function () {
         var blocksetList = pageElements.generateBlocksetList;
         function updateBlocksetList() {
           blocksetList.textContent = "";
@@ -438,7 +438,7 @@
           added: updateBlocksetList,
           deleted: updateBlocksetList
         });
-      }
+      }());
       
       var shallLoadWorld = !config.alwaysGenerateWorld.get() && persistencePool.has(config.currentTopWorld.get());
 

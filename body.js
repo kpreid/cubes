@@ -67,33 +67,35 @@
       measuring.collisionTests.inc(Math.max(0, hx-lx+1) *
                                    Math.max(0, hy-ly+1) *
                                    Math.max(0, hz-lz+1));
+      var pos, rot, scaledCollideAABB;
+      function subHitCallback(subHitAAB, subPos) {
+        hit.set(pos.concat(subPos),
+          rot ? subHitAAB.scale(1/scale).rotate(rot).translate([x, y, z])
+              : subHitAAB.scale(1/scale)            .translate([x, y, z]));
+      }
       for (var x = lx; x <= hx; x++)
       for (var y = ly; y <= hy; y++)
       for (var z = lz; z <= hz; z++) {
         var type = iworld.gt(x,y,z);
         if (!type.solid) continue;
-        var pos = [x, y, z];
+        pos = [x, y, z];
         if (ignore.get(pos)) continue;
-        if (!type.opaque && type.world && level == 0) {
+        if (!type.opaque && type.world && level === 0) {
           var scale = type.world.wx;
           var rotCode = iworld.gRot(x,y,z);
           if (rotCode === 0) {
-            var rot = null;
-            var scaledCollideAABB = aabb.translate([-x, -y, -z]).scale(scale);
+            /* rot = undefined; */
+            scaledCollideAABB = aabb.translate([-x, -y, -z]).scale(scale);
           } else {
-            var rot = CubeRotation.byCode[rotCode];
-            var scaledCollideAABB = aabb.translate([-x, -y, -z]).rotate(rot.inverse).scale(scale);
+            rot = CubeRotation.byCode[rotCode];
+            scaledCollideAABB = aabb.translate([-x, -y, -z]).rotate(rot.inverse).scale(scale);
           }
           var subhit = intersectWorld(
                 scaledCollideAABB,
                 type.world,
                 IntVectorMap.empty,
                 level + 1);
-          if (subhit) subhit.forEach(function (subHitAAB, subPos) {
-            hit.set(pos.concat(subPos), 
-              rot ? subHitAAB.scale(1/scale).rotate(rot).translate([x, y, z])
-                  : subHitAAB.scale(1/scale)            .translate([x, y, z]));
-          });
+          if (subhit) subhit.forEach(subHitCallback);
         } else {
           hit.set(pos, AAB.unitCube(pos));
         }
@@ -127,19 +129,30 @@
     var previousContacts = this.worldContacts;
     var curContacts = null;
     var nextPosIncr = vec3.create(curPos);
+    
+    var dim, dir;
+    function hitCallback(aab, cube) {
+      var key = cube.slice(0, 3);
+      var faces = curContacts.get(key);
+      if (!faces) curContacts.set(key, faces = {});
+      var fkey = [0,0,0];
+      fkey[dim] = dir ? -1 : 1;
+      faces[fkey] = true;
+    }
+    
     if (this._config.noclip.get()) {
       nextPosIncr = nextPos;
       this.flying = true;
     } else {
       for (var dimi = 0; dimi < 3; dimi++) {
-        var dim = [1,0,2][dimi]; // TODO: doing the dims in another order makes the slope walking glitch out, but I don't understand *why*.
-        var dir = curVel[dim] >= 0 ? 1 : 0;
+        dim = [1,0,2][dimi]; // TODO: doing the dims in another order makes the slope walking glitch out, but I don't understand *why*.
+        dir = curVel[dim] >= 0 ? 1 : 0;
         nextPosIncr[dim] = nextPos[dim]; // TODO: Sample multiple times if velocity exceeds 1 block/step
         //console.log(dir, dim, bodyAABB.get(dim, dir), front, nextPosIncr);
         var hit = intersectBodyAt(nextPosIncr, alreadyColliding);
         if (hit) {
           var hitAABB = unionHits(hit);
-          resolveDirection: {
+          resolveDirection: do /* dummy loop to satisfy lint */ {
             // Walk-up-slopes
             if (dim !== 1 /*moving horizontally*/ && this.getFloor() /*not in air*/) {
               var upward = vec3.create(nextPosIncr);
@@ -159,19 +172,12 @@
             
             if (hit) {
               if (!curContacts) curContacts = new IntVectorMap();
-              hit.forEach(function (aab, cube) {
-                var key = cube.slice(0, 3);
-                var faces = curContacts.get(key);
-                if (!faces) curContacts.set(key, faces = {});
-                var fkey = [0,0,0];
-                fkey[dim] = dir ? -1 : 1;
-                faces[fkey] = true;
-              });
+              hit.forEach(hitCallback);
             }
             if (dim === 1 && dir === 0) { // touched ground
               this.flying = false;
             }
-          }
+          } while (false);
         }
       }
     }
@@ -217,7 +223,7 @@
     if (this.getFloor()) {
       this.addVelocity(jumpVel);
     }
-  }
+  };
   
   cubes.Body = Object.freeze(Body);
 }());
