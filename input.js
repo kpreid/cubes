@@ -10,6 +10,16 @@
   var signum = cubes.util.signum;
   var WorldGen = cubes.WorldGen;
   
+  function deadzone(value, radius) {
+    if (value < 0) {
+      return -deadzone(-value, radius);
+    } else if (value < radius) {
+      return 0;
+    } else {
+      return value - radius;
+    }
+  }
+  
   function parseEvent(ev) {
     switch (ev.type) {
       case "keydown":
