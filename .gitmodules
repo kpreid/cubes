@@ -7,3 +7,6 @@
 [submodule "deps/gl-matrix"]
 	path = deps/gl-matrix
 	url = git://github.com/toji/gl-matrix.git
+[submodule "deps/jshint"]
+	path = deps/jshint
+	url = git://github.com/jshint/jshint.git

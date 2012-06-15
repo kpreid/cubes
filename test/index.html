@@ -7,6 +7,16 @@
   <meta name="viewport" content="width=device-width">
 
   <link rel="stylesheet" type="text/css" href="../deps/jasmine/lib/jasmine-core/jasmine.css">
+  <style type="text/css">
+    .jshint-report p {
+      margin: 0.8em 0 0 0;
+      font-family: monospace;
+    }
+    .jshint-report p.evidence {
+      margin: 0 0 0 2em;
+    }
+  </style>
+  
   <script type="text/javascript" src="../deps/jasmine/lib/jasmine-core/jasmine.js"></script>
   <script type="text/javascript" src="../deps/jasmine/lib/jasmine-core/jasmine-html.js"></script>
   
@@ -42,11 +52,15 @@
   <script type="text/javascript" src="test-main.js"></script>
   <script type="text/javascript" src="test-player.js"></script>
   <script type="text/javascript" src="test-storage.js"></script>
+  <script type="text/javascript" src="test-special.js"></script>
   <script type="text/javascript" src="test-ui-2d.js"></script>
   <script type="text/javascript" src="test-util.js"></script>
   <script type="text/javascript" src="test-world.js"></script>
   <script type="text/javascript" src="test-world-gen.js"></script>
   <script type="text/javascript" src="test-world-render.js"></script>
+
+  <!-- borrowing Jasmine's copy of JSHint -->
+  <script type="text/javascript" src="../deps/jshint/jshint.js"></script>
 
   <script type="text/javascript">
     (function() {
