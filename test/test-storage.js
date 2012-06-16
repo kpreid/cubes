@@ -33,35 +33,60 @@ describe("Persister", function () {
   
   var Blockset = cubes.Blockset;
   var PersistencePool = cubes.storage.PersistencePool;
+  var Persister = cubes.storage.Persister;
   var World = cubes.World;
   
-  it("should preserve references to other persistent objects", function () {
-    // using existing types rather than ones invented for test because Persister.types is a global currently.
+  // Class for testing persistence behavior
+  function PersistenceTestObject(a, b) {
+    this.persistence = new Persister(this);
+    this.a = a;
+    this.b = b;
+  }
+  PersistenceTestObject.prototype.serialize = function (subSerialize) {
+    var json = {
+      // TODO make serialization handle non-object values
+      a: this.a ? subSerialize(this.a) : null,
+      b: this.b ? subSerialize(this.b) : null
+    };
+    subSerialize.setUnserializer(json, PersistenceTestObject);
+    return json;
+  };
+  PersistenceTestObject.unserialize = function (json, unserialize) {
+    return new PersistenceTestObject(
+      json.a ? unserialize(json.a) : null,
+      json.b ? unserialize(json.b) : null);
+  };
+  Persister.types["PersistenceTestObject"] = PersistenceTestObject;
+  
+  function createTestPool() {
+    return new PersistencePool(sessionStorage, "Persister-rename-test.");
+  }
+  
+  var pool;
+  beforeEach(function () {
     sessionStorage.clear();
-    
-    var pool1 = new PersistencePool(sessionStorage, "Persister-preserve-test.");
-    
-    var inner = new Blockset([]);
-    var outer = new World([1,1,1], inner);
-    pool1.persist(inner, "inner");
-    pool1.persist(outer, "outer");
+    pool = createTestPool();
+  });
+  
+  it("should preserve references to other persistent objects", function () {
+    var inner = new PersistenceTestObject(null, null);
+    var outer = new PersistenceTestObject(inner, null);
+    pool.persist(inner, "inner");
+    pool.persist(outer, "outer");
     // TODO also test correct linking if an inner object is persisted after the outer is written. This doesn't matter yet, but it will.
     
-    pool1.flushNow();
+    pool.flushNow();
     
     // new pool so that we are actually unserializing, not reobtaining the above live objects
-    var pool2 = new PersistencePool(sessionStorage, "Persister-preserve-test.");
+    var pool2 = createTestPool();
     var inner2 = pool2.get("inner");
     var outer2 = pool2.get("outer");
     
-    expect(outer2.blockset).toBe(inner2);
+    expect(outer2.a).toBe(inner2);
   });
 
   it("handles renaming", function () {
-    sessionStorage.clear();
-    var pool = new PersistencePool(sessionStorage, "Persister-preserve-test.");
-    
-    var obj = new Blockset([]);
+    var obj = new PersistenceTestObject(null, null);
     pool.persist(obj, "foo");
     pool.flushNow();
     pool.ephemeralize("foo");
