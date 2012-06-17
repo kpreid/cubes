@@ -39,8 +39,18 @@ describe("Persister", function () {
   // Class for testing persistence behavior
   function PersistenceTestObject(a, b) {
     this.persistence = new Persister(this);
-    this.a = a;
-    this.b = b;
+    Object.defineProperties(this, {
+      a: {
+        enumerable: true,
+        get: function () { return a; },
+        set: function (v) { a = v; this.persistence.dirty(); },
+      },
+      b: {
+        enumerable: true,
+        get: function () { return b; },
+        set: function (v) { b = v; this.persistence.dirty(); },
+      }
+    });
   }
   PersistenceTestObject.prototype.serialize = function (subSerialize) {
     var json = {
@@ -66,6 +76,20 @@ describe("Persister", function () {
   beforeEach(function () {
     sessionStorage.clear();
     pool = createTestPool();
+  });
+  
+  it("should write dirty objects", function () {
+    var obj = new PersistenceTestObject(null, null);
+    var thingy = new PersistenceTestObject(null, null);
+    pool.persist(obj, "obj");
+    
+    obj.a = thingy;
+    pool.flushNow();
+    
+    // get a copy of the currently saved state
+    var obj2 = createTestPool().get("obj");
+    
+    expect(obj2.a).not.toBeNull();
   });
   
   it("should preserve references to other persistent objects", function () {
