@@ -27,29 +27,44 @@
     if (!(this instanceof BlockType)) {
       throw new Error("bad constructor call");
     }
+
     var self = this;
-    
     var n = new Notifier("BlockType");
-    this._notify = n.notify; // TODO should be private
-    this.listen = n.listen;
+    var persistence = new Persister(this);
     
-    this._serial = nextBlockTypeSerial++;
-    
-    // Appearance/structure
-    this.color = color || null;
-    this.world = world || null;
-    
-    // Properties
-    this.automaticRotations = [0]; // TODO: This property is to be replaced by circuits.
-    this.behavior = null;
-    this.name = null;
-    this.solid = true;
-    this.light = 0; // Light emission — float scale where 1.0 is an "ordinary light"
-    
-    // Cached calculated properties
+    // State for cached calculated properties
     var opaque, hasCircuits, derivedColor;
     var needsAnalysis = true;
+    
+    function simpleDirtyingProperty(value) {
+      return {
+        enumerable: true,
+        get: function () { return value; },
+        set: function (newValue) {
+          value = newValue;
+          persistence.dirty();
+        }
+      };
+    }
+    
     Object.defineProperties(this, {
+      _serial: { value: nextBlockTypeSerial++ },
+      _notify: { value: n.notify }, // TODO should be private
+      persistence: { enumerable: true, value: persistence },
+      listen: { enumerable: true, value: n.listen },
+      
+      // Appearance/structure
+      color: simpleDirtyingProperty(color || null),
+      world: simpleDirtyingProperty(world || null), // TODO hook up listeners on set
+
+      // Behavior properties
+      automaticRotations: simpleDirtyingProperty([0]), // TODO: This property is to be replaced by circuits.
+      behavior: simpleDirtyingProperty(null), // TODO notify blockset on set
+      name: simpleDirtyingProperty(null),
+      solid: simpleDirtyingProperty(true),
+      light: simpleDirtyingProperty(0), // Light emission — float scale where 1.0 is an "ordinary light"
+            
+      // Cached calculated properties
       derivedColor: {
         // The color which this block exhibits as a subcube.
         enumerable: true,
@@ -204,6 +219,10 @@
   };
   
   cubes.BlockType = Object.freeze(BlockType);
+  
+  // ---------------------------------------------------------------------------
+  // End of definition of BlockType; beginning of Blockset.
+  // ---------------------------------------------------------------------------
   
   // Texture parameters
   var TILE_MAPPINGS = [
@@ -518,7 +537,6 @@
       var listener = {
         interest: function () { return true; },
         appearanceChanged: function () {
-          self.persistence.dirty(); // TODO also need to dirty on other modifications to the block type, but there are no hooks for that. // TODO This is not a good strategy — we should be dirty in general because we contain a dirty unnamed object (and not if it is named).
           appearanceChangedQueue.enqueue(id);
           notifier.notify("texturingChanged", id);
         }
