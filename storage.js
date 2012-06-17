@@ -10,6 +10,8 @@
   var DirtyQueue = cubes.util.DirtyQueue;
   var Notifier = cubes.util.Notifier;
   
+  function noop() {}
+  
   var SERIAL_TYPE_NAME = "()";
   
   function cyclicSerialize(root, typeNameFunc, getName) {
@@ -47,8 +49,9 @@
   }
   storage.cyclicSerialize = cyclicSerialize;
 
-  function cyclicUnserialize(json, unserializers, lookupName) {
+  function cyclicUnserialize(json, unserializers, lookupName, fixupHook) {
     if (!lookupName) lookupName = function () { throw new Error("got name w/ no lookup function"); };
+    if (!fixupHook) fixupHook = noop;
     var seen = [];
 
     function findConstructor(json) {
@@ -64,7 +67,9 @@
       } else if (typeof json === "string") {
         return lookupName(json);
       } else if (typeof json === "object") {
-        return seen[+(json["#"])] = findConstructor(json).unserialize(json, unserialize);
+        var object = seen[+(json["#"])] = findConstructor(json).unserialize(json, unserialize);
+        fixupHook(object);
+        return object;
       } else {
         throw new Error("Don't know how to unserialize from a " + typeof json);
       }
@@ -254,12 +259,18 @@
         return null;
       } else {
         console.log("Persister: retrieving", name);
+        var fixupList = [];
         var object = cyclicUnserialize(JSON.parse(data), Persister.types, function (name) {
           var obj = pool.get(name);
           if (obj) {
             return obj;
           } else {
             throw new Error("Serialized object contained reference to missing object: " + name);
+          }
+        }, fixupList.push.bind(fixupList));
+        fixupList.forEach(function (o) {
+          if (o.persistence && o !== object) {
+            o.persistence._container = object;
           }
         });
         register(object, name);
@@ -342,11 +353,8 @@
     var name = null;
     var dirty = false;
     
-    function getObjName(obj) {
-      if (obj && obj !== object) {
-        return pool.getObjectName(obj);
-      }
-    }
+    var contained = [];
+    this._container = null;
     
     this._registerName = function (newPool, newName) { // TODO internal, should not be published
       pool = newPool;
@@ -356,9 +364,14 @@
     this._getName = function () { return name; };
     this.dirty = function () {
       if (name !== null && !dirty) {
-        console.log("Persister: dirtied", name);
+        if (typeof console !== "undefined")
+          console.log("Persister: dirtied", name);
         dirty = true;
         pool._dirty(name);
+      } else if (this._container !== null) {
+        this._container.persistence.dirty();
+        if (typeof console !== "undefined")
+          console.log("Persister: (on behalf of ", object, ")");
       }
     };
     this.commit = function () {
@@ -366,11 +379,35 @@
       if (!dirty) {
         console.log("Persister: not writing clean", name);
         return;
-      } else {
+      } else (function () {
         console.log("Persister: writing dirty", name);
+        
+        var newContained = [];
+        function getObjName(obj) {
+          if (obj && obj !== object) {
+            if (obj.persistence) newContained.push(obj);
+            return pool.getObjectName(obj);
+          }
+        }
+
         pool._write(name, JSON.stringify(cyclicSerialize(object, Persister.findType, getObjName)));
+        contained.forEach(function (c) {
+          if (c.persistence._container !== object && c.persistence._container !== null && typeof console !== "undefined") {
+            console.warn("Inconsistent persistence backreference!", c, "has", c.persistence._container, "but already found in", object);
+          }
+          c.persistence._container = null;
+        });
+        newContained.forEach(function (c) {
+          if (c.persistence._container !== null && c.persistence._container !== object) {
+            // TODO this should be a fatal error because it means an obj is contained by two persistent objects, but we need to enforce it at set-time rather than save-time to avoid unsaveable states
+            console.warn("Inconsistent persistence backreference!", c, "has", c.persistence._container, "but also found in", object);
+          }
+          c.persistence._container = object;
+        });
+        contained = newContained;
+        
         dirty = false;
-      }
+      }());
     };
   }
   Persister.types = {}; // TODO global mutable state

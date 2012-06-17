@@ -37,9 +37,11 @@ describe("Persister", function () {
   var World = cubes.World;
   
   // Class for testing persistence behavior
+  var nextSerial = 0;
   function PersistenceTestObject(a, b) {
     this.persistence = new Persister(this);
     Object.defineProperties(this, {
+      serial: { enumerable: true, value: nextSerial++ },
       a: {
         enumerable: true,
         get: function () { return a; },
@@ -52,6 +54,9 @@ describe("Persister", function () {
       }
     });
   }
+  PersistenceTestObject.prototype.toString = function () {
+    return "[PersistenceTestObject " + this.serial + "]";
+  };
   PersistenceTestObject.prototype.serialize = function (subSerialize) {
     var json = {
       // TODO make serialization handle non-object values
@@ -107,6 +112,29 @@ describe("Persister", function () {
     var outer2 = pool2.get("outer");
     
     expect(outer2.a).toBe(inner2);
+  });
+
+  it("should dirty persistent containers of modified objects", function () {
+    var inner = new PersistenceTestObject(null, null);
+    var outer = new PersistenceTestObject(inner, null);
+    pool.persist(outer, "outer");
+    pool.flushNow();
+    
+    expect(pool.status.get()).toBe(0);
+    inner.a = new PersistenceTestObject(null, null);
+    expect(pool.status.get()).toBe(1); // got dirtied
+
+    pool.flushNow();
+    
+    // Check if dirtying wrote the changes
+    var pool2 = createTestPool();
+    var outer2 = pool2.get("outer");
+    expect(outer2.a.a).not.toBeNull();
+
+    // Check if *unserialized* objects have correct containment relations
+    expect(pool2.status.get()).toBe(0);
+    outer2.a.a = null;
+    expect(pool2.status.get()).toBe(1);
   });
 
   it("handles renaming", function () {
