@@ -665,7 +665,7 @@
     var iconCanvas = document.createElement("canvas");
     var iconCtx = iconCanvas.getContext('2d');
     iconCanvas.width = iconCanvas.height = blockRenderRes;
-    var iconTodoSet = {};
+    var iconTodoSet = Object.create(null);
     var iconRendererInterval;
     for (var i = 0; i < Blockset.ID_LIMIT; i++) {
       blockIconsW[i] = new Cell("block icon", null);
@@ -681,7 +681,7 @@
       var nonempty = false;
       if (!iconRendererInterval) {
         iconRendererInterval = window.setInterval(function () {
-          for (var idStr in iconTodoSet) if (iconTodoSet.hasOwnProperty(idStr)) { 
+          for (var idStr in iconTodoSet) { 
             var blockID = parseInt(idStr, 10);
             iconCtx.putImageData(iconRenderer.blockToImageData(blockID, iconCtx), 0, 0);
             blockIconsW[blockID].set(iconCanvas.toDataURL("image/png"));

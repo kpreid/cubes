@@ -57,7 +57,7 @@
         }
         
         types = blockWorld.blockset.getAll();
-        buffers = {};
+        buffers = Object.create(null);
       }
       
       function subSynth(duration, variation, echo, noise, gain) {
@@ -125,11 +125,7 @@
       }
       
       this.get = function (name) { // NOT safe for arbitrary input
-        if (buffers.hasOwnProperty(name)) {
-          return buffers[name];
-        } else {
-          return buffers[name] = subSynth.apply(undefined, synthParameters[name]);
-        }
+        return buffers[name] || (buffers[name] = subSynth.apply(undefined, synthParameters[name]));
       };
       
       // --- Initialization ---

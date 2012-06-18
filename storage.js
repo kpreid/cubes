@@ -202,11 +202,8 @@
   function PersistencePool(storage, objectPrefix) {
     var pool = this;
     
-    // constants
-    var hop = Object.prototype.hasOwnProperty;
-    
     // global state
-    var currentlyLiveObjects = {};
+    var currentlyLiveObjects = Object.create(null);
     var dirtyQueue = new DirtyQueue();
     var notifier = new Notifier();
     
@@ -216,7 +213,7 @@
     }
     
     function handleDirty(name) {
-      if (hop.call(currentlyLiveObjects, name)) {
+      if (name in currentlyLiveObjects) {
         currentlyLiveObjects[name].persistence.commit(); // TODO: spoofable (harmlessly)
       }
     }
@@ -247,7 +244,7 @@
       updateStatus();
     };
     this.get = function (name) {
-      if (hop.call(currentlyLiveObjects, name)) {
+      if (name in currentlyLiveObjects) {
         console.log("Persister: already live", name);
         return currentlyLiveObjects[name];
       }
@@ -270,14 +267,14 @@
       }
     };
     this.getIfLive = function (name) {
-      return hop.call(currentlyLiveObjects, name) ? currentlyLiveObjects[name] : null;
+      return name in currentlyLiveObjects ? currentlyLiveObjects[name] : null;
     };
     this.getSize = function (name) {
       return storage.getItem(objectPrefix + name).length;
     };
     this.has = function (name) {
       return this.available &&
-          (hop.call(currentlyLiveObjects, name) || storage.getItem(objectPrefix + name) !== null);
+          (name in currentlyLiveObjects || storage.getItem(objectPrefix + name) !== null);
     };
     this.forEach = function (f) {
       // TODO Instead of this expensive unserialize-and-inspect, examine the db on startup and cache
@@ -317,7 +314,7 @@
     this.ephemeralize = function (name) {
       console.log("Persister: ephemeralized", name);
       storage.removeItem(objectPrefix + name);
-      if (Object.prototype.hasOwnProperty.call(currentlyLiveObjects, name)) {
+      if (name in currentlyLiveObjects) {
         var object = currentlyLiveObjects[name];
         delete currentlyLiveObjects[name];
         object.persistence._registerName(null, null);

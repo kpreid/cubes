@@ -14,7 +14,10 @@
   "use strict";
   var util = cubes.util = {};
   
-  function testSettersWork() {
+  function missingPlatformFeatures() {
+    var failures = "";
+    
+    var setterError = "ECMAScript 5 property accessors on frozen objects\n";
     try {
       var y = 0;
       var o = Object.freeze({
@@ -22,12 +25,25 @@
         set x(v) { y = v; }
       });
       o.x = 43;
-      return y === 43;
+      if (y !== 43) failures += setterError;
     } catch (e) {
-      return false;
+      failures += setterError;
     }
+    
+    var nullo = Object.create(null);
+    var nullError = "Object.create(null)\n";
+    if (nullo.toString !== undefined) {
+      failures += nullError;
+    } else {
+      for (var p in nullo) {
+        failures += nullError;
+        break;
+      }
+    }
+    
+    return failures;
   }
-  util.testSettersWork = testSettersWork;
+  util.missingPlatformFeatures = missingPlatformFeatures;
   
   function mod(value, modulus) {
     return (value % modulus + modulus) % modulus;
@@ -399,39 +415,35 @@
   
   // A map from keys of the form [i, j, ...], which may be Arrays or typed arrays.
   util.IntVectorMap = (function () {
-    var hop = Object.prototype.hasOwnProperty;
     var join = Array.prototype.join;
-    var tag = " ";
-    var tagLength = tag.length;
     var sep = ",";
     function IntVectorMap() {
-      var table = {};
+      var table = Object.create(null);
       var count = 0;
     
       this.get = function (key) {
-        var skey = tag + join.call(key, sep);
+        var skey = join.call(key, sep);
         return table[skey];
       };
       this.set = function (key, value) {
-        var skey = tag + join.call(key, sep);
-        if (!hop.call(table, skey)) count++;
+        var skey = join.call(key, sep);
+        if (!(skey in table)) count++;
         table[skey] = value;
       };
       this.has = function (key) {
-        var skey = tag + join.call(key, sep);
-        return hop.call(table, skey);
+        var skey = join.call(key, sep);
+        return skey in table;
       };
       this.delete = function (key) {
-        var skey = tag + join.call(key, sep);
-        if (hop.call(table, skey)) count--;
+        var skey = join.call(key, sep);
+        if (skey in table) count--;
         delete table[skey];
       };
       this.forEach = function (f) {
         for (var skey in table) {
-          if (!hop.call(table, skey)) continue;
           // TODO profile and figure out whether it'd be better to store the keys
           // (note that the above passed-in key might be mutated)
-          var key = skey.substring(tagLength).split(sep);
+          var key = skey.split(sep);
           for (var i = key.length - 1; i >= 0; i--) {
             key[i] = parseInt(key[i], 10);
           }
@@ -441,7 +453,6 @@
       // Iterate over values without keys (more efficient)
       this.forEachValue = function (f) {
         for (var skey in table) {
-          if (!hop.call(table, skey)) continue;
           f(table[skey]);
         }
       };
@@ -562,10 +573,9 @@
   // The elements must be strings or consistently and uniquely stringify.
   // The comparison function need not be consistent between calls to DirtyQueue.
   function DirtyQueue(optCompareFunc) {
-    var index = {};
+    var index = Object.create(null);
     var queueNear = [];
     var queueFar = [];
-    var hop = Object.prototype.hasOwnProperty;
     var flusher = null;
     var flushing = false;
     function flushLoop() {
@@ -581,12 +591,12 @@
         return queueNear.length + queueFar.length;
       },
       clear: function () {
-        index = {};
+        index = Object.create(null);
         queueNear = [];
         queueFar = [];
       },
       enqueue: function (key) {
-        if (hop.call(index, key)) return;
+        if (key in index) return;
         index[key] = true;
         queueFar.push(key);
         

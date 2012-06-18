@@ -344,7 +344,7 @@
   function ControlBindingUI(bindingsCell, rowContainer) {
     var commands = Input.commands;
     
-    var commandToContainer = {};
+    var commandToContainer = Object.create(null);
     Object.keys(commands).forEach(function (commandName) {
       var placeholderChip = new ControlChip(null, function (newControl) {
         bindingsCell.set(bindingsCell.get().concat([[commandName, newControl]]));
@@ -364,7 +364,7 @@
     
     function updateBindings() {
       var bindings = bindingsCell.get();
-      var conflictMap = {};
+      var conflictMap = Object.create(null);
       Object.keys(commandToContainer).forEach(function (key) {
         commandToContainer[key].textContent = "";
       });
@@ -458,11 +458,11 @@
     
     // --- Events for configurable controls ---
     
-    var heldControls = {};
-    var commandState = {};
-    var heldCommands = {};
+    var heldControls;
+    var commandState = Object.create(null);
+    var heldCommands = Object.create(null);
     function resetHeldControls() {
-      heldControls = {};
+      heldControls = Object.create(null);
       Object.keys(Input.commands).forEach(function (k) { 
         commandState[k] = {
           command: commandFunctions[k],
@@ -474,7 +474,7 @@
     }
     
     // Construct commands augmented with implementation functions
-    var commandFunctions = {};
+    var commandFunctions = Object.create(null);
     function deffunbase(name) {
       var command = Input.commands[name];
       if (!command) throw new Error("inconsistent table");
@@ -538,7 +538,7 @@
     var controlMap;
     var gamepadControlState;
     function rebuildControlMap(bindings) {
-      controlMap = {};
+      controlMap = Object.create(null);
       gamepadControlState = [];
       
       bindings.forEach(function (bindingRecord) {
@@ -606,7 +606,7 @@
       }
       
       for (var name in heldCommands) {
-        if (!heldCommands.hasOwnProperty(name)) continue;
+        if (!(name in heldCommands)) continue;
         var state = heldCommands[name];
 
         var period = state.command.repeatPeriod;
@@ -624,7 +624,7 @@
       var command = controlMap[control];
       
       if (command) {
-        if (!heldControls.hasOwnProperty(control)) {
+        if (!(control in heldControls)) {
           command.press();
           heldControls[control] = true;
           var state = commandState[command.name];
@@ -644,7 +644,7 @@
     function controlRelease(control) {
       var command = controlMap[control];
       
-      if (heldControls.hasOwnProperty(control)) {
+      if (control in heldControls) {
         delete heldControls[control];
         var state = commandState[command.name];
         if (--state.controlCount <= 0) {

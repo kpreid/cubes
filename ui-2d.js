@@ -195,7 +195,7 @@
       if (normalFocusElement) normalFocusElement.focus();
     };
     
-    var onymousPanels = {};
+    var onymousPanels = Object.create(null);
     var currentlyOpenPanel = null;
     var currentlyOpenPanelName = null;
     
@@ -235,7 +235,7 @@
     };
     
     this.openPanel = function (name) {
-      if (!Object.prototype.hasOwnProperty.call(onymousPanels, name)) {
+      if (!(name in onymousPanels)) {
         throw new Error("unregistered panel");
       }
       var element = onymousPanels[name];

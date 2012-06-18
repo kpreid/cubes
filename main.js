@@ -20,13 +20,13 @@
   var dynamicText = cubes.util.dynamicText;
   var Input = cubes.Input;
   var measuring = cubes.measuring;
+  var missingPlatformFeatures = cubes.util.missingPlatformFeatures;
   var mkelement = cubes.util.mkelement;
   var ObjectUI = cubes.ObjectUI;
   var PersistencePool = cubes.storage.PersistencePool;
   var Player = cubes.Player;
   var ProgressBar = cubes.util.ProgressBar;
   var Renderer = cubes.Renderer;
-  var testSettersWork = cubes.util.testSettersWork;
   var World = cubes.World;
   
   function padRight(string, length) {
@@ -445,11 +445,12 @@
       // Main startup sequence
       sequence([
         function () {
-          if (typeof testSettersWork === 'undefined' || !testSettersWork()) {
+          var failures = missingPlatformFeatures();
+          if (failures !== "") {
             var notice = pageElements.featureError[0];
             var text   = pageElements.featureError[1];
             notice.style.removeProperty("display");
-            text.appendChild(document.createTextNode("ECMAScript 5 property accessors on frozen objects"));
+            text.appendChild(document.createTextNode(failures));
           }
         },
         "Downloading resources...",
