@@ -261,10 +261,12 @@
         : movAdj[1] !== 0 ? (movAdj[1] - body.vel[1]) * stiffness + timestep * GRAVITY : 0,
         (movAdj[2] - body.vel[2]) * stiffness]);
 
+      var beforeMoveVel = vec3.create(body.vel);
       body.step(timestep, function () {
         updateAudioListener();
         aimChanged();
 
+        floor = body.getFloor();
         if (vec3.length(movement) < EPSILON) {
           footstepPhase = 0;
         } else {
@@ -273,7 +275,7 @@
         if (footstepPhase > footstepPeriod) {
           footstepPhase = mod(footstepPhase, footstepPeriod);
           playFootstep();
-        } else if (body.pos[1] < footstepY || body.pos[1] > footstepY && footstepPhase > 0.4) {
+        } else if (floor && beforeMoveVel[1] < -1 || body.pos[1] > footstepY && footstepPhase > 0.4) {
           // footstep sooner if just hit a bump or fell down
           footstepPhase = 0;
           playFootstep();
