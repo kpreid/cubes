@@ -235,9 +235,9 @@
   
   <h2>Options</h2>
   
-  <form onsubmit="return false;">
-    <h3>View</h3>
+  <h3>View</h3>
     
+  <form onsubmit="return false;">
     <div class="optionline">Field of view: <input type="range" step="any" min="45" max="140" value="60" size="4" id="fov"></div>
     <script>main.config.fov.bindControl("fov");</script>
     <div class="optionline">Draw distance: <input type="range" step="any" min="10" max="500" value="100" size="4" id="renderDistance"></div>
@@ -246,9 +246,11 @@
     <script>main.config.mouseTurnRate.bindControl("mouseTurnRate");</script>
     <div class="optionline"><label><input type="checkbox" id="pitchRelativeFlight"> Pitch-relative flight</label></div>
     <script>main.config.pitchRelativeFlight.bindControl("pitchRelativeFlight");</script>
+  </form>
 
-    <h3>Graphics</h3>
-    
+  <h3>Graphics</h3>
+  
+  <form onsubmit="return false;">  
     <div class="optionline"><label><input type="checkbox" id="lighting"> Lighting</label></div>
     <script>main.config.lighting.bindControl("lighting");</script>
     <div class="optionline"><label><input type="checkbox" id="smoothLighting"> Smooth lighting</label></div>
@@ -259,17 +261,21 @@
     <script>main.config.cubeParticles.bindControl("cubeParticles");</script>
     <div class="optionline"><label><input type="checkbox" id="fsaa"> Fake 2× FSAA (I have fillrate to burn)</label></div>
     <script>main.config.fsaa.bindControl("fsaa");</script>
+  </form>
 
-    <h3>Sound</h3>
+  <h3>Sound</h3>
 
+  <form onsubmit="return false;">
     <div class="optionline"><label><input type="checkbox" id="enableSound"> Sound</label></div>
     <script>
       document.getElementById("enableSound").disabled = !cubes.Audio.supported;
       main.config.sound.bindControl("enableSound");
     </script>
+  </form>
     
-    <h3>Controls</h3>
+  <h3>Controls</h3>
     
+  <form onsubmit="return false;">
     <table class="fancy">
       <thead><tr>
         <th>Function
@@ -283,9 +289,11 @@
       new cubes.ControlBindingUI(main.config.controls, document.getElementById("controls-config"));
     </script>
     <p>To change a control binding, click on the current one and then press the key or mouse button you wish to use instead. To add an additional binding, click the “…”. To remove a binding, click on it and click the “×” button.</p>
-    
-    <h3>Debug</h3>
-    
+  </form>
+  
+  <h3>Debug</h3>
+  
+  <form onsubmit="return false;">  
     <div class="optionline"><label><input type="checkbox" id="debugForceRender"> Always render frames</label></div>
     <script>main.config.debugForceRender.bindControl("debugForceRender");</script>
     <div class="optionline"><label><input type="checkbox" id="debugTextureAllocation"> Show block texture</label></div>
