@@ -343,6 +343,9 @@
     this.getWorld = function() {
       return currentPlace.world;
     };
+    this.getBody = function() {
+      return currentPlace.body;
+    };
     this.getSelection = function() {
       return currentPlace.selection;
     };

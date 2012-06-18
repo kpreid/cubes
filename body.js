@@ -5,6 +5,7 @@
   "use strict";
   
   var AAB = cubes.util.AAB;
+  var abs = Math.abs;
   var CubeRotation = cubes.util.CubeRotation;
   var IntVectorMap = cubes.util.IntVectorMap;
   var measuring = cubes.measuring;
@@ -12,7 +13,8 @@
   // physics constants
   var GRAVITY = 20; // cubes/s^2
   var MAX_STEP_UP = 0.57; // cubes
-  var EPSILON = 1e-3;
+  var POSITION_EPSILON = 1e-6; // close-but-not-intersecting objects are set to this separation
+  var VELOCITY_EPSILON = 1e-6; // velocities below this are treated as zero
   
   function Body(config, world, aabb) {
     this.world = world;
@@ -49,7 +51,7 @@
     }
     
     // early exit
-    if (vec3.length(curVel) <= 0) return;
+    if (vec3.length(curVel) <= VELOCITY_EPSILON) return;
           
     var nextPos = vec3.scale(curVel, timestep, vec3.create());
     vec3.add(nextPos, curPos);
@@ -146,7 +148,12 @@
     } else {
       for (var dimi = 0; dimi < 3; dimi++) {
         dim = [1,0,2][dimi]; // TODO: doing the dims in another order makes the slope walking glitch out, but I don't understand *why*.
-        dir = curVel[dim] >= 0 ? 1 : 0;
+        var dimvel = curVel[dim];
+        dir = dimvel >= 0 ? 1 : 0;
+        if (abs(dimvel) <= VELOCITY_EPSILON) { 
+          // If no velocity in this direction, don't move and no test needed
+          continue;
+        }
         nextPosIncr[dim] = nextPos[dim]; // TODO: Sample multiple times if velocity exceeds 1 block/step
         //console.log(dir, dim, bodyAABB.get(dim, dir), front, nextPosIncr);
         var hit = intersectBodyAt(nextPosIncr, alreadyColliding);
@@ -156,7 +163,7 @@
             // Walk-up-slopes
             if (dim !== 1 /*moving horizontally*/ && this.getFloor() /*not in air*/) {
               var upward = vec3.create(nextPosIncr);
-              upward[1] = hitAABB.get(1, 1) - bodyAABB.get(1,0) + EPSILON;
+              upward[1] = hitAABB.get(1, 1) - bodyAABB.get(1,0) + POSITION_EPSILON;
               var delta = upward[1] - nextPosIncr[1];
               //console.log("upward test", delta, !!intersectBodyAt(upward));
               if (delta > 0 && delta < MAX_STEP_UP && !intersectBodyAt(upward)) {
@@ -167,7 +174,7 @@
             }
         
             var surfaceOffset = hitAABB.get(dim, 1-dir) - (nextPosIncr[dim] + bodyAABB.get(dim, dir));
-            nextPosIncr[dim] += surfaceOffset - (dir ? 1 : -1) * EPSILON;
+            nextPosIncr[dim] += surfaceOffset - (dir ? 1 : -1) * POSITION_EPSILON;
             curVel[dim] /= 10; // TODO justify this constant
             
             if (hit) {
@@ -189,8 +196,10 @@
       this.flying = true;
     }
     
-    if (vec3.length(vec3.subtract(nextPosIncr, this.pos, vec3.create())) >= EPSILON) {
-      vec3.set(nextPosIncr, this.pos);
+    if (nextPosIncr[0] !== curPos[0] ||
+        nextPosIncr[1] !== curPos[1] ||
+        nextPosIncr[2] !== curPos[2]) {
+      vec3.set(nextPosIncr, curPos);
       didMoveCallback();
     }
     
