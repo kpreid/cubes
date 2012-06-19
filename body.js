@@ -19,8 +19,8 @@
   function Body(config, world, aabb) {
     this.world = world;
     this.aabb = aabb;
-    this.pos = vec3.create();
-    this.vel = vec3.create();
+    this.pos = new Float64Array(3);
+    this.vel = new Float64Array(3);
     this.yaw = Math.PI/4 * 5;
     this.worldContacts = null;
     this.flying = false;
@@ -53,7 +53,7 @@
     // early exit
     if (vec3.length(curVel) <= VELOCITY_EPSILON) return;
           
-    var nextPos = vec3.scale(curVel, timestep, vec3.create());
+    var nextPos = vec3.scale(curVel, timestep, new Float64Array());
     vec3.add(nextPos, curPos);
     
     // --- collision ---
@@ -130,7 +130,7 @@
     // To resolve diagonal movement, we treat it as 3 orthogonal moves, updating nextPosIncr.
     var previousContacts = this.worldContacts;
     var curContacts = null;
-    var nextPosIncr = vec3.create(curPos);
+    var nextPosIncr = new Float64Array(curPos);
     
     var dim, dir;
     function hitCallback(aab, cube) {
@@ -162,7 +162,7 @@
           resolveDirection: do /* dummy loop to satisfy lint */ {
             // Walk-up-slopes
             if (dim !== 1 /*moving horizontally*/ && this.getFloor() /*not in air*/) {
-              var upward = vec3.create(nextPosIncr);
+              var upward = new Float64Array(nextPosIncr);
               upward[1] = hitAABB.get(1, 1) - bodyAABB.get(1,0) + POSITION_EPSILON;
               var delta = upward[1] - nextPosIncr[1];
               //console.log("upward test", delta, !!intersectBodyAt(upward));
