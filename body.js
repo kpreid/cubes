@@ -25,6 +25,7 @@
     this.flying = false;
     this.noclip = false;
     this.isPlayerBody = false;
+    this.autonomous = false; // TODO to be replaced with a component system or something
     this.skin = skin || null;
     
     // non-persisted properties
@@ -47,6 +48,8 @@
       json.noclip = this.noclip;
     if (this.isPlayerBody !== false)
       json.isPlayerBody = this.isPlayerBody;
+    if (this.autonomous !== false)
+      json.autonomous = this.autonomous;
     if (this.skin !== null)
       json.skin = subSerialize(this.skin);
     return json;
@@ -61,6 +64,7 @@
     if ("flying" in json) body.flying = !!json.flying;
     if ("noclip" in json) body.noclip = !!json.noclip;
     if ("isPlayerBody" in json) body.isPlayerBody = !!json.isPlayerBody;
+    if ("autonomous" in json) body.autonomous = !!json.autonomous;
     if ("skin" in json) body.skin = unserialize(json.skin);
     return body;
   };
@@ -80,6 +84,16 @@
     var world = this.world;
     var curPos = this.pos;
     var curVel = this.vel;
+    
+    // autonomous control
+    if (this.autonomous) {
+      this.flying = true;
+      var home = vec3.createFrom(world.wx/2, world.wy, world.wz/2);
+      vec3.subtract(home, curPos);
+      vec3.scale(home, timestep * 0.1);
+      vec3.add(curVel, home);
+      this.yaw = Math.atan2(curVel[0], curVel[2]);
+    }
     
     // gravity
     if (!this.flying) {

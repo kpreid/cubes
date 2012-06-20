@@ -1143,8 +1143,10 @@
     var testBodyAABB = new AAB(-0.5, 0.5, -0.5, 0.5, -0.5, 0.5);
     for (var tbi = 0; tbi < 10; tbi++) {
       var body = new Body(topWorld, testBodyAABB, skin);
-      vec3.set([wx/2, wy, wz/2], body.pos);
-      vec3.set([Math.random(), Math.random(), Math.random()], body.vel);
+      vec3.set([random()*topWorld.wx, (random()+0.5)*topWorld.wy, random()*topWorld.wz], body.pos);
+      vec3.set([(random() - 0.5) * 9, (random() - 0.5) * 9, (random() - 0.5) * 9], body.vel);
+      body.flying = Math.random() > 0.5;
+      body.autonomous = true;
       topWorld.addBody(body);
     }
     
