@@ -11,6 +11,7 @@
   var IntVectorMap = cubes.util.IntVectorMap;
   var measuring = cubes.measuring;
   var mod = cubes.util.mod;
+  var round = Math.round;
   var UNIT_PX = cubes.util.UNIT_PX;
   var UNIT_PY = cubes.util.UNIT_PY;
   var ZEROVEC = cubes.util.ZEROVEC;
@@ -361,9 +362,9 @@
       // Determine if chunks' visibility to the player has changed
       var rdi = renderDistanceInfo(config.renderDistance.get());
       var pos = getViewPosition();
-      var newPlayerChunk = [pos[0] - mod(pos[0], CHUNKSIZE),
-                            pos[1] - mod(pos[1], CHUNKSIZE),
-                            pos[2] - mod(pos[2], CHUNKSIZE)];
+      var newPlayerChunk = [round(pos[0] - mod(pos[0], CHUNKSIZE)),
+                            round(pos[1] - mod(pos[1], CHUNKSIZE)),
+                            round(pos[2] - mod(pos[2], CHUNKSIZE))];
       if (playerChunk === null || newPlayerChunk[0] !== playerChunk[0]
                                || newPlayerChunk[1] !== playerChunk[1]
                                || newPlayerChunk[2] !== playerChunk[2]) {
@@ -717,7 +718,7 @@
     }
     
     var CENTER = [0.5, 0.5, 0.5];
-    var CYL_RADIUS = Math.round(0.08 * tileSize) / tileSize;
+    var CYL_RADIUS = round(0.08 * tileSize) / tileSize;
     function makeCircuitRenderer(circuit) {
       var dyns;
       var circuitRenderer = new renderer.RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {
