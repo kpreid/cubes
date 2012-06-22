@@ -279,6 +279,16 @@
       });
     },
     
+    // Add semi-transparent color blocks used by circuits
+    addSpecialColorsForCircuits: function (targetSet) {
+      targetSet.add(new BlockType([0.75,0.75,0.75,0.25], null));
+      
+      // for selectable transparency
+      var transparent = new BlockType([0,0,0,0], null);
+      transparent.name = "nonEmptyTransparent";
+      targetSet.add(transparent);
+    },
+    
     addLogicBlocks: function (TS, targetSet, baseSet) {
       var type;
       var TL = TS-1;
@@ -289,20 +299,32 @@
       var baseSetRotation = baseSet.lookup("logic.setRotation");
       var baseICOutput = baseSet.lookup("logic.icOutput");
       var baseGetContact = baseSet.lookup("logic.getContact");
+      var nonEmptyTransparent = baseSet.lookup("nonEmptyTransparent");
       
       // appearance utilities
       var colorToID = WorldGen.colorPicker(baseSet);
-      var boxColor = colorToID(0,1,1);
+      var boxInput = colorToID(0.5,0.75,1);
+      var boxOutput = colorToID(1,1,0.5);
+      var boxFunc = colorToID(0.75,0.75,0.75,0.25);
       var functionShapeColor = colorToID(0.5,0.5,0.5);
       var functionShapePat = f.flat(functionShapeColor);
-      function boxed(insidePat) {
+      function boxed(boxColor, insidePat) {
         return function (b) {
-          return (f.e(b) && (b[0]+b[1]+b[2])%2) ? boxColor : insidePat(b);
+          if ((f.e(b) && (b[0]+b[1]+b[2])%2)) {
+            return boxColor;
+          } else {
+            var inside = insidePat(b);
+            if (f.s(b)) {
+              return inside || nonEmptyTransparent;
+            } else {
+              return inside;
+            }
+          }
         };
       }
       
-      function addOrUpdate(name, behavior, pattern) {
-        pattern = boxed(pattern);
+      function addOrUpdate(name, behavior, boxColor, pattern) {
+        pattern = boxed(boxColor, pattern);
         var existingID = targetSet.lookup(name);
         var type;
         if (existingID !== null) {
@@ -337,21 +359,25 @@
       type = addOrUpdate(
           "logic.wire",
           Circuit.behaviors.wire,
+          boxFunc,
           f.flat(0));
 
       type = addOrUpdate(
           "logic.junction",
           Circuit.behaviors.junction,
+          boxFunc,
           f.sphere(TS/2,TS/2,TS/2, TS*3/16, functionShapePat));
 
       type = addOrUpdate(
           "logic.become",
           Circuit.behaviors.become,
+          boxOutput,
           f.cube(TS/2,TS/2,TS/2, TS/4, functionShapePat));
 
       type = addOrUpdate(
           "logic.count",
           Circuit.behaviors.count,
+          boxFunc,
           function (b) {
             var my = b[1] - TL/2;
             var mz = b[2] - TL/2;
@@ -366,6 +392,7 @@
       type = addOrUpdate(
           "logic.gate",
           Circuit.behaviors.gate,
+          boxFunc,
           f.subtract(f.plane(0, TS/2-1, TS/2+1,
                              f.sphere(TS*0.3,TS/2,TS/2, TS*0.5, functionShapePat)),
                      f.sphere(TS*0.3,TS/2,TS/2, TS*0.3, functionShapePat)));
@@ -374,6 +401,7 @@
       type = addOrUpdate(
           "logic.getNeighborID",
           Circuit.behaviors.getNeighborID,
+          boxInput,
           f.union(f.cone(0, [TL,TL/2,TL/2], functionShapePat),
                   f.cube(0,TS/2,TS/2,TS/4,functionShapePat)));
       selfRotating(0);
@@ -381,6 +409,7 @@
       type = addOrUpdate(
           "logic.getContact",
           Circuit.behaviors.getContact,
+          boxInput,
           // TODO better symbol
           f.cube(TS*-0.40,TS/2,TS/2,TS*0.45,functionShapePat));
       selfRotating(0);
@@ -388,11 +417,13 @@
       type = addOrUpdate(
           "logic.getSubDatum",
           Circuit.behaviors.getSubDatum,
+          boxInput,
           f.cone(1, [TL/2,0,TL/2], functionShapePat));
 
       type = addOrUpdate(
           "logic.icInput",
           Circuit.behaviors.icInput,
+          boxInput,
           function (b) {
             var c = b.map(function (coord) { return abs(coord - HALF); }).sort();
             return c[2] > c[0]+c[1]+TS*0.125 ? functionShapeColor : 0;
@@ -401,6 +432,7 @@
       type = addOrUpdate(
           "logic.icOutput",
           Circuit.behaviors.icOutput,
+          boxOutput,
           function (b) {
             return abs(b[0]-HALF)+abs(b[1]-HALF)+abs(b[2]-HALF) < TS/2+0.5 ? functionShapeColor : 0;
           });
@@ -408,6 +440,7 @@
       type = addOrUpdate(
           "logic.indicator",
           Circuit.behaviors.indicator,
+          boxOutput,
           function (b) {
             return f.rad([b[0],b[1],b[2]]) > TS*6/16 ? 0 :
                    b[1] < TS/2 ? colorToID(1,1,1) : colorToID(0,0,0);
@@ -417,6 +450,7 @@
       type = addOrUpdate(
           "logic.nor",
           Circuit.behaviors.nor,
+          boxFunc,
           f.union(f.sphere(TS/2-TS*0.2,TS/2,TS/2, TS*3/16, functionShapePat),
                   f.sphere(TS/2+TS*0.2,TS/2,TS/2, TS*3/16, functionShapePat)));
       selfRotating(TL-1);
@@ -424,6 +458,7 @@
       type = addOrUpdate(
           "logic.put",
           Circuit.behaviors.put,
+          boxOutput,
           f.union(f.cone(0, [TS,TL/2,TL/2], functionShapePat),
                   f.cube(TS,TS/2,TS/2,TS/4,functionShapePat)));
       selfRotating(0);
@@ -431,6 +466,7 @@
       type = addOrUpdate(
           "logic.setRotation",
           Circuit.behaviors.setRotation,
+          boxOutput,
           f.intersection(
             f.subtract(
               f.sphere(TS/2,TS/2,TS/2, TS/2, functionShapePat),
@@ -444,6 +480,7 @@
       type = addOrUpdate(
           "logic.spontaneous",
           Circuit.behaviors.spontaneous,
+          boxInput,
           f.cone(1, [TL/2,0,TL/2], f.flat(colorToID(1,1,0))));
 
       // IC blocks (require logic blocks on the next level down)
@@ -451,6 +488,7 @@
         type = addOrUpdate(
             "logic.constant",
             Circuit.behaviors.ic,
+            boxFunc,
             function (b) {
               var r = f.rad(b);
               return r < TS/2 && r > HALF && f.plane(0, TS/2-1, TS/2+1, function(){return true;})(b) && abs(b[1]-HALF) > (b[2]-HALF) ? functionShapeColor : 0;
@@ -469,6 +507,7 @@
         type = addOrUpdate(
             "logic.pad",
             Circuit.behaviors.ic,
+            boxInput,
             f.sphere(TS/2,TS-0.5,TS/2,TS/2,specklePat));
         type.solid = true; // override circuit-block default
         type.world.s(2,2,2, baseGetContact, CubeRotation.z270.code);
@@ -497,13 +536,16 @@
 
       // layer 1
       var pureColors = WorldGen.colorBlocks(7, 7, 5);
+      WorldGen.addSpecialColorsForCircuits(pureColors);
 
       // layer 2
       var baseLogicAndColors = WorldGen.colorBlocks(7, 6, 5);
+      WorldGen.addSpecialColorsForCircuits(baseLogicAndColors);
       WorldGen.addLogicBlocks(TS, baseLogicAndColors, pureColors);
 
       // layer 3
       var fullLogicAndColors = WorldGen.colorBlocks(6, 6, 6);
+      WorldGen.addSpecialColorsForCircuits(fullLogicAndColors);
       WorldGen.addLogicBlocks(TS, fullLogicAndColors, baseLogicAndColors);
       var colorSet = fullLogicAndColors; // TODO dup
       var brgb = WorldGen.colorPicker(colorSet, 0);
