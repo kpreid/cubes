@@ -405,7 +405,7 @@
     });
   }
   
-  function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, save) {
+  function Input(config, eventReceiver, playerInput, hud, renderer, focusCell, save, objectUI) {
     var interfaceMode;
     var expectingPointerLock = false;
     
@@ -525,9 +525,8 @@
       playerInput.tweakSubdata(-1);
     });
     defaction("editBlockset", function () {
-      switchMode(fullMenuMode);
-      eventReceiver.blur();
-    });
+      this.editBlockset();
+    }.bind(this));
     defaction("useTool", function () {
       playerInput.useTool();
     });
@@ -882,13 +881,6 @@
     };
     mouselookIMode.mouselookKeyTransition = menuMode;
     
-    var fullMenuMode = {
-      mouselook: false,
-      mouselookKeyTransition: menuMode,
-      uiClass: "full",
-      focus: function (focused) { if (focused) switchMode(mouselookIMode); }
-    };
-    
     // Initialize interface mode.
     // If pointer lock is available, then we want to use it in mouselook mode, but we cannot enable it on page load; therefore we start in menu mode which does not want pointer lock.
     interfaceMode = GameShim.supports.pointerLock ? menuMode : mouselookIMode;
@@ -994,82 +986,20 @@
         var blockType = blocksetInMenu.get(blockID);
         
         // element structure and style
-        var item = menuItemsByBlockId[blockID] = mkelement("tr", "menu-item");
+        var item = menuItemsByBlockId[blockID] = mkelement("span", "menu-item");
         
-        function mkcell() {
-          var cell = mkelement("td", "block-details");
-          item.appendChild(cell);
-          return cell;
-        }
-        
-        mkcell().appendChild(document.createTextNode(blockID.toString()));
-        
-        var iconCell = mkcell();
         var icon = document.createElement("img");
         icon.style.width = icon.style.height = size + "px"; // TODO don't do this in full menu mode
-        iconCell.classList.remove("block-details"); // always shown
-        iconCell.appendChild(icon);
+        item.appendChild(icon);
         blocksetRender.icons[blockID].nowAndWhenChanged(function (url) {
           if (url !== null)
             icon.src = url;
           return true;
         });
         
-        // TODO: This code duplicates functionality of PersistentCell.bindControl — refactor so we can use that code here.
-        
-        var name = document.createElement("input");
-        name.type = "text";
-        name.value = blockType.name;
-        name.onchange = function () {
-          blockType.name = name.value;
-          return true;
-        };
-        mkcell().appendChild(name);
-        
-        var behavior = document.createElement("select");
-        var currentBehavior = (blockType.behavior || {name:""}).name;
-        var o = document.createElement("option");
-        o.textContent = "—";
-        o.selected = name === currentBehavior;
-        behavior.appendChild(o);
-        Object.keys(Circuit.behaviors).forEach(function (name) {
-          var o = document.createElement("option");
-          o.textContent = name;
-          o.value = name;
-          o.selected = name === currentBehavior;
-          behavior.appendChild(o);
-        });
-        behavior.onchange = function () {
-          blockType.behavior = Circuit.behaviors[behavior.value];
-          return true;
-        };
-        mkcell().appendChild(behavior);
-        
-        var solid = document.createElement("input");
-        solid.type = "checkbox";
-        solid.checked = blockType.solid;
-        solid.onchange = function () {
-          blockType.solid = solid.checked;
-          return true;
-        };
-        mkcell().appendChild(solid);
-        
-        var light = document.createElement("input");
-        light.type = "range";
-        light.min = 0;
-        light.max = 4;
-        light.step = "any";
-        light.value = blockType.light.toString();
-        light.onchange = function () {
-          blockType.light = parseFloat(light.value);
-          return true;
-        };
-        mkcell().appendChild(light);
-        
         setupIconButton(item,icon,blockID);
         
         hud.blocksetAll.appendChild(item);
-        
       });
       
       updateQuickBar();
@@ -1152,9 +1082,9 @@
       WorldGen.addLogicBlocks(playerInput.blockset.tileSize, playerInput.blockset, playerInput.blockset.get(1).world.blockset);
     };
     
-    // invoked from UI
+    // invoked from UI and commands
     this.editBlockset = function () {
-      switchMode(fullMenuMode);
+      objectUI.inspect(playerInput.blockset);
     };
     
     // --- Late initialization ---

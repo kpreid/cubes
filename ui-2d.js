@@ -6,6 +6,7 @@
   
   var Blockset = cubes.Blockset;
   var BlockType = cubes.BlockType;
+  var Circuit = cubes.Circuit;
   var cyclicSerialize = cubes.storage.cyclicSerialize;
   var mkelement = cubes.util.mkelement;
   var Persister = cubes.storage.Persister;
@@ -321,6 +322,89 @@
         }
         for (var blockID = 1; blockID < object.length; blockID++) row(blockID);
         
+      }()); else if (object instanceof BlockType) (function () {
+        var blockType = object;
+        // TODO listen to block type for changes
+
+        var rows;
+        var table = mkelement("table", "",
+          rows = mkelement("tbody", ""));
+        panel.appendChild(table);
+
+        function mkcell(title) {
+          var cell;
+          rows.appendChild(mkelement("tr", "",
+            mkelement("th", "", title + ":"),
+            cell = mkelement("td", "")));
+          return cell;
+        }
+
+        // TODO include large icon/render
+
+        // TODO: This code duplicates functionality of PersistentCell.bindControl — refactor so we can use that code here.
+
+        var name = document.createElement("input");
+        name.type = "text";
+        name.value = blockType.name;
+        name.onchange = function () {
+          blockType.name = name.value;
+          return true;
+        };
+        mkcell("Codename").appendChild(name);
+
+        var behavior = document.createElement("select");
+        var currentBehavior = (blockType.behavior || {name:""}).name;
+        var o = document.createElement("option");
+        o.textContent = "—";
+        o.selected = name === currentBehavior;
+        behavior.appendChild(o);
+        Object.keys(Circuit.behaviors).forEach(function (name) {
+          var o = document.createElement("option");
+          o.textContent = name;
+          o.value = name;
+          o.selected = name === currentBehavior;
+          behavior.appendChild(o);
+        });
+        behavior.onchange = function () {
+          blockType.behavior = Circuit.behaviors[behavior.value];
+          return true;
+        };
+        mkcell("Behavior").appendChild(behavior);
+
+        var solid = document.createElement("input");
+        solid.type = "checkbox";
+        solid.checked = blockType.solid;
+        solid.onchange = function () {
+          blockType.solid = solid.checked;
+          return true;
+        };
+        mkcell("Solid").appendChild(solid);
+
+        var lightT = document.createElement("input");
+        lightT.type = "number";
+        lightT.min = 0;
+        lightT.max = 4;
+        lightT.value = blockType.light.toString();
+        lightT.onchange = function () {
+          lightR.value = lightT.value;
+          blockType.light = parseFloat(lightT.value);
+          return true;
+        };
+        var lightR = document.createElement("input");
+        lightR.type = "range";
+        lightR.min = 0;
+        lightR.max = 4;
+        lightR.step = "any";
+        lightR.value = blockType.light.toString();
+        lightR.onchange = function () {
+          lightT.value = lightR.value;
+          blockType.light = parseFloat(lightR.value);
+          return true;
+        };
+        var lightCell = mkcell("Light emission");
+        lightCell.appendChild(lightT);
+        lightCell.appendChild(lightR);
+
       }()); else {
         panel.appendChild(mkelement("p", "", 
           mkelement("em", "", "No details available for this object.")));

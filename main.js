@@ -520,7 +520,7 @@
         },
         "Finishing...",
         function () {
-          input = main.input = new Input(config, theCanvas, player.input, pageElements.hud, renderer, focusCell, main.save.bind(main));
+          input = main.input = new Input(config, theCanvas, player.input, pageElements.hud, renderer, focusCell, main.save.bind(main), objectUI);
           
           objectUI.setNormalFocusElement(theCanvas);
           theCanvas.focus();

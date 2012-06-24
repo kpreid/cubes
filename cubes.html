@@ -78,17 +78,7 @@
   <div id="menu-container">
     <div id="menu">
       <button class="menu-button menu-expand-button" onclick="main.input.editBlockset();">Edit blockset</button>
-      <table class="menu-full-block-list">
-        <thead><tr>
-          <th>ID<th><th>Codename<th>Circuit<th>Solid<th>Light
-        </tr></thead>
-        <tbody id="blockset-all"></tbody>
-        <tfoot class="menu-full-only"><tr colspan="5"><td>
-            <button class="menu-button" onclick="main.input.addBlockType();">New block type</button>
-            <button class="menu-button" onclick="main.input.deleteLastBlockType();">Delete last block type</button>
-            <button class="menu-button" onclick="main.input.addCircuitBlocks();">Add circuit blocks</button>
-        </td></tr></tfoot>
-      </table>
+      <div id="blockset-all"></div>
       <div id="quick-bar"></div>
     </div>
   </div>
