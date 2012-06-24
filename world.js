@@ -21,6 +21,10 @@
   var LIGHT_SKY = Math.round(1/LIGHT_SCALE);
   var MAX_LIGHTING_QUEUE = 3000;
   
+  // not physically based but DWIM - we want lights to have significant contribution but non-lights not to be too shadowing. TODO make it block-analysis-based?
+  var transparentLightSourceCoverage = 0.5;
+  var transparentBlockCoverage = 0.15;
+  
   var lightRays = [];
   (function () {
     for (var dim = 0; dim < 3; dim++)
@@ -576,7 +580,7 @@
       var here;
       
       // hoisted here so that it is only created once
-      // NOTE: uses outer variables incomingLight, rayHits, found
+      // NOTE: uses outer variables incomingLight, rayHits, found, rayAlpha
       function rayCallback(rx, ry, rz, id, face) {
         if (id === 0) {
           // empty air -- pass through
@@ -584,8 +588,10 @@
         }
         var type = types[id];
         if (!opaques[id]) {
-          // TODO: implement attenuation and blocks with some opaque faces.
-          incomingLight += type.light/LIGHT_SCALE;
+          // TODO: implement blocks with some opaque faces.
+          var coverage = type.light > 0 ? transparentLightSourceCoverage : transparentBlockCoverage;
+          incomingLight += rayAlpha * coverage * type.light/LIGHT_SCALE;
+          rayAlpha *= 1 - coverage;
           rayHits.push([rx,ry,rz]);
           return false;
         } else {
@@ -593,14 +599,11 @@
           var emptyy = ry+face[1];
           var emptyz = rz+face[2];
         
-          // No loss if we hit right here
-          var factor = (emptyx === x && emptyy === y && emptyz === z) ? 1 : type.reflectivity;
-        
           var lightFromThatBlock =
             type.light/LIGHT_SCALE                         // Emission
             + lighting[emptyx*wy*wz + emptyy*wz + emptyz]; // Diffuse reflection
         
-          incomingLight += factor * lightFromThatBlock;
+          incomingLight += rayAlpha * type.reflectivity * lightFromThatBlock;
           rayHits.push([emptyx,emptyy,emptyz]);
         
           found = true;
@@ -645,9 +648,10 @@
               var rayData = rays[rayi];
               vec3.add(here, rayData.origin, rayOrigin);
               var found = false;
+              var rayAlpha = 1;
               raycast(rayOrigin, rayData.direction, 30/*TODO magic number */, rayCallback);
               if (!found) {
-                incomingLight += LIGHT_SKY;
+                incomingLight += rayAlpha * LIGHT_SKY;
               }
               totalRays++;
             }
