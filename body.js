@@ -53,7 +53,7 @@
     // early exit
     if (vec3.length(curVel) <= VELOCITY_EPSILON) return;
           
-    var nextPos = vec3.scale(curVel, timestep, new Float64Array());
+    var nextPos = vec3.scale(curVel, timestep, new Float64Array(3));
     vec3.add(nextPos, curPos);
     
     // --- collision ---
