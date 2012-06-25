@@ -7,12 +7,14 @@
   var abs = Math.abs;
   var Blockset = cubes.Blockset;
   var BlockType = cubes.BlockType;
+  var Body = cubes.Body;
   var Circuit = cubes.Circuit;
   var CubeRotation = cubes.util.CubeRotation;
   var floor = Math.floor;
   var max = Math.max;
   var min = Math.min;
   var mod = cubes.util.mod;
+  var Player = cubes.Player;
   var pow = Math.pow;
   var random = Math.random;
   var round = Math.round;
@@ -1113,6 +1115,12 @@
       topWorld.s(x+3,y,z+3,wire);
       topWorld.s(x+4,y,z+3,pad);
     }());
+    
+    var playerBody = new Body(topWorld, Player.aabb, null);
+    playerBody.pos[0] = topWorld.wx/2;
+    playerBody.pos[1] = topWorld.wy;
+    playerBody.pos[2] = topWorld.wz/2;
+    topWorld.playerBody = playerBody;
     
     return topWorld;
   }

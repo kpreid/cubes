@@ -15,6 +15,8 @@
   var WorldRenderer = cubes.WorldRenderer;
   var ZEROVEC = cubes.util.ZEROVEC;
   
+  function noop() {}
+  
   // physics constants
   var WALKING_SPEED = 4; // cubes/s
   var FLYING_SPEED = 10; // cubes/s
@@ -34,15 +36,27 @@
     var player = this;
     var gl = renderer.context;
     
-    // a Place stores a world and location in it; used for push/pop
-    function Place(world) {
+    // a Place stores a world and state in it; used for push/pop
+    function Place(world, bodyInitializer) {
       this.world = world;
-      var body = this.body = new Body(world, playerAABB);
-      Object.defineProperty(body, "noclip", { enumerable: true, get: function () { // TODO kludge
-        return config.noclip.get();
-      }});
       this.selection = null;
       this.tool = 2; // first non-bogus block id
+      
+      // find or make body
+      var body = world.playerBody;
+      if (body) {
+        this.bodyIsWorldly = true;
+        //console.log("Found existing body at " + vec3.str(body.pos));
+      } else {
+        body = new Body(world, playerAABB);
+        Object.defineProperty(body, "noclip", { enumerable: true, get: function () { // TODO kludge
+          return config.noclip.get();
+        }});
+        bodyInitializer(body);
+        //console.log("Created unworldly body with " + vec3.str(body.pos));
+        this.bodyIsWorldly = false;
+      }
+      this.body = body;
 
       // must happen late
       this.wrend = new WorldRenderer(world, function () { return body.pos; }, renderer, audio, scheduleDraw, true);
@@ -242,35 +256,6 @@
         : movAdj[1] !== 0 ? (movAdj[1] - body.vel[1]) * stiffness + timestep * GRAVITY : 0,
         (movAdj[2] - body.vel[2]) * stiffness]);
 
-      var beforeMoveVel = vec3.create(body.vel);
-      body.step(timestep, function () {
-        updateAudioListener();
-        aimChanged();
-
-        floor = body.getFloor();
-        if (vec3.length(movement) < EPSILON) {
-          footstepPhase = 0;
-        } else {
-          footstepPhase += vec3.length(body.vel) * timestep;
-        }
-        if (footstepPhase > footstepPeriod) {
-          footstepPhase = mod(footstepPhase, footstepPeriod);
-          playFootstep();
-        } else if (floor && beforeMoveVel[1] < -1 || body.pos[1] > footstepY && footstepPhase > 0.4) {
-          // footstep sooner if just hit a bump or fell down
-          footstepPhase = 0;
-          playFootstep();
-        }
-        function playFootstep() {
-          footstepY = body.pos[1];
-          // TODO play sounds for all blocks below or otherwise be less biased (getFloor gives arbitrary results)
-          var type = floor && body.world.gtv(floor);
-          if (type) {
-            audio.play(floor, type, "footstep", 0.5);
-          }
-        }
-      });
-      
       if (config.lighting.get()) {
         var newExposure = computeExposure();
         if (newExposure !== exposure && !isNaN(newExposure)) {
@@ -283,9 +268,48 @@
       }
     }
     
+    function afterPlayerBodyMoved(beforeMoveVel, timestep) {
+      var body = currentPlace.body;
+      
+      updateAudioListener();
+      aimChanged();
+
+      var floor = body.getFloor();
+      if (vec3.length(movement) < EPSILON) {
+        footstepPhase = 0;
+      } else {
+        footstepPhase += vec3.length(body.vel) * timestep;
+      }
+      if (footstepPhase > footstepPeriod) {
+        footstepPhase = mod(footstepPhase, footstepPeriod);
+        playFootstep();
+      } else if (floor && beforeMoveVel[1] < -1 || body.pos[1] > footstepY && footstepPhase > 0.4) {
+        // footstep sooner if just hit a bump or fell down
+        footstepPhase = 0;
+        playFootstep();
+      }
+      function playFootstep() {
+        footstepY = body.pos[1];
+        // TODO play sounds for all blocks below or otherwise be less biased (getFloor gives arbitrary results)
+        var type = floor && body.world.gtv(floor);
+        if (type) {
+          audio.play(floor, type, "footstep", 0.5);
+        }
+      }
+    }
+    
     this.stepYourselfAndWorld = function (timestep) {
+      var body = currentPlace.body;
       stepPlayer(timestep);
+
+      var beforeMovePos = vec3.set(body.pos, new Float64Array(3));
+      var beforeMoveVel = vec3.set(body.vel, new Float64Array(3));
       currentPlace.world.step(timestep);
+      if (!currentPlace.bodyIsWorldly) body.step(timestep, noop);
+      if (vec3.dist(beforeMovePos, body.pos) > 0) {
+        afterPlayerBodyMoved(beforeMoveVel, timestep);
+      }
+      
       currentPlace.world.polishLightInVicinity(currentPlace.body.pos, config.renderDistance.get(), 1);
       if (config.debugPlayerCollision.get()) {
         aabbR.recompute();
@@ -335,10 +359,13 @@
     this.setWorld = function (world) {
       if (currentPlace) currentPlace.delete();
       while (placeStack.length) placeStack.pop().delete();
-      currentPlace = new Place(world);
-      // TODO: move this position downward to free space rather than just imparting velocity
-      this.setPosition([world.wx/2, world.wy - playerAABB.get(1, 0) + EPSILON, world.wz/2]);
-      vec3.set([0,-120,0], currentPlace.body.vel);
+      currentPlace = new Place(world, function (body) {
+        // TODO: move this position downward to free space rather than just imparting velocity
+        body.pos[0] = world.wx/2;
+        body.pos[1] = world.wy - playerAABB.get(1, 0) + EPSILON;
+        body.pos[2] = world.wz/2;
+        body.vel[1] = -120;
+      });
       notifyChangedPlace();
     };
     
@@ -423,9 +450,12 @@
 
         var oldPlace = currentPlace;
 
-        currentPlace = new Place(world);
+        currentPlace = new Place(world, function (body) {
+          body.pos[0] = world.wx/2;
+          body.pos[1] = world.wy - playerAABB.get(1, 0) + EPSILON;
+          body.pos[2] = world.wz/2;
+        });
         currentPlace.forBlock = blockID;
-        vec3.set([world.wx/2, world.wy - playerAABB.get(1, 0) + EPSILON, world.wz/2], currentPlace.body.pos);
         placeStack.push(oldPlace);
         updateAudioListener();
         aimChanged();
@@ -446,24 +476,24 @@
             if (!world) return; // TODO: UI message about this
             var tileSize = world.wx;
             
-            currentPlace = new Place(world);
+            currentPlace = new Place(world, function (body) {
+              // Initial adjustments:
+              // Make new position same relative to cube
+              vec3.subtract(oldPlace.body.pos, cube, body.pos);
+              vec3.scale(body.pos, tileSize);
+              // ... but not uselessly far away.
+              vec3.scale(body.pos, Math.min(1.0, (tileSize+40)/vec3.length(body.pos))); // TODO make relative to center of world, not origin
+              // Same velocity, scaled
+              vec3.set(oldPlace.body.vel, body.vel);
+              vec3.scale(body.vel, tileSize);
+              // Same view direction
+              body.yaw = oldPlace.body.yaw;
+              // And not falling.
+              body.flying = true;
+            });
             
             // This is needed because the routine in aimChanged assumes currentPlace knows the old state of the selection. TODO: Kludgy.
             selectionR.recompute();
-            
-            // Initial adjustments:
-            // Make new position same relative to cube
-            vec3.subtract(oldPlace.body.pos, cube, currentPlace.body.pos);
-            vec3.scale(currentPlace.body.pos, tileSize);
-            // ... but not uselessly far away.
-            vec3.scale(currentPlace.body.pos, Math.min(1.0, (tileSize+40)/vec3.length(currentPlace.body.pos))); // TODO make relative to center of world, not origin
-            // Same velocity, scaled
-            vec3.set(oldPlace.body.vel, currentPlace.body.vel);
-            vec3.scale(currentPlace.body.vel, tileSize);
-            // Same view direction
-            currentPlace.body.yaw = oldPlace.body.yaw;
-            // And not falling.
-            currentPlace.body.flying = true;
             
             placeStack.push(oldPlace);
             

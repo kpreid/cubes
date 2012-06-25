@@ -98,6 +98,8 @@
     // Blocks which a body is touching. Values are of the form {facevector: true}.
     var contacts = new IntVectorMap();
     
+    var playerBody = null;
+    
     var numToDisturbPerSec = cubeCount * spontaneousBaseRate;
     
     var lightingUpdateQueue = new DirtyQueue(function (a,b) { return a.priority - b.priority; });
@@ -534,8 +536,14 @@
           }));
         }
       }
-
+      
       evaluateLightsInQueue();
+      
+      if (playerBody) {
+        playerBody.step(timestep, function () {
+          self.persistence.dirty();
+        });
+      }
     }
     
     function polishLightInVicinity(center, radius, count) {
@@ -735,7 +743,8 @@
         blockCodeBase: RLE_BASE,
         blocks: rleBytes(blocks),
         subData: rleBytes(subData),
-        lightCache: rleBytes(lighting)
+        lightCache: rleBytes(lighting),
+        playerBody: playerBody ? subSerialize(playerBody) : null
       };
       subSerialize.setUnserializer(json, World);
       return json;
@@ -802,8 +811,28 @@
           if (blockset !== v) {
             blockset = v;
             notifier.notify("changedBlockset");
-            this.persistence.dirty();
+            self.persistence.dirty();
           }
+        }
+      },
+      playerBody: {
+        enumerable: true,
+        get: function () {
+          return playerBody;
+        },
+        set: function (body) {
+          if (body === playerBody) return;
+          if (playerBody) {
+            playerBody.world = null;
+          }
+          if (body !== null) {
+            if (body.world !== self && body.world !== null) {
+              throw new Error("the provided body already belongs to another world");
+            }
+            body.world = self;
+          }
+          playerBody = body;
+          self.persistence.dirty();
         }
       }
     });
@@ -833,6 +862,7 @@
     unrleBytes(json.subData, world.rawSubData);
     unrleBytes(json.lightCache, world.rawLighting);
     world.notifyRawEdit();
+    world.playerBody = json.playerBody ? unserialize(json.playerBody) : null;
     return world;
   };
   

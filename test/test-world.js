@@ -4,6 +4,8 @@
 describe("World", function() {
   var Blockset = cubes.Blockset;
   var BlockType = cubes.BlockType;
+  var Body = cubes.Body;
+  var Player = cubes.Player;
   var World = cubes.World;
 
   it("should terminate an infinite raycast", function () {
@@ -34,5 +36,13 @@ describe("World", function() {
     expect(world.blockset).toBe(b2);
     expect(world.opaque(0,0,0)).toBe(true);
     // TODO test that it dirties
+  });
+  
+  it("should step the playerBody", function () {
+    var world = new World([1, 1, 1], new Blockset([]));
+    world.playerBody = new Body(world, Player.aabb);
+    world.step(1/60);
+    expect(world.playerBody.vel[1]).toBeLessThan(0);
+    expect(world.playerBody.pos[1]).toBeLessThan(0);
   });
 });
