@@ -47,7 +47,7 @@
       this.selection = null;
       
       // find or make body
-      var body = world.playerBody;
+      var body = world.getPlayerBody();
       if (body) {
         this.bodyIsWorldly = true;
         //console.log("Found existing body at " + vec3.str(body.pos));
@@ -126,6 +126,9 @@
         draw(currentPlace.body.pos, playerAABB, [0,0,1]);
         currentPlace.body.debugHitAABBs.forEach(function (aabb) {
           draw(ZEROVEC, aabb, [0,1,0]);
+        });
+        currentPlace.body.world.forEachBody(function (body) {
+          draw(body.pos, body.aabb, [1,0,0]);
         });
       }
     });

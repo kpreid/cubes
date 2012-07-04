@@ -38,12 +38,13 @@ describe("World", function() {
     // TODO test that it dirties
   });
   
-  it("should step the playerBody", function () {
+  it("should step the bodies", function () {
     var world = new World([1, 1, 1], new Blockset([]));
-    world.playerBody = new Body(world, Player.aabb);
+    var body = new Body(world, Player.aabb);
+    world.addBody(body); // TODO proper add/remove interface
     world.step(1/60);
-    expect(world.playerBody.vel[1]).toBeLessThan(0);
-    expect(world.playerBody.pos[1]).toBeLessThan(0);
+    expect(body.vel[1]).toBeLessThan(0);
+    expect(body.pos[1]).toBeLessThan(0);
   });
 });
 

@@ -24,6 +24,7 @@
     this.yaw = Math.PI/4 * 5;
     this.flying = false;
     this.noclip = false;
+    this.isPlayerBody = false;
     
     // non-persisted properties
     this.world = world;
@@ -43,6 +44,8 @@
       json.flying = this.flying;
     if (this.noclip !== false)
       json.noclip = this.noclip;
+    if (this.isPlayerBody !== false)
+      json.isPlayerBody = this.isPlayerBody;
     return json;
   };
   
@@ -54,6 +57,7 @@
     if ("yaw" in json) body.yaw = +json.yaw;
     if ("flying" in json) body.flying = !!json.flying;
     if ("noclip" in json) body.noclip = !!json.noclip;
+    if ("isPlayerBody" in json) body.isPlayerBody = !!json.isPlayerBody;
     return body;
   };
 

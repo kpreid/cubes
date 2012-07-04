@@ -4,6 +4,7 @@
 (function () {
   "use strict";
   
+  var AAB = cubes.util.AAB;
   var abs = Math.abs;
   var Blockset = cubes.Blockset;
   var BlockType = cubes.BlockType;
@@ -1117,10 +1118,19 @@
     }());
     
     var playerBody = new Body(topWorld, Player.aabb, null);
+    playerBody.isPlayerBody = true;
     playerBody.pos[0] = topWorld.wx/2;
     playerBody.pos[1] = topWorld.wy;
     playerBody.pos[2] = topWorld.wz/2;
-    topWorld.playerBody = playerBody;
+    topWorld.addBody(playerBody);
+    
+    var testBodyAABB = new AAB(-0.5, 0.5, -0.5, 0.5, -0.5, 0.5);
+    for (var tbi = 0; tbi < 10; tbi++) {
+      var body = new Body(topWorld, testBodyAABB);
+      vec3.set([wx/2, wy, wz/2], body.pos);
+      vec3.set([Math.random(), Math.random(), Math.random()], body.vel);
+      topWorld.addBody(body);
+    }
     
     return topWorld;
   }

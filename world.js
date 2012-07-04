@@ -99,7 +99,7 @@
     // Blocks which a body is touching. Values are of the form {facevector: true}.
     var contacts = new IntVectorMap();
     
-    var playerBody = null;
+    var bodies = [];
     
     var numToDisturbPerSec = cubeCount * spontaneousBaseRate;
     
@@ -539,10 +539,14 @@
       
       evaluateLightsInQueue();
       
-      if (playerBody) {
-        playerBody.step(timestep, function () {
-          self.persistence.dirty();
-        });
+      var someBodyChanged = false;
+      function signal() { someBodyChanged = true; }
+      for (var bi = bodies.length - 1; bi >= 0; bi--) {
+        var body = bodies[bi];
+        body.step(timestep, signal);
+      }
+      if (someBodyChanged) {
+        self.persistence.dirty();
       }
     }
     
@@ -711,6 +715,31 @@
       notifier.notify("transientEvent", cube, gt(cube[0],cube[1],cube[2]), mode);
     }
     
+    function addBody(body) {
+      if (bodies.indexOf(body) !== -1) return;
+      if (body.world !== self && body.world !== null) {
+        throw new Error("the provided body already belongs to another world");
+      }
+      body.world = self;
+      bodies.push(body);
+      self.persistence.dirty();
+    }
+    function forEachBody(f) {
+      bodies.forEach(function (body) {
+        f(body);
+      });
+    }
+    function getPlayerBody() {
+      // TODO optimize?
+      var playerBody = null;
+      bodies.forEach(function (candidate) {
+        if (candidate.isPlayerBody && !playerBody) {
+          playerBody = candidate;
+        }
+      });
+      return playerBody;
+    }
+    
     var RLE_BASE = 0xA1;
     function rleBytes(bytes) {
       var ser = [];
@@ -744,7 +773,7 @@
         blocks: rleBytes(blocks),
         subData: rleBytes(subData),
         lightCache: rleBytes(lighting),
-        playerBody: playerBody ? subSerialize(playerBody) : null
+        bodies: bodies.map(subSerialize)
       };
       subSerialize.setUnserializer(json, World);
       return json;
@@ -783,14 +812,18 @@
     this.getCircuits = function () { return circuits; }; // TODO should be read-only interface
     this.getCircuit = function (block) { return blockCircuits.get(block) || null; };
     this.edit = edit;
-
+    
+    this.addBody = addBody;
+    this.forEachBody = forEachBody;
+    this.getPlayerBody = getPlayerBody;
+    
     this.step = step;
     this.polishLightInVicinity = polishLightInVicinity;
-
+    
     this.setContacts = setContacts;
     this.getContacts = getContacts;
     this.transientEvent = transientEvent;
-
+    
     this.listen = notifier.listen;
     this.serialize = serialize;
     
@@ -813,26 +846,6 @@
             notifier.notify("changedBlockset");
             self.persistence.dirty();
           }
-        }
-      },
-      playerBody: {
-        enumerable: true,
-        get: function () {
-          return playerBody;
-        },
-        set: function (body) {
-          if (body === playerBody) return;
-          if (playerBody) {
-            playerBody.world = null;
-          }
-          if (body !== null) {
-            if (body.world !== self && body.world !== null) {
-              throw new Error("the provided body already belongs to another world");
-            }
-            body.world = self;
-          }
-          playerBody = body;
-          self.persistence.dirty();
         }
       }
     });
@@ -858,11 +871,21 @@
     }
     
     var world = new World([json.wx, json.wy, json.wz], unserialize(json.blockset || json.blockSet, Blockset));
+    
     unrleBytes(json.blocks, world.raw);
     unrleBytes(json.subData, world.rawSubData);
     unrleBytes(json.lightCache, world.rawLighting);
     world.notifyRawEdit();
-    world.playerBody = json.playerBody ? unserialize(json.playerBody) : null;
+    
+    (json.bodies || []).forEach(function (bodyJson) {
+      world.addBody(unserialize(bodyJson));
+    });
+    if (json.playerBody) { // obsolete serialization
+      var body = unserialize(json.playerBody);
+      body.isPlayerBody = true;
+      world.addBody(body);
+    }
+
     return world;
   };
   
