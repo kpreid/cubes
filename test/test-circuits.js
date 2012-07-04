@@ -308,7 +308,7 @@ describe("Circuit", function() {
         t.putBlockUnderTest(inner.id, CubeRotation.identity.code);
         expect(t.readOutput(UNIT_PX)).toBe(false);
         
-        var body = new Body({noclip: new Cell("noclip", false)}, t.world, new AAB(-1, 1, -1, 1, -1, 1));
+        var body = new Body(t.world, new AAB(-1, 1, -1, 1, -1, 1));
         vec3.set(vec3.add(rot.transformVector([-1.51, 0, 0]),
                           vec3.add([0.5, 0.5, 0.5], t.center)), body.pos);
         vec3.set(rot.transformVector([5, 0, 0]), body.vel);

@@ -37,7 +37,10 @@
     // a Place stores a world and location in it; used for push/pop
     function Place(world) {
       this.world = world;
-      var body = this.body = new Body(config, world, playerAABB);
+      var body = this.body = new Body(world, playerAABB);
+      Object.defineProperty(body, "noclip", { enumerable: true, get: function () { // TODO kludge
+        return config.noclip.get();
+      }});
       this.selection = null;
       this.tool = 2; // first non-bogus block id
 

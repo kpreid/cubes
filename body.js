@@ -16,7 +16,7 @@
   var POSITION_EPSILON = 1e-6; // close-but-not-intersecting objects are set to this separation
   var VELOCITY_EPSILON = 1e-6; // velocities below this are treated as zero
   
-  function Body(config, world, aabb) {
+  function Body(world, aabb) {
     this.world = world;
     this.aabb = aabb;
     this.pos = new Float64Array(3);
@@ -25,9 +25,8 @@
     this.worldContacts = null;
     this.flying = false;
     this.cameraYLag = 0;
+    this.noclip = false;
     this.debugHitAABBs = []; // filled by collision code
-    
-    this._config = config; // TODO should be private
   }
   
   Body.prototype.getListenerParameters = function () {
@@ -142,7 +141,7 @@
       faces[fkey] = true;
     }
     
-    if (this._config.noclip.get()) {
+    if (this.noclip) {
       nextPosIncr = nextPos;
       this.flying = true;
     } else {
