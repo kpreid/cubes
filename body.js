@@ -9,6 +9,7 @@
   var CubeRotation = cubes.util.CubeRotation;
   var IntVectorMap = cubes.util.IntVectorMap;
   var measuring = cubes.measuring;
+  var Persister = cubes.storage.Persister;
   
   // physics constants
   var GRAVITY = 20; // cubes/s^2
@@ -22,12 +23,40 @@
     this.pos = new Float64Array(3);
     this.vel = new Float64Array(3);
     this.yaw = Math.PI/4 * 5;
-    this.worldContacts = null;
     this.flying = false;
-    this.cameraYLag = 0;
     this.noclip = false;
+    
+    // non-persisted properties
+    this.worldContacts = null; // TODO should be private
+    this.cameraYLag = 0;
     this.debugHitAABBs = []; // filled by collision code
   }
+  
+  Body.prototype.serialize = function (subSerialize) {
+    var json = {};
+    subSerialize.setUnserializer(json, Body);
+    json.aabb = this.aabb.toArray();
+    json.pos = Array.prototype.slice.call(this.pos);
+    json.vel = Array.prototype.slice.call(this.vel);
+    json.yaw = this.yaw;
+    if (this.flying !== false)
+      json.flying = this.flying;
+    if (this.noclip !== false)
+      json.noclip = this.noclip;
+    return json;
+  };
+  
+  Persister.types["Body"] = Body;
+  Body.unserialize = function (json, unserialize) {
+    var body = new Body(null, AAB.fromArray(json.aabb));
+    if ("pos" in json) vec3.set(json.pos, body.pos);
+    if ("vel" in json) vec3.set(json.vel, body.vel);
+    if ("yaw" in json) body.yaw = +json.yaw;
+    if ("flying" in json) body.flying = !!json.flying;
+    if ("noclip" in json) body.noclip = !!json.noclip;
+    return body;
+  };
+
   
   Body.prototype.getListenerParameters = function () {
     var yaw = this.yaw;

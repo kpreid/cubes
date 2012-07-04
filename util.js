@@ -254,6 +254,14 @@
                                   -this[4], this[5]));
     };
     
+    AAB.prototype.toArray = function () {
+      return [this[0], this[1], this[2], this[3], this[4], this[5]];
+    };
+    
+    AAB.fromArray = function (array) {
+      return new AAB(array[0], array[1], array[2], array[3], array[4], array[5]);
+    };
+    
     // Create the AAB whose negative corner is at the given point.
     AAB.unitCube = function (point) {
       return new AAB(point[0], point[0] + 1,
