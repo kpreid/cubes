@@ -11,6 +11,7 @@
   var mkelement = cubes.util.mkelement;
   var Persister = cubes.storage.Persister;
   var World = cubes.World;
+  var WorldGen = cubes.WorldGen;
   
   function ObjectUI(persistencePool) {
     var ui = this;
@@ -321,6 +322,32 @@
           blocksList.appendChild(item);
         }
         for (var blockID = 1; blockID < object.length; blockID++) row(blockID);
+        
+        // TODO fold these buttons into a general command infrastructure.
+        function addButton(label, action) {
+          var button;
+          panel.appendChild(mkelement("div", "", button = mkelement("button", "", label)));
+          button.addEventListener("click", function () {
+            try {
+              action();
+            } catch (e) {
+              // TODO fold this into a general handling-errors-from-ui-actions infrastructure
+              console.error("In button '" + label + "' event handler:", e);
+              alert("Sorry, the operation failed unexpectedly.\n\n" + e);
+            }
+            return true;
+          }, false);
+        }
+        // TODO these blockset-editing operations are assuming the sub-blockset to use is the blockset of the #1 block. We should either explicitly declare there is only one sub-blockset or provide a way to choose.
+        addButton("New block type", function () {
+          object.add(WorldGen.newRandomBlockType(object.tileSize, object.get(1).world.blockset));
+        });
+        addButton("Delete last block type", function () {
+          object.deleteLast();
+        });
+        addButton("Add/update standard circuit blocks", function () {
+          WorldGen.addLogicBlocks(object.tileSize, object, object.get(1).world.blockset);
+        });
         
       }()); else if (object instanceof BlockType) (function () {
         var blockType = object;
