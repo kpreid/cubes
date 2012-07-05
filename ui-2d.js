@@ -207,6 +207,9 @@
         if (currentlyOpenPanelName === null) {
           // anonymous panel is discarded
           element.parentElement.removeChild(element);
+          if (typeof element.cubes_elementDiscardCallback === "function") {
+            element.cubes_elementDiscardCallback();
+          }
         }
         
         currentlyOpenPanel = null;
@@ -249,12 +252,16 @@
       currentlyOpenPanelName = name;
     };
     
-    this.openNewPanel = function () {
+    this.openNewPanel = function (closeCallback) {
       var element = document.createElement("div");
       
       // TODO make tree position customizable
       document.body.appendChild(element);
       addPanelFeatures(element);
+      element.cubes_elementDiscardCallback = closeCallback;
+      if (element.cubes_elementDiscardCallback !== closeCallback && typeof console !== "undefined") {
+        console.warn("Expando failed to stay");
+      }
       
       if (currentlyOpenPanel) closePanel(currentlyOpenPanel);
       
@@ -271,7 +278,13 @@
     // --- Inspector ---
     
     this.inspect = function (object) {
-      var panel = this.openNewPanel();
+      // TODO make this cleanup require less plumbing
+      var active = true;
+      var cleanups = [];
+      var panel = this.openNewPanel(function () {
+        active = false;
+        cleanups.forEach(function (f) { f(); });
+      });
       
       var titleChip = new this.ObjectChip();
       titleChip.bindByObject(object);
@@ -294,11 +307,9 @@
           )
         ));
       } else if (object instanceof Blockset) (function () {
-        // TODO listen to blockset
-        // TODO strip out this code from input subsystem
         var blocksList = mkelement("ol");
         panel.appendChild(blocksList);
-        var blocksetRender = renderer ? object.getRenderData(renderer) : null;
+        var blocksetRender;
         function row(blockID) {
           var blockType = object.get(blockID);
           
@@ -321,7 +332,21 @@
           
           blocksList.appendChild(item);
         }
-        for (var blockID = 1; blockID < object.length; blockID++) row(blockID);
+        
+        var listener = {
+          interest: function () { return active; },
+          tableChanged: function (id) {
+            blocksList.textContent = ""; // clear
+            blocksetRender = renderer ? object.getRenderData(renderer) : null;
+            for (var blockID = 1; blockID < object.length; blockID++) row(blockID);
+          },
+          texturingChanged: function (id) {},
+        };
+        object.listen(listener);
+        cleanups.push(function () {
+          object.listen.cancel(listener);
+        });
+        listener.tableChanged();
         
         // TODO fold these buttons into a general command infrastructure.
         function addButton(label, action) {
