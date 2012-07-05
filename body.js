@@ -114,7 +114,7 @@
           var scale = type.world.wx;
           var rotCode = iworld.gRot(x,y,z);
           if (rotCode === 0) {
-            /* rot = undefined; */
+            rot = null;
             scaledCollideAABB = aabb.translate([-x, -y, -z]).scale(scale);
           } else {
             rot = CubeRotation.byCode[rotCode];
