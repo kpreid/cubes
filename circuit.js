@@ -271,10 +271,16 @@
         return function (state) { return state[key]; };
       }
       
+      var PROGRESS = {};
+      
       function compileNet(net) {
         var key = net.serial;
+        if (seen[key] === PROGRESS && typeof console !== "undefined") {
+          // TODO this (2 places) should cause a deterministic in-world failure
+          console.warn("Circular evaluation order for net " + key);
+        }
         if (seen[key]) return;
-        seen[key] = true;
+        seen[key] = PROGRESS;
         
         //console.group("compiling net " + net);
         
@@ -299,12 +305,17 @@
         evaluators.push(evalnet);
         
         //console.groupEnd();
+        seen[key] = true;
       }
       
       function compile(block, caller) {
         var blockKey = String(block);
-        if (seen[blockKey]) { return; }
-        seen[blockKey] = true;
+        if (seen[blockKey] === PROGRESS && typeof console !== "undefined") {
+          // TODO this (2 places) should cause a deterministic in-world failure
+          console.warn("Circular evaluation order for block " + block);
+        }
+        if (seen[blockKey]) return;
+        seen[blockKey] = PROGRESS;
 
         //console.group("compiling block " + block);
         
@@ -323,6 +334,7 @@
         evaluators.push(f);
         
         //console.groupEnd();
+        seen[blockKey] = true;
       }
 
       // We used to only compile starting from the "output" blocks. This is a nice optimization in principle, but interferes with debugging circuits since they show their connectivity but have all values undefined. Instead, we...
