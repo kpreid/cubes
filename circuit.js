@@ -15,7 +15,7 @@
   var UNIT_NZ = cubes.util.UNIT_NZ;
   var ZEROVEC = cubes.util.ZEROVEC;
   
-  var DEBUG_WIRE = false;
+  var circuitDebug = false;
   
   // These are slice'd because the circuit code does foo[aDirection] a lot, so we want the toString() behavior of real JS arrays. TODO: Review whether it would be better to use symbol strings (e.g. "px", "py", ...) or numbers for directions.
   var DIRECTIONS = Object.freeze([
@@ -94,7 +94,7 @@
       return aabb;
     };
     this.compile = function () { // TODO should be implicit
-      if (DEBUG_WIRE) console.info("Recompiling a circuit");
+      if (circuitDebug) console.info("Recompiling a circuit");
       var nodes = [];
       var nets = [];
       var netSerial = 0;
@@ -121,12 +121,12 @@
       // Build graph edges
       function traceNet(net, block, direction) {
         try {
-          if (DEBUG_WIRE) console.group("traceNet " + net + " " + block + ":" + getBehavior(block).name + " : " + direction);
+          if (circuitDebug) console.group("traceNet " + net + " " + block + ":" + getBehavior(block).name + " : " + direction);
           direction = Array.prototype.slice.call(direction);
           var bn = block.slice();
           vec3.add(bn, direction, bn);
           for (;; vec3.add(bn, direction, bn)) {
-            if (DEBUG_WIRE) console.log("walk " + bn);
+            if (circuitDebug) console.log("walk " + bn);
             var bnBeh = getBehavior(bn);
             var comingFrom = vec3.negate(direction, []);
             if (!bnBeh) {
@@ -148,10 +148,10 @@
               return;
             }
           }
-        } finally { if (DEBUG_WIRE) console.groupEnd(); }
+        } finally { if (circuitDebug) console.groupEnd(); }
       }
       function traceIntoNode(net, block, comingFrom) {
-        if (DEBUG_WIRE) console.group("traceIntoNode " + net + " " + block + ":" + getBehavior(block).name + " " + comingFrom);
+        if (circuitDebug) console.group("traceIntoNode " + net + " " + block + ":" + getBehavior(block).name + " " + comingFrom);
         DIRECTIONS.forEach(function (direction) {
           if (String(direction) === String(comingFrom)) {
             // don't look backward
@@ -179,17 +179,17 @@
           net["has" + beh.getFace(world, block, direction)] = true;
           traceNet(net, block, direction);
         });
-        if (DEBUG_WIRE) { console.groupEnd(); }
+        if (circuitDebug) { console.groupEnd(); }
       }
       nodes.forEach(function (block) {
-        if (DEBUG_WIRE) { console.group("root " + block + ":" + getBehavior(block).name); }
+        if (circuitDebug) { console.group("root " + block + ":" + getBehavior(block).name); }
         if (getBehavior(block) === Circuit.behaviors.junction) {
           // do not trace from junctions (not implemented yet)
-          if (DEBUG_WIRE) { console.groupEnd(); }
+          if (circuitDebug) { console.groupEnd(); }
           return;
         }
         traceIntoNode(null, block, null);
-        if (DEBUG_WIRE) { console.groupEnd(); }
+        if (circuitDebug) { console.groupEnd(); }
       });
       
       // Delete useless nets and record useful ones.
@@ -706,6 +706,10 @@
         effect
       ];
     });
+  };
+
+  Circuit.setDebugLogging = function (v) { // harmless mutable global
+    circuitDebug = v;
   };
   
   cubes.Circuit = Object.freeze(Circuit);
