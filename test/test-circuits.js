@@ -12,6 +12,7 @@ describe("Circuit", function() {
   var CubeRotation = cubes.util.CubeRotation;
   var cyclicSerialize = cubes.storage.cyclicSerialize;
   var cyclicUnserialize = cubes.storage.cyclicUnserialize;
+  var PersistencePool = cubes.storage.PersistencePool;
   var Persister = cubes.storage.Persister;
   var UNIT_PX = cubes.util.UNIT_PX;
   var UNIT_PY = cubes.util.UNIT_PY;
@@ -385,7 +386,7 @@ describe("Circuit", function() {
       expect(t.ogv(UNIT_PY)).toEqual(2);
     });
   });
-
+  
   it("should not crash given nonsense", function () {
     var rots = [CubeRotation.identity.code,
                 CubeRotation.y90.code,
@@ -401,8 +402,8 @@ describe("Circuit", function() {
       });
     }
     
-    t.world.s(0,1,1, t.ls.emitConstant, 0);
-    t.world.s(1,1,0, t.ls.emitConstant, 1);
+    t.world.s(0,1,1, t.ls.constant, 0);
+    t.world.s(1,1,0, t.ls.constant, 1);
     t.world.s(2,1,1, t.ls.indicator);
     pickBlock(1,1,1, function () {
       pickBlock(1,1,2, function () {
