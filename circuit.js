@@ -120,37 +120,38 @@
       
       // Build graph edges
       function traceNet(net, block, direction) {
-        if (DEBUG_WIRE) console.group("traceNet " + net + " " + block + ":" + getBehavior(block) + " : " + direction);
-        direction = Array.prototype.slice.call(direction);
-        var bn = block.slice();
-        vec3.add(bn, direction, bn);
-        for (;; vec3.add(bn, direction, bn)) {
-          if (DEBUG_WIRE) console.log("walk " + bn);
-          var bnBeh = getBehavior(bn);
-          var comingFrom = vec3.negate(direction, []);
-          if (!bnBeh) {
-            return; // not a circuit element
-          } else if (bnBeh === Circuit.behaviors.wire) {
-            continue; // pass-through
-          } else if (cGraph[bn][comingFrom] && cGraph[bn][comingFrom] !== net) {
-            throw new Error("met different net!");
-          } else if (cGraph[bn][comingFrom] && cGraph[bn][comingFrom] === net) {
-            return; // already traced -- TODO: this case unnecessary/can'thappen?
-          } else {
-            // found new unclaimed node
-            // Note: bn was being mutated, but we exit now so saving it is safe.
-            cGraph[bn][comingFrom] = net;
-            net.push([bn,comingFrom]);
-            net.edges.push([net,block,bn]);
-            net["has" + bnBeh.getFace(world, bn, comingFrom)] = true;
-            traceIntoNode(net, bn, comingFrom);
-            return;
+        try {
+          if (DEBUG_WIRE) console.group("traceNet " + net + " " + block + ":" + getBehavior(block).name + " : " + direction);
+          direction = Array.prototype.slice.call(direction);
+          var bn = block.slice();
+          vec3.add(bn, direction, bn);
+          for (;; vec3.add(bn, direction, bn)) {
+            if (DEBUG_WIRE) console.log("walk " + bn);
+            var bnBeh = getBehavior(bn);
+            var comingFrom = vec3.negate(direction, []);
+            if (!bnBeh) {
+              return; // not a circuit element
+            } else if (bnBeh === Circuit.behaviors.wire) {
+              continue; // pass-through
+            } else if (cGraph[bn][comingFrom] && cGraph[bn][comingFrom] !== net) {
+              throw new Error("met different net!");
+            } else if (cGraph[bn][comingFrom] && cGraph[bn][comingFrom] === net) {
+              return; // already traced -- TODO: this case unnecessary/can'thappen?
+            } else {
+              // found new unclaimed node
+              // Note: bn was being mutated, but we exit now so saving it is safe.
+              cGraph[bn][comingFrom] = net;
+              net.push([bn,comingFrom]);
+              net.edges.push([net,block,bn]);
+              net["has" + bnBeh.getFace(world, bn, comingFrom)] = true;
+              traceIntoNode(net, bn, comingFrom);
+              return;
+            }
           }
-        }
-        if (DEBUG_WIRE) console.groupEnd();
+        } finally { if (DEBUG_WIRE) console.groupEnd(); }
       }
       function traceIntoNode(net, block, comingFrom) {
-        if (DEBUG_WIRE) console.group("traceIntoNode " + net + " " + block + ":" + getBehavior(block) + " " + comingFrom);
+        if (DEBUG_WIRE) console.group("traceIntoNode " + net + " " + block + ":" + getBehavior(block).name + " " + comingFrom);
         DIRECTIONS.forEach(function (direction) {
           if (String(direction) === String(comingFrom)) {
             // don't look backward
@@ -181,7 +182,7 @@
         if (DEBUG_WIRE) { console.groupEnd(); }
       }
       nodes.forEach(function (block) {
-        if (DEBUG_WIRE) { console.group("root " + block + ":" + getBehavior(block)); }
+        if (DEBUG_WIRE) { console.group("root " + block + ":" + getBehavior(block).name); }
         if (getBehavior(block) === Circuit.behaviors.junction) {
           // do not trace from junctions (not implemented yet)
           if (DEBUG_WIRE) { console.groupEnd(); }
