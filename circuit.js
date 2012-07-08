@@ -57,6 +57,9 @@
     function getBehavior(block) {
       return world.gtv(block).behavior;
     }
+    function labelBlock(block) {
+      return block + ":" + getBehavior(block).name;
+    }
     
     // Blocks making up the circuit
     var blocks = [];
@@ -94,7 +97,9 @@
       return aabb;
     };
     this.compile = function () { // TODO should be implicit
-      if (circuitDebug) console.info("Recompiling a circuit");
+      if (circuitDebug) {
+        console.info("Recompiling circuit containing " + blocks.join(" "));
+      }
       var nodes = [];
       var nets = [];
       var netSerial = 0;
@@ -121,7 +126,7 @@
       // Build graph edges
       function traceNet(net, block, direction) {
         try {
-          if (circuitDebug) console.group("traceNet " + net + " " + block + ":" + getBehavior(block).name + " : " + direction);
+          if (circuitDebug) console.group("traceNet " + net + " " + labelBlock(block) + " : " + direction);
           direction = Array.prototype.slice.call(direction);
           var bn = block.slice();
           vec3.add(bn, direction, bn);
@@ -151,7 +156,7 @@
         } finally { if (circuitDebug) console.groupEnd(); }
       }
       function traceIntoNode(net, block, comingFrom) {
-        if (circuitDebug) console.group("traceIntoNode " + net + " " + block + ":" + getBehavior(block).name + " " + comingFrom);
+        if (circuitDebug) console.group("traceIntoNode " + net + " " + labelBlock(block) + " from ∆" + comingFrom);
         DIRECTIONS.forEach(function (direction) {
           if (String(direction) === String(comingFrom)) {
             // don't look backward
@@ -182,14 +187,16 @@
         if (circuitDebug) { console.groupEnd(); }
       }
       nodes.forEach(function (block) {
-        if (circuitDebug) { console.group("root " + block + ":" + getBehavior(block).name); }
-        if (getBehavior(block) === Circuit.behaviors.junction) {
-          // do not trace from junctions (not implemented yet)
-          if (circuitDebug) { console.groupEnd(); }
-          return;
+        if (circuitDebug) { console.group("Tracing from " + labelBlock(block)); }
+        try {
+          if (getBehavior(block) === Circuit.behaviors.junction) {
+            // do not trace from junctions (not implemented yet)
+            return;
+          }
+          traceIntoNode(null, block, null);
+        } finally {
+          if (circuitDebug) console.groupEnd();
         }
-        traceIntoNode(null, block, null);
-        if (circuitDebug) { console.groupEnd(); }
       });
       
       // Delete useless nets and record useful ones.
