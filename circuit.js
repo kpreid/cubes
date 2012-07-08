@@ -103,6 +103,7 @@
       var nodes = [];
       var nets = [];
       var netSerial = 0;
+      var netsToMerge = [];
       
       // Clear and initialize
       cGraph = {};
@@ -131,18 +132,22 @@
           var bn = block.slice();
           vec3.add(bn, direction, bn);
           for (;; vec3.add(bn, direction, bn)) {
-            if (circuitDebug) console.log("walk " + bn);
+            var debugPrefix = "walk " + bn + ":";
             var bnBeh = getBehavior(bn);
             var comingFrom = vec3.negate(direction, []);
             if (!bnBeh) {
+              if (circuitDebug) console.log(debugPrefix, "not a circuit element");
               return; // not a circuit element
             } else if (bnBeh === Circuit.behaviors.wire) {
+              if (circuitDebug) console.log(debugPrefix, "wire");
               continue; // pass-through
             } else if (cGraph[bn][comingFrom] && cGraph[bn][comingFrom] !== net) {
               throw new Error("met different net!");
             } else if (cGraph[bn][comingFrom] && cGraph[bn][comingFrom] === net) {
+              if (circuitDebug) console.log(debugPrefix, "already traced");
               return; // already traced -- TODO: this case unnecessary/can'thappen?
             } else {
+              if (circuitDebug) console.log(debugPrefix, "found " + getBehavior(bn).name + " element");
               // found new unclaimed node
               // Note: bn was being mutated, but we exit now so saving it is safe.
               cGraph[bn][comingFrom] = net;
@@ -159,19 +164,28 @@
         if (circuitDebug) console.group("traceIntoNode " + net + " " + labelBlock(block) + " from ∆" + comingFrom);
         DIRECTIONS.forEach(function (direction) {
           if (String(direction) === String(comingFrom)) {
+            if (circuitDebug) console.log("∆" + direction + " is reverse");
             // don't look backward
-            return;
-          }
-          
-          if (cGraph[block][direction]) {
-            // already traced
             return;
           }
           
           var beh = getBehavior(block);
           
           // non-junctions get separate nets, junctions extend nets
-          if (beh !== Circuit.behaviors.junction) {
+          var existingNet = cGraph[block][direction];
+          if (beh === Circuit.behaviors.junction) {
+            if (existingNet && existingNet !== net) {
+              if (circuitDebug) console.log(block + "∆" + direction + " met net " + existingNet + " to merge");
+              netsToMerge.push([net, existingNet]);
+              return;
+            }
+          } else {
+            if (existingNet) {
+              if (circuitDebug) console.log(block + "∆" + direction + " is already traced");
+              // already traced
+              return;
+            }
+            
             net = [];
             net.edges = [];
             net.serial = netSerial++;
@@ -197,6 +211,27 @@
         } finally {
           if (circuitDebug) console.groupEnd();
         }
+      });
+      
+      // Merge nets that met at a junction.
+      // (Algorithm info: <http://en.wikipedia.org/wiki/Disjoint-set_data_structure#Disjoint-set_forests>)
+      var canonMergeNets = Object.create(null);
+      netsToMerge.forEach(function (netPair) {
+        var net1 = netPair[0];
+        var net2 = netPair[1];
+        while (canonMergeNets[net1.serial]) net1 = canonMergeNets[net1.serial];
+        while (canonMergeNets[net2.serial]) net2 = canonMergeNets[net2.serial];
+        if (net1 === net2) return; // previously merged
+        canonMergeNets[net1.serial] = net2;
+        net1.forEach(function (record) {
+          var block = record[0];
+          var direction = record[1];
+          cGraph[block][direction] = net2;
+        });
+        net1.splice(0, net1.length);
+        net1.edges.forEach(function (edgeRecord) {
+          net2.edges.push([net2, edgeRecord[1], edgeRecord[2]]);
+        });
       });
       
       // Delete useless nets and record useful ones.

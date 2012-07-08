@@ -410,4 +410,20 @@ describe("Circuit", function() {
       });
     });
   });
+  
+  it("should merge nets which meet", function () {
+    // This was a reduced test case for a bug. The bug was that if tracing from a junction (depth-first) ends up meeting the same junction again but with a different net, the nets needed to be merged but were not. TODO: However, this test case is not sufficiently thorough, as it is dependent on the traversal order; we should design a test case which is more robust.
+    t.world.s(0, 0, 0, t.ls.junction);
+    t.world.s(0, 0, 1, t.ls.junction);
+    t.world.s(0, 0, 2, t.ls.constant, 10);
+    
+    // these last two steps are order dependent
+    t.world.s(0, 1, 0, t.ls.indicator);
+    //Circuit.setDebugLogging(true);
+    t.world.s(0, 1, 1, t.ls.indicator);
+    //Circuit.setDebugLogging(false);
+    
+    expect(t.world.gSub(0, 1, 0)).toEqual(1);
+    expect(t.world.gSub(0, 1, 1)).toEqual(1);
+  });
 });
