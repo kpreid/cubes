@@ -55,6 +55,7 @@
     
     // HTML elements and other UI pieces
     var sceneInfo;
+    var worldOverlayContainer;
     var cursorInfoElem;
     var cursorInfo;
     var chunkProgressBar;
@@ -103,6 +104,56 @@
       return obj;
     }
     
+    // Position an overlay HTML element adjacent to the provided set of points.
+    function positionByWorld(element, keepInBounds, pointGenerator) {
+      var canvasStyle = window.getComputedStyle(theCanvas,null);
+      var canvasWidth = parseInt(canvasStyle.width, 10);
+      var canvasHeight = parseInt(canvasStyle.height, 10);
+      
+      var elemStyle = window.getComputedStyle(element, null);
+      var elemWidth = parseInt(elemStyle.width, 10);
+      var elemHeight = parseInt(elemStyle.height, 10);
+      
+      var slx = Infinity;
+      var sly = Infinity;
+      var shx = -Infinity;
+      var shy = -Infinity;
+      var toScreenPoint = vec4.create();
+      
+      pointGenerator(function (x, y, z, w) {
+        toScreenPoint[0] = x;
+        toScreenPoint[1] = y;
+        toScreenPoint[2] = z;
+        toScreenPoint[3] = w;
+        renderer.transformPoint(toScreenPoint);
+        toScreenPoint[0] /= toScreenPoint[3];
+        toScreenPoint[1] /= toScreenPoint[3];
+        toScreenPoint[2] /= toScreenPoint[3];
+        if (toScreenPoint[3] > 0) {
+          slx = Math.min(slx, toScreenPoint[0]);
+          shx = Math.max(shx, toScreenPoint[0]);
+          sly = Math.min(sly, toScreenPoint[1]);
+          shy = Math.max(shy, toScreenPoint[1]);
+        }
+      });
+      
+      if (shx > -1 && shy > -1 && slx < 1 && sly < 1 /* visible */) {
+        // convert to screen
+        slx = (slx + 1) / 2 * canvasWidth;
+        //shx = (shx + 1) / 2 * canvasWidth;
+        //sly = (sly + 1) / 2 * canvasHeight;
+        shy = (shy + 1) / 2 * canvasHeight;
+        if (keepInBounds) {
+          slx = Math.max(0, Math.min(canvasWidth - elemWidth, slx));
+          shy = Math.max(0, Math.min(canvasHeight - elemHeight, shy));
+        }
+        element.style.left   = slx + "px";
+        element.style.bottom = shy + "px";
+      } else {
+        element.style.left   = canvasWidth + "px";
+      }
+    }
+    
     var lastGLErrors = [];
     function drawScene(playerRender) {
         var wrend = playerRender.getWorldRenderer();
@@ -128,47 +179,35 @@
         cursorInfo.data = "";
         var cur = player.getCursor();
         if (cur !== null) {
-          var sx = Infinity;
-          var sy = -Infinity;
           var cube = cur.cube;
           var empty = vec3.add(cur.cube, cur.face, vec3.create());
-          var toScreenPoint = vec4.create();
-          for (var dx = 0; dx <= 1; dx++)
-          for (var dy = 0; dy <= 1; dy++)
-          for (var dz = 0; dz <= 1; dz++) {
-            toScreenPoint[0] = cube[0] + dx;
-            toScreenPoint[1] = cube[1] + dy;
-            toScreenPoint[2] = cube[2] + dz;
-            toScreenPoint[3] = 1;
-            renderer.transformPoint(toScreenPoint);
-            sx = Math.min(sx, toScreenPoint[0]/toScreenPoint[3]);
-            sy = Math.max(sy, toScreenPoint[1]/toScreenPoint[3]);
-          }
-          if (isFinite(sx) && isFinite(sy)) {
-            var computedStyle = window.getComputedStyle(theCanvas,null);
-            cursorInfoElem.style.left   = (sx + 1) / 2 * parseInt(computedStyle.width,  10) + "px";
-            cursorInfoElem.style.bottom = (sy + 1) / 2 * parseInt(computedStyle.height, 10) + "px";
-            
-            var world = player.getWorld();
-            var value = world.gv(cube);
-            var sub = world.gSubv(cube);
-            var type = world.gtv(cube);
-            var light = type.opaque ? world.gLightv(empty)
-                                    : world.gLightv(cube);
-            var text = (
-              value
-              + (sub ? ":" + sub : "")
-              + (type.name ? " (" + type.name + ")" : "")
-              + "\nat " + cur.cube
-              + "\n" + (type.opaque ? "Surface" : "Interior") + " light: " + light
-            );
-
-            var circuit = world.getCircuit(cube);
-            if (circuit !== null) {
-              text += "\nCircuit: " + type.behavior.name + " " + circuit.describeBlock(cube);
+          positionByWorld(cursorInfoElem, false, function (considerPoint) {
+            for (var dx = 0; dx <= 1; dx++)
+            for (var dy = 0; dy <= 1; dy++)
+            for (var dz = 0; dz <= 1; dz++) {
+              considerPoint(cube[0] + dx, cube[1] + dy, cube[2] + dz, 1);
             }
-            cursorInfo.data = text;
+          });
+          
+          var world = player.getWorld();
+          var value = world.gv(cube);
+          var sub = world.gSubv(cube);
+          var type = world.gtv(cube);
+          var light = type.opaque ? world.gLightv(empty)
+                                  : world.gLightv(cube);
+          var text = (
+            value
+            + (sub ? ":" + sub : "")
+            + (type.name ? " (" + type.name + ")" : "")
+            + "\nat " + cur.cube
+            + "\n" + (type.opaque ? "Surface" : "Interior") + " light: " + light
+          );
+
+          var circuit = world.getCircuit(cube);
+          if (circuit !== null) {
+            text += "\nCircuit: " + type.behavior.name + " " + circuit.describeBlock(cube);
           }
+          cursorInfo.data = text;
         }
         
         // Per-frame debug/stats info
@@ -337,7 +376,9 @@
       sceneInfoOverlay.appendChild(persistenceProgressBar.element);
       
       // Info that follows the cursor
-      cursorInfoElem = pageElements.cursorInfoOverlay;
+      worldOverlayContainer = pageElements.worldOverlays;
+      cursorInfoElem = mkelement("div", "overlay");
+      worldOverlayContainer.appendChild(cursorInfoElem);
       var cursorInfoTextElem = document.createElement("pre");
       cursorInfoElem.appendChild(cursorInfoTextElem);
       cursorInfo = dynamicText(cursorInfoTextElem);

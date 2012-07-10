@@ -26,7 +26,7 @@ describe("Main", function() {
       // TODO: Reduce the amount of this boilerplate needed.
       viewCanvas: document.createElement("canvas"),
       sceneInfoOverlay: stubElem(),
-      cursorInfoOverlay: stubElem(),
+      worldOverlays: stubElem(),
       loadError: [stubElem(), stubElem()]
     };
 
