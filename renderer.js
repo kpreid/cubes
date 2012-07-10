@@ -909,8 +909,6 @@ This is what you can assume/should do:
     // Tool for rendering AAB objects' wireframes.
     function aabRenderer(collectorFn) {
       return new renderer.RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
-        if (!config.debugPlayerCollision.get()) return;
-
         var p = vec3.create();
         function renderAAB(offset, aabb, c) {
           axisPermutationsForBoxes.forEach(function (dims) {
