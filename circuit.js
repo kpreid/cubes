@@ -228,10 +228,13 @@
           var direction = record[1];
           cGraph[block][direction] = net2;
         });
-        net1.splice(0, net1.length);
         net1.edges.forEach(function (edgeRecord) {
           net2.edges.push([net2, edgeRecord[1], edgeRecord[2]]);
         });
+        // delete contents of net; will be removed entirely by the next step
+        net1.splice(0, net1.length);
+        net1.edges.splice(0, net1.edges.length);
+        net1.hasIN = net1.hasOUT = net1.hasINOUT = false;
       });
       
       // Delete useless nets and record useful ones.
