@@ -31,6 +31,7 @@
       menuButtonE.addEventListener("mousedown", openMenu, false);
       menuButtonE.addEventListener("click", openMenu, false);
       var chipE = mkelement("span", "presentation object-chip", nameE, menuButtonE);
+      chipE.addEventListener("contextmenu", openMenu, false);
       chipE.style.position = "relative";
       
       this.bindByName = function (name) {
@@ -84,11 +85,12 @@
       
       function openMenu(event) {
         event.stopPropagation();
+        event.preventDefault();
         
         updateChip();
         
         if (menuE) {
-          return;
+          return false;
         }
         
         var menuListE;
@@ -106,7 +108,7 @@
           menuListE.appendChild(mkelement("li", "",
             b = mkelement("button", "", label)
           ));
-          b.addEventListener("click", function (e) {
+          b.addEventListener("mouseup", function (e) {
             e.stopPropagation();
             dismiss();
             fn();
@@ -120,20 +122,34 @@
         } else {
           commandsForPersisted(targetName, addControl);
         }
-        
         chipE.appendChild(menuE);
-        var el;
-        menuE.addEventListener("blur", el = function () {
-          setTimeout(dismiss, 0); // undeferred blur effects have caused trouble
+        
+        var focused = true;
+        menuE.addEventListener("focus", function () {
+          focused = true;
+          return true;
+        }, false);
+        menuE.addEventListener("blur", function () {
+          focused = false;
+          setTimeout(function () {
+            if (!focused) dismiss();
+          }, 0);
+          return true;
+        }, false);
+        menuE.addEventListener("keypress", function () {
+          dismiss();
+          return true;
         }, false);
         menuE.focus();
         
         function dismiss() {
           if (!menuE) return;
+          if (focused) ui.refocus();
           menuE.parentElement.removeChild(menuE);
-          menuE.removeEventListener("blur", el);
           menuE = undefined;
         }
+        
+        return false;
       }
       
       
