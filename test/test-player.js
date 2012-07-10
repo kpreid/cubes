@@ -17,7 +17,7 @@ describe("Player", function() {
   function StubRenderer(config) {
     this.RenderBundle = function () {};
     this.RenderBundle.prototype.recompute = function () {};
-    this.aabRenderer = this.RenderBundle;
+    this.aabRenderer = function () { return new this.RenderBundle() };
     this.BlockParticles = function () {};
     this.context = {};
     this.config = config;

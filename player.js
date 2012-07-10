@@ -457,8 +457,6 @@
         });
         currentPlace.forBlock = blockID;
         placeStack.push(oldPlace);
-        updateAudioListener();
-        aimChanged();
 
         notifyChangedPlace();
       }, 
@@ -505,9 +503,6 @@
             break;
         }
         
-        aimChanged();
-        aabbR.recompute();
-        updateAudioListener();
         notifyChangedPlace();
       },
       jump: function () {
@@ -516,6 +511,9 @@
     });
     
     function notifyChangedPlace() {
+      aimChanged();
+      aabbR.recompute();
+      updateAudioListener();
       inputNotifier.notify("changedWorld");
     }
     
