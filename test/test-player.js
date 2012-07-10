@@ -30,6 +30,11 @@ describe("Player", function() {
     setListener: function () {},
     play: function () {}
   };
+  var stubObjectUI = {
+    ObjectChip: function () {}
+  };
+  stubObjectUI.ObjectChip.prototype.bindByObject = function () {};
+  stubObjectUI.ObjectChip.prototype.element = document.createElement("span");
   
   beforeEach(function () {
     sessionStorage.clear();
@@ -39,7 +44,7 @@ describe("Player", function() {
 
     world = new World([2, 1, 1], new Blockset([new BlockType([1, 1, 1, 1])]))
 
-    player = new Player(config, world, renderer, stubAudio, stubScheduleDraw);
+    player = new Player(config, world, renderer, stubAudio, stubScheduleDraw, stubObjectUI);
   });
   
   it("should add blocks", function () {

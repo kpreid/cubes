@@ -525,7 +525,7 @@
         },
         //"Creating your avatar...", // not currently expensive enough for a msg
         function () {
-          player = main.player = new Player(config, topWorldC.get(), renderer/*TODO facet? */, audio/*TODO facet? */, scheduleDraw);
+          player = main.player = new Player(config, topWorldC.get(), renderer/*TODO facet? */, audio/*TODO facet? */, scheduleDraw, objectUI);
         },
         "Painting blocks...",
         function () {

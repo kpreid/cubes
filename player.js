@@ -13,6 +13,7 @@
   var mkelement = cubes.util.mkelement;
   var mod = cubes.util.mod;
   var Notifier = cubes.util.Notifier;
+  var Selection = cubes.Selection;
   var World = cubes.World;
   var WorldRenderer = cubes.WorldRenderer;
   var ZEROVEC = cubes.util.ZEROVEC;
@@ -34,7 +35,7 @@
     -0.35, 0.35 // z
   );
 
-  function Player(config, initialWorld, renderer, audio, scheduleDraw) {
+  function Player(config, initialWorld, renderer, audio, scheduleDraw, objectUI) {
     var player = this;
     var gl = renderer.context;
     
@@ -43,6 +44,9 @@
       this.world = world;
       this.cursor = null;
       this.tool = 2; // first non-bogus block id
+
+      this.selection = new Selection(world);
+      this.selection.setToAAB(new AAB(5, 10, 5, 10, 5, 10));
       
       // find or make body
       var body = world.playerBody;
@@ -378,6 +382,48 @@
       }
     };
     
+    var selectionSceneObject = null;
+    
+    function rebuildSelectionObj() {
+      var selection = currentPlace.selection;
+      
+      if (selectionSceneObject && selectionSceneObject._getTheSelection() == selection) return;
+      
+      if (selectionSceneObject) selectionSceneObject.deleteResources();
+      
+      if (selection !== null) {
+        var selectionR = renderer.aabRenderer(function (draw) {
+          draw(ZEROVEC, selection.bounds, [0,1,1]);
+        });
+        
+        var chip = new objectUI.ObjectChip();
+        chip.bindByObject(selection);
+        
+        selectionSceneObject = {
+          draw: function () {
+            selectionR.draw();
+          },
+          element: mkelement("div", "overlay", chip.element),
+          boundsPoints: function (considerPoint) {
+            var bounds = selection.bounds;
+            for (var dx = 0; dx <= 1; dx++)
+            for (var dy = 0; dy <= 1; dy++)
+            for (var dz = 0; dz <= 1; dz++) {
+              considerPoint(bounds[0 + dx], bounds[2 + dy], bounds[4 + dz], 1);
+            }
+          },
+          deleteResources: function () { // not part of scene object protocol
+            selectionR.deleteResources();
+          },
+          _getTheSelection: function () { // not part of scene object protocol
+            return selection;
+          }
+        };
+      } else {
+        selectionSceneObject = null;
+      }
+    }
+    
     this.render = Object.freeze({
       applyViewRot: function (matrix) {
         mat4.rotate(matrix, -pitch, [1, 0, 0]);
@@ -395,6 +441,7 @@
       forEachSceneObject: function (callback) {
         callback(worldSceneObject);
         callback(cursorSceneObject);
+        if (selectionSceneObject) callback(selectionSceneObject);
       },
       getWorldRenderer: function () {
         return currentPlace.wrend;
@@ -571,6 +618,9 @@
       aimChanged();
       aabbR.recompute();
       updateAudioListener();
+      
+      rebuildSelectionObj();
+      
       inputNotifier.notify("changedWorld");
     }
     
