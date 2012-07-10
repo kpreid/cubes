@@ -64,7 +64,15 @@
             if (target instanceof World) {
               label += target.wx + "×" + target.wy + "×" + target.wz + " ";
             }
-            label += Persister.findType(target.constructor);
+            var typeName = Persister.findType(target.constructor);
+            if (!typeName) {
+              if (target instanceof cubes.Selection) { // TODO special case
+                typeName = "selection";
+              } else {
+                typeName = "object";
+              }
+            }
+            label += typeName;
             if (target instanceof BlockType && target.name !== null) {
               label += " “" + target.name + "”";
             }
@@ -450,7 +458,7 @@
       title: "Save As...",
       applicableToPersisted: function (name) { return false; },
       applicableToObject: function (object) {
-        return persistencePool.getObjectName(object) === null;
+        return object.persistence && persistencePool.getObjectName(object) === null;
       },
       applyToObject: function (object) {
         // TODO: non-modal ui
