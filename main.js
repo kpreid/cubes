@@ -116,7 +116,7 @@
         renderer.setViewToEye(playerRender, focusCell.get());
         wrend.draw();
         player.render.characterRender.draw();
-        player.render.selectionRender.draw();
+        player.render.cursorRender.draw();
         
         var e, errs = [];
         while ((e = gl.getError()) !== gl.NO_ERROR && e !== gl.CONTEXT_LOST_WEBGL) {
@@ -124,14 +124,14 @@
         }
         // Note: The above comparison is an != rather than !== because webgl-debug.js's wrapped context returns numeric strings (!) instead of numbers for error enums. TODO: File bug.
         
-        // Selection info
+        // Cursor info
         cursorInfo.data = "";
-        var sel = player.getSelection();
-        if (sel !== null) {
+        var cur = player.getCursor();
+        if (cur !== null) {
           var sx = Infinity;
           var sy = -Infinity;
-          var cube = sel.cube;
-          var empty = vec3.add(sel.cube, sel.face, vec3.create());
+          var cube = cur.cube;
+          var empty = vec3.add(cur.cube, cur.face, vec3.create());
           var toScreenPoint = vec4.create();
           for (var dx = 0; dx <= 1; dx++)
           for (var dy = 0; dy <= 1; dy++)
@@ -159,7 +159,7 @@
               value
               + (sub ? ":" + sub : "")
               + (type.name ? " (" + type.name + ")" : "")
-              + "\nat " + sel.cube
+              + "\nat " + cur.cube
               + "\n" + (type.opaque ? "Surface" : "Interior") + " light: " + light
             );
 

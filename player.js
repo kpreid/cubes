@@ -39,7 +39,7 @@
     // a Place stores a world and state in it; used for push/pop
     function Place(world, bodyInitializer) {
       this.world = world;
-      this.selection = null;
+      this.cursor = null;
       this.tool = 2; // first non-bogus block id
       
       // find or make body
@@ -77,8 +77,8 @@
     var movement = vec3.create();
     var mousePos = null; // or an [screen x, screen y] vector. Immutable value.
   
-    var selectionR = new renderer.RenderBundle(gl.LINE_LOOP, null, function (vertices, normals, colors) {
-      var sel = currentPlace ? currentPlace.selection : null;
+    var cursorR = new renderer.RenderBundle(gl.LINE_LOOP, null, function (vertices, normals, colors) {
+      var sel = currentPlace ? currentPlace.cursor : null;
       if (sel !== null) {
         var p = vec3.create(sel.cube);
 
@@ -171,9 +171,9 @@
         newSel = null;
       }
       
-      if (String(currentPlace.selection) !== String(newSel)) {
-        currentPlace.selection = newSel;
-        selectionR.recompute();
+      if (String(currentPlace.cursor) !== String(newSel)) {
+        currentPlace.cursor = newSel;
+        cursorR.recompute();
         scheduleDraw();
       }
     }
@@ -333,7 +333,7 @@
       getPosition: function() {
         return vec3.create(currentPlace.body.pos);
       },
-      selectionRender: selectionR,
+      cursorRender: cursorR,
       characterRender: {
         draw: function () {
           if (config.debugPlayerCollision.get()) aabbR.draw();
@@ -353,8 +353,8 @@
     this.getBody = function() {
       return currentPlace.body;
     };
-    this.getSelection = function() {
-      return currentPlace.selection;
+    this.getCursor = function() {
+      return currentPlace.cursor;
     };
     this.setWorld = function (world) {
       if (currentPlace) currentPlace.delete();
@@ -380,9 +380,9 @@
           this.deleteBlock();
         } else {
           // create block
-          if (currentPlace.selection !== null) {
-            var cube = currentPlace.selection.cube;
-            var face = currentPlace.selection.face;
+          if (currentPlace.cursor !== null) {
+            var cube = currentPlace.cursor.cube;
+            var face = currentPlace.cursor.face;
             var x = cube[0]+face[0], y = cube[1]+face[1], z = cube[2]+face[2];
             var type = currentPlace.world.blockset.get(currentPlace.tool);
             if (currentPlace.world.g(x,y,z) === 0) {
@@ -403,8 +403,8 @@
         }
       },
       deleteBlock: function () {
-        if (currentPlace.selection !== null) {
-          var cube = currentPlace.selection.cube;
+        if (currentPlace.cursor !== null) {
+          var cube = currentPlace.cursor.cube;
           var x = cube[0], y = cube[1], z = cube[2];
           if (currentPlace.world.g(x,y,z) !== 0 /* i.e. would destruction do anything */) { 
             var value = currentPlace.world.g(x,y,z);
@@ -416,8 +416,8 @@
         }
       },
       tweakSubdata: function (delta) {
-        if (currentPlace.selection !== null) {
-          var cube = currentPlace.selection.cube;
+        if (currentPlace.cursor !== null) {
+          var cube = currentPlace.cursor.cube;
           var x = cube[0], y = cube[1], z = cube[2];
           currentPlace.world.sSub(x, y, z,
               mod(currentPlace.world.gSub(x,y,z) + delta, World.subdatumBound));
@@ -463,8 +463,8 @@
       changeWorld: function (direction) {
         switch (direction) {
           case 1:
-            if (currentPlace.selection === null) return;
-            var cube = currentPlace.selection.cube;
+            if (currentPlace.cursor === null) return;
+            var cube = currentPlace.cursor.cube;
             var x = cube[0], y = cube[1], z = cube[2];
             
             var oldPlace = currentPlace;
@@ -490,8 +490,8 @@
               body.flying = true;
             });
             
-            // This is needed because the routine in aimChanged assumes currentPlace knows the old state of the selection. TODO: Kludgy.
-            selectionR.recompute();
+            // This is needed because the routine in aimChanged assumes currentPlace knows the old state of the cursor. TODO: Kludgy.
+            cursorR.recompute();
             
             placeStack.push(oldPlace);
             
