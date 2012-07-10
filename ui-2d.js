@@ -46,14 +46,6 @@
         updateChip();
       };
       
-      function getChipTarget() {
-        if (target !== null) {
-          return target;
-        } else {
-          return persistencePool.get(targetName);
-        }
-      }
-      
       function updateChip() {
         if (target !== null && targetName !== null) {
           throw new Error("Inconsistent");
@@ -123,49 +115,11 @@
           }, false);
         }
         
-        if (targetName !== null) {
-          addControl("Delete", function () {
-            if (window.confirm("Really delete “" + targetName + "”?")) {
-              persistencePool.ephemeralize(targetName);
-            }
-          });
-          
-          // TODO add rename
+        if (target !== null) {
+          commandsForObject(target, addControl);
+        } else {
+          commandsForPersisted(targetName, addControl);
         }
-        
-        if (targetName === null && target !== null) {
-          addControl("Save As...", function () {
-            var response = window.prompt("Save " + nameE.textContent + " as:", nameE.textContent);
-            if (response !== null) {
-              persistencePool.persist(target, response);
-            }
-          });
-        }
-        
-        addControl("Inspect", function () {
-          ui.inspect(getChipTarget());
-        });
-        
-        addControl("Export", function () {
-          var panel = ui.openNewPanel();
-
-          var expchip = new ObjectChip();
-          expchip.bindByObject(getChipTarget());
-          panel.appendChild(mkelement("h2", "", "Export of ", expchip.element));
-          
-          var data = mkelement("textarea");
-          data.cols = 20;
-          data.rows = 20;
-          data.readonly = true;
-          // TODO add class for style hooking
-          panel.appendChild(data);
-          
-          try {
-            data.value = JSON.stringify(cyclicSerialize(getChipTarget(), Persister.findType));
-          } catch (e) {
-            data.value = "Error: " + e;
-          }
-        });
         
         chipE.appendChild(menuE);
         var el;
@@ -348,32 +302,6 @@
         });
         listener.tableChanged();
         
-        // TODO fold these buttons into a general command infrastructure.
-        function addButton(label, action) {
-          var button;
-          panel.appendChild(mkelement("div", "", button = mkelement("button", "", label)));
-          button.addEventListener("click", function () {
-            try {
-              action();
-            } catch (e) {
-              // TODO fold this into a general handling-errors-from-ui-actions infrastructure
-              console.error("In button '" + label + "' event handler:", e);
-              alert("Sorry, the operation failed unexpectedly.\n\n" + e);
-            }
-            return true;
-          }, false);
-        }
-        // TODO these blockset-editing operations are assuming the sub-blockset to use is the blockset of the #1 block. We should either explicitly declare there is only one sub-blockset or provide a way to choose.
-        addButton("New block type", function () {
-          object.add(WorldGen.newRandomBlockType(object.tileSize, object.get(1).world.blockset));
-        });
-        addButton("Delete last block type", function () {
-          object.deleteLast();
-        });
-        addButton("Add/update standard circuit blocks", function () {
-          WorldGen.addLogicBlocks(object.tileSize, object, object.get(1).world.blockset);
-        });
-        
       }()); else if (object instanceof BlockType) (function () {
         var blockType = object;
         // TODO listen to block type for changes
@@ -461,7 +389,151 @@
         panel.appendChild(mkelement("p", "", 
           mkelement("em", "", "No details available for this object.")));
       }
+      
+      function addButton(label, action) {
+        var button;
+        panel.appendChild(mkelement("div", "", button = mkelement("button", "", label)));
+        button.addEventListener("click", function () {
+          try {
+            action();
+          } catch (e) {
+            // TODO fold this into a general handling-errors-from-ui-actions infrastructure
+            console.error("In button '" + label + "' event handler:", e);
+            alert("Sorry, the operation failed unexpectedly.\n\n" + e);
+          }
+          return true;
+        }, false);
+      }
+      commandsForObject(object, addButton);
     };
+    
+    // --- Commands ---
+    
+    var allCommands = [];
+    
+    allCommands.push({
+      title: "Delete",
+      applicableToPersisted: function (name) { return true; },
+      applicableToObject: function (object) {
+        return persistencePool.getObjectName(object) !== null;
+      },
+      applyToPersisted: function (name) {
+        // TODO: non-modal ui
+        if (window.confirm("Really delete “" + name + "”?")) {
+          persistencePool.ephemeralize(name);
+        }
+      },
+      applyToObject: function (object) {
+        this.applyToPersisted(persistencePool.getObjectName(object));
+      }
+    });
+    
+    // TODO add rename
+    
+    allCommands.push({
+      title: "Save As...",
+      applicableToPersisted: function (name) { return false; },
+      applicableToObject: function (object) {
+        return persistencePool.getObjectName(object) === null;
+      },
+      applyToObject: function (object) {
+        // TODO: non-modal ui
+        // TODO: Reenable giving object name/description for default value, as calculated by ObjectChip
+        var response = window.prompt("Save as:", "untitled");
+        if (response !== null) {
+          persistencePool.persist(object, response);
+        }
+      }
+    });
+    
+    allCommands.push({
+      title: "Inspect",
+      applicableToPersisted: function (name) { return true; },
+      applicableToObject: function (object) { return true; },
+      applyToObject: function (object) {
+        ui.inspect(object);
+      }
+    });
+    
+    allCommands.push({
+      title: "Export",
+      applicableToPersisted: function (name) { return true; },
+      applicableToObject: function (object) { return !!object.serialize; },
+      applyToObject: function (object) {
+        var panel = ui.openNewPanel();
+        
+        var expchip = new ObjectChip();
+        expchip.bindByObject(object);
+        panel.appendChild(mkelement("h2", "", "Export of ", expchip.element));
+        
+        var data = mkelement("textarea");
+        data.cols = 20;
+        data.rows = 20;
+        data.readonly = true;
+        // TODO add class for style hooking
+        panel.appendChild(data);
+        
+        try {
+          data.value = JSON.stringify(cyclicSerialize(object, Persister.findType));
+        } catch (e) {
+          data.value = "Error: " + e;
+        }
+      }
+    });
+    
+    // TODO these blockset-editing operations are assuming the sub-blockset to use is the blockset of the #1 block. We should either explicitly declare there is only one sub-blockset or provide a way to choose.
+    allCommands.push({
+      title: "New block type",
+      applicableToPersisted: function (name) { return false; },
+      applicableToObject: function (object) { return object instanceof Blockset; },
+      applyToObject: function (object) {
+        object.add(WorldGen.newRandomBlockType(object.tileSize, object.get(1).world.blockset));
+      }
+    });
+    allCommands.push({
+      title: "Delete last block type",
+      applicableToPersisted: function (name) { return false; },
+      applicableToObject: function (object) {
+        // TODO we have no notification scheme to handle changes such as (for this) a 0 length becoming nonzero, e.g. in inspector buttons.
+        return object instanceof Blockset /* && object.length > 0 */;
+      },
+      applyToObject: function (object) {
+        object.deleteLast();
+      }
+    });
+    allCommands.push({
+      title: "Add/update standard circuit blocks",
+      applicableToPersisted: function (name) { return false; },
+      applicableToObject: function (object) { return object instanceof Blockset; },
+      applyToObject: function (object) {
+        WorldGen.addLogicBlocks(object.tileSize, object, object.get(1).world.blockset);
+      }
+    });
+    
+    
+    function commandsForObject(object, callback) {
+      allCommands.forEach(function (command) {
+        if (command.applicableToObject(object)) {
+          callback(command.title, function () {
+            command.applyToObject(object);
+          });
+        }
+      });
+    }
+    
+    function commandsForPersisted(name, callback) {
+      allCommands.forEach(function (command) {
+        if (command.applicableToPersisted(name)) {
+          callback(command.title, function () {
+            if (command.applyToPersisted) {
+              command.applyToPersisted(name);
+            } else {
+              command.applyToObject(persistencePool.get(name));
+            }
+          });
+        }
+      });
+    }
     
     // --- Support ---
     
