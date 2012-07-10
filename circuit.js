@@ -235,6 +235,7 @@
         net1.splice(0, net1.length);
         net1.edges.splice(0, net1.edges.length);
         net1.hasIN = net1.hasOUT = net1.hasINOUT = false;
+        if (circuitDebug) console.log("Merged " + net1 + " into " + net2);
       });
       
       // Delete useless nets and record useful ones.
