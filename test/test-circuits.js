@@ -426,4 +426,19 @@ describe("Circuit", function() {
     expect(t.world.gSub(0, 1, 0)).toEqual(1);
     expect(t.world.gSub(0, 1, 1)).toEqual(1);
   });
+  
+  it("should merge nets which meet (#2)", function () {
+    // TODO more testing of same - see previous spec's comments
+    t.world.s(0, 0, 0, t.ls.indicator);
+    t.world.s(0, 0, 1, t.ls.junction);
+    t.world.s(0, 0, 2, t.ls.junction);
+    t.world.s(0, 0, 3, t.ls.junction);
+    t.world.s(0, 1, 1, t.ls.constant, 0);
+    t.world.s(0, 1, 2, t.ls.constant, 0);
+    //Circuit.setDebugLogging(true);
+    t.world.s(0, 1, 3, t.ls.constant, 1);
+    //Circuit.setDebugLogging(false);
+    
+    expect(t.world.gSub(0, 0, 0)).toEqual(1);
+  });
 });

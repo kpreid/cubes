@@ -226,6 +226,7 @@
         net1.forEach(function (record) {
           var block = record[0];
           var direction = record[1];
+          net2.push(record);
           cGraph[block][direction] = net2;
         });
         net1.edges.forEach(function (edgeRecord) {
