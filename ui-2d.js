@@ -10,6 +10,7 @@
   var cyclicSerialize = cubes.storage.cyclicSerialize;
   var mkelement = cubes.util.mkelement;
   var Persister = cubes.storage.Persister;
+  var Selection = cubes.Selection;
   var World = cubes.World;
   var WorldGen = cubes.WorldGen;
   
@@ -66,7 +67,7 @@
             }
             var typeName = Persister.findType(target.constructor);
             if (!typeName) {
-              if (target instanceof cubes.Selection) { // TODO special case
+              if (target instanceof Selection) { // TODO make this not a special case
                 typeName = "selection";
               } else {
                 typeName = "object";
@@ -534,6 +535,16 @@
       }
     });
     
+    allCommands.push({
+      title: "Clear",
+      applicableToPersisted: function (name) { return false; },
+      applicableToObject: function (object) { return object instanceof Selection; },
+      applyToObject: function (object) {
+        object.forEachCube(function (cube, world) {
+          world.sv(cube, 0);
+        });
+      }
+    });
     
     function commandsForObject(object, callback) {
       allCommands.forEach(function (command) {
