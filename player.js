@@ -8,7 +8,9 @@
   var Blockset = cubes.Blockset;
   var Body = cubes.Body;
   var CubeRotation = cubes.util.CubeRotation;
+  var dynamicText = cubes.util.dynamicText;
   var exponentialStep = cubes.util.exponentialStep;
+  var mkelement = cubes.util.mkelement;
   var mod = cubes.util.mod;
   var Notifier = cubes.util.Notifier;
   var World = cubes.World;
@@ -319,6 +321,63 @@
     
     // --- The facet for rendering ---
     
+    var worldSceneObject = {
+      draw: function () { 
+        currentPlace.wrend.draw();
+        if (config.debugPlayerCollision.get()) aabbR.draw();
+      }
+    };
+    
+    var cursorInfoTextElem = document.createElement("pre");
+    var cursorInfoElem = mkelement("div", "overlay");
+    cursorInfoElem.appendChild(cursorInfoTextElem);
+    var cursorInfo = dynamicText(cursorInfoTextElem);
+    var cursorSceneObject = {
+      draw: function () {
+        cursorR.draw();
+        
+        // Update HTML part
+        cursorInfo.data = "";
+        var cur = player.getCursor();
+        if (cur !== null) {
+          var cube = cur.cube;
+          var empty = vec3.add(cur.cube, cur.face, vec3.create());
+          
+          var world = player.getWorld();
+          var value = world.gv(cube);
+          var sub = world.gSubv(cube);
+          var type = world.gtv(cube);
+          var light = type.opaque ? world.gLightv(empty)
+                                  : world.gLightv(cube);
+          var text = (
+            value
+            + (sub ? ":" + sub : "")
+            + (type.name ? " (" + type.name + ")" : "")
+            + "\nat " + cur.cube
+            + "\n" + (type.opaque ? "Surface" : "Interior") + " light: " + light
+          );
+          
+          var circuit = world.getCircuit(cube);
+          if (circuit !== null) {
+            text += "\nCircuit: " + type.behavior.name + " " + circuit.describeBlock(cube);
+          }
+          cursorInfo.data = text;
+        }
+      },
+      element: cursorInfoElem,
+      boundsPoints: function (considerPoint) {
+        var cur = player.getCursor();
+        if (cur !== null) {
+          var cube = cur.cube;
+          for (var dx = 0; dx <= 1; dx++)
+          for (var dy = 0; dy <= 1; dy++)
+          for (var dz = 0; dz <= 1; dz++) {
+            considerPoint(cube[0] + dx, cube[1] + dy, cube[2] + dz, 1);
+          }
+        }
+      }
+    };
+    
     this.render = Object.freeze({
       applyViewRot: function (matrix) {
         mat4.rotate(matrix, -pitch, [1, 0, 0]);
@@ -333,11 +392,9 @@
       getPosition: function() {
         return vec3.create(currentPlace.body.pos);
       },
-      cursorRender: cursorR,
-      characterRender: {
-        draw: function () {
-          if (config.debugPlayerCollision.get()) aabbR.draw();
-        }
+      forEachSceneObject: function (callback) {
+        callback(worldSceneObject);
+        callback(cursorSceneObject);
       },
       getWorldRenderer: function () {
         return currentPlace.wrend;

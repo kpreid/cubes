@@ -56,8 +56,6 @@
     // HTML elements and other UI pieces
     var sceneInfo;
     var worldOverlayContainer;
-    var cursorInfoElem;
-    var cursorInfo;
     var chunkProgressBar;
     var persistenceProgressBar;
     var measureDisplay;
@@ -165,50 +163,33 @@
         gl.clear(gl.DEPTH_BUFFER_BIT);
         
         renderer.setViewToEye(playerRender, focusCell.get());
-        wrend.draw();
-        player.render.characterRender.draw();
-        player.render.cursorRender.draw();
+        
+        var seenElems = [];
+        function drawSceneObject(sceneObject) {
+          sceneObject.draw(); // TODO should probly be closed over instead
+          var element = sceneObject.element;
+          if (element) {
+            if (!element.parentNode) worldOverlayContainer.appendChild(element);
+            positionByWorld(element, true, sceneObject.boundsPoints);
+            seenElems.push(element);
+          }
+        }
+
+        playerRender.forEachSceneObject(drawSceneObject);
+        
+        // Remove old overlays
+        for (var element = worldOverlayContainer.firstChild; element; element = enext) {
+          var enext = element.nextSibling;
+          if (seenElems.indexOf(element) === -1) {
+            worldOverlayContainer.removeChild(element);
+          }
+        }
         
         var e, errs = [];
         while ((e = gl.getError()) !== gl.NO_ERROR && e !== gl.CONTEXT_LOST_WEBGL) {
           errs.push(e);
         }
         // Note: The above comparison is an != rather than !== because webgl-debug.js's wrapped context returns numeric strings (!) instead of numbers for error enums. TODO: File bug.
-        
-        // Cursor info
-        cursorInfo.data = "";
-        var cur = player.getCursor();
-        if (cur !== null) {
-          var cube = cur.cube;
-          var empty = vec3.add(cur.cube, cur.face, vec3.create());
-          positionByWorld(cursorInfoElem, false, function (considerPoint) {
-            for (var dx = 0; dx <= 1; dx++)
-            for (var dy = 0; dy <= 1; dy++)
-            for (var dz = 0; dz <= 1; dz++) {
-              considerPoint(cube[0] + dx, cube[1] + dy, cube[2] + dz, 1);
-            }
-          });
-          
-          var world = player.getWorld();
-          var value = world.gv(cube);
-          var sub = world.gSubv(cube);
-          var type = world.gtv(cube);
-          var light = type.opaque ? world.gLightv(empty)
-                                  : world.gLightv(cube);
-          var text = (
-            value
-            + (sub ? ":" + sub : "")
-            + (type.name ? " (" + type.name + ")" : "")
-            + "\nat " + cur.cube
-            + "\n" + (type.opaque ? "Surface" : "Interior") + " light: " + light
-          );
-
-          var circuit = world.getCircuit(cube);
-          if (circuit !== null) {
-            text += "\nCircuit: " + type.behavior.name + " " + circuit.describeBlock(cube);
-          }
-          cursorInfo.data = text;
-        }
         
         // Per-frame debug/stats info
         var frameDesc = "";
@@ -282,7 +263,7 @@
         
         // done here because chunk updating should be deprioritized at the same time drawing would be
         player.render.getWorldRenderer().updateSomeChunks();
-        
+
         measuring.frame.start();
         drawScene(player.render);
         measuring.frame.end();
@@ -375,16 +356,10 @@
       sceneInfoOverlay.appendChild(chunkProgressBar.element);
       sceneInfoOverlay.appendChild(persistenceProgressBar.element);
       
-      // Info that follows the cursor
       worldOverlayContainer = pageElements.worldOverlays;
-      cursorInfoElem = mkelement("div", "overlay");
-      worldOverlayContainer.appendChild(cursorInfoElem);
-      var cursorInfoTextElem = document.createElement("pre");
-      cursorInfoElem.appendChild(cursorInfoTextElem);
-      cursorInfo = dynamicText(cursorInfoTextElem);
       
       var shaders;
-      
+            
       // Save button
       if (pageElements.saveButton) (function () {
         var saveButton = pageElements.saveButton;
