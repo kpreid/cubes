@@ -229,8 +229,6 @@
         renderer.verticesDrawn = 0;
     }
     
-    var frameDesc = "";
-    
     var lastStepTime = null;
     function doOneStep() {
       measuring.sim.start();
