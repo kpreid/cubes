@@ -10,6 +10,8 @@
   var signum = cubes.util.signum;
   var WorldGen = cubes.WorldGen;
   
+  function noop() {}
+  
   function deadzone(value, radius) {
     if (value < 0) {
       return -deadzone(-value, radius);
@@ -484,11 +486,13 @@
     }
     function defhold(name) {
       var cmdWithFunc = deffunbase(name);
-      cmdWithFunc.press = function () {};
+      cmdWithFunc.press = noop;
+      cmdWithFunc.release = noop;
     }
-    function defaction(name, func) {
+    function defaction(name, press, release) {
       var cmdWithFunc = deffunbase(name);
-      cmdWithFunc.press = func;
+      cmdWithFunc.press = press;
+      cmdWithFunc.release = release || noop;
     }
     defhold("left");
     defhold("right");
@@ -532,6 +536,11 @@
     });
     defaction("deleteBlock", function () {
       playerInput.deleteBlock();
+    });
+    defaction("select", function () {
+      playerInput.selectStart();
+    }, function () {
+      playerInput.selectEnd();
     });
     
     var controlMap;
@@ -648,6 +657,7 @@
         var state = commandState[command.name];
         if (--state.controlCount <= 0) {
           delete heldCommands[command.name];
+          command.release();
         }
         //console.log("hold -", control, command.name, (commandState[command.name] || {}).controlCount);
         evalHeldControls();
@@ -1106,6 +1116,7 @@
   }
   defcmd("useTool"    , "Place block",  [["mouse", 1]], 1/4); // TODO derive from movement speed
   defcmd("deleteBlock", "Delete block", [["mouse", 0]], 1/4);
+  defcmd("select",      "Place selection", [["mouse", 2]]); // TODO should probably not be a separate button-assignment...?
   defcmd("left"    , "Left"    , [["key", "A".charCodeAt(0)], ["key", 37]]);
   defcmd("right"   , "Right"   , [["key", "D".charCodeAt(0)], ["key", 39]]);
   defcmd("forward" , "Forward" , [["key", "W".charCodeAt(0)], ["key", 38]]);

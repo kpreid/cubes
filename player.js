@@ -10,6 +10,8 @@
   var CubeRotation = cubes.util.CubeRotation;
   var dynamicText = cubes.util.dynamicText;
   var exponentialStep = cubes.util.exponentialStep;
+  var max = Math.max;
+  var min = Math.min;
   var mkelement = cubes.util.mkelement;
   var mod = cubes.util.mod;
   var Notifier = cubes.util.Notifier;
@@ -82,27 +84,37 @@
     
     var movement = vec3.create();
     var mousePos = null; // or an [screen x, screen y] vector. Immutable value.
-  
+    
+    // Generate vectors [p, a, b] such that the corners of the face designated
+    // by the cursor are p, p+a, p+b, and p+a+b.
+    function cursorFaceVectors(cursor) {
+      var p = vec3.create(cursor.cube);
+
+      // This works, but don't ask me to justify it.
+      var qp = vec3.subtract(vec3.create(), cursor.face);
+      var qr = vec3.createFrom(-qp[1], -qp[2], -qp[0]); // first perpendicular vector 
+      var qs = vec3.cross(qp, qr, vec3.create()); // second perpendicular vector
+      
+      if (qp[0]+qp[1]+qp[2] > 0) {
+        vec3.subtract(p, qr);
+      } else {
+        vec3.subtract(p, qp);
+      }
+      return [p, qr, qs];
+    }
+    
     var cursorR = new renderer.RenderBundle(gl.LINE_LOOP, null, function (vertices, normals, colors) {
       var sel = currentPlace ? currentPlace.cursor : null;
       if (sel !== null) {
-        var p = vec3.create(sel.cube);
+        var cv = cursorFaceVectors(sel);
+        var p = cv[0];
+        var a = cv[1];
+        var b = cv[2];
 
-        // This works, but don't ask me to justify it. We're taking the face normal vector and deriving a selection box.
-        var qp = vec3.subtract(vec3.create(), sel.face);
-        var qr = [-qp[1], -qp[2], -qp[0]]; // first perpendicular vector 
-        var qs = vec3.cross(qp, qr, vec3.create()); // second perpendicular vector
-        
-        if (qp[0]+qp[1]+qp[2] > 0) {
-          vec3.subtract(p, qr);
-        } else {
-          vec3.subtract(p, qp);
-        }
-        
         colors.push(1,1,1,1); normals.push(0,0,0); vertices.push(p[0],p[1],p[2]);
-        colors.push(1,1,1,1); normals.push(0,0,0); vertices.push(p[0]+qr[0],p[1]+qr[1],p[2]+qr[2]);
-        colors.push(1,1,1,1); normals.push(0,0,0); vertices.push(p[0]+qr[0]+qs[0],p[1]+qr[1]+qs[1],p[2]+qr[2]+qs[2]);
-        colors.push(1,1,1,1); normals.push(0,0,0); vertices.push(p[0]+qs[0],p[1]+qs[1],p[2]+qs[2]);
+        colors.push(1,1,1,1); normals.push(0,0,0); vertices.push(p[0]+a[0],p[1]+a[1],p[2]+a[2]);
+        colors.push(1,1,1,1); normals.push(0,0,0); vertices.push(p[0]+a[0]+b[0],p[1]+a[1]+b[1],p[2]+a[2]+b[2]);
+        colors.push(1,1,1,1); normals.push(0,0,0); vertices.push(p[0]+b[0],p[1]+b[1],p[2]+b[2]);
       }
     }, {
       aroundDraw: function (draw) {
@@ -181,6 +193,10 @@
         currentPlace.cursor = newSel;
         cursorR.recompute();
         scheduleDraw();
+      }
+      
+      if (isDraggingSelection) {
+        reshapeSelection();
       }
     }
     
@@ -382,12 +398,41 @@
       }
     };
     
+    
+    function reshapeSelection() {
+      if (currentPlace.cursor === null) return;
+      var lx = +Infinity;
+      var ly = +Infinity;
+      var lz = +Infinity;
+      var hx = -Infinity;
+      var hy = -Infinity;
+      var hz = -Infinity;
+      function extendSelection(point) {
+        lx = min(lx, point[0]);
+        ly = min(ly, point[1]);
+        lz = min(lz, point[2]);
+        hx = max(hx, point[0]);
+        hy = max(hy, point[1]);
+        hz = max(hz, point[2]);
+      }
+      var cv1 = cursorFaceVectors(currentPlace.selectionMark);
+      var cv2 = cursorFaceVectors(currentPlace.cursor);
+      var buf = vec3.create();
+      extendSelection(vec3.add(cv1[0], cv1[1], buf));
+      extendSelection(vec3.add(cv1[0], cv1[2], buf));
+      extendSelection(vec3.add(cv2[0], cv2[1], buf));
+      extendSelection(vec3.add(cv2[0], cv2[2], buf));
+      currentPlace.selection.setToAAB(new AAB(lx, hx, ly, hy, lz, hz));
+      rebuildSelectionObj();
+    }
+    
+    var isDraggingSelection = false;
     var selectionSceneObject = null;
     
     function rebuildSelectionObj() {
       var selection = currentPlace.selection;
       
-      if (selectionSceneObject && selectionSceneObject._getTheSelection() == selection) return;
+      //if (selectionSceneObject && selectionSceneObject._getTheSelection() == selection) return; // inappropriate because selection may have been modified -- TODO why bother w/ this?
       
       if (selectionSceneObject) selectionSceneObject.deleteResources();
       
@@ -518,6 +563,22 @@
             aimChanged();
           }
         }
+      },
+      selectStart: function () {
+        if (!currentPlace.selectionMark) {
+          currentPlace.selection = null;
+          currentPlace.selectionMark = currentPlace.cursor;
+          currentPlace.selection = new Selection(currentPlace.world);
+        }
+        reshapeSelection();
+        isDraggingSelection = true;
+      },
+      selectEnd: function () {
+        if (currentPlace.selection && currentPlace.selectionMark) {
+          reshapeSelection();
+          currentPlace.selectionMark = null;
+        }
+        isDraggingSelection = false;
       },
       tweakSubdata: function (delta) {
         if (currentPlace.cursor !== null) {
