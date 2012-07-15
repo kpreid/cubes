@@ -46,9 +46,7 @@
       this.world = world;
       this.cursor = null;
       this.tool = 2; // first non-bogus block id
-
-      this.selection = new Selection(world);
-      this.selection.setToAAB(new AAB(5, 10, 5, 10, 5, 10));
+      this.selection = null;
       
       // find or make body
       var body = world.playerBody;
