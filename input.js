@@ -1116,7 +1116,7 @@
   }
   defcmd("useTool"    , "Place block",  [["mouse", 1]], 1/4); // TODO derive from movement speed
   defcmd("deleteBlock", "Delete block", [["mouse", 0]], 1/4);
-  defcmd("select",      "Place selection", [["mouse", 2]]); // TODO should probably not be a separate button-assignment...?
+  defcmd("select",      "Place selection", [["mouse", 2], ["key", 16]]); // TODO should probably be a tool instead, or a modifier-click
   defcmd("left"    , "Left"    , [["key", "A".charCodeAt(0)], ["key", 37]]);
   defcmd("right"   , "Right"   , [["key", "D".charCodeAt(0)], ["key", 39]]);
   defcmd("forward" , "Forward" , [["key", "W".charCodeAt(0)], ["key", 38]]);

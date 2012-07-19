@@ -326,19 +326,23 @@
     <tr><td>Right button in menu<td> edit clicked block
     <tr><td><kbd>Esc</kbd>, <kbd>F</kbd><td> exit block editing
     <tr><td><kbd>B</kbd><td> edit blockset, block properties
+    <tr><th colspan=2>Other editing
+    <tr><td>Middle button, Shift<td> drag selection
   </table>
   
   <p>Click “Edit blockset” in the block menu or press <kbd>B</kbd> to bring up a menu for editing the blockset.</p>
   
   <p>While you can edit any block to any shape, note that making the first block type (which makes up the underground volume in the default world) a non-cubical shape will likely be fatal to your frame rate.</p>
   
+  <p>By holding down the selection key you can drag out a selection box; operations on the selection can be performed using the chip which appears at its top left. The available operations are not very extensive at the moment.</p>
+  
   <h3>Compatibility &amp; Bugs</h3>
   
-  <p>Player movement does not work on Safari 5.1.</p>
+  <p>Not compatible with Safari 5.1 due to lack of full ECMAScript 5 support.</p>
   
-  <p>On an older MacBook Pro with 10.7 “Lion”, the terrain may be entirely white and the game may crash (exiting the browser in Firefox, a permanently gray screen in Chrome).</p>
+  <p>On an older MacBook Pro with 10.7 “Lion”, the terrain may be entirely white and the game may crash (exiting the browser in Firefox, a permanently gray screen in Chrome). In general, Cubes has not been tested across a broad range of graphics hardware and may have missing graphics, such as the terrain or sky being entirely white.</p>
   
-  <p>Editing block properties does not cause the blockset to be saved to permanent storage. Editing the circuit behaviors can cause the game to enter inconsistent states.</p>
+  <p>Editing the circuit behaviors can cause the game to enter inconsistent states. Circular connections in circuits result in indeterminate behavior.</p>
 </div>
 
 </body></html>
