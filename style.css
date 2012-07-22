@@ -377,6 +377,7 @@ html {
   font-family: "Geneva", "Verdana", sans-serif;
   font-size: 9px;
   color: white;
+  white-space: nowrap; /* work around spurious wrap in ~ Chrome 22.0.1207.1 dev */
 
   pointer-events: none;
 
