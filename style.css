@@ -72,10 +72,6 @@ body {
   height: 100%;
 }
 
-.sidebar-container {
-  width: 20em;
-}
-
 /* --- block menu --- */
 
 #menu-container { /* exists to support centering */
@@ -180,6 +176,29 @@ body {
   color: white;
   background: #555;
   padding-left: 1.5em;
+  
+  box-sizing: border-box;
+  width: 20em;
+  margin-right: -20em; /* hidden state */
+}
+
+/* visibility and animation */
+.sidebar-container.sidebar-hidden {
+  -webkit-animation: sidebar-pop .05s linear reverse;
+  -moz-animation: sidebar-pop .05s linear reverse;
+}
+.sidebar-container.sidebar-visible {
+  margin-right: 0;
+  -webkit-animation: sidebar-pop .05s linear;
+  -moz-webkit-animation: sidebar-pop .05s linear;
+}
+@-webkit-keyframes sidebar-pop {
+  from { margin-right: -20em; }
+  to   { margin-right: 0;     }
+}
+@-moz-keyframes sidebar-pop {
+  from { margin-right: -20em; }
+  to   { margin-right: 0;     }
 }
 
 .sidebar-close-button {

@@ -184,7 +184,8 @@
     function innerOpenPanel(element, name) {
       currentlyOpenPanel = element;
       currentlyOpenPanelName = name;
-      panelContainer.style.removeProperty("display");
+      panelContainer.classList.add("sidebar-visible");
+      panelContainer.classList.remove("sidebar-hidden");
       panelResizeKludge();
     }
     
@@ -201,7 +202,8 @@
         
         currentlyOpenPanel = null;
         currentlyOpenPanelName = null;
-        panelContainer.style.display = "none";
+        panelContainer.classList.remove("sidebar-visible");
+        panelContainer.classList.add("sidebar-hidden");
       }
     }
     
