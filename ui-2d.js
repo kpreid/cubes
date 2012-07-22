@@ -17,7 +17,8 @@
   function ObjectUI(persistencePool) {
     var ui = this;
     
-    var normalFocusElement;
+    var normalFocusElement = null;
+    var panelContainer = null;
     
     // --- Object chips ---
     
@@ -184,6 +185,7 @@
       currentlyOpenPanel = element;
       currentlyOpenPanelName = name;
       panelContainer.style.removeProperty("display");
+      panelResizeKludge();
     }
     
     function closePanel(element) {
@@ -205,17 +207,6 @@
     
     function addPanelFeatures(element) {
       element.classList.add("sidebar"); // TODO make class name more generic
-      element.addEventListener("click", function (event) {
-        if (event.target.tagName == "INPUT" ||
-            event.target.tagName == "LABEL" ||
-            event.target.tagName == "BUTTON" ||
-            event.target.tagName == "TEXTAREA") {
-          return true;
-        } else {
-          closePanel(element);
-          ui.refocus();
-        }
-      });
     }
     
     this.registerPanel = function (name, element) {
@@ -257,9 +248,26 @@
       return element;
     };
     
+    this.hidePanels = function () {
+      if (currentlyOpenPanel) closePanel(currentlyOpenPanel);
+    };
+    
     this.setNormalFocusElement = function (v) {
       normalFocusElement = v;
     };
+    
+    this.setPanelContainer = function (v) {
+      panelContainer = v;
+    };
+    
+    // TODO this is overspecific - it is for the layout in our current cubes.html, not general (it is a workaround for Firefox)
+    function panelResizeKludge() {
+      if (currentlyOpenPanel) {
+        currentlyOpenPanel.style.height = window.innerHeight + "px";
+      }
+      return true;
+    }
+    window.addEventListener("resize", panelResizeKludge, true);
     
     // --- Inspector ---
     
@@ -583,11 +591,6 @@
     
     this.setRenderer = function (v) {
       renderer = v;
-    };
-    
-    var panelContainer = null;
-    this.setPanelContainer = function (v) {
-      panelContainer = v;
     };
   }
   
