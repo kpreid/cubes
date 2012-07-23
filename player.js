@@ -215,7 +215,7 @@
       var hits = 0;
       function ray(look /* overwritten */) {
         mat4.multiplyVec3(matrix, look);
-        var foundOpenSpace = false;
+        var foundOpenSpace = !world.inBoundsv(pos);
         world.raycast(pos, look, 20/*TODO magic number */, function (x,y,z,value,face) {
           if (world.opaque(x,y,z)) { // TODO use appropriate test; what we actually want here is "is this a block which has a valid light value
             if (foundOpenSpace) {
