@@ -101,8 +101,10 @@
         var tileSize = world.wx; // assumed cubical
         var tileLastIndex = tileSize - 1;
         opaque = true;
-        var color = vec3.create();
+        var colorBuffer = self.color ? null : [0, 0, 0, 0];
+        var subCubeColor = [];
         var colorCount = 0;
+        var transparentCount = 0;
         for (var dim = 0; dim < 3; dim++) {
           var ud = mod(dim+1,3);
           var vd = mod(dim+2,3);
@@ -112,20 +114,35 @@
             opaque = opaque && world.opaque(vec[dim],vec[ud],vec[vd]);
             vec[2] = tileLastIndex;
             opaque = opaque && world.opaque(vec[dim],vec[ud],vec[vd]);
-
-            // raycast for color -- TODO use both sides
-            while (!world.opaque(vec[dim],vec[ud],vec[vd]) && vec[2] < tileSize) {
-              vec[2] += 1;
-            }
-            if (vec[2] < tileSize) {
-              var subCubeColor = [];
-              world.gt(vec[dim],vec[ud],vec[vd]).writeColor(1, subCubeColor, 0);
-              vec3.add(color, subCubeColor);
-              colorCount++;
+            if (colorBuffer) {
+              // raycast for color -- TODO use both sides
+              vec[2] = 0;
+              while (!world.opaque(vec[dim],vec[ud],vec[vd]) && vec[2] < tileSize) {
+                vec[2] += 1;
+              }
+              if (vec[2] < tileSize) {
+                world.gt(vec[dim],vec[ud],vec[vd]).writeColor(1, subCubeColor, 0);
+                colorBuffer[0] += subCubeColor[0] * subCubeColor[3];
+                colorBuffer[1] += subCubeColor[1] * subCubeColor[3];
+                colorBuffer[2] += subCubeColor[2] * subCubeColor[3];
+                colorCount += subCubeColor[3];
+              } else {
+                transparentCount++;
+              }
             }
           }
         }
-        derivedColor = self.color || vec3.scale(color, 1/colorCount);
+        if (colorBuffer) {
+          if (colorCount > 0) {
+            vec3.scale(colorBuffer, 1/colorCount);
+          } else {
+            colorBuffer[0] = colorBuffer[1] = colorBuffer[2] = 0;
+          }
+          colorBuffer[3] = colorCount / (colorCount + transparentCount);
+          derivedColor = colorBuffer;
+        } else {
+          derivedColor = self.color;
+        }
         hasCircuits = world.getCircuits().length;
         // opaque is updated as we progress above
       }

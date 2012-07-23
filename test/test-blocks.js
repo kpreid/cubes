@@ -28,6 +28,25 @@ describe("BlockType", function () {
     expect(roundtrip.solid).toEqual(false);
     expect(roundtrip.light).toEqual(Math.PI);
   });
+  
+  it("should derive a mixed color", function () {
+    var type = new BlockType(null,
+      new World([2, 2, 2],
+        new Blockset([
+          new BlockType([1, 1, 1, 1], null),
+          new BlockType([0.5, 0.5, 0.5, 1], null)
+        ])));
+    type.world.s(0, 0, 0, 1);
+    type.world.s(1, 1, 1, 2);
+
+    // 50% alpha due to 50% coverage; 0.75 luminance as average of 1 and 0.5
+    expect(type.derivedColor).toEqual([0.75, 0.75, 0.75, 0.5]);
+  });
+  
+  it("should derive a finite color for a transparent block", function () {
+    var type = new BlockType(null, new World([1, 1, 1], new Blockset([])));
+    expect(type.derivedColor).toEqual([0, 0, 0, 0]);
+  });
 });
 
 describe("Blockset", function () {
