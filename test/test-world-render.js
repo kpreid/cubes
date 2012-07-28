@@ -36,6 +36,6 @@ describe("WorldRenderer", function() {
   
   it("handles particles outside the world", function () {
     // Bug test: this would crash
-    wrend.renderCreateBlock([-1, 0, 0]);
+    world.transientEvent([-1, 0, 0], "create");
   })
 });

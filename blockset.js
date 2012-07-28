@@ -167,7 +167,7 @@
         dirtyCircuit: dirtyProperties,
         deletedCircuit: dirtyProperties,
         changedBlockset: rebuild,
-        audioEvent: noop
+        transientEvent: noop
       });
     }());
     

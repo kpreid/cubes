@@ -505,7 +505,7 @@
         if (noConflict && (blocks[index] !== newID || subData[index] !== newSubdatum)) {
           blocks[index] = newID;
           subData[index] = newSubdatum;
-          audioEvent(cube, "become");
+          transientEvent(cube, "become");
         } else {
           curEffects.delete(cube); // inhibit update
         }
@@ -708,8 +708,8 @@
       return contacts.get(cube);
     }
     
-    function audioEvent(cube, mode) {
-      notifier.notify("audioEvent", vec3.add([0.5,0.5,0.5], cube), gt(cube[0],cube[1],cube[2]), mode);
+    function transientEvent(cube, mode) {
+      notifier.notify("transientEvent", cube, gt(cube[0],cube[1],cube[2]), mode);
     }
     
     var RLE_BASE = 0xA1;
@@ -790,7 +790,7 @@
 
     this.setContacts = setContacts;
     this.getContacts = getContacts;
-    this.audioEvent = audioEvent;
+    this.transientEvent = transientEvent;
 
     this.listen = notifier.listen;
     this.serialize = serialize;

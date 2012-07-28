@@ -542,8 +542,7 @@
                       function (code) { return CubeRotation.byCode[code]; }));
               currentPlace.world.s(x,y,z, currentPlace.tool, rotation.code);
               
-              currentPlace.wrend.renderCreateBlock([x,y,z]);
-              currentPlace.world.audioEvent([x,y,z], "create");
+              currentPlace.world.transientEvent([x,y,z], "create");
               aimChanged();
             }
           }
@@ -555,8 +554,7 @@
           var x = cube[0], y = cube[1], z = cube[2];
           if (currentPlace.world.g(x,y,z) !== 0 /* i.e. would destruction do anything */) { 
             var value = currentPlace.world.g(x,y,z);
-            currentPlace.wrend.renderDestroyBlock(cube);
-            currentPlace.world.audioEvent(cube, "destroy");
+            currentPlace.world.transientEvent(cube, "destroy");
             currentPlace.world.s(x, y, z, 0);
             aimChanged();
           }

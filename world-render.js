@@ -337,9 +337,21 @@
       dirtyCircuit: dirtyCircuit,
       deletedCircuit: deletedCircuit,
       changedBlockset: dirtyAll,
-      audioEvent: function (position, type, kind) {
+      transientEvent: function (cube, type, kind) {
         if (!isAlive()) return;
-        if (optAudio) optAudio.play(position, type, kind, 1);
+        
+        if (optAudio) {
+          optAudio.play(vec3.add([0.5,0.5,0.5], cube), type, kind, 1);
+        }
+        
+        switch (kind) {
+          case "destroy":
+            addParticles(cube, true);
+            break;
+          case "create":
+            addParticles(cube, false);
+            break;
+        }
       }
     };
     
@@ -438,15 +450,6 @@
         lightTexture));
     }
     
-    function renderDestroyBlock(cube) {
-      addParticles(cube, true);
-    }
-    this.renderDestroyBlock = renderDestroyBlock;
-
-    function renderCreateBlock(cube) {
-      addParticles(cube, false);
-    }
-    this.renderCreateBlock = renderCreateBlock;
     
     
 
