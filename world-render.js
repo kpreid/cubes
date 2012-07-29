@@ -107,7 +107,6 @@
     
     // Cached blockset characteristics
     var tileSize = blockset.tileSize;
-    var pixelSize = 1/tileSize;
     var ID_EMPTY = Blockset.ID_EMPTY;
     
     var particles = [];
@@ -583,7 +582,6 @@
           
           var rotIndex = rawRotations[rawIndex];
           var rot = rotationsByCode[rotIndex];
-          var btype = types[value];
           var faceData = (rotatedBlockFaceData[value] || BOGUS_BLOCK_DATA)[rotIndex];
           thisOpaque = opaques[value];
           
@@ -721,7 +719,7 @@
     }
     
     var CENTER = [0.5, 0.5, 0.5];
-    var CYL_RADIUS = round(0.08 * tileSize) / tileSize;
+    var beamRadius = round(0.08 * tileSize) / tileSize;
     function makeCircuitRenderer(circuit) {
       var dyns;
       var circuitRenderer = new renderer.RenderBundle(gl.TRIANGLES, null, function (vertices, normals, colors) {
@@ -730,13 +728,12 @@
           var net = record[0];
           var fromBlock = record[1];
           var block = record[2];
-
-          var vbase = vertices.length;
+          
           var cbase = colors.length;
           var numVertices = calcCylinder(
-            vec3.add(record[1], CENTER, vec3.create()),
-            vec3.add(record[2], CENTER, vec3.create()),
-            0.1,
+            vec3.add(fromBlock, CENTER, vec3.create()),
+            vec3.add(block,     CENTER, vec3.create()),
+            beamRadius,
             vertices, normals);
           for (var i = 0; i < numVertices; i++)
             colors.push(1,1,1,1); 

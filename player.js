@@ -25,9 +25,7 @@
   // physics constants
   var WALKING_SPEED = 4; // cubes/s
   var FLYING_SPEED = 10; // cubes/s
-  var GRAVITY = 20; // cubes/s^2
   var JUMP_SPEED = 8; // cubes/s
-  var MAX_STEP_UP = 0.57; // cubes
   var CONTROL_STIFFNESS = 0.18;
   var AIRSTEER_STIFFNESS = 0.03;
   
@@ -273,7 +271,7 @@
       body.addVelocity([
         (movAdj[0] - body.vel[0]) * stiffness,
         body.flying ? (movAdj[1] - body.vel[1]) * stiffness
-        : movAdj[1] !== 0 ? (movAdj[1] - body.vel[1]) * stiffness + timestep * GRAVITY : 0,
+        : movAdj[1] !== 0 ? (movAdj[1] - body.vel[1]) * stiffness + timestep * Body.GRAVITY : 0,
         (movAdj[2] - body.vel[2]) * stiffness]);
 
       if (config.lighting.get()) {
@@ -553,7 +551,6 @@
           var cube = currentPlace.cursor.cube;
           var x = cube[0], y = cube[1], z = cube[2];
           if (currentPlace.world.g(x,y,z) !== 0 /* i.e. would destruction do anything */) { 
-            var value = currentPlace.world.g(x,y,z);
             currentPlace.world.transientEvent(cube, "destroy");
             currentPlace.world.s(x, y, z, 0);
             aimChanged();

@@ -33,11 +33,6 @@
       footstep: [0.18, 0.1, 0, true, 1],
       become: [0.05, 0.1, 0, false, 0.2]
     };
-  
-    // argument is time in wavelengths
-    function square(t) {
-      return Math.floor(t % 1 * 2);
-    }
     
     function SynthData(type) {
       var blockWorld = type.world;

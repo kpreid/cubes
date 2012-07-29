@@ -262,5 +262,7 @@
     }
   };
   
+  Body.GRAVITY = GRAVITY;
+  
   cubes.Body = Object.freeze(Body);
 }());

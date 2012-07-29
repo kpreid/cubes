@@ -72,7 +72,7 @@ describe("Source code", function () {
       testFiles.forEach(function (jsFilename) {
         fetchResource(jsFilename, "text", runscallback(jsFilename, 1000, function (jsSource) {
            var res = JSHINT(jsSource, jshintOptions);
-           if (!res) {
+           if (!res || JSHINT.data().unused) {
              failures++
              var container = mkelement("div", "jshint-report");
              container.innerHTML/*ew*/ = JSHINT.report(true);

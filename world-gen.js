@@ -800,7 +800,7 @@
       // Using raw array access because it lets us cache the altitude computation by iterating over y last, not because the overhead of .edit() is especially high.
       var raw = topWorld.raw;
       var rawSubData = topWorld.rawSubData;
-      var t0 = Date.now();
+      //var t0 = Date.now();
       for (var x = 0; x < wx; x++) {
         var xbase = x*wy*wz;
         for (var z = 0; z < wz; z++) {
@@ -825,9 +825,9 @@
           }
         }
       }
-      var t1 = Date.now();
+      //var t1 = Date.now();
       topWorld.notifyRawEdit();
-      var t2 = Date.now();
+      //var t2 = Date.now();
       //console.log("Generation", t1 - t0, "ms updating", t2 - t1, "ms");
     }
     

@@ -523,7 +523,6 @@
         var x = Math.floor(Math.random() * wx);
         var y = Math.floor(Math.random() * wy);
         var z = Math.floor(Math.random() * wz);
-        var index = x*wy*wz + y*wz + z;
         
         // The input value given is chosen so that if you want a rate of k, you can
         // multiply k*value to get the chance you should do your thing.

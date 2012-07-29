@@ -4,7 +4,6 @@
 (function () {
   "use strict";
   
-  var Circuit = cubes.Circuit;
   var exponentialStep = cubes.util.exponentialStep;
   var mkelement = cubes.util.mkelement;
   var signum = cubes.util.signum;
@@ -993,8 +992,6 @@
       clearChildren(hud.blocksetAll);
       
       forAllMenuBlocks(function (blockID) {
-        var blockType = blocksetInMenu.get(blockID);
-        
         // element structure and style
         var item = menuItemsByBlockId[blockID] = mkelement("span", "menu-item");
         

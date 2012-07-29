@@ -385,7 +385,6 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.bindTexture(gl.TEXTURE_2D, null);
     
-    var blockTextureData;
     var tileAllocMap;
     var freePointer;
     var usageMap;
@@ -713,7 +712,6 @@
         iconTodoSet[toRerenderIcon.value] = true;
         start = true;
       }
-      var nonempty = false;
       if (!iconRendererInterval) {
         iconRendererInterval = window.setInterval(function () {
           for (var idStr in iconTodoSet) { 

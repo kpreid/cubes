@@ -36,6 +36,7 @@
       failures += nullError;
     } else {
       for (var p in nullo) {
+        /*jshint expr: true */ p;
         failures += nullError;
         break;
       }
