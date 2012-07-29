@@ -1,7 +1,7 @@
 // Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
-describe("source", function () {
+describe("Source code", function () {
   var fetchResource = cubes.util.fetchResource;
   var mkelement = cubes.util.mkelement;
   
@@ -47,7 +47,7 @@ describe("source", function () {
     };
   }
   
-  it("should pass JSLint", function () {
+  it("should pass JSHint", function () {
     this.addMatchers({
       toBeAbsent: function () {
         var actual = this.actual;
