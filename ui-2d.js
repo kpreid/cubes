@@ -364,7 +364,7 @@
         // TODO include large icon/render
 
         // TODO: This code duplicates functionality of PersistentCell.bindControl — refactor so we can use that code here.
-
+        
         var name = document.createElement("input");
         name.type = "text";
         name.value = blockType.name;
@@ -373,7 +373,28 @@
           return true;
         };
         mkcell("Codename").appendChild(name);
-
+        
+        // TODO bind to changes, permit replacement
+        // TODO figure out better handling of null
+        if (blockType.world) {
+          var worldChip = new ObjectChip();
+          worldChip.bindByObject(blockType.world);
+          mkcell("World").appendChild(worldChip.element);
+        }
+        
+        // TODO bind to changes, permit replacement
+        // TODO get a color-picker
+        if (blockType.color) {
+          var colorChip = new ObjectChip();
+          colorChip.bindByObject(blockType.color);
+          mkcell("Color").appendChild(colorChip.element);
+        }
+        
+        // TODO bind to changes, permit editing
+        var rotationsChip = new ObjectChip();
+        rotationsChip.bindByObject(blockType.automaticRotations);
+        mkcell("Rotations").appendChild(rotationsChip.element);
+        
         var behavior = document.createElement("select");
         var currentBehavior = (blockType.behavior || {name:""}).name;
         var o = document.createElement("option");
