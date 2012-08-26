@@ -29,6 +29,8 @@
   var Renderer = cubes.Renderer;
   var World = cubes.World;
   
+  function noop() {}
+  
   function padRight(string, length) {
     string = String(string);
     return new Array(length - string.length + 1).join(" ") + string;
@@ -530,6 +532,21 @@
         //"Creating your avatar...", // not currently expensive enough for a msg
         function () {
           player = main.player = new Player(config, topWorldC.get(), renderer/*TODO facet? */, audio/*TODO facet? */, scheduleDraw, objectUI);
+          
+          // TODO this is not really the right interface, just what was available
+          function changedWorld () {
+            if (currentWorldChipContainer) {
+              var chip = new objectUI.ObjectChip(objectUI.refObject(player.getWorld()));
+              currentWorldChipContainer.textContent = ""; // clear
+              currentWorldChipContainer.appendChild(chip.element);
+            }
+          }
+          player.input.listen({
+            interest: function () { return true; },
+            changedWorld: changedWorld,
+            changedTool: noop
+          });
+          changedWorld();
         },
         "Painting blocks...",
         function () {
@@ -585,12 +602,6 @@
 
       var name = persistencePool.getObjectName(world);
       if (name !== null) config.currentTopWorld.set(name);
-      
-      if (currentWorldChipContainer) {
-        var chip = new objectUI.ObjectChip(objectUI.refObject(world));
-        currentWorldChipContainer.textContent = ""; // clear
-        currentWorldChipContainer.appendChild(chip.element);
-      }
     };
     this.getTopWorld = function () { return topWorldC.get(); };
     
