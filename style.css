@@ -443,11 +443,18 @@ body {
 .command-menu button {
   display: block;
   
+  /* geometry */
   width: 100%;
   margin: 0;
   padding: .4em;
+  border: none;
   
-  border-radius: 0;  
+  /* style */
+  background: none;
+  color: inherit;
+  font-weight: bold;
+  font-family: inherit;
+  border-radius: 0;
   text-align: inherit;
   white-space: nowrap;
 }

@@ -14,6 +14,15 @@
   var World = cubes.World;
   var WorldGen = cubes.WorldGen;
   
+  function offsetGlobal(element) {
+    var left = 0, top = 0;
+    for (; element !== null; element = element.offsetParent) {
+      left += element.offsetLeft;
+      top += element.offsetTop;
+    }
+    return {left: left, top: top};
+  }
+  
   function ObjectUI(persistencePool) {
     var ui = this;
     
@@ -110,8 +119,6 @@
         menuE.tabIndex = 0; // make focusable
         menuE.style.position = "absolute";
         menuE.style.zIndex = "1";
-        menuE.style.right = (0) + "px";
-        menuE.style.top = (menuButtonE.offsetTop + menuButtonE.offsetHeight) + "px";
         
         function addControl(label, fn) {
           var b;
@@ -132,7 +139,13 @@
         } else {
           commandsForPersisted(targetName, addControl);
         }
-        chipE.appendChild(menuE);
+        
+        // Place on screen
+        // This position is in document-global coordinates because the menu is made a child of the body; and this is done because making it a child or sibling of the button would allow it to be clipped by the containing elements. We don't bother responding to relayout, because it's not good for a menu to move under the cursor and it shouldn't be up for long, anyway
+        document.body.appendChild(menuE); // first so that offsetWidth is valid
+        var oa = offsetGlobal(menuButtonE);
+        menuE.style.left = (oa.left + menuButtonE.offsetWidth - menuE.offsetWidth) + "px";
+        menuE.style.top = (oa.top + menuButtonE.offsetHeight) + "px";
         
         var focused = true;
         menuE.addEventListener("focus", function () {
