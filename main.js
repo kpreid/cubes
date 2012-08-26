@@ -396,9 +396,8 @@
               default: typeText = "???"; break;
             }
             
-            var chip = new objectUI.ObjectChip();
-            chip.bindByName(name);
-
+            var chip = new objectUI.ObjectChip(objectUI.refName(name));
+            
             var size = persistencePool.getSize(name);
             totalSize += size;
             
@@ -588,8 +587,7 @@
       if (name !== null) config.currentTopWorld.set(name);
       
       if (currentWorldChipContainer) {
-        var chip = new objectUI.ObjectChip();
-        chip.bindByObject(world);
+        var chip = new objectUI.ObjectChip(objectUI.refObject(world));
         currentWorldChipContainer.textContent = ""; // clear
         currentWorldChipContainer.appendChild(chip.element);
       }

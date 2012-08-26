@@ -31,38 +31,34 @@
     
     // --- Object chips ---
     
-    function ObjectChip() {
-      var bound = false;
-      var menuE;
-      var target = null, targetName = null;
+    function refName(name) {
+      return {_name: name};
+    }
+    this.refName = refName;
+    
+    function refObject(object) {
+      return {_object: object};
+    }
+    this.refObject = refObject;
+    
+    function ObjectChip(targetRef) {
+      var menuE = null;
       
       // Construct DOM
       var nameE = mkelement("span");
       var menuButtonE = mkelement("button", "", "▾");
-      menuButtonE.addEventListener("mousedown", openMenu, false);
-      menuButtonE.addEventListener("click", openMenu, false);
+      menuButtonE.addEventListener("mousedown", chipMenu, false);
+      menuButtonE.addEventListener("click", chipMenu, false);
       var chipE = mkelement("span", "presentation object-chip", nameE, menuButtonE);
-      chipE.addEventListener("contextmenu", openMenu, false);
+      chipE.addEventListener("contextmenu", chipMenu, false);
       chipE.style.position = "relative";
       
-      this.bindByName = function (name) {
-        if (bound) throw new Error("ObjectChip already bound");
-        bound = true;
-        targetName = name;
-        updateChip();
-      };
-      this.bindByObject = function (object) {
-        if (bound) throw new Error("ObjectChip already bound");
-        bound = true;
-        target = object;
-        updateChip();
-      };
-      
       function updateChip() {
-        if (target !== null && targetName !== null) {
+        if (!targetRef._name && !targetRef._object) {
           throw new Error("Inconsistent");
           
-        } else if (target !== null) {
+        } else if (targetRef._object !== undefined) {
+          var target = targetRef._object;
           // Examine object
           var label = null;
           if (target.persistence) {
@@ -93,7 +89,8 @@
           
           nameE.textContent = label;
           
-        } else if (targetName !== null) {
+        } else if (targetRef._name !== undefined) {
+          var targetName = targetRef._name;
           nameE.textContent = targetName;
           chipE.classList.add(persistencePool.getIfLive(targetName) ? "object-chip-live" : "object-chip-named");
 
@@ -102,87 +99,99 @@
         }
       }
       
-      function openMenu(event) {
+      function chipMenu(event) {
         event.stopPropagation();
         event.preventDefault();
-        
         updateChip();
-        
-        if (menuE) {
-          return false;
-        }
-        
-        var menuListE;
-        menuE = mkelement("div", "command-menu",
-          menuListE = mkelement("ul")
-        );
-        menuE.tabIndex = 0; // make focusable
-        menuE.style.position = "absolute";
-        menuE.style.zIndex = "1";
-        
-        function addControl(label, fn) {
-          var b;
-          menuListE.appendChild(mkelement("li", "",
-            b = mkelement("button", "", label)
-          ));
-          b.addEventListener("mouseup", function (e) {
-            e.stopPropagation();
-            dismiss();
-            fn();
-            updateChip(); // TODO kludge; updates should be based on notifications
-            return true;
-          }, false);
-        }
-        
-        if (target !== null) {
-          commandsForObject(target, addControl);
-        } else {
-          commandsForPersisted(targetName, addControl);
-        }
-        
-        // Place on screen
-        // This position is in document-global coordinates because the menu is made a child of the body; and this is done because making it a child or sibling of the button would allow it to be clipped by the containing elements. We don't bother responding to relayout, because it's not good for a menu to move under the cursor and it shouldn't be up for long, anyway
-        document.body.appendChild(menuE); // first so that offsetWidth is valid
-        var oa = offsetGlobal(menuButtonE);
-        menuE.style.left = (oa.left + menuButtonE.offsetWidth - menuE.offsetWidth) + "px";
-        menuE.style.top = (oa.top + menuButtonE.offsetHeight + 2) + "px";
-        
-        var focused = true;
-        menuE.addEventListener("focus", function () {
-          focused = true;
-          return true;
-        }, false);
-        menuE.addEventListener("blur", function () {
-          focused = false;
-          setTimeout(function () {
-            if (!focused) dismiss();
-          }, 0);
-          return true;
-        }, false);
-        menuE.addEventListener("keypress", function () {
-          dismiss();
-          return true;
-        }, false);
-        menuE.focus();
-        
-        function dismiss() {
-          if (!menuE) return;
-          if (focused) ui.refocus();
-          menuE.parentElement.removeChild(menuE);
-          menuE = undefined;
-        }
-        
+        if (menuE) return false;
+        menuE = openContextMenu(event, targetRef, menuButtonE, function () { menuE = null; });
         return false;
       }
       
-      
       // Final initialization
-      
       this.element = chipE;
-      
+      updateChip();
       Object.freeze(this);
     }
     this.ObjectChip = ObjectChip;
+    
+    function openContextMenu(event, targetRef, optOriginElement, closeCallback) {
+      var menuListE;
+      var menuE = mkelement("div", "command-menu",
+        menuListE = mkelement("ul")
+      );
+      menuE.tabIndex = 0; // make focusable
+      menuE.style.position = "absolute";
+      menuE.style.zIndex = "1";
+      
+      commandsFor(targetRef, function addControl(label, fn) {
+        var b;
+        menuListE.appendChild(mkelement("li", "",
+          b = mkelement("button", "", label)
+        ));
+        b.addEventListener("mouseup", function (e) {
+          e.stopPropagation();
+          dismiss();
+          fn();
+          return true;
+        }, false);
+      });
+      
+      // Place on screen
+      // This position is in document-global coordinates because the menu is made a child of the body; and this is done because making it a child or sibling of the origin element would allow it to be clipped by the containing elements. We don't bother responding to relayout, because it's not good for a menu to move under the cursor and it shouldn't be up for long, anyway
+      document.body.appendChild(menuE); // first so that offsetWidth is valid
+      var posX, posY;
+      var niceMargin = 10;
+      if (optOriginElement) {
+        var oa = offsetGlobal(optOriginElement);
+        posX = (oa.left + optOriginElement.offsetWidth - menuE.offsetWidth);
+        posY = (oa.top + optOriginElement.offsetHeight + 2);
+        if (posX < 0) posX = 0;
+        if (posY + menuE.offsetHeight > window.innerHeight - niceMargin) {
+          posY = oa.top - menuE.offsetHeight;
+        }
+      } else {
+        posX = event.clientX;
+        posY = event.clientY;
+        if (posX + menuE.offsetWidth > window.innerWidth - niceMargin) {
+          posX -= menuE.offsetWidth;
+        }
+        if (posY + menuE.offsetHeight > window.innerHeight - niceMargin) {
+          posY -= menuE.offsetHeight;
+        }
+      }
+      menuE.style.left = posX + "px";
+      menuE.style.top  = posY + "px";
+      
+      var focused = true;
+      menuE.addEventListener("focus", function () {
+        focused = true;
+        return true;
+      }, false);
+      menuE.addEventListener("blur", function () {
+        focused = false;
+        setTimeout(function () {
+          if (!focused) dismiss();
+        }, 0);
+        return true;
+      }, false);
+      menuE.addEventListener("keypress", function () {
+        dismiss();
+        return true;
+      }, false);
+      menuE.focus();
+      
+      function dismiss() {
+        if (!menuE) return;
+        if (focused) ui.refocus();
+        menuE.parentElement.removeChild(menuE);
+        menuE = null;
+        closeCallback();
+      }
+      
+      return menuE;
+    }
+    this.openContextMenu = openContextMenu;
     
     // --- Panel manager ---
     
@@ -295,15 +304,13 @@
         cleanups.forEach(function (f) { f(); });
       });
       
-      var titleChip = new this.ObjectChip();
-      titleChip.bindByObject(object);
+      var titleChip = new ObjectChip(refObject(object));
       
       panel.appendChild(mkelement("h2", "", "Inspecting ", titleChip.element));
       
       // TODO refactor this into something less hardcoded
       if (object instanceof World) {
-        var blocksetChip = new this.ObjectChip();
-        blocksetChip.bindByObject(object.blockset);
+        var blocksetChip = new ObjectChip(refObject(object.blockset));
         
         panel.appendChild(mkelement("table", "",
           mkelement("tr", "",
@@ -334,8 +341,7 @@
             });
           }
           
-          var blockChip = new ObjectChip();
-          blockChip.bindByObject(blockType);
+          var blockChip = new ObjectChip(refObject(blockType));
           
           var item = mkelement("li", "", icon, blockChip.element);
           
@@ -390,22 +396,19 @@
         // TODO bind to changes, permit replacement
         // TODO figure out better handling of null
         if (blockType.world) {
-          var worldChip = new ObjectChip();
-          worldChip.bindByObject(blockType.world);
+          var worldChip = new ObjectChip(refObject(blockType.world));
           mkcell("World").appendChild(worldChip.element);
         }
         
         // TODO bind to changes, permit replacement
         // TODO get a color-picker
         if (blockType.color) {
-          var colorChip = new ObjectChip();
-          colorChip.bindByObject(blockType.color);
+          var colorChip = new ObjectChip(refObject(blockType.color));
           mkcell("Color").appendChild(colorChip.element);
         }
         
         // TODO bind to changes, permit editing
-        var rotationsChip = new ObjectChip();
-        rotationsChip.bindByObject(blockType.automaticRotations);
+        var rotationsChip = new ObjectChip(refObject(blockType.automaticRotations));
         mkcell("Rotations").appendChild(rotationsChip.element);
         
         var behavior = document.createElement("select");
@@ -466,7 +469,7 @@
           mkelement("em", "", "No details available for this object.")));
       }
       
-      function addButton(label, action) {
+      commandsFor(refObject(object), function addButton(label, action) {
         var button;
         panel.appendChild(mkelement("div", "", button = mkelement("button", "", label)));
         button.addEventListener("click", function () {
@@ -479,8 +482,7 @@
           }
           return true;
         }, false);
-      }
-      commandsForObject(object, addButton);
+      });
     };
     
     // --- Commands ---
@@ -538,8 +540,7 @@
       applyToObject: function (object) {
         var panel = ui.openNewPanel();
         
-        var expchip = new ObjectChip();
-        expchip.bindByObject(object);
+        var expchip = new ObjectChip(refObject(object));
         panel.appendChild(mkelement("h2", "", "Export of ", expchip.element));
         
         var data = mkelement("textarea");
@@ -597,28 +598,30 @@
       }
     });
     
-    function commandsForObject(object, callback) {
-      allCommands.forEach(function (command) {
-        if (command.applicableToObject(object)) {
-          callback(command.title, function () {
-            command.applyToObject(object);
-          });
-        }
-      });
-    }
-    
-    function commandsForPersisted(name, callback) {
-      allCommands.forEach(function (command) {
-        if (command.applicableToPersisted(name)) {
-          callback(command.title, function () {
-            if (command.applyToPersisted) {
-              command.applyToPersisted(name);
-            } else {
-              command.applyToObject(persistencePool.get(name));
-            }
-          });
-        }
-      });
+    function commandsFor(ref, callback) {
+      if (ref._object !== undefined) {
+        var object = ref._object;
+        allCommands.forEach(function (command) {
+          if (command.applicableToObject(object)) {
+            callback(command.title, function () {
+              command.applyToObject(object);
+            });
+          }
+        });
+      } else {
+        var name = ref._name;
+        allCommands.forEach(function (command) {
+          if (command.applicableToPersisted(name)) {
+            callback(command.title, function () {
+              if (command.applyToPersisted) {
+                command.applyToPersisted(name);
+              } else {
+                command.applyToObject(persistencePool.get(name));
+              }
+            });
+          }
+        });
+      }
     }
     
     // --- Support ---

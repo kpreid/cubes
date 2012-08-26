@@ -31,9 +31,9 @@ describe("Player", function() {
     play: function () {}
   };
   var stubObjectUI = {
-    ObjectChip: function () {}
+    ObjectChip: function () {},
+    refObject: function () {}
   };
-  stubObjectUI.ObjectChip.prototype.bindByObject = function () {};
   stubObjectUI.ObjectChip.prototype.element = document.createElement("span");
   
   beforeEach(function () {

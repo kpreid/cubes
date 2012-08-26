@@ -13,8 +13,8 @@ describe("ObjectUI", function() {
   
   // Originally written as a test demonstrating a crash on bind; should be turned into something more meaningful
   it("should provide chips for ephemeral worlds", function () {
-    var chip = new ui.ObjectChip();
-    chip.bindByObject(new cubes.World([1, 2, 3], new cubes.Blockset([])));
+    var chip = new ui.ObjectChip(ui.refObject(
+      new cubes.World([1, 2, 3], new cubes.Blockset([]))));
     
     expect(chip.element.textContent).toContain("a 1×2×3 World");
   });

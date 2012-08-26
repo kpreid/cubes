@@ -959,8 +959,16 @@
         item.classList.add("selectedTool");
         return false; // inhibit selection
       };
-      icon.oncontextmenu = function () {
-        playerInput.enterWorld(blockID);
+      var menuUp = false;
+      icon.oncontextmenu = function (event) {
+        if (menuUp) return;
+        event.stopPropagation();
+        event.preventDefault();
+        objectUI.openContextMenu(
+          event,
+          objectUI.refObject(playerInput.blockset.get(blockID)),
+          null,
+          function () { menuUp = false; });
         return false;
       };
       icon.onmouseout = function () {

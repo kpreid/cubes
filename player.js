@@ -437,8 +437,7 @@
           draw(ZEROVEC, selection.bounds, [0,1,1]);
         });
         
-        var chip = new objectUI.ObjectChip();
-        chip.bindByObject(selection);
+        var chip = new objectUI.ObjectChip(objectUI.refObject(selection));
         
         selectionSceneObject = {
           draw: function () {

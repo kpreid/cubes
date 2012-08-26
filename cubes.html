@@ -207,8 +207,7 @@
         document.getElementById('load-result').textContent = '';
         try {
           var object = cubes.storage.cyclicUnserialize(JSON.parse(document.getElementById('load-field').value), cubes.storage.Persister.types);
-          var chip = new main.ui.ObjectChip();
-          chip.bindByObject(object);
+          var chip = new main.ui.ObjectChip(main.ui.refObject(object));
           document.getElementById('load-result').textContent = 'Imported object: ';
           document.getElementById('load-result').appendChild(chip.element);
         } catch (e) {
