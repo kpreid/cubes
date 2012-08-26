@@ -11,6 +11,14 @@ describe("ObjectUI", function() {
     ui = new cubes.ObjectUI(pool);
   });
   
+  it("should provide chips for null and undefined", function () {
+    var chip = new ui.ObjectChip(ui.refObject(null));
+    expect(chip.element.textContent.trim()).toBe("null");
+    
+    var chip = new ui.ObjectChip(ui.refObject(undefined));
+    expect(chip.element.textContent.trim()).toBe("undefined");
+  });
+  
   // Originally written as a test demonstrating a crash on bind; should be turned into something more meaningful
   it("should provide chips for ephemeral worlds", function () {
     var chip = new ui.ObjectChip(ui.refObject(

@@ -402,6 +402,9 @@ body {
 .object-chip.object-chip-named { background: #686; }
 .object-chip.object-chip-ephemeral { background: #866; }
 .object-chip.object-chip-live { background: #494; }
+.trivial-object-chip {
+  font-style: italic;
+}
 
 .object-chip button {
   /* geometry */

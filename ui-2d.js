@@ -32,33 +32,48 @@
     // --- Object chips ---
     
     function refName(name) {
-      return {_name: name};
+      return {
+        getOptName: function () { return name; },
+        getObject: function () { return persistencePool.get(name); },
+        isObjectAvailable: function () { return !!persistencePool.getIfLive(name); }
+      };
     }
     this.refName = refName;
     
     function refObject(object) {
-      return {_object: object};
+      return {
+        getOptName: function () { return persistencePool.getObjectName(object); },
+        getObject: function () { return object; },
+        isObjectAvailable: function () { return true; }
+      };
     }
     this.refObject = refObject;
     
     function ObjectChip(targetRef) {
+      var trivial = targetRef.isObjectAvailable() && !targetRef.getObject();
+      
       var menuE = null;
       
       // Construct DOM
       var nameE = mkelement("span");
-      var menuButtonE = mkelement("button", "", "▾");
-      menuButtonE.addEventListener("mousedown", chipMenu, false);
-      menuButtonE.addEventListener("click", chipMenu, false);
-      var chipE = mkelement("span", "presentation object-chip", nameE, menuButtonE);
-      chipE.addEventListener("contextmenu", chipMenu, false);
+      var chipE = mkelement("span", "presentation", nameE);
       chipE.style.position = "relative";
+
+      chipE.classList.add(trivial ? "trivial-object-chip" : "object-chip");
+      if (!trivial) {
+        chipE.addEventListener("contextmenu", chipMenu, false);
+        var menuButtonE = mkelement("button", "", "▾");
+        menuButtonE.addEventListener("mousedown", chipMenu, false);
+        menuButtonE.addEventListener("click", chipMenu, false);
+        chipE.appendChild(menuButtonE);
+      }
       
       function updateChip() {
-        if (!targetRef._name && !targetRef._object) {
-          throw new Error("Inconsistent");
+        if (trivial) {
+          nameE.textContent = String(targetRef.getObject());
           
-        } else if (targetRef._object !== undefined) {
-          var target = targetRef._object;
+        } else if (targetRef.isObjectAvailable()) {
+          var target = targetRef.getObject();
           // Examine object
           var label = null;
           if (target.persistence) {
@@ -89,10 +104,10 @@
           
           nameE.textContent = label;
           
-        } else if (targetRef._name !== undefined) {
-          var targetName = targetRef._name;
+        } else if (targetRef.getOptName() !== null) {
+          var targetName = targetRef.getOptName();
           nameE.textContent = targetName;
-          chipE.classList.add(persistencePool.getIfLive(targetName) ? "object-chip-live" : "object-chip-named");
+          chipE.classList.add(targetRef.isObjectAvailable() ? "object-chip-live" : "object-chip-named");
 
         } else {
           throw new Error("Can't happen");
@@ -599,8 +614,8 @@
     });
     
     function commandsFor(ref, callback) {
-      if (ref._object !== undefined) {
-        var object = ref._object;
+      if (ref.isObjectAvailable()) {
+        var object = ref.getObject();
         allCommands.forEach(function (command) {
           if (command.applicableToObject(object)) {
             callback(command.title, function () {
@@ -609,7 +624,7 @@
           }
         });
       } else {
-        var name = ref._name;
+        var name = ref.getOptName();
         allCommands.forEach(function (command) {
           if (command.applicableToPersisted(name)) {
             callback(command.title, function () {
