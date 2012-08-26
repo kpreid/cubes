@@ -424,10 +424,17 @@ body {
 
 /* context menu */
 .command-menu {
-  border: 1px solid white;
-  background: gray;
+  border: .1em solid #808080;
+  -webkit-box-shadow: 0 .2em 1em rgba(0, 0, 0, 0.5);
+     -moz-box-shadow: 0 .2em 1em rgba(0, 0, 0, 0.5);
+          box-shadow: 0 .2em 1em rgba(0, 0, 0, 0.5);
+
+  background: #777;
   color: white;
   font: menu;
+}
+.command-menu:focus {
+  outline: none; /* menus are always focused, hide browser's focus cue as clutter */
 }
 .command-menu ul {
   display: table;
@@ -457,6 +464,10 @@ body {
   border-radius: 0;
   text-align: inherit;
   white-space: nowrap;
+}
+.command-menu button:hover {
+  color: black;
+  background: white;
 }
 
 /* --- performance measurement widgets --- */

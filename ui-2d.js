@@ -145,7 +145,7 @@
         document.body.appendChild(menuE); // first so that offsetWidth is valid
         var oa = offsetGlobal(menuButtonE);
         menuE.style.left = (oa.left + menuButtonE.offsetWidth - menuE.offsetWidth) + "px";
-        menuE.style.top = (oa.top + menuButtonE.offsetHeight) + "px";
+        menuE.style.top = (oa.top + menuButtonE.offsetHeight + 2) + "px";
         
         var focused = true;
         menuE.addEventListener("focus", function () {
