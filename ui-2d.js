@@ -335,6 +335,10 @@
           mkelement("tr", "",
             mkelement("th", "", "Size:"),
             mkelement("td", "", String(object.wx), " × ", String(object.wy), " × ", String(object.wz))
+          ),
+          mkelement("tr", "",
+            mkelement("th", "", "Player body:"),
+            mkelement("td", "", new ObjectChip(refObject(object.playerBody)).element)
           )
         ));
       } else if (object instanceof Blockset) (function () {
