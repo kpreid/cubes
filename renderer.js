@@ -924,29 +924,51 @@ This is what you can assume/should do:
     var axisPermutationsForBoxes = [[0,1,2], [1,2,0], [2,0,1]];
     // Tool for rendering AAB objects' wireframes.
     function aabRenderer(collectorFn) {
-      return new renderer.RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
-        var p = vec3.create();
-        function renderAAB(offset, aabb, c) {
-          axisPermutationsForBoxes.forEach(function (dims) {
-            for (var du = 0; du < 2; du++)
-            for (var dv = 0; dv < 2; dv++)
-            for (var dw = 0; dw < 2; dw++) {
-              vec3.set(offset, p);
-              p[dims[0]] += aabb.get(dims[0], du);
-              p[dims[1]] += aabb.get(dims[1], dv);
-              p[dims[2]] += aabb.get(dims[2], dw);
+      // TODO: Remove the need to use two bundles, or at least to call the collectorFn twice.
+      function linesrb(alpha) {
+        return new renderer.RenderBundle(gl.LINES, null, function (vertices, normals, colors) {
+          var p = vec3.create();
+          function renderAAB(offset, aabb, c) {
+            axisPermutationsForBoxes.forEach(function (dims) {
+              for (var du = 0; du < 2; du++)
+              for (var dv = 0; dv < 2; dv++)
+              for (var dw = 0; dw < 2; dw++) {
+                vec3.set(offset, p);
+                p[dims[0]] += aabb.get(dims[0], du);
+                p[dims[1]] += aabb.get(dims[1], dv);
+                p[dims[2]] += aabb.get(dims[2], dw);
 
-              vertices.push(p[0],p[1],p[2]);
-              normals.push(0,0,0);
-              colors.push(c[0],c[1],c[2],1);
-            }
-          });
+                vertices.push(p[0],p[1],p[2]);
+                normals.push(0,0,0);
+                colors.push(c[0],c[1],c[2],alpha);
+              }
+            });
+          }
+          collectorFn(renderAAB);
+        }, {aroundDraw: function (draw) {
+          gl.lineWidth(2);
+          draw();
+        }});
+      }
+      var solidLines = linesrb(1.0);
+      var innerLines = linesrb(0.3);
+      return {
+        draw: function () {
+          gl.lineWidth(3);
+          solidLines.draw();
+          gl.disable(gl.DEPTH_TEST);
+          innerLines.draw();
+          gl.enable(gl.DEPTH_TEST);
+        },
+        recompute: function () {
+          solidLines.recompute();
+          innerLines.recompute();
+        },
+        deleteResources: function () {
+          solidLines.deleteResources();
+          innerLines.deleteResources();
         }
-        collectorFn(renderAAB);
-      }, {aroundDraw: function (draw) {
-        gl.lineWidth(2);
-        draw();
-      }});
+      };
     }
     this.aabRenderer = aabRenderer;
   
