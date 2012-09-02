@@ -42,19 +42,30 @@ describe("Player", function() {
     var config = new Config(sessionStorage, "cubes-test-dummy.option.");
     var renderer = new StubRenderer(config);
 
-    world = new World([2, 1, 1], new Blockset([new BlockType([1, 1, 1, 1])]))
+    world = new World([3, 1, 1], new Blockset([new BlockType([1, 1, 1, 1])]))
 
     player = new Player(config, world, renderer, stubAudio, stubScheduleDraw, stubObjectUI);
+    player.setPosition(renderer.getAimRay().origin); // sync to stub
   });
   
   it("should add blocks", function () {
+    world.s(2, 0, 0, 1);
+    
+    player.input.mousePos = [1, 1] /* dummy value */;
+    
+    player.input.tool = 1;
+    player.input.useTool();
+    expect(world.g(1, 0, 0)).toBe(1);
+  });
+  
+  it("should not intersect itself with added blocks", function () {
     world.s(1, 0, 0, 1);
     
     player.input.mousePos = [1, 1] /* dummy value */;
     
     player.input.tool = 1;
     player.input.useTool();
-    expect(world.g(0, 0, 0)).toBe(1);
+    expect(world.g(0, 0, 0)).toBe(0); // TODO: fragile test; it would be better to have explicit failure from the tool
   });
   
   // TODO more tests

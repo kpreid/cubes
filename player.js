@@ -515,6 +515,13 @@
     
     // --- The facet for user input ---
     
+    function intersect(ignore) {
+      return Body.intersectAABAndWorld(
+        currentPlace.body.aabb.translate(currentPlace.body.pos),
+        currentPlace.world,
+        ignore);
+    }
+    
     var inputNotifier = new Notifier("player.input");
     this.input = Object.freeze({
       listen: inputNotifier.listen,
@@ -537,7 +544,16 @@
                   [0,0,1],
                   type.automaticRotations.map(
                       function (code) { return CubeRotation.byCode[code]; }));
+              var alreadyIntersecting = intersect(null);
+              
               currentPlace.world.s(x,y,z, currentPlace.tool, rotation.code);
+              
+              if (intersect(alreadyIntersecting) && !currentPlace.body.noclip) {
+                // New block intersected the player, reject placement.
+                // TODO: should not-place rather than revert, as this may have side effects -- requires being able to test against a patched world
+                currentPlace.world.s(x,y,z,0);
+                return;
+              }
               
               currentPlace.world.transientEvent([x,y,z], "create");
               aimChanged();

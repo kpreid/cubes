@@ -85,53 +85,6 @@
     vec3.add(nextPos, curPos);
     
     // --- collision ---
-
-    function intersectWorld(aabb, iworld, ignore, level) {
-      var hit = new IntVectorMap();
-      var lx = Math.max(0, Math.floor(aabb.get(0, 0)));
-      var ly = Math.max(0, Math.floor(aabb.get(1, 0)));
-      var lz = Math.max(0, Math.floor(aabb.get(2, 0)));
-      var hx = Math.min(iworld.wx - 1, Math.floor(aabb.get(0, 1)));
-      var hy = Math.min(iworld.wy - 1, Math.floor(aabb.get(1, 1)));
-      var hz = Math.min(iworld.wz - 1, Math.floor(aabb.get(2, 1)));
-      measuring.collisionTests.inc(Math.max(0, hx-lx+1) *
-                                   Math.max(0, hy-ly+1) *
-                                   Math.max(0, hz-lz+1));
-      var pos, rot, scaledCollideAABB;
-      function subHitCallback(subHitAAB, subPos) {
-        hit.set(pos.concat(subPos),
-          rot ? subHitAAB.scale(1/scale).rotate(rot).translate([x, y, z])
-              : subHitAAB.scale(1/scale)            .translate([x, y, z]));
-      }
-      for (var x = lx; x <= hx; x++)
-      for (var y = ly; y <= hy; y++)
-      for (var z = lz; z <= hz; z++) {
-        var type = iworld.gt(x,y,z);
-        if (!type.solid) continue;
-        pos = [x, y, z];
-        if (ignore.get(pos)) continue;
-        if (!type.opaque && type.world && level === 0) {
-          var scale = type.world.wx;
-          var rotCode = iworld.gRot(x,y,z);
-          if (rotCode === 0) {
-            rot = null;
-            scaledCollideAABB = aabb.translate([-x, -y, -z]).scale(scale);
-          } else {
-            rot = CubeRotation.byCode[rotCode];
-            scaledCollideAABB = aabb.translate([-x, -y, -z]).rotate(rot.inverse).scale(scale);
-          }
-          var subhit = intersectWorld(
-                scaledCollideAABB,
-                type.world,
-                IntVectorMap.empty,
-                level + 1);
-          if (subhit) subhit.forEach(subHitCallback);
-        } else {
-          hit.set(pos, AAB.unitCube(pos));
-        }
-      }
-      return hit.length ? hit : null;
-    }
     
     function intersectBodyAt(pos, ignore) {
       return intersectWorld(bodyAABB.translate(pos), world, ignore || IntVectorMap.empty, 0);
@@ -240,6 +193,60 @@
         world.setContacts(cube, null);
       }
     });
+  };
+  
+  function intersectWorld(aabb, iworld, ignore, level) {
+    var hit = new IntVectorMap();
+    var lx = Math.max(0, Math.floor(aabb.get(0, 0)));
+    var ly = Math.max(0, Math.floor(aabb.get(1, 0)));
+    var lz = Math.max(0, Math.floor(aabb.get(2, 0)));
+    var hx = Math.min(iworld.wx - 1, Math.floor(aabb.get(0, 1)));
+    var hy = Math.min(iworld.wy - 1, Math.floor(aabb.get(1, 1)));
+    var hz = Math.min(iworld.wz - 1, Math.floor(aabb.get(2, 1)));
+    measuring.collisionTests.inc(Math.max(0, hx-lx+1) *
+                                 Math.max(0, hy-ly+1) *
+                                 Math.max(0, hz-lz+1));
+    var pos, rot, scaledCollideAABB;
+    function subHitCallback(subHitAAB, subPos) {
+      hit.set(pos.concat(subPos),
+        rot ? subHitAAB.scale(1/scale).rotate(rot).translate([x, y, z])
+            : subHitAAB.scale(1/scale)            .translate([x, y, z]));
+    }
+    for (var x = lx; x <= hx; x++)
+    for (var y = ly; y <= hy; y++)
+    for (var z = lz; z <= hz; z++) {
+      var type = iworld.gt(x,y,z);
+      if (!type.solid) continue;
+      pos = [x, y, z];
+      if (ignore.get(pos)) continue;
+      if (!type.opaque && type.world && level === 0) {
+        var scale = type.world.wx;
+        var rotCode = iworld.gRot(x,y,z);
+        if (rotCode === 0) {
+          rot = null;
+          scaledCollideAABB = aabb.translate([-x, -y, -z]).scale(scale);
+        } else {
+          rot = CubeRotation.byCode[rotCode];
+          scaledCollideAABB = aabb.translate([-x, -y, -z]).rotate(rot.inverse).scale(scale);
+        }
+        var subhit = intersectWorld(
+              scaledCollideAABB,
+              type.world,
+              IntVectorMap.empty,
+              level + 1);
+        if (subhit) subhit.forEach(subHitCallback);
+      } else {
+        hit.set(pos, AAB.unitCube(pos));
+      }
+    }
+    return hit.length ? hit : null;
+  }
+  
+  // Public version of intersectWorld -- made available for block-placement checks.
+  // If aab intersects any of the blocks of world, return an IntVectorMap whose keys are the cube coordinates (concatenated with subcube coordinates if any) and values are the colliding cubes or subcubes.
+  // If 'ignore' is provided then it is a IntVectorMap listing cube collisions which should *not* be reported.
+  Body.intersectAABAndWorld = function (aab, world, ignore) {
+    return intersectWorld(aab, world, ignore || IntVectorMap.empty, 0);
   };
   
   Body.prototype.getFloor = function () {
