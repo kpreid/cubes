@@ -299,7 +299,7 @@ body {
 .optionline input[type="range"] {
   vertical-align: middle;
 }
-.optionline input[type="number"] {
+/*.optionline */input[type="number"] {
   text-align: right;
 }
 

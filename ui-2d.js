@@ -486,6 +486,7 @@
 
       }()); else if (object instanceof Body) (function () {
           var body = object;
+          var updaters = [];
 
           var rows;
           var table = mkelement("table", "",
@@ -500,28 +501,55 @@
             return cell;
           }
           
+          function numberUI(getf) {
+            var field = document.createElement("input");
+            field.type = "number";
+            field.step = "any";
+            field.style.width = "25%";
+            field.readOnly = true;
+            updaters.push(function () {
+              var cur = (+getf()).toFixed(2);
+              if (cur !== field.value) {
+                field.value = cur;
+              }
+            });
+            //field.addEventListener("change", function () {
+            //  obj[prop] = parseFloat(field.value);
+            //  return true;
+            //}, false);
+            return field;
+          }
           function vectorUI(vector) {
             var container = document.createElement("span");
-            for (var i = 0; i < vector.length; i++) {
+            for (var i = 0; i < vector.length; i++) item(i);
+            function item(i) {
               if (i !== 0) {
                 container.appendChild(document.createTextNode(", "));
               }
-              container.appendChild(document.createTextNode(vector[i].toFixed(2)));
+              i = String(i);
+              container.appendChild(numberUI(function () { return vector[i]; }));
             }
             return container;
           }
           
           mkcell("In world").appendChild(new ObjectChip(refObject(body.world)).element);
           
+          // TODO add editability
           // NOTE: When we allow editing, allow for that AABs are nominally immutable and replaceable whereas pos/vel are mutable and effectively facets
           mkcell("Size").appendChild(vectorUI(body.aabb));
           mkcell("Position").appendChild(vectorUI(body.pos));
           mkcell("Velocity").appendChild(vectorUI(body.vel));
-          mkcell("Yaw").appendChild(document.createTextNode((body.yaw / Math.PI * 180).toFixed(2) + "°"));
-          mkcell("Flying").appendChild(document.createTextNode(body.flying));
-          mkcell("Noclip").appendChild(document.createTextNode(body.noclip));
+          mkcell("Yaw").appendChild(numberUI(function () { return body.yaw / Math.PI * 180; }));
+          mkcell("Flying").appendChild(numberUI(function () { return body.flying; }));
+          mkcell("Noclip").appendChild(numberUI(function () { return body.noclip; }));
           
-          // TODO update for changes, editability
+          // TODO make this more general
+          function update() {
+            updaters.forEach(function (f) { f(); });
+          }
+          var updateInterval = setInterval(update, 100);
+          cleanups.push(function () { clearInterval(updateInterval); });
+          update();
           
         }()); else {
         panel.appendChild(mkelement("p", "", 
