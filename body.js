@@ -18,7 +18,6 @@
   var VELOCITY_EPSILON = 1e-6; // velocities below this are treated as zero
   
   function Body(world, aabb) {
-    this.world = world;
     this.aabb = aabb;
     this.pos = new Float64Array(3);
     this.vel = new Float64Array(3);
@@ -27,6 +26,7 @@
     this.noclip = false;
     
     // non-persisted properties
+    this.world = world;
     this.worldContacts = null; // TODO should be private
     this.cameraYLag = 0;
     this.debugHitAABBs = []; // filled by collision code

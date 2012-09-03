@@ -6,6 +6,7 @@
   
   var Blockset = cubes.Blockset;
   var BlockType = cubes.BlockType;
+  var Body = cubes.Body;
   var Circuit = cubes.Circuit;
   var cyclicSerialize = cubes.storage.cyclicSerialize;
   var mkelement = cubes.util.mkelement;
@@ -483,7 +484,46 @@
         lightCell.appendChild(lightT);
         lightCell.appendChild(lightR);
 
-      }()); else {
+      }()); else if (object instanceof Body) (function () {
+          var body = object;
+
+          var rows;
+          var table = mkelement("table", "",
+            rows = mkelement("tbody", ""));
+          panel.appendChild(table);
+
+          function mkcell(title) {
+            var cell;
+            rows.appendChild(mkelement("tr", "",
+              mkelement("th", "", title + ":"),
+              cell = mkelement("td", "")));
+            return cell;
+          }
+          
+          function vectorUI(vector) {
+            var container = document.createElement("span");
+            for (var i = 0; i < vector.length; i++) {
+              if (i !== 0) {
+                container.appendChild(document.createTextNode(", "));
+              }
+              container.appendChild(document.createTextNode(vector[i].toFixed(2)));
+            }
+            return container;
+          }
+          
+          mkcell("In world").appendChild(new ObjectChip(refObject(body.world)).element);
+          
+          // NOTE: When we allow editing, allow for that AABs are nominally immutable and replaceable whereas pos/vel are mutable and effectively facets
+          mkcell("Size").appendChild(vectorUI(body.aabb));
+          mkcell("Position").appendChild(vectorUI(body.pos));
+          mkcell("Velocity").appendChild(vectorUI(body.vel));
+          mkcell("Yaw").appendChild(document.createTextNode((body.yaw / Math.PI * 180).toFixed(2) + "°"));
+          mkcell("Flying").appendChild(document.createTextNode(body.flying));
+          mkcell("Noclip").appendChild(document.createTextNode(body.noclip));
+          
+          // TODO update for changes, editability
+          
+        }()); else {
         panel.appendChild(mkelement("p", "", 
           mkelement("em", "", "No details available for this object.")));
       }

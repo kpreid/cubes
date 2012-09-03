@@ -191,6 +191,9 @@
       this[5] = hz;
     }
     
+    // Convenience arraylikeness
+    Object.defineProperty(AAB.prototype, "length", {value: 6});
+    
     // Convenience for looking up a face by indexes:
     //   dim -- axis: x=0 y=1 z=2
     //   dir -- face: low=0 high=1
