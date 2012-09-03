@@ -328,6 +328,7 @@
       if (object instanceof World) {
         var blocksetChip = new ObjectChip(refObject(object.blockset));
         
+        var bodiesList;
         panel.appendChild(mkelement("table", "",
           mkelement("tr", "",
             mkelement("th", "", "Blockset:"),
@@ -338,10 +339,13 @@
             mkelement("td", "", String(object.wx), " × ", String(object.wy), " × ", String(object.wz))
           ),
           mkelement("tr", "",
-            mkelement("th", "", "Player body:"),
-            mkelement("td", "", new ObjectChip(refObject(object.playerBody)).element)
+            mkelement("th", "", "Bodies:"),
+            bodiesList = mkelement("td", "")
           )
         ));
+        object.forEachBody(function (body) {
+          bodiesList.appendChild(new ObjectChip(refObject(body)).element);
+        });
       } else if (object instanceof Blockset) (function () {
         var blocksList = mkelement("ol");
         panel.appendChild(blocksList);
@@ -531,6 +535,18 @@
             }
             return container;
           }
+          function booleanUI(property) {
+            var field = document.createElement("input");
+            field.type = "checkbox";
+            field.onchange = function () {
+              object[property] = field.checked;
+              return true;
+            };
+            updaters.push(function () {
+              field.checked = object[property];
+            });
+            return field;
+          }
           
           mkcell("In world").appendChild(new ObjectChip(refObject(body.world)).element);
           
@@ -540,8 +556,11 @@
           mkcell("Position").appendChild(vectorUI(body.pos));
           mkcell("Velocity").appendChild(vectorUI(body.vel));
           mkcell("Yaw").appendChild(numberUI(function () { return body.yaw / Math.PI * 180; }));
-          mkcell("Flying").appendChild(numberUI(function () { return body.flying; }));
-          mkcell("Noclip").appendChild(numberUI(function () { return body.noclip; }));
+          mkcell("Flying").appendChild(booleanUI("flying"));
+          mkcell("Noclip").appendChild(booleanUI("noclip"));
+          mkcell("Attach player").appendChild(booleanUI("isPlayerBody"));
+          mkcell("Autonomous").appendChild(booleanUI("autonomous"));
+          mkcell("Skin").appendChild(new ObjectChip(refObject(body.skin)).element); // TODO update
           
           // TODO make this more general
           function update() {
