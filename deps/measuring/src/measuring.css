@@ -1,0 +1,59 @@
+.measuring-item {
+  display: table;
+  font-family: "Geneva", "Verdana", sans-serif;
+  font-size: 9px;
+  color: white;
+  white-space: nowrap; /* work around spurious wrap in ~ Chrome 22.0.1207.1 dev */
+
+  pointer-events: none;
+
+  /* root-only styles */
+  background: black;
+  background: rgba(80,80,80,0.5);
+  padding: 3px;
+}
+.measuring-item .measuring-item {
+  /* non-roots */
+  padding: 0;
+  background: none; 
+}
+.measuring-label, .measuring-group-header {
+  display: inline-block;
+  min-width: 16ex;
+  text-align: left;
+}
+.measuring-value {
+  display: inline-block;
+  min-width: 13ex;
+  text-align: right;
+}
+.measuring-group-header {
+  background: none;
+  color: #CCC;
+  font-weight: bold;
+}
+ul.measuring-group-contents, ol.measuring-group-contents {
+  margin: 0 0 0 0;
+  padding: 0 0 0 1em;
+  list-style-type: none;
+}
+.measuring-sparkline {
+  vertical-align: baseline;
+}
+.measuring-hide-sparklines .measuring-sparkline {
+  display: none;
+}
+.measuring-toggle {
+  /* reset <button> style */
+  margin: 0;
+  border: none;
+  padding: 0;
+  color: inherit;
+  background: none;
+  font: inherit;
+  
+  /* specific style */
+  font-weight: bold;
+  
+  pointer-events: auto;
+}

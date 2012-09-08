@@ -250,28 +250,10 @@
   }
   TaskGroup.prototype = Object.create(ViewGroup.prototype);
   
-  measuring.all = new TopGroup("Performance", [
-    measuring.second = new ViewGroup("Per second", [
-      measuring.simCount = new Counter("Steps"),
-      measuring.frameCount = new Counter("Frames"),
-      measuring.chunkCount = new Counter("Chunk calcs"),
-      measuring.lightUpdateCount = new Counter("Light updates")
-    ]),
-    measuring.sim = new TaskGroup("Simulation", [
-      measuring.collisionTests = new Counter("Collision tests"),
-      measuring.blockEvals = new Counter("Block evals")
-    ]),
-    measuring.chunk = new TaskGroup("Chunk calc", []),
-    measuring.frame = new TaskGroup("Frame", [
-      measuring.bundles = new Counter("Bundles"),
-      measuring.vertices = new Counter("Vertices")
-    ]),
-    measuring.queues = new ViewGroup("Queue sizes", [
-      measuring.chunkQueueSize = new Counter("Chunks"),
-      measuring.lightingQueueSize = new Counter("Lights"),
-      measuring.persistenceQueueSize = new Counter("Dirty objs")
-    ])
-  ]);
-  
-  // Object.freeze(measuring);
+  cubes.Measuring = Object.freeze({
+    Counter: Counter,
+    TaskGroup: TaskGroup,
+    TopGroup: TopGroup,
+    ViewGroup: ViewGroup
+  });
 }());
