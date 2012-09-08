@@ -600,9 +600,9 @@
 
       // ground block
       blockset.add(type = genedit(
-        f.cond(f.te, f.cond(f.speckle, f.flat(brgb(0.67,0.34,0.34)), f.flat(brgb(0.67,0,0))),
-          f.cond(f.tp, f.flat(brgb(1,0.34,0.34)),
-            f.cond(f.speckle, f.flat(brgb(0.34,0,0)), f.flat(brgb(0,0,0)))))));
+        f.cond(f.te, f.cond(f.speckle, f.flat(brgb(0.67,0.67,0.67)), f.flat(brgb(0.5,0.5,0.5))),
+          f.cond(f.tp, f.flat(brgb(0.8,0.8,0.8)),
+            f.cond(f.speckle, f.flat(brgb(0.5,0.5,0.5)), f.flat(brgb(0.2,0.2,0.2)))))));
       var ground = type.world;
 
       // ground block #2
