@@ -9,7 +9,6 @@ var measviz;
   
   var max = Math.max;
   var min = Math.min;
-  var PersistentCell = cubes.storage.PersistentCell;
   
   var classPrefix = "measviz-";
   
@@ -44,19 +43,27 @@ var measviz;
   // --- Implementation ---
   
   function createToggle(storageName, callback) {
-    var toggleState = new PersistentCell(localStorage, storageName, "boolean", true);
+    var toggleState = true;
+    try {
+      toggleState = !!JSON.parse(localStorage.getItem(storageName));
+    } catch (e) {}
     var toggler = mkelement("button", ["toggle"]);
-    toggleState.nowAndWhenChanged(function (v) {
-      if (v) {
+    function update() {
+      if (toggleState) {
         toggler.textContent = "[−]" /* minus sign */;
       } else {
         toggler.textContent = "[+]";
       }
-      callback(v);
+      callback(toggleState);
       return true;
-    });
+    }
+    update();
     toggler.addEventListener("click", function () {
-      toggleState.set(!toggleState.get());
+      toggleState = !toggleState;
+      try {
+        localStorage.setItem(storageName, JSON.stringify(toggleState));
+      } catch (e) {}
+      update();
       return false;
     }, false);
     return toggler;
