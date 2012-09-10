@@ -10,3 +10,6 @@
 [submodule "deps/jshint"]
 	path = deps/jshint
 	url = git://github.com/jshint/jshint.git
+[submodule "deps/measviz"]
+	path = deps/measviz
+	url = git://github.com/kpreid/measviz.git
