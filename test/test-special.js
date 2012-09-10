@@ -26,6 +26,9 @@ describe("Source code", function () {
       mat3: false,
       mat4: false,
       
+      // provided by measviz
+      measviz: false,
+      
       // our own globals
       cubes: true,
     },

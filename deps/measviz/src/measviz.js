@@ -1,14 +1,15 @@
 // Copyright 2011-2012 Kevin Reid under the terms of the MIT License as detailed
 // in the accompanying file README.md or <http://opensource.org/licenses/MIT>.
 
+var measviz;
 (function () {
   "use strict";
-  var measuring = cubes.measuring = {};
-  
   var max = Math.max;
   var min = Math.min;
   var mkelement = cubes.util.mkelement;
   var PersistentCell = cubes.storage.PersistentCell;
+  
+  var classPrefix = "measviz-";
   
   function numberWithCommas(x) {
     // source: http://stackoverflow.com/a/2901298/99692
@@ -23,7 +24,7 @@
   
   function createToggle(storageName, callback) {
     var toggleState = new PersistentCell(localStorage, storageName, "boolean", true);
-    var toggler = mkelement("button", "measuring-toggle");
+    var toggler = mkelement("button", classPrefix + "toggle");
     toggleState.nowAndWhenChanged(function (v) {
       if (v) {
         toggler.textContent = "[−]" /* minus sign */;
@@ -46,11 +47,11 @@
   }
   ViewGroup.prototype.createDisplay = function (document, stateContext) {
     var subContext = stateContext + "." + this.label;
-    var container = mkelement("div", "measuring-item measuring-group");
-    var list = mkelement("ul", "measuring-group-contents");
+    var container = mkelement("div", classPrefix + "item " + classPrefix + "group");
+    var list = mkelement("ul", classPrefix + "group-contents");
     var header = null;
     if (this.label) {
-      header = mkelement("div", "measuring-group-header",
+      header = mkelement("div", classPrefix + "group-header",
         createToggle(subContext + ".visible", function (visible) {
           if (visible) {
             list.style.removeProperty("display");
@@ -66,7 +67,7 @@
     var updaters = [];
     this.elements.forEach(function (thing) {
       var subdisplay = thing.createDisplay(document, subContext);
-      list.appendChild(mkelement("li", "measuring-group-element", subdisplay.element));
+      list.appendChild(mkelement("li", classPrefix + "group-element", subdisplay.element));
       updaters.push(subdisplay.update.bind(subdisplay));
     });
 
@@ -105,9 +106,9 @@
   TopGroup.prototype.createDisplay = function (document, stateContext) {
     var d = ViewGroup.prototype.createDisplay.call(this, document, stateContext);
     var toggle = createToggle(stateContext + ".graphsVisible", function (visible) {
-      d.element.classList[visible ? "remove" : "add"]("measuring-hide-sparklines");
+      d.element.classList[visible ? "remove" : "add"](classPrefix + "hide-sparklines");
     });
-    var bogusval = mkelement("span", "measuring-value"); // strictly for layout :(
+    var bogusval = mkelement("span", classPrefix + "value"); // strictly for layout :(
     d.header.parentNode.insertBefore(toggle, d.header.nextSibling);
     d.header.parentNode.insertBefore(bogusval, d.header.nextSibling);
     return d;
@@ -121,11 +122,11 @@
   }
   Quantity.prototype.createDisplay = function (document, stateContext) {
     var labelElem, valueText, sparkCanvas;
-    var container = mkelement("div", "measuring-item measuring-quantity",
-      labelElem = mkelement("span", "measuring-label", this.label + ": "),
-      mkelement("span", "measuring-value",
+    var container = mkelement("div", classPrefix + "item " + classPrefix + "quantity",
+      labelElem = mkelement("span", classPrefix + "label", this.label + ": "),
+      mkelement("span", classPrefix + "value",
         valueText = document.createTextNode("")),
-      sparkCanvas = mkelement("canvas", "measuring-sparkline")
+      sparkCanvas = mkelement("canvas", classPrefix + "sparkline")
     );
     
     // sparkline
@@ -250,7 +251,7 @@
   }
   TaskGroup.prototype = Object.create(ViewGroup.prototype);
   
-  cubes.Measuring = Object.freeze({
+  measviz = Object.freeze({
     Counter: Counter,
     TaskGroup: TaskGroup,
     TopGroup: TopGroup,

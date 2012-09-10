@@ -1,4 +1,4 @@
-.measuring-item {
+.measviz-item {
   display: table;
   font-family: "Geneva", "Verdana", sans-serif;
   font-size: 9px;
@@ -12,38 +12,38 @@
   background: rgba(80,80,80,0.5);
   padding: 3px;
 }
-.measuring-item .measuring-item {
+.measviz-item .measviz-item {
   /* non-roots */
   padding: 0;
   background: none; 
 }
-.measuring-label, .measuring-group-header {
+.measviz-label, .measviz-group-header {
   display: inline-block;
   min-width: 16ex;
   text-align: left;
 }
-.measuring-value {
+.measviz-value {
   display: inline-block;
   min-width: 13ex;
   text-align: right;
 }
-.measuring-group-header {
+.measviz-group-header {
   background: none;
   color: #CCC;
   font-weight: bold;
 }
-ul.measuring-group-contents, ol.measuring-group-contents {
+ul.measviz-group-contents, ol.measviz-group-contents {
   margin: 0 0 0 0;
   padding: 0 0 0 1em;
   list-style-type: none;
 }
-.measuring-sparkline {
+.measviz-sparkline {
   vertical-align: baseline;
 }
-.measuring-hide-sparklines .measuring-sparkline {
+.measviz-hide-sparklines .measviz-sparkline {
   display: none;
 }
-.measuring-toggle {
+.measviz-toggle {
   /* reset <button> style */
   margin: 0;
   border: none;

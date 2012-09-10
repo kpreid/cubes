@@ -4,11 +4,10 @@
 (function () {
   "use strict";
   
-  var Measuring = cubes.Measuring;
-  var TopGroup = Measuring.TopGroup;
-  var ViewGroup = Measuring.ViewGroup;
-  var TaskGroup = Measuring.TaskGroup;
-  var Counter = Measuring.Counter;
+  var TopGroup = measviz.TopGroup;
+  var ViewGroup = measviz.ViewGroup;
+  var TaskGroup = measviz.TaskGroup;
+  var Counter = measviz.Counter;
   
   var measuring = cubes.measuring = {};
   measuring.all = new TopGroup("Performance", [
