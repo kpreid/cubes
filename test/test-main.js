@@ -43,7 +43,8 @@ describe("Main", function() {
     label.innerText = "View of: " + spec.getFullName();
     container.appendChild(label);
     container.appendChild(parts.viewCanvas);
-    document.body.appendChild(container);
+    (document.getElementById("TrivialReporter") || document.body
+      ).appendChild(container);
     
     done = undefined;
     
