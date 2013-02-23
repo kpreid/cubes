@@ -613,8 +613,8 @@
       }
       
       for (var name in heldCommands) {
-        if (!(name in heldCommands)) continue;
         var state = heldCommands[name];
+        if (!state) continue;
 
         var period = state.command.repeatPeriod;
         if (typeof period !== "number") continue;
@@ -655,7 +655,8 @@
         delete heldControls[control];
         var state = commandState[command.name];
         if (--state.controlCount <= 0) {
-          delete heldCommands[command.name];
+          // Not deleting here because a bug has been observed in Chrome where deleting once causes the property to misbehave later
+          heldCommands[command.name] = undefined;
           command.release();
         }
         //console.log("hold -", control, command.name, (commandState[command.name] || {}).controlCount);
