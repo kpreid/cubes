@@ -894,6 +894,7 @@
     // Initialize interface mode.
     // If pointer lock is available, then we want to use it in mouselook mode, but we cannot enable it on page load; therefore we start in menu mode which does not want pointer lock.
     interfaceMode = GameShim.supports.pointerLock ? menuMode : mouselookIMode;
+    switchMode(interfaceMode);
     
     // --- Block menu ---
     

@@ -48,7 +48,7 @@
     var main = new cubes.Main("./", 1/60 /* timestep */, localStorage);
   </script>
 </head>
-<body class="ui-mode-hidden" onload='(function () {
+<body onload='(function () {
   var id = document.getElementById.bind(document);
   main.start({
     viewCanvas: id("view-canvas"),
