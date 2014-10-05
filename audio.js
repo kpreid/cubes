@@ -167,14 +167,14 @@
         source.buffer = buffer;
         source.playbackRate.value = 0.98 + Math.random() * 0.04;
         
-        var gainN = context.createGainNode();
+        var gainN = context.createGain();
         gainN.gain.value = gain;
       
         source.connect(gainN);
         gainN.connect(panner);
         panner.connect(context.destination);
 
-        source.noteOn(0);
+        source.start(0);
       }
     });
   }
