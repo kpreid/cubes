@@ -1,15 +1,15 @@
 [submodule "deps/jasmine"]
 	path = deps/jasmine
-	url = git://github.com/pivotal/jasmine.git
+	url = https://github.com/pivotal/jasmine.git
 [submodule "deps/game-shim"]
 	path = deps/game-shim
-	url = git://github.com/toji/game-shim.git
+	url = https://github.com/toji/game-shim.git
 [submodule "deps/gl-matrix"]
 	path = deps/gl-matrix
-	url = git://github.com/toji/gl-matrix.git
+	url = https://github.com/toji/gl-matrix.git
 [submodule "deps/jshint"]
 	path = deps/jshint
-	url = git://github.com/jshint/jshint.git
+	url = https://github.com/jshint/jshint.git
 [submodule "deps/measviz"]
 	path = deps/measviz
-	url = git://github.com/kpreid/measviz.git
+	url = https://github.com/kpreid/measviz.git
