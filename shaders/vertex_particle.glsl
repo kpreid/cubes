@@ -1,6 +1,6 @@
 uniform float uParticleInterp;  // particle system evolution time, [0.0, 1.0]
 uniform bool uParticleExplode; // particles explode or appear/fade?
-uniform vec3 uParticleSystemPosition; // Location of particle system in world coordinates
+uniform highp vec3 uParticleSystemPosition; // Location of particle system in world coordinates
 
 attribute vec3 aParticleSubcube;
 
@@ -26,7 +26,7 @@ void main(void) {
   vGridPosition = uParticleSystemPosition + subcubeVertex + particlePosition;
   
   // Add animated position
-  vec3 vertexPosition = vGridPosition +
+  highp vec3 vertexPosition = vGridPosition +
     (uParticleExplode
       ? (1.0 * scramble + 0.5 * particlePosition) * pow(uParticleInterp, 3.0)
       : particlePosition * (0.1 + uParticleInterp * 0.1));
@@ -34,7 +34,7 @@ void main(void) {
   
 #if !CUBE_PARTICLES
   // Compute pixel scale for points
-  vec4 testPosition = eyePosition;
+  highp vec4 testPosition = eyePosition;
   testPosition.x = uPixelsPerClipUnit.x / uTileSize * 1.2/*appearance fudge factor*/;
   testPosition.y = 0.0;
   testPosition = uPMatrix * testPosition;

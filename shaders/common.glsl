@@ -1,17 +1,17 @@
 precision mediump float;
 
 varying vec4 vColor;
-varying vec3 vGridPosition;
-varying vec3 vFixedOrientationPosition;
+varying highp vec3 vGridPosition;
+varying highp vec3 vFixedOrientationPosition;
 varying vec2 vTextureCoord;
 varying float vFog;
 varying vec3 vNormal;
 varying float vDistanceFromEye;
 
 // View geometry
-uniform mat4 uPMatrix;
-uniform mat4 uMVMatrix;
-uniform vec3 uViewPosition;
+uniform highp mat4 uPMatrix;
+uniform highp mat4 uMVMatrix;
+uniform highp vec3 uViewPosition;
 uniform float uFogDistance;
 uniform vec2 uPixelsPerClipUnit;
 
