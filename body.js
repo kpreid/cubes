@@ -74,8 +74,7 @@
     var yaw = this.yaw;
     return [
       this.pos,
-      [-Math.sin(yaw), 0, -Math.cos(yaw)],
-      this.vel];
+      [-Math.sin(yaw), 0, -Math.cos(yaw)]];
   };
 
   Body.prototype.step = function (timestep, didMoveCallback) {

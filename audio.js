@@ -145,11 +145,10 @@
     return Object.freeze({
       supported: supported,
     
-      setListener: !supported ? function () {return null;} : function (pos, fwd, vel) {
+      setListener: !supported ? function () {return null;} : function (pos, fwd) {
         context.listener.gain = 0.3;
         context.listener.setPosition(pos[0],pos[1],pos[2]);
         context.listener.setOrientation(fwd[0],fwd[1],fwd[2], 0,1,0); // assumed 'up' vector
-        context.listener.setVelocity(vel[0],vel[1],vel[2]);
       },
     
       play: !supported ? function () {} : function (pos, blockType, kind, gain) {
