@@ -17,9 +17,6 @@ describe("Source code", function () {
       // provided by webgl-debug
       WebGLDebugUtils: true,
       
-      // provided by game-shim
-      GameShim: true,
-      
       // provided by gl-matrix
       vec3: false,
       vec4: false,

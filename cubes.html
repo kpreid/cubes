@@ -15,7 +15,6 @@
   <script type="text/javascript" src="deps/webgl-debug.js"></script>
   <script type="text/javascript" src="deps/webgl-utils.js"></script>
   <script type="text/javascript" src="deps/gl-matrix/gl-matrix.js"></script>
-  <script type="text/javascript" src="deps/game-shim/game-shim.js"></script>
   
   <script type="text/javascript" src="module-initial.js"></script>
   
@@ -90,7 +89,7 @@
     <button id="fullscreen-button" onclick="main.requestFullscreen(); document.getElementById('view-canvas').focus(); return false;">Full screen</button>
     <script>(function () {
       var button = document.getElementById("fullscreen-button");
-      if (!GameShim.supports.fullscreen) {
+      if (!("requestFullscreen" in document.body)) {
         button.style.display = "none";
       } else {
         var ourFullscreenElement = document.body; // TODO get this from Input

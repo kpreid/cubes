@@ -252,7 +252,7 @@
       el.tabIndex = 0;
       el.focus();
       
-      if (GameShim.supports.gamepad) (function () {
+      if ("getGamepads" in navigator) (function () {
         function scanArray(gamepadIndex, gamepadArray, type) {
           for (var i = 0; i < gamepadArray.length; i++) {
             var value = gamepadArray[i];
@@ -267,7 +267,7 @@
         }
         
         gamepadTestLoop = setInterval(function () {
-          var gamepads = navigator.gamepads;
+          var gamepads = navigator.getGamepads();
           for (var gamepadIndex = 0; gamepadIndex < gamepads.length; gamepadIndex++) {
             var gamepad = gamepads[gamepadIndex];
             if (!gamepad) continue;
@@ -602,14 +602,16 @@
     }
     
     function stepControls(timestep) {
-      var gamepads = navigator.gamepads;
-      for (var gamepadIndex = 0; gamepadIndex < gamepads.length; gamepadIndex++) {
-        var padState = gamepadControlState[gamepadIndex];
-        if (!padState) continue;
-        var gamepad = gamepads[gamepadIndex];
-        if (!gamepad) continue;
-        readGamepadStateArray(gamepad.buttons, padState.button);
-        readGamepadStateArray(gamepad.axes, padState.axis);
+      if (navigator.getGamepads) {
+        var gamepads = navigator.getGamepads();
+        for (var gamepadIndex = 0; gamepadIndex < gamepads.length; gamepadIndex++) {
+          var padState = gamepadControlState[gamepadIndex];
+          if (!padState) continue;
+          var gamepad = gamepads[gamepadIndex];
+          if (!gamepad) continue;
+          readGamepadStateArray(gamepad.buttons, padState.button);
+          readGamepadStateArray(gamepad.axes, padState.axis);
+        }
       }
       
       for (var name in heldCommands) {
@@ -789,8 +791,8 @@
       
         // TODO this is duplicative-ish of applyMousePosition. We need a refactoring...
       
-        var my = event.movementY/*shimmed*/;
-        var mx = event.movementX/*shimmed*/;
+        var my = event.movementY;
+        var mx = event.movementX;
         mx = mx || 0; // TODO Why are movement* sometimes undefined?
         my = my || 0;
         
@@ -809,42 +811,39 @@
     
     // --- Fullscreen and pointer lock (experimental browser APIs) ---
     
-    // game-shim.js provides these facilities as stubs if the browser does not, so this code contains no conditionals.
-    
     var ourFullscreenElement = document.body;
     var ourPointerLockElement = eventReceiver;
     
-    document.addEventListener("fullscreenchange"/*shimmed*/, updatePointerLock, false);
-    document.addEventListener("fullscreenerror"/*shimmed*/, function (event) {
+    document.addEventListener("fullscreenchange", updatePointerLock, false);
+    document.addEventListener("fullscreenerror", function (event) {
       console.info("Fullscreen entry error", event);
     }, false);
     
     this.requestFullscreen = function () {
-      ourFullscreenElement.requestFullscreen/*shimmed*/();
+      ourFullscreenElement.requestFullscreen();
     };
     
     function weHavePointerLock() {
-      // Second condition is because GameShim doesn't offer a shim for pointerLockElement if the browser doesn't have it at all, which is true for Chrome 21.0.1148.0 canary.
-      return document.pointerLockElement/*shimmed*/ === ourPointerLockElement ||
-             (navigator.pointer && navigator.pointer.isLocked);
+      return document.pointerLockElement === ourPointerLockElement;
     }
     
     function updatePointerLock() {
       if (interfaceMode.mouselook) {
-        ourPointerLockElement.requestPointerLock/*shimmed*/();
-        expectingPointerLock = GameShim.supports.pointerLock;
+        ourPointerLockElement.requestPointerLock();
+        expectingPointerLock = true;
         updateMouseFromEvent(null);
       } else {
-        document.exitPointerLock/*shimmed*/();
+        document.exitPointerLock();
       }
     }
     
-    window.addEventListener("pointerlockchange"/*shimmed*/, function (event) {
+    document.addEventListener("pointerlockchange", function (event) {
+      // No longer expecting -- follow the real state.
       expectingPointerLock = false;
       updateMouseFromEvent(null);
     }, false);
     
-    window.addEventListener("pointerlockerror"/*shimmed*/, function (event) {
+    document.addEventListener("pointerlockerror", function (event) {
       expectingPointerLock = false;
     }, false);
     
@@ -853,7 +852,7 @@
     function step(timestep) {
       stepControls(timestep);
 
-      if (!weHavePointerLock()) {
+      if (!weHavePointerLock() && !expectingPointerLock) {
         if (interfaceMode.mouselook) {
           playerInput.pitch = exponentialStep(playerInput.pitch, targetPitch, timestep, -30, 1e-2);
         }
@@ -892,8 +891,7 @@
     mouselookIMode.mouselookKeyTransition = menuMode;
     
     // Initialize interface mode.
-    // If pointer lock is available, then we want to use it in mouselook mode, but we cannot enable it on page load; therefore we start in menu mode which does not want pointer lock.
-    interfaceMode = GameShim.supports.pointerLock ? menuMode : mouselookIMode;
+    interfaceMode = menuMode;
     switchMode(interfaceMode);
     
     // --- Block menu ---
